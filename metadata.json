@@ -1,0 +1,5 @@
+{
+  "name": "DevOS: Code Execution Platform",
+  "description": "A browser-based development environment and deployment system with real-time collaboration, sandboxed execution, and version tracking.",
+  "requestFramePermissions": []
+}
