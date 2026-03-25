@@ -17,6 +17,15 @@ export default class ErrorBoundary extends Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    const resizeObserverErrors = [
+      "ResizeObserver loop completed with undelivered notifications.",
+      "ResizeObserver loop limit exceeded"
+    ];
+    
+    if (resizeObserverErrors.some(msg => error.message?.includes(msg))) {
+      return { hasError: false, error: null };
+    }
+    
     return { hasError: true, error };
   }
 

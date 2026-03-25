@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Settings, Github, Send, Loader2, CheckCircle, XCircle, MessageSquare } from "lucide-react";
+import { Settings, Github, Send, Loader2, CheckCircle, XCircle, MessageSquare, Trash2, AlertTriangle } from "lucide-react";
 import { db, auth } from "../lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, deleteDoc, collection, getDocs, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
@@ -10,9 +10,10 @@ interface SettingsPanelProps {
   projectId: string;
   project: Project | null;
   files: FileData[];
+  onDelete?: () => void;
 }
 
-export default function SettingsPanel({ projectId, project, files }: SettingsPanelProps) {
+export default function SettingsPanel({ projectId, project, files, onDelete }: SettingsPanelProps) {
   const [user] = useAuthState(auth);
   const [commitMessage, setCommitMessage] = useState("");
   const [isPushing, setIsPushing] = useState(false);
@@ -20,6 +21,8 @@ export default function SettingsPanel({ projectId, project, files }: SettingsPan
   const [errorMessage, setErrorMessage] = useState("");
   const [installationId, setInstallationId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -69,6 +72,48 @@ export default function SettingsPanel({ projectId, project, files }: SettingsPan
       setErrorMessage(error.message);
     } finally {
       setIsPushing(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!user || isDeleting) return;
+    
+    setIsDeleting(true);
+    try {
+      const batch = writeBatch(db);
+      
+      // Delete all files
+      const filesSnapshot = await getDocs(collection(db, "projects", projectId, "files"));
+      filesSnapshot.forEach((fileDoc) => {
+        batch.delete(fileDoc.ref);
+      });
+
+      // Delete all commits
+      const commitsSnapshot = await getDocs(collection(db, "projects", projectId, "commits"));
+      commitsSnapshot.forEach((commitDoc) => {
+        batch.delete(commitDoc.ref);
+      });
+
+      // Delete all PRs
+      const prsSnapshot = await getDocs(collection(db, "projects", projectId, "pullRequests"));
+      prsSnapshot.forEach((prDoc) => {
+        batch.delete(prDoc.ref);
+      });
+
+      // Delete project document
+      batch.delete(doc(db, "projects", projectId));
+
+      await batch.commit();
+      
+      if (onDelete) {
+        onDelete();
+      }
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      alert("Failed to delete project. Please try again.");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -173,6 +218,48 @@ export default function SettingsPanel({ projectId, project, files }: SettingsPan
               <span className="text-[10px] text-white/40 font-bold uppercase tracking-tighter">Visibility</span>
               <span className="text-[10px] text-white/80">{project?.isPublic ? "Public" : "Private"}</span>
             </div>
+          </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-red-500/60">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Danger Zone</span>
+          </div>
+          <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/10 space-y-4">
+            <p className="text-[10px] text-red-500/60 leading-relaxed">
+              Once you delete a project, there is no going back. Please be certain.
+            </p>
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold text-red-500 border border-red-500/20 hover:bg-red-500/10 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Project
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] text-white font-bold text-center">Are you absolutely sure?</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 py-2 rounded-lg text-[10px] font-bold text-white/40 hover:text-white transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteProject}
+                    disabled={isDeleting}
+                    className="flex-1 py-2 rounded-lg text-[10px] font-bold bg-red-600 text-white hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    Confirm Delete
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

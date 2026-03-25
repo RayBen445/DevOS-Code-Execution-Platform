@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useSupabaseAuth } from "./hooks/useSupabaseAuth";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "./lib/firebase";
 import Navbar from "./components/Navbar";
 import Dashboard from "./components/Dashboard";
 import IDE from "./components/IDE";
@@ -12,7 +13,7 @@ import { AnimatePresence } from "framer-motion";
 import { Routes, Route } from "react-router-dom";
 
 export default function App() {
-  const { user, loading } = useSupabaseAuth();
+  const [user, loading] = useAuthState(auth);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
 

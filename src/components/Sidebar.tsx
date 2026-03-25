@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { FileData } from "../types";
-import { File, Folder, Plus, Search, ChevronDown, ChevronRight, FileCode, FileJson, FileType, Upload, Loader2, Image as ImageIcon } from "lucide-react";
+import { File, Folder, Plus, Search, ChevronDown, ChevronRight, FileCode, FileJson, FileType, Upload, Loader2, Image as ImageIcon, Trash2 } from "lucide-react";
 import { db, storage } from "../lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { cn } from "../lib/utils";
 
@@ -48,6 +48,17 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
       setIsCreating(false);
     } catch (error) {
       console.error("Error creating file:", error);
+    }
+  };
+  
+  const handleDeleteFile = async (e: React.MouseEvent, fileId: string) => {
+    e.stopPropagation();
+    if (readOnly) return;
+    
+    try {
+      await deleteDoc(doc(db, "projects", projectId, "files", fileId));
+    } catch (error) {
+      console.error("Error deleting file:", error);
     }
   };
 
@@ -129,20 +140,35 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
 
         <div className="space-y-0.5">
           {files.map((file) => (
-            <button
+            <div
               key={file.id}
               onClick={() => onSelectFile(file.id)}
               className={cn(
-                "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all group",
+                "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all group cursor-pointer",
                 activeFileId === file.id
                   ? "bg-blue-600/10 text-blue-400 font-medium"
                   : "text-white/40 hover:bg-white/5 hover:text-white/80"
               )}
             >
               {getFileIcon(file.name, file.language)}
-              <span className="truncate">{file.name}</span>
-            </button>
+              <span className="truncate flex-1 text-left">{file.name}</span>
+              {!readOnly && (
+                <button
+                  onClick={(e) => handleDeleteFile(e, file.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 text-red-500/40 hover:text-red-500 transition-all rounded"
+                  title="Delete File"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           ))}
+          
+          {files.length === 0 && !isCreating && (
+            <div className="py-8 px-4 text-center">
+              <p className="text-[10px] text-white/20 uppercase font-bold tracking-widest">No files</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

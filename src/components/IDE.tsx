@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
+import { db, auth, handleFirestoreError, OperationType, storage } from "../lib/firebase";
 import { collection, onSnapshot, doc, getDoc, updateDoc, serverTimestamp, addDoc, getDocs, increment } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Sidebar from "./Sidebar";
 import GitPanel from "./GitPanel";
@@ -12,7 +13,7 @@ import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2 } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload } from "lucide-react";
 
 interface IDEProps {
   projectId: string;
@@ -162,6 +163,63 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
   };
 
+  const handleCreateFile = async (name: string) => {
+    if (!projectId || !name.trim() || isReadOnly) return;
+    const extension = name.split(".").pop() || "txt";
+    const languageMap: Record<string, string> = {
+      js: "javascript",
+      ts: "typescript",
+      tsx: "typescript",
+      jsx: "javascript",
+      json: "json",
+      css: "css",
+      html: "html",
+      md: "markdown"
+    };
+
+    try {
+      const docRef = await addDoc(collection(db, "projects", projectId, "files"), {
+        projectId,
+        name,
+        path: name,
+        content: "",
+        language: languageMap[extension] || "plaintext",
+        updatedAt: serverTimestamp()
+      });
+      setActiveFileId(docRef.id);
+    } catch (error) {
+      console.error("Error creating file:", error);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !projectId || isReadOnly) return;
+
+    const storageRef = ref(storage, `projects/${projectId}/files/${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      "state_changed",
+      null,
+      (error) => {
+        console.error("Upload error:", error);
+      },
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        const docRef = await addDoc(collection(db, "projects", projectId, "files"), {
+          projectId,
+          name: file.name,
+          path: file.name,
+          content: downloadURL,
+          language: "image",
+          updatedAt: serverTimestamp()
+        });
+        setActiveFileId(docRef.id);
+      }
+    );
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#0a0a0a]">
@@ -298,11 +356,16 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         )}
 
         {activePanel === "preview" && (
-          <PreviewPanel projectId={projectId} />
+          <PreviewPanel projectId={projectId} files={files} />
         )}
 
         {activePanel === "settings" && (
-          <SettingsPanel projectId={projectId} project={project} files={files} />
+          <SettingsPanel 
+            projectId={projectId} 
+            project={project} 
+            files={files} 
+            onDelete={onBack}
+          />
         )}
 
         <main className="flex-1 relative bg-[#0a0a0a] flex flex-col overflow-hidden">
@@ -315,8 +378,31 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 readOnly={isReadOnly}
               />
             ) : (
-              <div className="h-full flex items-center justify-center text-white/20">
-                Select a file to start editing
+              <div className="h-full flex flex-col items-center justify-center bg-[#0a0a0a] p-12 text-center">
+                <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-8">
+                  <Files className="w-10 h-10 text-white/20" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">No file selected</h2>
+                <p className="text-white/40 max-w-sm mb-8">
+                  Select a file from the explorer or create a new one to start building your project.
+                </p>
+                
+                {!isReadOnly && (
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <button
+                      onClick={() => handleCreateFile("index.js")}
+                      className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Create index.js
+                    </button>
+                    <label className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95 cursor-pointer">
+                      <Upload className="w-5 h-5" />
+                      Upload File
+                      <input type="file" className="hidden" onChange={handleImageUpload} />
+                    </label>
+                  </div>
+                )}
               </div>
             )}
           </div>

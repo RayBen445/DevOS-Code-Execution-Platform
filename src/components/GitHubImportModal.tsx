@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { X, Github, Search, Loader2, ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "../lib/supabase";
-import { useSupabaseAuth } from "../hooks/useSupabaseAuth";
+import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 interface GitHubImportModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ interface Repo {
 }
 
 export default function GitHubImportModal({ isOpen, onClose, onImportComplete }: GitHubImportModalProps) {
-  const { user, session } = useSupabaseAuth();
+  const [user] = useAuthState(auth);
   const [repos, setRepos] = useState<Repo[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -41,15 +42,15 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
     const urlParams = new URLSearchParams(window.location.search);
     const installationId = urlParams.get("installation_id");
     
-    if (installationId && session) {
+    if (installationId && user) {
       try {
+        const idToken = await user.getIdToken();
         await fetch("/api/github/link-installation", {
           method: "POST",
           headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`
+            "Content-Type": "application/json"
           },
-          body: JSON.stringify({ installationId }),
+          body: JSON.stringify({ idToken, installationId }),
         });
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -61,13 +62,14 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
   };
 
   const checkInstallation = async () => {
-    if (!session) return;
+    if (!user) return;
     setIsLoading(true);
     setError(null);
     try {
+      const idToken = await user.getIdToken();
       const response = await fetch("/api/github/repositories", {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${idToken}`,
         },
       });
 
@@ -94,30 +96,32 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
   };
 
   const handleImport = async (repo: Repo) => {
-    if (!user || !session) return;
+    if (!user) return;
     setIsImporting(true);
     setError(null);
 
     try {
-      // 1. Create Project in Supabase
-      const { data: project, error: projectError } = await supabase
-        .from("projects")
-        .insert({
-          name: repo.name,
-          owner_id: user.id,
-          github_repo: repo.full_name,
-        })
-        .select()
-        .single();
+      const idToken = await user.getIdToken();
 
-      if (projectError) throw projectError;
+      // 1. Create Project in Firestore
+      const docRef = await addDoc(collection(db, "projects"), {
+        name: repo.name,
+        ownerId: user.uid,
+        githubRepo: repo.full_name,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        collaborators: [],
+        isPublic: false,
+        isTemplate: false,
+        forksCount: 0
+      });
 
       // 2. Import Files via Backend
       const importResponse = await fetch("/api/github/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           repoFullName: repo.full_name,
@@ -128,8 +132,8 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
       if (!importResponse.ok) throw new Error("Failed to import repository content");
       const { files } = await importResponse.json();
       
-      // 3. Save files to Supabase
-      const filesToInsert = files.map((file: any) => {
+      // 3. Save files to Firestore
+      const copyPromises = files.map((file: any) => {
         const ext = file.path.split('.').pop()?.toLowerCase() || "";
         const langMap: Record<string, string> = {
           js: "javascript",
@@ -143,22 +147,19 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
           py: "python",
         };
 
-        return {
-          project_id: project.id,
+        return addDoc(collection(db, "projects", docRef.id, "files"), {
+          projectId: docRef.id,
           name: file.path.split('/').pop(),
           path: file.path,
           content: file.content,
-          language: langMap[ext] || "plaintext"
-        };
+          language: langMap[ext] || "plaintext",
+          updatedAt: serverTimestamp()
+        });
       });
 
-      const { error: filesError } = await supabase
-        .from("files")
-        .insert(filesToInsert);
+      await Promise.all(copyPromises);
 
-      if (filesError) throw filesError;
-
-      onImportComplete(project.id);
+      onImportComplete(docRef.id);
     } catch (err) {
       console.error("Error importing repo:", err);
       setError("Failed to import repository content. Please try again.");

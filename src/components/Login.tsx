@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { supabase, signInWithGoogle, signInWithGithub } from "../lib/supabase";
+import { signInWithGoogle, signInWithGithub, signUpWithEmail, signInWithEmail } from "../lib/firebase";
 import { Zap, Github, Mail, Lock, Loader2, X, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -19,7 +19,7 @@ export default function Login({ onClose }: LoginProps) {
     setLoading(true);
     try {
       await signInWithGoogle();
-      // Supabase OAuth redirects, so onClose() might not be needed here if it redirects away
+      onClose();
     } catch (error) {
       console.error("Login error:", error);
       setError("Failed to sign in with Google.");
@@ -46,11 +46,9 @@ export default function Login({ onClose }: LoginProps) {
     setError("");
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
+        await signUpWithEmail(email, password);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        await signInWithEmail(email, password);
       }
       onClose();
     } catch (error: any) {

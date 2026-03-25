@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment } from "firebase/firestore";
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap } from "lucide-react";
 import { motion } from "framer-motion";
@@ -90,16 +90,6 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         forksCount: 0
       });
 
-      // Create initial index.js file
-      await addDoc(collection(db, "projects", docRef.id, "files"), {
-        projectId: docRef.id,
-        name: "index.js",
-        path: "index.js",
-        content: "// Welcome to DevOS!\nconsole.log('Hello World');",
-        language: "javascript",
-        updatedAt: serverTimestamp()
-      });
-
       setNewProjectName("");
       setNewProjectDescription("");
       setIsPublic(false);
@@ -116,16 +106,33 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
     if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) return;
 
     try {
-      // Delete files subcollection first
-      const filesRef = collection(db, "projects", projectId, "files");
-      const filesSnapshot = await getDocs(filesRef);
-      const deletePromises = filesSnapshot.docs.map(fileDoc => deleteDoc(fileDoc.ref));
-      await Promise.all(deletePromises);
+      const batch = writeBatch(db);
+      
+      // Delete all files
+      const filesSnapshot = await getDocs(collection(db, "projects", projectId, "files"));
+      filesSnapshot.forEach((fileDoc) => {
+        batch.delete(fileDoc.ref);
+      });
 
-      // Delete the project document
-      await deleteDoc(doc(db, "projects", projectId));
+      // Delete all commits
+      const commitsSnapshot = await getDocs(collection(db, "projects", projectId, "commits"));
+      commitsSnapshot.forEach((commitDoc) => {
+        batch.delete(commitDoc.ref);
+      });
+
+      // Delete all PRs
+      const prsSnapshot = await getDocs(collection(db, "projects", projectId, "pullRequests"));
+      prsSnapshot.forEach((prDoc) => {
+        batch.delete(prDoc.ref);
+      });
+
+      // Delete project document
+      batch.delete(doc(db, "projects", projectId));
+
+      await batch.commit();
     } catch (error) {
       console.error("Error deleting project:", error);
+      alert("Failed to delete project. Please try again.");
     }
   };
 

@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import firebaseConfig from "../../firebase-applet-config.json";
@@ -15,7 +15,6 @@ export const signInWithGoogle = async () => {
   try {
     await signInWithPopup(auth, googleProvider);
   } catch (error: any) {
-    // Handle common popup errors gracefully
     if (
       error.code === "auth/cancelled-popup-request" ||
       error.code === "auth/popup-closed-by-user"
@@ -27,6 +26,26 @@ export const signInWithGoogle = async () => {
     throw error;
   }
 };
+
+export const signInWithGithub = async () => {
+  try {
+    await signInWithPopup(auth, githubProvider);
+  } catch (error: any) {
+    if (
+      error.code === "auth/cancelled-popup-request" ||
+      error.code === "auth/popup-closed-by-user"
+    ) {
+      console.log("Sign-in popup closed or cancelled by user.");
+      return;
+    }
+    console.error("Firebase Auth Error:", error);
+    throw error;
+  }
+};
+
+export const signUpWithEmail = (email: string, pass: string) => createUserWithEmailAndPassword(auth, email, pass);
+export const signInWithEmail = (email: string, pass: string) => signInWithEmailAndPassword(auth, email, pass);
+
 export const logout = () => signOut(auth);
 
 export enum OperationType {
