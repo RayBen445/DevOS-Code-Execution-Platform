@@ -30,6 +30,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [loading, setLoading] = useState(true);
   const [activePanel, setActivePanel] = useState<PanelType>("explorer");
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [runOutput, setRunOutput] = useState<string[]>([]);
   const [isForking, setIsForking] = useState(false);
@@ -105,15 +107,30 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     setActivePanel("terminal");
     setRunOutput(["[System] Starting execution...", `[System] Running ${activeFile.name}...`]);
 
-    // Simulate execution delay
-    setTimeout(() => {
-      if (activeFile.language === "javascript" || activeFile.language === "typescript") {
-        setRunOutput(prev => [...prev, "> Hello World from DevOS!", "[System] Execution finished successfully."]);
-      } else {
-        setRunOutput(prev => [...prev, `[System] ${activeFile.language} execution is not yet supported in this environment.`, "[System] Execution finished."]);
+    try {
+      const response = await fetch("/api/run", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          language: activeFile.language,
+          content: activeFile.content
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Execution failed");
       }
+
+      const data = await response.json();
+      setRunOutput(prev => [...prev, ...data.logs]);
+    } catch (error: any) {
+      setRunOutput(prev => [...prev, `[Error] ${error.message}`]);
+    } finally {
       setIsRunning(false);
-    }, 1500);
+    }
   };
 
   const togglePanel = (panel: PanelType) => {
@@ -192,32 +209,76 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !projectId || isReadOnly) return;
 
-    const storageRef = ref(storage, `projects/${projectId}/files/${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    const extension = file.name.split(".").pop()?.toLowerCase() || "txt";
+    const isImage = ["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(extension);
 
-    uploadTask.on(
-      "state_changed",
-      null,
-      (error) => {
-        console.error("Upload error:", error);
-      },
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        const docRef = await addDoc(collection(db, "projects", projectId, "files"), {
-          projectId,
-          name: file.name,
-          path: file.name,
-          content: downloadURL,
-          language: "image",
-          updatedAt: serverTimestamp()
-        });
-        setActiveFileId(docRef.id);
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      if (isImage) {
+        const storageRef = ref(storage, `projects/${projectId}/files/${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (error) => {
+            console.error("Upload error:", error);
+            setIsUploading(false);
+          },
+          async () => {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            const docRef = await addDoc(collection(db, "projects", projectId, "files"), {
+              projectId,
+              name: file.name,
+              path: file.name,
+              content: downloadURL,
+              language: "image",
+              updatedAt: serverTimestamp()
+            });
+            setActiveFileId(docRef.id);
+            setIsUploading(false);
+          }
+        );
+      } else {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const content = event.target?.result as string;
+          const languageMap: Record<string, string> = {
+            js: "javascript",
+            ts: "typescript",
+            tsx: "typescript",
+            jsx: "javascript",
+            json: "json",
+            css: "css",
+            html: "html",
+            md: "markdown"
+          };
+
+          const docRef = await addDoc(collection(db, "projects", projectId, "files"), {
+            projectId,
+            name: file.name,
+            path: file.name,
+            content: content || "",
+            language: languageMap[extension] || "plaintext",
+            updatedAt: serverTimestamp()
+          });
+          setActiveFileId(docRef.id);
+          setIsUploading(false);
+        };
+        reader.readAsText(file);
       }
-    );
+    } catch (error) {
+      console.error("Error uploading file:", error);
+    }
   };
 
   if (loading) {
@@ -396,10 +457,25 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       <Plus className="w-5 h-5" />
                       Create index.js
                     </button>
-                    <label className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95 cursor-pointer">
-                      <Upload className="w-5 h-5" />
-                      Upload File
-                      <input type="file" className="hidden" onChange={handleImageUpload} />
+                    <label className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95 cursor-pointer relative overflow-hidden">
+                      {isUploading ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                          <span>Uploading {Math.round(uploadProgress)}%</span>
+                          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+                            <div 
+                              className="h-full bg-blue-500 transition-all duration-300" 
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="w-5 h-5" />
+                          Upload File
+                        </>
+                      )}
+                      <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
                     </label>
                   </div>
                 )}

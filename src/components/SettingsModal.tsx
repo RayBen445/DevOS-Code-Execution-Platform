@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Github, Globe, Loader2, Save, Check, User, AtSign, FileText, Image as ImageIcon, Zap, Upload } from "lucide-react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { db, auth, storage } from "../lib/firebase";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -13,13 +14,16 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatar, setAvatar] = useState("");
   const [githubInstallationId, setGithubInstallationId] = useState<string | null>(null);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
@@ -32,17 +36,33 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (!auth.currentUser) return;
     setIsLoading(true);
     try {
+      // Try fetching from users collection first (public profile)
+      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
       const settingsDoc = await getDoc(doc(db, "user_settings", auth.currentUser.uid));
-      if (settingsDoc.exists()) {
+      
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setUsername(data.username || "");
+        setDisplayName(data.displayName || auth.currentUser.displayName || "");
+        setFullName(data.fullName || "");
+        setBio(data.bio || "");
+        setAvatarUrl(data.avatarUrl || auth.currentUser.photoURL || "");
+        setAvatar(data.avatar || "");
+      } else if (settingsDoc.exists()) {
         const data = settingsDoc.data();
         setUsername(data.username || "");
         setDisplayName(data.displayName || auth.currentUser.displayName || "");
+        setFullName(data.fullName || "");
         setBio(data.bio || "");
         setAvatarUrl(data.avatarUrl || auth.currentUser.photoURL || "");
-        setGithubInstallationId(data.githubInstallationId || null);
+        setAvatar(data.avatar || "");
       } else {
         setDisplayName(auth.currentUser.displayName || "");
         setAvatarUrl(auth.currentUser.photoURL || "");
+      }
+
+      if (settingsDoc.exists()) {
+        setGithubInstallationId(settingsDoc.data().githubInstallationId || null);
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -55,13 +75,34 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (!auth.currentUser) return;
     setIsSaving(true);
     try {
-      await setDoc(doc(db, "user_settings", auth.currentUser.uid), {
+      const publicData = {
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email,
         username,
         displayName,
+        fullName,
         bio,
         avatarUrl,
+        avatar,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      };
+
+      const privateData = {
+        username,
+        displayName,
+        fullName,
+        bio,
+        avatarUrl,
+        avatar,
+        updatedAt: serverTimestamp()
+      };
+
+      // Save to public profile
+      await setDoc(doc(db, "users", auth.currentUser.uid), publicData, { merge: true });
+      
+      // Save to private settings
+      await setDoc(doc(db, "user_settings", auth.currentUser.uid), privateData, { merge: true });
+
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
@@ -77,12 +118,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (!file || !auth.currentUser) return;
 
     setIsUploading(true);
+    setUploadProgress(0);
     const storageRef = ref(storage, `avatars/${auth.currentUser.uid}/${file.name}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
     uploadTask.on(
       "state_changed",
-      null,
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
       (error) => {
         console.error("Upload error:", error);
         setIsUploading(false);
@@ -90,6 +135,23 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
         setAvatarUrl(downloadURL);
+        setAvatar(downloadURL);
+        
+        // Persist immediately to both collections
+        const updateData = {
+          avatarUrl: downloadURL,
+          avatar: downloadURL,
+          updatedAt: serverTimestamp()
+        };
+
+        await setDoc(doc(db, "users", auth.currentUser!.uid), {
+          ...updateData,
+          uid: auth.currentUser!.uid,
+          email: auth.currentUser!.email
+        }, { merge: true });
+
+        await setDoc(doc(db, "user_settings", auth.currentUser!.uid), updateData, { merge: true });
+        
         setIsUploading(false);
       }
     );
@@ -117,9 +179,20 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <h2 className="text-xl font-bold flex items-center gap-2">
                 Profile Settings
               </h2>
-              <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
-                <X className="w-5 h-5 text-white/40" />
-              </button>
+              <div className="flex items-center gap-2">
+                {username && (
+                  <Link
+                    to={`/u/${username}`}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white text-xs font-bold transition-all"
+                  >
+                    <Globe className="w-3 h-3" />
+                    View Portfolio
+                  </Link>
+                )}
+                <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-white/40" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
@@ -141,8 +214,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           </div>
                         )}
                         {isUploading && (
-                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4">
+                            <Loader2 className="w-6 h-6 text-blue-500 animate-spin mb-2" />
+                            <div className="w-full bg-white/10 rounded-full h-1 overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${uploadProgress}%` }}
+                                className="h-full bg-blue-500"
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -152,7 +232,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       </label>
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-white">{displayName || "Your Name"}</h3>
+                      <h3 className="text-lg font-bold text-white">{fullName || displayName || "Your Name"}</h3>
                       <p className="text-white/40 text-sm">@{username || "username"}</p>
                     </div>
                   </div>
@@ -161,12 +241,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
                         <User className="w-3 h-3" />
-                        Display Name
+                        Full Name
                       </label>
                       <input
                         type="text"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
                         placeholder="John Doe"
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
                       />
@@ -180,7 +260,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <input
                         type="text"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""))}
                         placeholder="johndoe"
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
                       />
@@ -194,8 +274,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </label>
                     <input
                       type="text"
-                      value={avatarUrl}
-                      onChange={(e) => setAvatarUrl(e.target.value)}
+                      value={avatar}
+                      onChange={(e) => setAvatar(e.target.value)}
                       placeholder="https://example.com/avatar.jpg"
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
                     />
@@ -215,9 +295,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     />
                   </div>
 
-                  {/* GitHub Status */}
+                  {/* GitHub Status commented out as requested */}
                   <div className="pt-4 space-y-4">
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                    {/* <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <Github className="w-5 h-5 text-white" />
@@ -234,7 +314,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           ? "Your GitHub App is installed and linked to your account." 
                           : "Install the GitHub App to import your repositories directly into DevOS."}
                       </p>
-                    </div>
+                    </div> */}
 
                     <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-600/20 to-purple-600/20 border border-blue-500/20">
                       <div className="flex items-center justify-between mb-2">

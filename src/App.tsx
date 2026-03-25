@@ -7,6 +7,7 @@ import IDE from "./components/IDE";
 import Login from "./components/Login";
 import Home from "./components/Home";
 import PrivacyTerms from "./pages/PrivacyTerms";
+import Portfolio from "./pages/Portfolio";
 import ScrollToTop from "./components/ScrollToTop";
 import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -32,6 +33,7 @@ export default function App() {
         <Routes>
           <Route path="/privacy" element={<PrivacyTerms />} />
           <Route path="/terms" element={<PrivacyTerms />} />
+          <Route path="/u/:username" element={<Portfolio />} />
           <Route path="/" element={
             !user ? (
               <>

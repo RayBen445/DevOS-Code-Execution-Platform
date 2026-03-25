@@ -8,16 +8,21 @@ export interface User {
 export interface Project {
   id: string;
   name: string;
+  title?: string;
   description?: string;
   ownerId: string;
+  ownerUsername?: string;
   createdAt: any;
   updatedAt: any;
   collaborators: string[];
   isPublic: boolean;
   isTemplate: boolean;
   forksCount: number;
+  deployUrl?: string;
+  liveUrl?: string;
   parentProjectId?: string;
   githubRepo?: string;
+  githubUrl?: string;
 }
 
 export interface FileData {
@@ -60,8 +65,10 @@ export interface PullRequest {
 export interface UserSettings {
   username?: string;
   displayName?: string;
+  fullName?: string;
   bio?: string;
   avatarUrl?: string;
+  avatar?: string;
   githubToken?: string;
   githubInstallationId?: string;
   updatedAt?: any;

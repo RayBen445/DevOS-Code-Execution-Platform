@@ -12,6 +12,23 @@ const resizeObserverErrors = [
   "ResizeObserver loop limit exceeded"
 ];
 
+const originalError = console.error;
+const originalWarn = console.warn;
+
+console.error = (...args) => {
+  if (args.length > 0 && typeof args[0] === 'string' && resizeObserverErrors.some(msg => args[0].includes(msg))) {
+    return;
+  }
+  originalError.apply(console, args);
+};
+
+console.warn = (...args) => {
+  if (args.length > 0 && typeof args[0] === 'string' && resizeObserverErrors.some(msg => args[0].includes(msg))) {
+    return;
+  }
+  originalWarn.apply(console, args);
+};
+
 window.addEventListener("error", (e) => {
   if (resizeObserverErrors.some(msg => e.message?.includes(msg))) {
     e.stopImmediatePropagation();

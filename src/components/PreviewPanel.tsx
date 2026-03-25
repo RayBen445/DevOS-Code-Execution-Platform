@@ -50,7 +50,7 @@ export default function PreviewPanel({ projectId, files }: PreviewPanelProps) {
         content = suppressionScript + content;
       }
 
-      // Simple replacement of local JS/CSS references with their content
+      // Simple replacement of local JS/CSS/Image references with their content/URLs
       // This is a basic implementation for HTML/CSS/JS projects
       files.forEach(file => {
         if (file.language === "css") {
@@ -73,6 +73,15 @@ export default function PreviewPanel({ projectId, files }: PreviewPanelProps) {
             // If not explicitly linked, append to body
             content = content.replace("</body>", `${scriptTag}</body>`);
           }
+        } else if (file.language === "image") {
+          // Replace local image references with their Storage URLs
+          // This handles <img src="filename.png">
+          const imgRegex = new RegExp(`src=["']${file.name}["']`, "gi");
+          content = content.replace(imgRegex, `src="${file.content}"`);
+          
+          // Also handle background-image: url("filename.png") in inline styles or CSS
+          const urlRegex = new RegExp(`url\\(["']?${file.name}["']?\\)`, "gi");
+          content = content.replace(urlRegex, `url("${file.content}")`);
         }
       });
 

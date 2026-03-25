@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { X, Globe, Zap, Loader2, Check, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../lib/utils";
+import { db, auth } from "../lib/firebase";
+import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 
 interface DeployModalProps {
   isOpen: boolean;
@@ -20,8 +22,34 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId }:
     setStep("deploying");
     
     try {
+      if (!auth.currentUser) throw new Error("Not authenticated");
+
+      // Fetch username for the URL
+      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+      const username = userDoc.exists() ? userDoc.data().username : null;
+      
+      if (!username) {
+        throw new Error("Please set a username in Profile Settings before deploying.");
+      }
+
       await new Promise(r => setTimeout(r, 2000));
-      setDeployedUrl(`https://${projectName.toLowerCase().replace(/\s+/g, "-")}.devos.app`);
+      
+      // Format: projectname-randomid.username.devos.zone.id
+      const randomId = Math.random().toString(36).substring(2, 7);
+      const projectSlug = `${projectName.toLowerCase().replace(/\s+/g, "-")}-${randomId}`;
+      const url = `https://${projectSlug}.${username}.devos.zone.id`;
+      
+      // Save to Firestore
+      const projectRef = doc(db, "projects", projectId);
+      await updateDoc(projectRef, {
+        deployUrl: url,
+        liveUrl: url,
+        title: projectName,
+        ownerUsername: username,
+        updatedAt: serverTimestamp()
+      });
+
+      setDeployedUrl(url);
       setStep("success");
     } catch (error: any) {
       console.error("Deployment error:", error);

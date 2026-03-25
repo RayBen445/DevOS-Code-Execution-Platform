@@ -15,6 +15,8 @@ export default function Login({ onClose }: LoginProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  /* Social login handlers commented out as requested */
+  /*
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
@@ -39,6 +41,7 @@ export default function Login({ onClose }: LoginProps) {
       setLoading(false);
     }
   };
+  */
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +102,8 @@ export default function Login({ onClose }: LoginProps) {
               exit={{ opacity: 0, x: 20 }}
               className="space-y-4"
             >
-              <button
+              {/* Google and GitHub login commented out as requested */}
+              {/* <button
                 onClick={handleGoogleLogin}
                 disabled={loading}
                 className="w-full py-4 bg-white text-black rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-white/90 transition-all active:scale-[0.98] disabled:opacity-50"
@@ -122,7 +126,7 @@ export default function Login({ onClose }: LoginProps) {
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Github className="w-5 h-5" />}
                 Continue with GitHub
-              </button>
+              </button> */}
 
               <button
                 onClick={() => setIsEmailMode(true)}

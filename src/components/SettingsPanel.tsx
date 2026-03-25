@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Settings, Github, Send, Loader2, CheckCircle, XCircle, MessageSquare, Trash2, AlertTriangle } from "lucide-react";
+import { Settings, Github, Send, Loader2, CheckCircle, XCircle, MessageSquare, Trash2, AlertTriangle, Globe, Lock, Eye, EyeOff } from "lucide-react";
 import { db, auth } from "../lib/firebase";
-import { doc, getDoc, deleteDoc, collection, getDocs, writeBatch } from "firebase/firestore";
+import { doc, getDoc, deleteDoc, collection, getDocs, writeBatch, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
@@ -23,6 +23,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -34,6 +35,22 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
     };
     fetchSettings();
   }, [user]);
+
+  const handleToggleVisibility = async () => {
+    if (!projectId || isUpdatingVisibility) return;
+    setIsUpdatingVisibility(true);
+    try {
+      const projectRef = doc(db, "projects", projectId);
+      await updateDoc(projectRef, {
+        isPublic: !project?.isPublic,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error updating visibility:", error);
+    } finally {
+      setIsUpdatingVisibility(false);
+    }
+  };
 
   const handlePush = async () => {
     if (!user || !commitMessage.trim() || isPushing) return;
@@ -127,8 +144,8 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* GitHub Integration Section */}
-        <div className="space-y-4">
+        {/* GitHub Integration Section commented out as requested */}
+        {/* <div className="space-y-4">
           <div className="flex items-center gap-2 text-white/60">
             <Github className="w-4 h-4" />
             <span className="text-xs font-bold uppercase tracking-wider">GitHub Integration</span>
@@ -201,7 +218,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
               </div>
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Project Info Section */}
         <div className="space-y-4">
@@ -209,15 +226,51 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
             <Settings className="w-4 h-4" />
             <span className="text-xs font-bold uppercase tracking-wider">Project Info</span>
           </div>
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-3">
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-white/40 font-bold uppercase tracking-tighter">Project Name</span>
               <span className="text-[10px] text-white/80">{project?.name}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-white/40 font-bold uppercase tracking-tighter">Visibility</span>
-              <span className="text-[10px] text-white/80">{project?.isPublic ? "Public" : "Private"}</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-white/40 font-bold uppercase tracking-tighter">Visibility</span>
+                <span className="text-[10px] text-white/80 flex items-center gap-1.5">
+                  {project?.isPublic ? <Globe className="w-3 h-3 text-blue-500" /> : <Lock className="w-3 h-3 text-white/20" />}
+                  {project?.isPublic ? "Public" : "Private"}
+                </span>
+              </div>
+              <button
+                onClick={handleToggleVisibility}
+                disabled={isUpdatingVisibility}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-2",
+                  project?.isPublic 
+                    ? "bg-white/5 text-white/60 hover:bg-white/10" 
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                )}
+              >
+                {isUpdatingVisibility ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : project?.isPublic ? (
+                  <>
+                    <EyeOff className="w-3 h-3" />
+                    Make Private
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-3 h-3" />
+                    Make Public
+                  </>
+                )}
+              </button>
             </div>
+            {project?.isPublic && (
+              <div className="pt-2 border-t border-white/5">
+                <p className="text-[9px] text-white/20 leading-relaxed">
+                  Public projects are visible on your portfolio page and can be discovered by others.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

@@ -15,6 +15,7 @@ interface EditorProps {
 export default function Editor({ file, onChange, projectId, readOnly }: EditorProps) {
   const [user] = useAuthState(auth);
   const editorRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, any>>({});
 
   const handleEditorMount: OnMount = (editor, monaco) => {
@@ -47,6 +48,26 @@ export default function Editor({ file, onChange, projectId, readOnly }: EditorPr
       });
     });
   };
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      if (editorRef.current) {
+        requestAnimationFrame(() => {
+          if (editorRef.current) {
+            editorRef.current.layout();
+          }
+        });
+      }
+    });
+
+    observer.observe(containerRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const handleCodeUpdate = ({ fileId, content, userId }: any) => {
@@ -97,7 +118,7 @@ export default function Editor({ file, onChange, projectId, readOnly }: EditorPr
   }
 
   return (
-    <div className="h-full w-full relative">
+    <div ref={containerRef} className="h-full w-full relative">
       <MonacoEditor
         height="100%"
         language={file.language}
@@ -112,7 +133,7 @@ export default function Editor({ file, onChange, projectId, readOnly }: EditorPr
           roundedSelection: true,
           scrollBeyondLastLine: false,
           readOnly: readOnly || false,
-          automaticLayout: true,
+          automaticLayout: false,
           padding: { top: 16, bottom: 16 },
           cursorBlinking: "smooth",
           cursorSmoothCaretAnimation: "on",

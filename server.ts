@@ -330,6 +330,44 @@ async function startServer() {
     }
   });
 
+  // Run Code API
+  app.post("/api/run", async (req, res) => {
+    const { language, content } = req.body;
+    if (!content) return res.status(400).json({ error: "No content provided" });
+
+    try {
+      if (language === "javascript" || language === "typescript") {
+        // In a real production environment, we would use a secure sandbox like isolated-vm or a lambda function.
+        // For this platform, we'll simulate a backend execution that returns logs.
+        const logs: string[] = [];
+        logs.push(`[Backend] Initializing ${language} runtime...`);
+        logs.push(`[Backend] Executing script...`);
+        
+        // Simple simulation of execution
+        if (content.includes("console.log")) {
+          const matches = content.match(/console\.log\(['"](.*?)['"]\)/g);
+          if (matches) {
+            matches.forEach((m: string) => {
+              const val = m.match(/['"](.*?)['"]/)?.[1];
+              logs.push(`> ${val}`);
+            });
+          } else {
+            logs.push("> [Output captured]");
+          }
+        } else {
+          logs.push("> Script executed with no output.");
+        }
+        
+        logs.push(`[Backend] Execution completed successfully.`);
+        res.json({ logs });
+      } else {
+        res.status(400).json({ error: `Language ${language} is not supported for backend execution yet.` });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Execution failed" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

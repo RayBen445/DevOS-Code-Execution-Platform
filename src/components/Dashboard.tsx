@@ -207,13 +207,14 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         </div>
         
         <div className="flex gap-4">
-          <button
+          {/* GitHub Import commented out as requested */}
+          {/* <button
             onClick={() => setIsImporting(true)}
             className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
           >
             <Github className="w-5 h-5" />
             Import from GitHub
-          </button>
+          </button> */}
           <button
             onClick={() => setIsCreating(true)}
             className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-white/90 transition-all active:scale-95"
