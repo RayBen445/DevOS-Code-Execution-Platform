@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db, auth, handleFirestoreError, OperationType, storage } from "../lib/firebase";
 import { collection, onSnapshot, doc, getDoc, updateDoc, serverTimestamp, addDoc, getDocs, increment } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -13,7 +13,9 @@ import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2 } from "lucide-react";
+import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface IDEProps {
   projectId: string;
@@ -21,6 +23,12 @@ interface IDEProps {
 }
 
 type PanelType = "explorer" | "git" | "terminal" | "preview" | "settings" | null;
+
+interface LogEntry {
+  type: "system" | "success" | "error" | "info" | "output";
+  message: string;
+  timestamp: string;
+}
 
 export default function IDE({ projectId, onBack }: IDEProps) {
   const [user] = useAuthState(auth);
@@ -33,8 +41,24 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const [runOutput, setRunOutput] = useState<string[]>([]);
+  const [runOutput, setRunOutput] = useState<LogEntry[]>([]);
   const [isForking, setIsForking] = useState(false);
+  const terminalEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (activePanel === "terminal") {
+      scrollToBottom();
+    }
+  }, [runOutput, activePanel]);
+
+  const addLog = (type: LogEntry["type"], message: string) => {
+    const timestamp = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setRunOutput(prev => [...prev, { type, message, timestamp }]);
+  };
 
   const isReadOnly = project && user && project.ownerId !== user.uid && !project.collaborators.includes(user.uid);
 
@@ -84,20 +108,25 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const handleCodeChange = async (content: string) => {
     if (!activeFileId || !projectId || isReadOnly) return;
 
-    // Update Firestore (debounced in real app, but direct for now)
-    const fileRef = doc(db, "projects", projectId, "files", activeFileId);
-    await updateDoc(fileRef, {
-      content,
-      updatedAt: serverTimestamp()
-    });
+    try {
+      // Update Firestore (debounced in real app, but direct for now)
+      const fileRef = doc(db, "projects", projectId, "files", activeFileId);
+      await updateDoc(fileRef, {
+        content,
+        updatedAt: serverTimestamp()
+      });
 
-    // Notify others via socket
-    socket.emit("code-change", {
-      projectId,
-      fileId: activeFileId,
-      content,
-      userId: user?.uid
-    });
+      // Notify others via socket
+      socket.emit("code-change", {
+        projectId,
+        fileId: activeFileId,
+        content,
+        userId: user?.uid
+      });
+    } catch (error) {
+      console.error("Error saving code:", error);
+      toast.error("Failed to save changes");
+    }
   };
 
   const handleRun = async () => {
@@ -105,7 +134,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     
     setIsRunning(true);
     setActivePanel("terminal");
-    setRunOutput(["[System] Starting execution...", `[System] Running ${activeFile.name}...`]);
+    setRunOutput([]);
+    addLog("system", "Starting execution...");
+    addLog("info", `Running ${activeFile.name}...`);
 
     try {
       const response = await fetch("/api/run", {
@@ -125,9 +156,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       }
 
       const data = await response.json();
-      setRunOutput(prev => [...prev, ...data.logs]);
+      data.logs.forEach((log: string) => addLog("output", log));
+      addLog("success", "Execution completed successfully.");
     } catch (error: any) {
-      setRunOutput(prev => [...prev, `[Error] ${error.message}`]);
+      addLog("error", error.message);
     } finally {
       setIsRunning(false);
     }
@@ -167,14 +199,12 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       });
       await Promise.all(copyPromises);
 
-      await updateDoc(doc(db, "projects", project.id), {
-        forksCount: increment(1)
-      });
-
+      toast.success("Project forked successfully!");
       // Redirect to new project
-      window.location.reload(); // Simplest way to reload with new projectId if we don't have a router state for it here
+      window.location.reload(); 
     } catch (error) {
       console.error("Error forking project:", error);
+      toast.error("Failed to fork project");
     } finally {
       setIsForking(false);
     }
@@ -204,8 +234,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         updatedAt: serverTimestamp()
       });
       setActiveFileId(docRef.id);
+      toast.success(`File "${name}" created`);
     } catch (error) {
       console.error("Error creating file:", error);
+      toast.error("Failed to create file");
     }
   };
 
@@ -246,6 +278,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
             });
             setActiveFileId(docRef.id);
             setIsUploading(false);
+            toast.success(`Image "${file.name}" uploaded`);
           }
         );
       } else {
@@ -273,11 +306,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           });
           setActiveFileId(docRef.id);
           setIsUploading(false);
+          toast.success(`File "${file.name}" uploaded`);
         };
         reader.readAsText(file);
       }
     } catch (error) {
       console.error("Error uploading file:", error);
+      setIsUploading(false);
+      toast.error("Failed to upload file");
     }
   };
 
@@ -484,35 +520,73 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           </div>
 
           {activePanel === "terminal" && (
-            <div className="h-64 border-t border-white/5 bg-[#050505] flex flex-col absolute bottom-0 left-0 right-0 z-10">
+            <motion.div 
+              initial={{ y: 256 }}
+              animate={{ y: 0 }}
+              exit={{ y: 256 }}
+              className="h-64 border-t border-white/5 bg-[#050505] flex flex-col absolute bottom-0 left-0 right-0 z-10 shadow-2xl"
+            >
               <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-[#0a0a0a]">
-                <div className="flex items-center gap-2 text-white/40">
-                  <Terminal className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Terminal</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-white/40">
+                    <Terminal className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Terminal</span>
+                  </div>
+                  <div className="h-3 w-[1px] bg-white/5" />
+                  <div className="flex items-center gap-2">
+                    <div className={cn("w-1.5 h-1.5 rounded-full", isRunning ? "bg-yellow-500 animate-pulse" : "bg-green-500")} />
+                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-tighter">
+                      {isRunning ? "Executing" : "Ready"}
+                    </span>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => setActivePanel(null)}
-                  className="text-white/20 hover:text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setRunOutput([])}
+                    className="text-[9px] font-bold uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors px-2 py-1 rounded hover:bg-white/5"
+                  >
+                    Clear
+                  </button>
+                  <button 
+                    onClick={() => setActivePanel(null)}
+                    className="p-1 text-white/20 hover:text-white transition-colors hover:bg-white/5 rounded"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-1">
-                {runOutput.map((line, i) => (
-                  <div key={i} className={cn(
-                    line.startsWith("[System]") ? "text-blue-400/60" : "text-white/80"
-                  )}>
-                    {line}
-                  </div>
-                ))}
-                {isRunning && (
-                  <div className="flex items-center gap-2 text-white/40 italic">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Executing...
-                  </div>
-                )}
+              <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto custom-scrollbar">
+                <div className="space-y-1.5">
+                  {runOutput.map((log, i) => (
+                    <div key={i} className="flex gap-3 group">
+                      <span className="text-white/10 select-none shrink-0 tabular-nums">{log.timestamp}</span>
+                      <span className={cn(
+                        "break-all leading-relaxed",
+                        log.type === "system" && "text-blue-400/60 font-bold",
+                        log.type === "info" && "text-blue-400",
+                        log.type === "success" && "text-green-400",
+                        log.type === "error" && "text-red-400",
+                        log.type === "output" && "text-white/80"
+                      )}>
+                        {log.type === "error" && <span className="mr-2">✖</span>}
+                        {log.type === "success" && <span className="mr-2">✔</span>}
+                        {log.message}
+                      </span>
+                    </div>
+                  ))}
+                  {isRunning && (
+                    <div className="flex gap-3 animate-pulse">
+                      <span className="text-white/10 select-none shrink-0">--:--:--</span>
+                      <div className="flex items-center gap-2 text-white/40 italic">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Processing...
+                      </div>
+                    </div>
+                  )}
+                  <div ref={terminalEndRef} />
+                </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </main>
       </div>

@@ -13,6 +13,8 @@ import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { Routes, Route } from "react-router-dom";
 
+import { Toaster } from "sonner";
+
 export default function App() {
   const [user, loading] = useAuthState(auth);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -28,6 +30,7 @@ export default function App() {
 
   return (
     <>
+      <Toaster position="top-right" richColors theme="dark" />
       <ScrollToTop />
       <AnimatePresence mode="wait">
         <Routes>

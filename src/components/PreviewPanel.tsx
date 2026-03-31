@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Globe, RefreshCw, ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { Globe, RefreshCw, ExternalLink, Loader2, AlertCircle, Zap } from "lucide-react";
 import { FileData } from "../types";
 import { cn } from "../lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PreviewPanelProps {
   projectId: string;
@@ -12,10 +13,12 @@ export default function PreviewPanel({ projectId, files }: PreviewPanelProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [iframeLoading, setIframeLoading] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const generatePreview = () => {
     setIsGenerating(true);
+    setIframeLoading(true);
     setError(null);
 
     try {
@@ -140,29 +143,65 @@ export default function PreviewPanel({ projectId, files }: PreviewPanelProps) {
         </div>
       </div>
 
-      <div className="flex-1 bg-white m-4 rounded-lg overflow-hidden shadow-2xl relative group">
-        {error ? (
-          <div className="absolute inset-0 bg-white flex flex-col items-center justify-center p-6 text-center">
-            <AlertCircle className="w-8 h-8 text-red-500 mb-3" />
-            <h3 className="text-sm font-bold text-black/80 mb-1">Preview Error</h3>
-            <p className="text-[10px] text-black/40">{error}</p>
-          </div>
-        ) : isGenerating ? (
-          <div className="absolute inset-0 bg-white flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
-          </div>
-        ) : previewUrl ? (
+      <div className="flex-1 bg-white m-4 rounded-xl overflow-hidden shadow-2xl relative group border border-white/5">
+        <AnimatePresence mode="wait">
+          {error ? (
+            <motion.div 
+              key="error"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white flex flex-col items-center justify-center p-6 text-center"
+            >
+              <AlertCircle className="w-10 h-10 text-red-500 mb-4" />
+              <h3 className="text-base font-bold text-black mb-2">Preview Error</h3>
+              <p className="text-xs text-black/40 max-w-[200px]">{error}</p>
+              <button 
+                onClick={generatePreview}
+                className="mt-6 px-4 py-2 bg-black text-white rounded-lg text-xs font-bold hover:bg-black/80 transition-all"
+              >
+                Try Again
+              </button>
+            </motion.div>
+          ) : (isGenerating || (previewUrl && iframeLoading)) ? (
+            <motion.div 
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-[#f8f9fa] flex flex-col items-center justify-center"
+            >
+              <div className="relative mb-4">
+                <div className="w-12 h-12 rounded-full border-2 border-blue-500/10 border-t-blue-500 animate-spin" />
+                <Globe className="absolute inset-0 m-auto w-5 h-5 text-blue-500/40" />
+              </div>
+              <p className="text-[10px] font-bold text-blue-500/60 uppercase tracking-widest animate-pulse">
+                Rendering Preview...
+              </p>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        {previewUrl && !error && (
           <iframe 
             ref={iframeRef}
             src={previewUrl} 
-            className="w-full h-full border-none"
+            className={cn(
+              "w-full h-full border-none transition-opacity duration-500",
+              iframeLoading ? "opacity-0" : "opacity-100"
+            )}
+            onLoad={() => setIframeLoading(false)}
             title="Project Preview"
             sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
           />
-        ) : (
-          <div className="absolute inset-0 bg-black/5 flex items-center justify-center pointer-events-none group-hover:bg-transparent transition-colors">
+        )}
+
+        {!previewUrl && !isGenerating && !error && (
+          <div className="absolute inset-0 bg-[#f8f9fa] flex items-center justify-center pointer-events-none">
             <div className="text-center p-6">
-              <Globe className="w-12 h-12 text-blue-500/20 mx-auto mb-4" />
+              <div className="w-16 h-16 rounded-2xl bg-blue-500/5 flex items-center justify-center mx-auto mb-6">
+                <Globe className="w-8 h-8 text-blue-500/20" />
+              </div>
               <h3 className="text-sm font-bold text-black/60 mb-1">Live Preview</h3>
               <p className="text-[10px] text-black/40">Your application will render here</p>
             </div>

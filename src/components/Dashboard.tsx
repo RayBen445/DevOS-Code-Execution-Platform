@@ -428,8 +428,15 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         )}
       </div>
 
-      <div className="mt-24 pt-12 border-t border-white/5 flex items-center justify-center gap-2 text-white/20 text-sm font-medium">
-        Powered by <span className="text-white/40">Cool Shot Systems</span> & <span className="text-white/40">Tech Visionaries Network</span>
+      <div className="mt-24 pt-12 border-t border-white/5 flex flex-col items-center gap-4">
+        <div className="flex items-center gap-2 text-white/20 text-sm font-medium">
+          Built with <span className="text-white/40 font-bold tracking-tight">DevOS</span>
+        </div>
+        <div className="flex items-center gap-4 text-[10px] text-white/10 font-bold uppercase tracking-[0.2em]">
+          <span>Cool Shot Systems</span>
+          <div className="w-1 h-1 rounded-full bg-white/5" />
+          <span>Tech Visionaries Network</span>
+        </div>
       </div>
     </div>
   );
