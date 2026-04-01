@@ -1,20 +1,40 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Globe, RefreshCw, ExternalLink, Loader2, AlertCircle, Zap } from "lucide-react";
-import { FileData } from "../types";
+import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import * as Babel from "@babel/standalone";
+import { db } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 interface PreviewPanelProps {
   projectId: string;
   files: FileData[];
+  entryFile?: string;
 }
 
-export default function PreviewPanel({ projectId, files }: PreviewPanelProps) {
+export default function PreviewPanel({ projectId, files, entryFile }: PreviewPanelProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [iframeLoading, setIframeLoading] = useState(true);
+  const [projectEnv, setProjectEnv] = useState<Record<string, string>>({});
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const fetchProjectEnv = async () => {
+      try {
+        const projectDoc = await getDoc(doc(db, "projects", projectId));
+        if (projectDoc.exists()) {
+          const data = projectDoc.data() as Project;
+          setProjectEnv(data.env || {});
+        }
+      } catch (err) {
+        console.error("Error fetching project env:", err);
+      }
+    };
+    fetchProjectEnv();
+  }, [projectId]);
 
   const generatePreview = () => {
     setIsGenerating(true);
@@ -22,9 +42,16 @@ export default function PreviewPanel({ projectId, files }: PreviewPanelProps) {
     setError(null);
 
     try {
-      // Find the main HTML file (index.html or first .html file)
-      const htmlFile = files.find(f => f.name.toLowerCase() === "index.html") || 
-                       files.find(f => f.name.toLowerCase().endsWith(".html"));
+      // Find the main HTML file
+      let htmlFile = null;
+      if (entryFile) {
+        htmlFile = files.find(f => f.path === entryFile);
+      }
+      
+      if (!htmlFile) {
+        htmlFile = files.find(f => f.name.toLowerCase() === "index.html") || 
+                   files.find(f => f.name.toLowerCase().endsWith(".html"));
+      }
 
       if (!htmlFile) {
         setError("No HTML file found. Create an 'index.html' to see a preview.");
@@ -32,7 +59,31 @@ export default function PreviewPanel({ projectId, files }: PreviewPanelProps) {
         return;
       }
 
+      const basePath = htmlFile.path;
       let content = htmlFile.content;
+
+      // Helper to resolve paths relative to the current HTML file
+      const resolveRelativePath = (relPath: string) => {
+        if (relPath.startsWith('http') || relPath.startsWith('//') || relPath.startsWith('data:')) return null;
+        
+        // Remove leading ./
+        let cleanRelPath = relPath.startsWith('./') ? relPath.slice(2) : relPath;
+        
+        const baseParts = basePath.split('/').slice(0, -1);
+        const relParts = cleanRelPath.split('/');
+        
+        const resultParts = [...baseParts];
+        for (const part of relParts) {
+          if (part === '.') continue;
+          if (part === '..') {
+            resultParts.pop();
+          } else {
+            resultParts.push(part);
+          }
+        }
+        
+        return resultParts.join('/');
+      };
 
       // Add ResizeObserver error suppression script to the preview
       const suppressionScript = `
@@ -53,39 +104,76 @@ export default function PreviewPanel({ projectId, files }: PreviewPanelProps) {
         content = suppressionScript + content;
       }
 
-      // Simple replacement of local JS/CSS/Image references with their content/URLs
-      // This is a basic implementation for HTML/CSS/JS projects
-      files.forEach(file => {
-        if (file.language === "css") {
-          const styleTag = `<style data-filename="${file.name}">${file.content}</style>`;
-          // Replace <link href="filename.css"> or similar
-          const linkRegex = new RegExp(`<link[^>]*href=["']${file.name}["'][^>]*>`, "gi");
-          if (linkRegex.test(content)) {
-            content = content.replace(linkRegex, styleTag);
-          } else {
-            // If not explicitly linked, append to head
-            content = content.replace("</head>", `${styleTag}</head>`);
-          }
-        } else if (file.language === "javascript" && file.name !== htmlFile.name) {
-          const scriptTag = `<script data-filename="${file.name}">${file.content}</script>`;
-          // Replace <script src="filename.js"> or similar
-          const scriptRegex = new RegExp(`<script[^>]*src=["']${file.name}["'][^>]*><\/script>`, "gi");
-          if (scriptRegex.test(content)) {
-            content = content.replace(scriptRegex, scriptTag);
-          } else {
-            // If not explicitly linked, append to body
-            content = content.replace("</body>", `${scriptTag}</body>`);
-          }
-        } else if (file.language === "image") {
-          // Replace local image references with their Storage URLs
-          // This handles <img src="filename.png">
-          const imgRegex = new RegExp(`src=["']${file.name}["']`, "gi");
-          content = content.replace(imgRegex, `src="${file.content}"`);
-          
-          // Also handle background-image: url("filename.png") in inline styles or CSS
-          const urlRegex = new RegExp(`url\\(["']?${file.name}["']?\\)`, "gi");
-          content = content.replace(urlRegex, `url("${file.content}")`);
+      // Process CSS links
+      const linkRegex = /<link[^>]*href=["']([^"']+)["'][^>]*>/gi;
+      content = content.replace(linkRegex, (match, href) => {
+        const resolvedPath = resolveRelativePath(href);
+        const file = files.find(f => f.path === resolvedPath && f.language === "css");
+        if (file) {
+          return `<style data-filename="${file.path}">${file.content}</style>`;
         }
+        return match;
+      });
+
+      // Process Scripts
+      const scriptRegex = /<script[^>]*src=["']([^"']+)["'][^>]*><\/script>/gi;
+      content = content.replace(scriptRegex, (match, src) => {
+        const resolvedPath = resolveRelativePath(src);
+        const file = files.find(f => f.path === resolvedPath);
+        
+        if (file) {
+          let scriptContent = file.content;
+          
+          // Inject environment variables
+          Object.entries(projectEnv).forEach(([key, value]) => {
+            const envRegex = new RegExp(`process\\.env\\.${key}`, 'g');
+            scriptContent = scriptContent.replace(envRegex, JSON.stringify(value));
+          });
+
+          // Transpile if needed
+          const isJSX = file.path.endsWith(".jsx") || file.path.endsWith(".tsx");
+          const isTS = file.path.endsWith(".ts") || file.path.endsWith(".tsx");
+
+          if (isJSX || isTS) {
+            try {
+              const transpiled = Babel.transform(scriptContent, {
+                presets: ["react", "typescript"],
+                filename: file.path
+              }).code;
+              return `<script data-filename="${file.path}">${transpiled}</script>`;
+            } catch (babelErr) {
+              console.error(`Babel transpilation failed for ${file.path}:`, babelErr);
+              return `<script>console.error("Babel transpilation failed for ${file.path}");</p>`;
+            }
+          }
+          
+          if (file.language === "javascript") {
+            return `<script data-filename="${file.path}">${scriptContent}</script>`;
+          }
+        }
+        return match;
+      });
+
+      // Process Images in HTML
+      const imgRegex = /src=["']([^"']+)["']/gi;
+      content = content.replace(imgRegex, (match, src) => {
+        const resolvedPath = resolveRelativePath(src);
+        const file = files.find(f => f.path === resolvedPath && f.language === "image");
+        if (file) {
+          return `src="${file.content}"`;
+        }
+        return match;
+      });
+
+      // Process background-image in styles
+      const urlRegex = /url\(["']?([^"'\)]+)["']?\)/gi;
+      content = content.replace(urlRegex, (match, url) => {
+        const resolvedPath = resolveRelativePath(url);
+        const file = files.find(f => f.path === resolvedPath && f.language === "image");
+        if (file) {
+          return `url("${file.content}")`;
+        }
+        return match;
       });
 
       const blob = new Blob([content], { type: "text/html" });

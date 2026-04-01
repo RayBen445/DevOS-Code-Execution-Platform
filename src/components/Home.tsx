@@ -1,14 +1,17 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Code2, Terminal, Shield, Zap, Github, Globe, ChevronRight } from "lucide-react";
+import { Code2, Terminal, Shield, Zap, Github, Globe, ChevronRight, Rocket, Sparkles, X, Plus, Code, Share2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "./Navbar";
+import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 
 interface HomeProps {
   setShowLogin: (show: boolean) => void;
 }
 
 export default function Home({ setShowLogin }: HomeProps) {
+  const [isQuickStarting, setIsQuickStarting] = useState(false);
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
       <Navbar onSignIn={() => setShowLogin(true)} />
@@ -40,9 +43,19 @@ export default function Home({ setShowLogin }: HomeProps) {
                 Get Started Free
                 <ChevronRight className="w-5 h-5" />
               </button>
-              <button className="px-8 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-bold text-lg hover:bg-white/10 transition-all flex items-center gap-3">
-                <Github className="w-5 h-5" />
-                View Source
+              <button
+                onClick={() => setIsQuickStarting(true)}
+                className="px-8 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-bold text-lg hover:bg-white/10 transition-all flex items-center gap-3"
+              >
+                <Rocket className="w-5 h-5 text-blue-500" />
+                Quick Start
+              </button>
+              <button
+                onClick={() => setShowLogin(true)}
+                className="px-8 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-bold text-lg hover:bg-white/10 transition-all flex items-center gap-3"
+              >
+                <Sparkles className="w-5 h-5 text-yellow-500" />
+                Try Demo Project
               </button>
             </div>
           </motion.div>
@@ -129,6 +142,62 @@ export default function Home({ setShowLogin }: HomeProps) {
           <a href="#" className="hover:text-white transition-colors">Status</a>
         </div>
       </footer>
+
+      <AnimatePresence>
+        {isQuickStarting && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-2xl bg-[#0f0f0f] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <div className="p-8 border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
+                    <Rocket className="w-6 h-6 text-blue-500" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-white tracking-tight">Quick Start Guide</h2>
+                </div>
+                <button onClick={() => setIsQuickStarting(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <X className="w-6 h-6 text-white/40" />
+                </button>
+              </div>
+              
+              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                {[
+                  { icon: Plus, title: "1. Create a project", desc: "Start fresh or use a template to kick off your vision." },
+                  { icon: Code, title: "2. Write your code", desc: "Use our powerful editor with real-time preview." },
+                  { icon: Globe, title: "3. Click Deploy", desc: "Get a live, shareable link for your project instantly." },
+                  { icon: Share2, title: "4. Share your project", desc: "Show off your work to the world with one click." }
+                ].map((step, i) => (
+                  <div key={i} className="flex gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                      <step.icon className="w-6 h-6 text-white/60" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-1">{step.title}</h3>
+                      <p className="text-sm text-white/40 leading-relaxed">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-8 bg-white/5 flex justify-end">
+                <button
+                  onClick={() => {
+                    setIsQuickStarting(false);
+                    setShowLogin(true);
+                  }}
+                  className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
+                >
+                  Get Started
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

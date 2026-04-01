@@ -6,18 +6,23 @@ import { db, auth } from "../lib/firebase";
 import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 
+import { FileData } from "../types";
+
 interface DeployModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectName: string;
   projectId: string;
+  files: FileData[];
 }
 
-export default function DeployModal({ isOpen, onClose, projectName, projectId }: DeployModalProps) {
-  const [step, setStep] = useState<"select" | "deploying" | "success">("select");
+export default function DeployModal({ isOpen, onClose, projectName, projectId, files }: DeployModalProps) {
+  const [step, setStep] = useState<"select" | "entry-selection" | "deploying" | "success">("select");
   const [method, setMethod] = useState<"vercel" | "internal" | null>(null);
   const [deployedUrl, setDeployedUrl] = useState("");
   const [isCopying, setIsCopying] = useState(false);
+  const [entryFiles, setEntryFiles] = useState<string[]>([]);
+  const [selectedEntry, setSelectedEntry] = useState<string>("");
 
   const handleCopy = async () => {
     try {
@@ -30,8 +35,38 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId }:
     }
   };
 
-  const handleDeploy = async (deployMethod: "internal") => {
+  const startDeployFlow = async (deployMethod: "internal") => {
     setMethod(deployMethod);
+    
+    // Scan for index.html files
+    const htmlFiles = files.filter(f => f.name.toLowerCase() === "index.html").map(f => f.path);
+    
+    if (htmlFiles.length === 0) {
+      toast.error("No index.html found. Please create an index.html file to deploy.");
+      return;
+    }
+
+    if (htmlFiles.length === 1) {
+      handleDeploy(deployMethod, htmlFiles[0]);
+    } else {
+      setEntryFiles(htmlFiles);
+      // Try to find previous entry file or default to root index.html
+      try {
+        const projectDoc = await getDoc(doc(db, "projects", projectId));
+        const prevEntry = projectDoc.data()?.entryFile;
+        if (prevEntry && htmlFiles.includes(prevEntry)) {
+          setSelectedEntry(prevEntry);
+        } else {
+          setSelectedEntry(htmlFiles.find(f => f === "index.html") || htmlFiles[0]);
+        }
+      } catch (e) {
+        setSelectedEntry(htmlFiles[0]);
+      }
+      setStep("entry-selection");
+    }
+  };
+
+  const handleDeploy = async (deployMethod: "internal", entryFile: string) => {
     setStep("deploying");
     
     try {
@@ -45,21 +80,23 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId }:
         throw new Error("Please set a username in Profile Settings before deploying.");
       }
 
-      // Simulate build steps for better UX
-      await new Promise(r => setTimeout(r, 1500));
+      // Fetch project to get existing slug if available
+      const projectDoc = await getDoc(doc(db, "projects", projectId));
+      const projectData = projectDoc.data();
       
-      // Format: projectname-randomid.username.devos.zone.id
-      const randomId = Math.random().toString(36).substring(2, 7);
-      const projectSlug = `${projectName.toLowerCase().replace(/\s+/g, "-")}-${randomId}`;
-      const url = `https://${projectSlug}.${username}.devos.zone.id`;
+      // Format: /u/{username}/{projectSlug}
+      const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
+      const url = `${window.location.origin}/u/${username}/${projectSlug}`;
       
       // Save to Firestore
       const projectRef = doc(db, "projects", projectId);
       await updateDoc(projectRef, {
+        projectSlug,
         deployUrl: url,
         liveUrl: url,
         title: projectName,
         ownerUsername: username,
+        entryFile,
         updatedAt: serverTimestamp()
       });
 
@@ -119,7 +156,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId }:
                   </p>
                   
                   <button
-                    onClick={() => handleDeploy("internal")}
+                    onClick={() => startDeployFlow("internal")}
                     className="w-full p-6 rounded-2xl bg-white text-black hover:bg-white/90 transition-all flex items-center justify-between group active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-4">
@@ -141,6 +178,57 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId }:
                       Deployment Note:
                     </p>
                     Sandbox deployments are instant and accessible via your project subdomain. Perfect for prototypes and sharing.
+                  </div>
+                </motion.div>
+              )}
+
+              {step === "entry-selection" && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="space-y-6"
+                >
+                  <div>
+                    <h3 className="text-lg font-bold mb-2">Select Entry File</h3>
+                    <p className="text-white/40 text-sm mb-6">
+                      Multiple index.html files detected. Please select which one should be the root of your application.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
+                    {entryFiles.map((path) => (
+                      <button
+                        key={path}
+                        onClick={() => setSelectedEntry(path)}
+                        className={cn(
+                          "w-full p-4 rounded-xl border transition-all flex items-center justify-between group",
+                          selectedEntry === path
+                            ? "bg-blue-600/10 border-blue-500 text-blue-400"
+                            : "bg-white/5 border-white/10 text-white/60 hover:border-white/20"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 truncate">
+                          <Globe className={cn("w-4 h-4", selectedEntry === path ? "text-blue-400" : "text-white/20")} />
+                          <span className="truncate font-mono text-xs">{path}</span>
+                        </div>
+                        {selectedEntry === path && <Check className="w-4 h-4" />}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      onClick={() => setStep("select")}
+                      className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 transition-all"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={() => handleDeploy("internal", selectedEntry)}
+                      className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                    >
+                      Confirm & Deploy
+                    </button>
                   </div>
                 </motion.div>
               )}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { db } from "../lib/firebase";
-import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { UserSettings, Project } from "../types";
-import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Loader2, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle } from "lucide-react";
+import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Loader2, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -15,13 +15,131 @@ export default function Portfolio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [portfolioConfig, setPortfolioConfig] = useState<any>(null);
+  const [themeConfig, setThemeConfig] = useState<any>(null);
+  const [isPreview, setIsPreview] = useState(false);
 
   useEffect(() => {
-    if (username) {
-      fetchPortfolioData();
-      document.title = `${username} | DevOS Portfolio`;
-    }
+    if (!username) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const previewMode = params.get('preview') === 'true';
+    setIsPreview(previewMode);
+
+    setLoading(true);
+    setError(null);
+    document.title = `${username} | DevOS Portfolio`;
+
+    // 1. Fetch user by username from users (public)
+    const usersRef = collection(db, "users");
+    const userQuery = query(usersRef, where("username", "==", username), limit(1));
+    
+    const unsubUser = onSnapshot(userQuery, (userSnapshot) => {
+      if (userSnapshot.empty) {
+        setError("User not found");
+        setLoading(false);
+        return;
+      }
+
+      const uid = userSnapshot.docs[0].id;
+      const userData = userSnapshot.docs[0].data() as UserSettings;
+      setUserSettings(userData);
+
+      // 2. Fetch the portfolio project for this user to get config
+      const projectsRef = collection(db, "projects");
+      const portfolioQuery = query(
+        projectsRef,
+        where("ownerId", "==", uid),
+        where("isSystem", "==", true),
+        where("systemType", "==", "portfolio")
+      );
+
+      const unsubPortfolio = onSnapshot(portfolioQuery, (portfolioSnapshot) => {
+        if (portfolioSnapshot.empty) {
+          setLoading(false);
+          return;
+        }
+
+        const projectDoc = portfolioSnapshot.docs[0];
+        const projectData = projectDoc.data() as Project;
+        
+        let pConfig = null;
+        let tConfig = null;
+
+        if (previewMode) {
+          // In preview mode, use the draft data
+          pConfig = projectData.draft?.portfolio;
+          tConfig = projectData.draft?.theme;
+        } else {
+          // In live mode, use the published data
+          pConfig = projectData.published?.portfolio;
+          tConfig = projectData.published?.theme;
+        }
+
+        setPortfolioConfig(pConfig);
+        setThemeConfig(tConfig);
+
+        // Apply theme
+        if (tConfig?.primaryColor) {
+          document.documentElement.style.setProperty('--primary-color', tConfig.primaryColor);
+        }
+        if (tConfig?.fontFamily) {
+          document.documentElement.style.setProperty('--font-family', tConfig.fontFamily);
+        }
+
+        // 3. Fetch public projects for this user
+        const publicProjectsQuery = query(
+          projectsRef,
+          where("ownerId", "==", uid),
+          where("isPublic", "==", true)
+        );
+
+        const unsubProjects = onSnapshot(publicProjectsQuery, (projectsSnapshot) => {
+          let projectsList = projectsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Project[];
+
+          // Filter out the portfolio project itself
+          projectsList = projectsList.filter(p => p.systemType !== 'portfolio');
+
+          // Sort based on featured projects
+          if (pConfig?.featuredProjects?.length > 0) {
+            const featuredIds = pConfig.featuredProjects;
+            projectsList.sort((a, b) => {
+              const aFeatured = featuredIds.includes(a.id);
+              const bFeatured = featuredIds.includes(b.id);
+              if (aFeatured && !bFeatured) return -1;
+              if (!aFeatured && bFeatured) return 1;
+              
+              const timeA = a.updatedAt?.seconds || 0;
+              const timeB = b.updatedAt?.seconds || 0;
+              return timeB - timeA;
+            });
+          } else {
+            projectsList.sort((a, b) => {
+              const timeA = a.updatedAt?.seconds || 0;
+              const timeB = b.updatedAt?.seconds || 0;
+              return timeB - timeA;
+            });
+          }
+
+          setProjects(projectsList);
+          setLoading(false);
+        });
+
+        return () => unsubProjects();
+      });
+
+      return () => unsubPortfolio();
+    }, (err) => {
+      console.error("Error fetching portfolio:", err);
+      setError("An error occurred while loading the portfolio.");
+      setLoading(false);
+    });
+
     return () => {
+      unsubUser();
       document.title = "DevOS | Collaborative IDE";
     };
   }, [username]);
@@ -37,53 +155,6 @@ export default function Portfolio() {
     }
   };
 
-  const fetchPortfolioData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // 1. Fetch user by username
-      const usersRef = collection(db, "users");
-      const userQuery = query(usersRef, where("username", "==", username), limit(1));
-      const userSnapshot = await getDocs(userQuery);
-
-      if (userSnapshot.empty) {
-        setError("User not found");
-        setLoading(false);
-        return;
-      }
-
-      const userData = userSnapshot.docs[0].data() as UserSettings;
-      setUserSettings(userData);
-
-      // 2. Fetch public projects for this user
-      const projectsRef = collection(db, "projects");
-      const projectsQuery = query(
-        projectsRef,
-        where("ownerUsername", "==", username),
-        where("isPublic", "==", true)
-      );
-      const projectsSnapshot = await getDocs(projectsQuery);
-      
-      const projectsList = projectsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Project[];
-
-      // Sort in memory to avoid index requirement
-      projectsList.sort((a, b) => {
-        const timeA = a.updatedAt?.seconds || 0;
-        const timeB = b.updatedAt?.seconds || 0;
-        return timeB - timeA;
-      });
-
-      setProjects(projectsList);
-    } catch (err) {
-      console.error("Error fetching portfolio:", err);
-      setError("An error occurred while loading the portfolio.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -122,6 +193,29 @@ export default function Portfolio() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30">
+      <AnimatePresence>
+        {isPreview && (
+          <motion.div 
+            initial={{ y: -100 }}
+            animate={{ y: 0 }}
+            exit={{ y: -100 }}
+            className="fixed top-0 left-0 right-0 z-[100] bg-blue-600 text-white py-2 px-4 flex items-center justify-center gap-4 shadow-lg"
+          >
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4" />
+              <span className="text-sm font-bold uppercase tracking-wider">Preview Mode</span>
+            </div>
+            <p className="text-xs text-white/80 hidden sm:block">You are viewing your draft changes. These are not live yet.</p>
+            <button 
+              onClick={() => window.close()}
+              className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-[10px] font-bold uppercase transition-all"
+            >
+              Close Preview
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background Glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
@@ -171,10 +265,32 @@ export default function Portfolio() {
             <span className="text-white/40 text-xs font-bold uppercase tracking-widest">DevOS Pro</span>
           </div>
           
-          {userSettings.bio && (
+          {(portfolioConfig?.bio || userSettings.bio) && (
             <p className="text-white/60 max-w-xl text-lg leading-relaxed mb-10 font-medium">
-              {userSettings.bio}
+              {portfolioConfig?.bio || userSettings.bio}
             </p>
+          )}
+
+          {portfolioConfig?.links && portfolioConfig.links.some((l: any) => l.url) && (
+            <div className="flex items-center gap-6 mb-10">
+              {portfolioConfig.links.map((link: any, index: number) => {
+                if (!link.url) return null;
+                return (
+                  <a
+                    key={index}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white/40 hover:text-white transition-all flex items-center gap-2 text-sm font-bold group"
+                  >
+                    {link.platform === 'github' && <Github className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                    {link.platform === 'twitter' && <Twitter className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                    {link.platform === 'linkedin' && <Linkedin className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                    <span className="capitalize">{link.platform}</span>
+                  </a>
+                );
+              })}
+            </div>
           )}
 
           <div className="flex items-center gap-4">

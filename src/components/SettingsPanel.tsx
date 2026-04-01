@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, Github, Send, Loader2, CheckCircle, XCircle, MessageSquare, Trash2, AlertTriangle, Globe, Lock, Eye, EyeOff } from "lucide-react";
+import { Settings, Github, Send, Loader2, CheckCircle, XCircle, MessageSquare, Trash2, AlertTriangle, Globe, Lock, Eye, EyeOff, Plus, X } from "lucide-react";
 import { db, auth } from "../lib/firebase";
 import { doc, getDoc, deleteDoc, collection, getDocs, writeBatch, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -24,6 +24,52 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
+  const [newEnvKey, setNewEnvKey] = useState("");
+  const [newEnvValue, setNewEnvValue] = useState("");
+  const [isAddingEnv, setIsAddingEnv] = useState(false);
+
+  const handleAddEnv = async () => {
+    if (!projectId || !newEnvKey.trim() || isAddingEnv) return;
+    
+    // Validate variable name (alphanumeric and underscores only, must start with letter/underscore)
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newEnvKey)) {
+      alert("Invalid variable name. Use only letters, numbers, and underscores. Must start with a letter or underscore.");
+      return;
+    }
+
+    setIsAddingEnv(true);
+    try {
+      const projectRef = doc(db, "projects", projectId);
+      const currentEnv = project?.env || {};
+      await updateDoc(projectRef, {
+        [`env.${newEnvKey}`]: newEnvValue,
+        updatedAt: serverTimestamp()
+      });
+      setNewEnvKey("");
+      setNewEnvValue("");
+    } catch (error) {
+      console.error("Error adding env var:", error);
+    } finally {
+      setIsAddingEnv(false);
+    }
+  };
+
+  const handleRemoveEnv = async (key: string) => {
+    if (!projectId) return;
+    try {
+      const projectRef = doc(db, "projects", projectId);
+      const updatedEnv = { ...project?.env };
+      delete updatedEnv[key];
+      
+      // Using a full object update to handle deletion correctly in Firestore
+      await updateDoc(projectRef, {
+        env: updatedEnv,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error removing env var:", error);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -219,6 +265,65 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
             </div>
           )}
         </div> */}
+
+        {/* Environment Variables Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-white/60">
+            <Lock className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Environment Variables</span>
+          </div>
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
+            <div className="space-y-2">
+              {project?.env && Object.entries(project.env).map(([key, value]) => (
+                <div key={key} className="flex items-center gap-2 group">
+                  <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+                    <span className="text-[10px] font-mono text-blue-400 truncate">{key}</span>
+                    <span className="text-[9px] text-white/40 truncate font-mono">••••••••</span>
+                  </div>
+                  <button 
+                    onClick={() => handleRemoveEnv(key)}
+                    className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/20 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {(!project?.env || Object.keys(project.env).length === 0) && (
+                <p className="text-[10px] text-white/20 italic text-center py-2">No variables defined</p>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-white/5 space-y-3">
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={newEnvKey}
+                  onChange={(e) => setNewEnvKey(e.target.value)}
+                  placeholder="VARIABLE_NAME"
+                  className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-blue-500/50"
+                />
+                <input
+                  type="text"
+                  value={newEnvValue}
+                  onChange={(e) => setNewEnvValue(e.target.value)}
+                  placeholder="Value"
+                  className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-blue-500/50"
+                />
+              </div>
+              <button
+                onClick={handleAddEnv}
+                disabled={isAddingEnv || !newEnvKey.trim()}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 text-[10px] font-bold transition-all disabled:opacity-50"
+              >
+                {isAddingEnv ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                Add Variable
+              </button>
+            </div>
+            <p className="text-[9px] text-white/20 leading-relaxed">
+              Variables are available in your code as <code className="text-blue-400/60">process.env.KEY</code>.
+            </p>
+          </div>
+        </div>
 
         {/* Project Info Section */}
         <div className="space-y-4">

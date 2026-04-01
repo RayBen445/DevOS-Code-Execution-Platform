@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "./lib/firebase";
+import { initializeUser } from "./lib/userService";
 import Navbar from "./components/Navbar";
 import Dashboard from "./components/Dashboard";
 import IDE from "./components/IDE";
@@ -8,6 +9,7 @@ import Login from "./components/Login";
 import Home from "./components/Home";
 import PrivacyTerms from "./pages/PrivacyTerms";
 import Portfolio from "./pages/Portfolio";
+import ProjectPreview from "./pages/ProjectPreview";
 import ScrollToTop from "./components/ScrollToTop";
 import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -19,6 +21,29 @@ export default function App() {
   const [user, loading] = useAuthState(auth);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      initializeUser(user);
+    }
+  }, [user]);
+
+  // Handle subdomain redirects for backward compatibility
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    if (hostname.includes("devos.zone.id")) {
+      const parts = hostname.split(".");
+      // Format: projectSlug.username.devos.zone.id (5 parts)
+      // Format: username.devos.zone.id (4 parts)
+      if (parts.length === 5) {
+        const [projectSlug, username] = parts;
+        window.location.href = `${window.location.origin}/u/${username}/${projectSlug}`;
+      } else if (parts.length === 4) {
+        const [username] = parts;
+        window.location.href = `${window.location.origin}/u/${username}`;
+      }
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -37,6 +62,7 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyTerms />} />
           <Route path="/terms" element={<PrivacyTerms />} />
           <Route path="/u/:username" element={<Portfolio />} />
+          <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
           <Route path="/" element={
             !user ? (
               <>

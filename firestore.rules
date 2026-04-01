@@ -64,7 +64,8 @@ service cloud.firestore {
     }
 
     function canReadProject(projectId, projectData) {
-      return projectData.get('isPublic', false) == true || (
+      return projectData.get('isPublic', false) == true || 
+             (projectData.get('isSystem', false) == true && projectData.get('systemType', '') == 'portfolio') || (
         isAuthenticated() && (
           isAdmin() ||
           isProjectCollaborator(projectData)
@@ -95,7 +96,7 @@ service cloud.firestore {
 
     function isValidProject(data) {
       let requiredFields = ['name', 'ownerId', 'createdAt', 'updatedAt', 'isPublic', 'isTemplate', 'forksCount', 'collaborators'];
-      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'parentProjectId', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl']);
+      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'env']);
       return data.keys().hasAll(requiredFields) &&
              data.keys().hasOnly(allowedFields) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
@@ -103,14 +104,27 @@ service cloud.firestore {
              (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
              data.ownerId is string &&
              (!('ownerUsername' in data) || (data.ownerUsername is string && data.ownerUsername.size() <= 50)) &&
+             (!('projectSlug' in data) || (data.projectSlug is string && data.projectSlug.size() <= 100)) &&
+             (!('entryFile' in data) || (data.entryFile is string && data.entryFile.size() <= 500)) &&
+             (!('env' in data) || data.env is map) &&
              data.isPublic is bool &&
              data.isTemplate is bool &&
              data.forksCount is int &&
+             (!('views' in data) || data.views is int) &&
              (!('parentProjectId' in data) || data.parentProjectId is string) &&
              (!('deployUrl' in data) || (data.deployUrl is string && data.deployUrl.size() <= 1000)) &&
              (!('liveUrl' in data) || (data.liveUrl is string && data.liveUrl.size() <= 1000)) &&
              (!('githubRepo' in data) || (data.githubRepo is string && data.githubRepo.size() <= 200)) &&
              (!('githubUrl' in data) || (data.githubUrl is string && data.githubUrl.size() <= 1000)) &&
+             (!('isSystem' in data) || data.isSystem is bool) &&
+             (!('systemType' in data) || (data.systemType is string && data.systemType in ['portfolio', 'blog', 'docs'])) &&
+             (!('isEditable' in data) || data.isEditable is bool) &&
+             (!('isDeletable' in data) || data.isDeletable is bool) &&
+             (!('draft' in data) || data.draft is map) &&
+             (!('published' in data) || data.published is map) &&
+             (!('deployStatus' in data) || data.deployStatus in ['idle', 'building', 'success', 'failed']) &&
+             (!('lastDeployedAt' in data) || data.lastDeployedAt is timestamp) &&
+             (!('deployError' in data) || data.deployError is string) &&
              data.createdAt is timestamp &&
              data.updatedAt is timestamp &&
              data.collaborators is list;
@@ -175,7 +189,7 @@ service cloud.firestore {
       allow read: if canReadProject(projectId, resource.data);
       allow create: if isAuthenticated() && isValidProject(request.resource.data) && (request.resource.data.ownerId == request.auth.uid || isAdmin());
       allow update: if canWriteProject(projectId, resource.data) && isValidProject(request.resource.data);
-      allow delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin()) && resource.data.get('isDeletable', true) == true;
 
       match /files/{fileId} {
         allow read: if canReadProject(projectId, getProjectData(projectId));
@@ -192,6 +206,11 @@ service cloud.firestore {
         allow read: if canReadProject(projectId, getProjectData(projectId));
         allow create: if canWriteProject(projectId, getProjectData(projectId)) && isValidPullRequest(request.resource.data);
         allow update: if canWriteProject(projectId, getProjectData(projectId)) && isValidPullRequest(request.resource.data);
+      }
+
+      match /versions/{versionId} {
+        allow read: if canReadProject(projectId, getProjectData(projectId));
+        allow create, delete: if canWriteProject(projectId, getProjectData(projectId));
       }
     }
   }

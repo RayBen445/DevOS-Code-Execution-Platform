@@ -12,17 +12,42 @@ export interface Project {
   description?: string;
   ownerId: string;
   ownerUsername?: string;
+  projectSlug?: string;
   createdAt: any;
   updatedAt: any;
   collaborators: string[];
   isPublic: boolean;
   isTemplate: boolean;
   forksCount: number;
+  views?: number;
   deployUrl?: string;
   liveUrl?: string;
   parentProjectId?: string;
   githubRepo?: string;
   githubUrl?: string;
+  isSystem?: boolean;
+  systemType?: 'portfolio' | 'blog' | 'docs';
+  isEditable?: boolean;
+  isDeletable?: boolean;
+  draft?: any;
+  published?: any;
+  deployStatus?: 'idle' | 'building' | 'success' | 'failed';
+  lastDeployedAt?: any;
+  deployError?: string;
+  entryFile?: string;
+  env?: Record<string, string>;
+}
+
+export interface ProjectVersion {
+  id: string;
+  projectId: string;
+  timestamp: any;
+  snapshot: {
+    portfolio: any;
+    layout: any;
+    theme: any;
+  };
+  message: string;
 }
 
 export interface FileData {

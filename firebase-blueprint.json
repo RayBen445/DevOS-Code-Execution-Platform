@@ -9,6 +9,10 @@
         "name": { "type": "string" },
         "description": { "type": "string" },
         "ownerId": { "type": "string" },
+        "ownerUsername": { "type": "string" },
+        "projectSlug": { "type": "string" },
+        "deployUrl": { "type": "string" },
+        "liveUrl": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
         "collaborators": {
@@ -18,7 +22,19 @@
         "isPublic": { "type": "boolean" },
         "isTemplate": { "type": "boolean" },
         "forksCount": { "type": "integer" },
-        "parentProjectId": { "type": "string" }
+        "views": { "type": "integer" },
+        "parentProjectId": { "type": "string" },
+        "isSystem": { "type": "boolean" },
+        "systemType": { "type": "string", "enum": ["portfolio", "blog", "docs"] },
+        "isEditable": { "type": "boolean" },
+        "isDeletable": { "type": "boolean" },
+        "draft": { "type": "object" },
+        "published": { "type": "object" },
+        "deployStatus": { "type": "string", "enum": ["idle", "building", "success", "failed"] },
+        "lastDeployedAt": { "type": "string", "format": "date-time" },
+        "deployError": { "type": "string" },
+        "entryFile": { "type": "string" },
+        "env": { "type": "object" }
       },
       "required": ["name", "ownerId", "createdAt", "isPublic", "isTemplate", "forksCount"]
     },
@@ -43,9 +59,13 @@
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
+        "username": { "type": "string" },
         "displayName": { "type": "string" },
         "email": { "type": "string" },
-        "photoURL": { "type": "string" }
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email"]
     },
@@ -98,6 +118,19 @@
         "headCommitId": { "type": "string" }
       },
       "required": ["projectId", "title", "authorId", "status", "timestamp", "headCommitId"]
+    },
+    "ProjectVersion": {
+      "title": "ProjectVersion",
+      "description": "A snapshot of a successful portfolio deployment.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "snapshot": { "type": "object" },
+        "message": { "type": "string" }
+      },
+      "required": ["projectId", "timestamp", "snapshot", "message"]
     }
   },
   "firestore": {
@@ -116,6 +149,10 @@
     "/projects/{projectId}/pullRequests/{prId}": {
       "schema": "PullRequest",
       "description": "Pull requests for a project."
+    },
+    "/projects/{projectId}/versions/{versionId}": {
+      "schema": "ProjectVersion",
+      "description": "Deployment history for a portfolio project."
     },
     "/users/{uid}": {
       "schema": "User",

@@ -11,9 +11,10 @@ import DeployModal from "./DeployModal";
 import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
+import PortfolioEditor from "./PortfolioEditor";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -43,6 +44,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [runOutput, setRunOutput] = useState<LogEntry[]>([]);
   const [isForking, setIsForking] = useState(false);
+  const [editorMode, setEditorMode] = useState<"code" | "visual">("visual");
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -65,6 +67,18 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   useEffect(() => {
     if (!user || !projectId) return;
 
+    // Increment views
+    const incrementViews = async () => {
+      try {
+        await updateDoc(doc(db, "projects", projectId), {
+          views: increment(1)
+        });
+      } catch (error) {
+        console.error("Error incrementing views:", error);
+      }
+    };
+    incrementViews();
+
     // Join socket room
     socket.connect();
     socket.emit("join-project", projectId);
@@ -73,7 +87,12 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     const projectRef = doc(db, "projects", projectId);
     const unsubProject = onSnapshot(projectRef, (snapshot) => {
       if (snapshot.exists()) {
-        setProject({ id: snapshot.id, ...snapshot.data() } as Project);
+        const data = snapshot.data() as Project;
+        setProject({ id: snapshot.id, ...data } as Project);
+        // Default to code mode for non-system projects
+        if (data.systemType !== 'portfolio') {
+          setEditorMode("code");
+        }
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `projects/${projectId}`);
@@ -105,28 +124,31 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   const activeFile = files.find(f => f.id === activeFileId);
 
-  const handleCodeChange = async (content: string) => {
-    if (!activeFileId || !projectId || isReadOnly) return;
+  const handleUpdateFile = async (fileId: string, content: string) => {
+    if (!fileId || !projectId || isReadOnly) return;
 
     try {
-      // Update Firestore (debounced in real app, but direct for now)
-      const fileRef = doc(db, "projects", projectId, "files", activeFileId);
+      const fileRef = doc(db, "projects", projectId, "files", fileId);
       await updateDoc(fileRef, {
         content,
         updatedAt: serverTimestamp()
       });
 
-      // Notify others via socket
       socket.emit("code-change", {
         projectId,
-        fileId: activeFileId,
+        fileId,
         content,
         userId: user?.uid
       });
     } catch (error) {
-      console.error("Error saving code:", error);
+      console.error("Error saving file:", error);
       toast.error("Failed to save changes");
     }
+  };
+
+  const handleCodeChange = async (content: string) => {
+    if (!activeFileId) return;
+    await handleUpdateFile(activeFileId, content);
   };
 
   const handleRun = async () => {
@@ -137,6 +159,17 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     setRunOutput([]);
     addLog("system", "Starting execution...");
     addLog("info", `Running ${activeFile.name}...`);
+
+    // Handle client-side files locally
+    if (activeFile.language === "html" || activeFile.language === "css" || activeFile.language === "json") {
+      setTimeout(() => {
+        addLog("info", `[Frontend] ${activeFile.name} is a static/client-side file.`);
+        addLog("info", `[Frontend] Rendering updates in the Live Preview panel...`);
+        addLog("success", "Preview updated successfully.");
+        setIsRunning(false);
+      }, 500);
+      return;
+    }
 
     try {
       const response = await fetch("/api/run", {
@@ -335,10 +368,22 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-white">{project?.name}</span>
-            <span className="text-xs text-white/20">/</span>
-            <span className="text-xs text-white/40">{activeFile?.path}</span>
+          <div className="flex items-center gap-4">
+            {project?.systemType !== 'portfolio' && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white">{project?.name}</span>
+                <span className="text-xs text-white/20">/</span>
+                <span className="text-xs text-white/40">{activeFile?.path}</span>
+              </div>
+            )}
+            {project?.systemType === 'portfolio' && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white">Portfolio Editor</span>
+                <span className="px-2 py-0.5 rounded-md bg-yellow-500/10 text-yellow-400 text-[10px] font-bold uppercase tracking-wider ml-2">
+                  Structured UI
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -353,242 +398,247 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               Fork to Edit
             </button>
           )}
-          <button 
-            onClick={handleRun}
-            disabled={isRunning}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-600/10 text-green-500 hover:bg-green-600 hover:text-white text-xs font-bold transition-all disabled:opacity-50",
-              isRunning && "animate-pulse"
-            )}
-          >
-            {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-            {isRunning ? "Running..." : "Run"}
-          </button>
-          <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 text-xs font-bold transition-all">
-            <Share2 className="w-3 h-3" />
-            Share
-          </button>
-          {!isReadOnly && (
-            <button 
-              onClick={() => setIsDeployModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
-            >
-              <Rocket className="w-3.5 h-3.5" />
-              Deploy
-            </button>
+          {project?.systemType !== 'portfolio' && (
+            <>
+              <button 
+                onClick={handleRun}
+                disabled={isRunning}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-600/10 text-green-500 hover:bg-green-600 hover:text-white text-xs font-bold transition-all disabled:opacity-50",
+                  isRunning && "animate-pulse"
+                )}
+              >
+                {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                {isRunning ? "Running..." : "Run"}
+              </button>
+              <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 text-xs font-bold transition-all">
+                <Share2 className="w-3 h-3" />
+                Share
+              </button>
+              {!isReadOnly && (
+                <button 
+                  onClick={() => setIsDeployModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+                >
+                  <Rocket className="w-3.5 h-3.5" />
+                  Deploy
+                </button>
+              )}
+            </>
           )}
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar Tabs */}
-        <div className="w-12 border-r border-white/5 bg-[#0a0a0a] flex flex-col items-center py-4 gap-4">
-          <button
-            onClick={() => togglePanel("explorer")}
-            className={cn(
-              "p-2 rounded-lg transition-all",
-              activePanel === "explorer" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
-            )}
-            title="Explorer"
-          >
-            <Files className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => togglePanel("git")}
-            className={cn(
-              "p-2 rounded-lg transition-all",
-              activePanel === "git" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
-            )}
-            title="Source Control"
-          >
-            <GitBranch className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => togglePanel("terminal")}
-            className={cn(
-              "p-2 rounded-lg transition-all",
-              activePanel === "terminal" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
-            )}
-            title="Terminal"
-          >
-            <Code2 className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => togglePanel("preview")}
-            className={cn(
-              "p-2 rounded-lg transition-all",
-              activePanel === "preview" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
-            )}
-            title="Preview"
-          >
-            <Globe className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => togglePanel("settings")}
-            className={cn(
-              "p-2 rounded-lg transition-all",
-              activePanel === "settings" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
-            )}
-            title="Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Panel Content */}
-        {activePanel === "explorer" && (
-          <Sidebar
-            files={files}
-            activeFileId={activeFileId}
-            onSelectFile={setActiveFileId}
-            projectId={projectId}
-            readOnly={isReadOnly}
-          />
-        )}
-
-        {activePanel === "git" && (
-          <div className="w-80 border-r border-white/5">
-            <GitPanel projectId={projectId} files={files} />
-          </div>
-        )}
-
-        {activePanel === "preview" && (
-          <PreviewPanel projectId={projectId} files={files} />
-        )}
-
-        {activePanel === "settings" && (
-          <SettingsPanel 
-            projectId={projectId} 
-            project={project} 
-            files={files} 
-            onDelete={onBack}
-          />
-        )}
-
-        <main className="flex-1 relative bg-[#0a0a0a] flex flex-col overflow-hidden">
-          <div className="flex-1 relative">
-            {activeFile ? (
-              <Editor
-                file={activeFile}
-                onChange={handleCodeChange}
-                projectId={projectId}
-                readOnly={isReadOnly}
-              />
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center bg-[#0a0a0a] p-12 text-center">
-                <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-8">
-                  <Files className="w-10 h-10 text-white/20" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-2">No file selected</h2>
-                <p className="text-white/40 max-w-sm mb-8">
-                  Select a file from the explorer or create a new one to start building your project.
-                </p>
-                
-                {!isReadOnly && (
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <button
-                      onClick={() => handleCreateFile("index.js")}
-                      className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95"
-                    >
-                      <Plus className="w-5 h-5" />
-                      Create index.js
-                    </button>
-                    <label className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95 cursor-pointer relative overflow-hidden">
-                      {isUploading ? (
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                          <span>Uploading {Math.round(uploadProgress)}%</span>
-                          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                            <div 
-                              className="h-full bg-blue-500 transition-all duration-300" 
-                              style={{ width: `${uploadProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload className="w-5 h-5" />
-                          Upload File
-                        </>
-                      )}
-                      <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-                    </label>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {activePanel === "terminal" && (
-            <motion.div 
-              initial={{ y: 256 }}
-              animate={{ y: 0 }}
-              exit={{ y: 256 }}
-              className="h-64 border-t border-white/5 bg-[#050505] flex flex-col absolute bottom-0 left-0 right-0 z-10 shadow-2xl"
+        {project?.systemType !== 'portfolio' && (
+          <div className="w-12 border-r border-white/5 bg-[#0a0a0a] flex flex-col items-center py-4 gap-4 flex-shrink-0">
+            <button
+              onClick={() => togglePanel("explorer")}
+              className={cn(
+                "p-2 rounded-lg transition-all",
+                activePanel === "explorer" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
+              )}
+              title="Explorer"
             >
-              <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-[#0a0a0a]">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-white/40">
-                    <Terminal className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Terminal</span>
-                  </div>
-                  <div className="h-3 w-[1px] bg-white/5" />
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-1.5 h-1.5 rounded-full", isRunning ? "bg-yellow-500 animate-pulse" : "bg-green-500")} />
-                    <span className="text-[9px] text-white/20 font-bold uppercase tracking-tighter">
-                      {isRunning ? "Executing" : "Ready"}
-                    </span>
-                  </div>
+              <Files className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => togglePanel("git")}
+              className={cn(
+                "p-2 rounded-lg transition-all",
+                activePanel === "git" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
+              )}
+              title="Source Control"
+            >
+              <GitBranch className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => togglePanel("terminal")}
+              className={cn(
+                "p-2 rounded-lg transition-all",
+                activePanel === "terminal" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
+              )}
+              title="Terminal"
+            >
+              <Code2 className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => togglePanel("settings")}
+              className={cn(
+                "p-2 rounded-lg transition-all",
+                activePanel === "settings" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
+              )}
+              title="Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* Main Content Area: Split Screen */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Pane: Explorer + Editor + Terminal */}
+          <div className="flex-1 flex flex-col border-r border-white/5 overflow-hidden">
+            <div className="flex-1 flex overflow-hidden">
+              {/* Explorer Panel */}
+              {project?.systemType !== 'portfolio' && activePanel === "explorer" && (
+                <Sidebar
+                  files={files}
+                  activeFileId={activeFileId}
+                  onSelectFile={setActiveFileId}
+                  projectId={projectId}
+                  readOnly={isReadOnly}
+                />
+              )}
+
+              {/* Git Panel */}
+              {project?.systemType !== 'portfolio' && activePanel === "git" && (
+                <div className="w-80 border-r border-white/5">
+                  <GitPanel projectId={projectId} files={files} />
                 </div>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => setRunOutput([])}
-                    className="text-[9px] font-bold uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors px-2 py-1 rounded hover:bg-white/5"
-                  >
-                    Clear
-                  </button>
-                  <button 
-                    onClick={() => setActivePanel(null)}
-                    className="p-1 text-white/20 hover:text-white transition-colors hover:bg-white/5 rounded"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto custom-scrollbar">
-                <div className="space-y-1.5">
-                  {runOutput.map((log, i) => (
-                    <div key={i} className="flex gap-3 group">
-                      <span className="text-white/10 select-none shrink-0 tabular-nums">{log.timestamp}</span>
-                      <span className={cn(
-                        "break-all leading-relaxed",
-                        log.type === "system" && "text-blue-400/60 font-bold",
-                        log.type === "info" && "text-blue-400",
-                        log.type === "success" && "text-green-400",
-                        log.type === "error" && "text-red-400",
-                        log.type === "output" && "text-white/80"
-                      )}>
-                        {log.type === "error" && <span className="mr-2">✖</span>}
-                        {log.type === "success" && <span className="mr-2">✔</span>}
-                        {log.message}
-                      </span>
-                    </div>
-                  ))}
-                  {isRunning && (
-                    <div className="flex gap-3 animate-pulse">
-                      <span className="text-white/10 select-none shrink-0">--:--:--</span>
-                      <div className="flex items-center gap-2 text-white/40 italic">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Processing...
+              )}
+
+              {/* Settings Panel */}
+              {project?.systemType !== 'portfolio' && activePanel === "settings" && (
+                <SettingsPanel 
+                  projectId={projectId} 
+                  project={project} 
+                  files={files} 
+                  onDelete={onBack}
+                />
+              )}
+
+              {/* Editor Area */}
+              <main className="flex-1 relative bg-[#0a0a0a] flex flex-col overflow-hidden">
+                <div className="flex-1 relative">
+                  {project?.systemType === 'portfolio' ? (
+                    <PortfolioEditor 
+                      project={project} 
+                      files={files} 
+                      onUpdateFile={handleUpdateFile} 
+                    />
+                  ) : activeFile ? (
+                    <Editor
+                      file={activeFile}
+                      onChange={handleCodeChange}
+                      projectId={projectId}
+                      readOnly={isReadOnly}
+                    />
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center bg-[#0a0a0a] p-12 text-center">
+                      <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-8">
+                        <Files className="w-10 h-10 text-white/20" />
                       </div>
+                      <h2 className="text-2xl font-bold text-white mb-2">No file selected</h2>
+                      <p className="text-white/40 max-w-sm mb-8">
+                        Select a file from the explorer or create a new one to start building your project.
+                      </p>
+                      
+                      {!isReadOnly && (
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <button
+                            onClick={() => handleCreateFile("index.html")}
+                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95"
+                          >
+                            <Plus className="w-5 h-5" />
+                            Create index.html
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
-                  <div ref={terminalEndRef} />
+                </div>
+              </main>
+            </div>
+
+            {/* Terminal at the bottom of the Left Pane */}
+            {activePanel === "terminal" && (
+              <motion.div 
+                initial={{ y: 256 }}
+                animate={{ y: 0 }}
+                exit={{ y: 256 }}
+                className="h-64 border-t border-white/5 bg-[#050505] flex flex-col relative z-10 shadow-2xl"
+              >
+                <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-[#0a0a0a]">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-white/40">
+                      <Terminal className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Terminal</span>
+                    </div>
+                    <div className="h-3 w-[1px] bg-white/5" />
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-1.5 h-1.5 rounded-full", isRunning ? "bg-yellow-500 animate-pulse" : "bg-green-500")} />
+                      <span className="text-[9px] text-white/20 font-bold uppercase tracking-tighter">
+                        {isRunning ? "Executing" : "Ready"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setRunOutput([])}
+                      className="text-[9px] font-bold uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors px-2 py-1 rounded hover:bg-white/5"
+                    >
+                      Clear
+                    </button>
+                    <button 
+                      onClick={() => setActivePanel(null)}
+                      className="p-1 text-white/20 hover:text-white transition-colors hover:bg-white/5 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto custom-scrollbar">
+                  <div className="space-y-1.5">
+                    {runOutput.map((log, i) => (
+                      <div key={i} className="flex gap-3 group">
+                        <span className="text-white/10 select-none shrink-0 tabular-nums">{log.timestamp}</span>
+                        <span className={cn(
+                          "break-all leading-relaxed",
+                          log.type === "system" && "text-blue-400/60 font-bold",
+                          log.type === "info" && "text-blue-400",
+                          log.type === "success" && "text-green-400",
+                          log.type === "error" && "text-red-400",
+                          log.type === "output" && "text-white/80"
+                        )}>
+                          {log.type === "error" && <span className="mr-2">✖</span>}
+                          {log.type === "success" && <span className="mr-2">✔</span>}
+                          {log.message}
+                        </span>
+                      </div>
+                    ))}
+                    {isRunning && (
+                      <div className="flex gap-3 animate-pulse">
+                        <span className="text-white/10 select-none shrink-0">--:--:--</span>
+                        <div className="flex items-center gap-2 text-white/40 italic">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Processing...
+                        </div>
+                      </div>
+                    )}
+                    <div ref={terminalEndRef} />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Right Pane: Live Preview */}
+          {project?.systemType !== 'portfolio' && (
+            <div className="w-1/2 bg-[#050505] hidden md:flex flex-col border-l border-white/5">
+              <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#0a0a0a]">
+                <div className="flex items-center gap-2 text-white/40">
+                  <Globe className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Live Preview</span>
                 </div>
               </div>
-            </motion.div>
+              <div className="flex-1">
+                <PreviewPanel projectId={projectId} files={files} entryFile={project?.entryFile} />
+              </div>
+            </div>
           )}
-        </main>
+        </div>
       </div>
 
       <DeployModal 
@@ -596,6 +646,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         onClose={() => setIsDeployModalOpen(false)} 
         projectName={project?.name || "Project"} 
         projectId={projectId}
+        files={files}
       />
     </div>
   );
