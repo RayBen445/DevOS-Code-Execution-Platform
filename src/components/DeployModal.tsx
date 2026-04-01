@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { X, Globe, Zap, Loader2, Check, ExternalLink, Copy, CheckCircle2 } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Globe, Zap, Check, ExternalLink, Copy, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../lib/utils";
 import { db, auth } from "../lib/firebase";
@@ -8,6 +8,14 @@ import { toast } from "sonner";
 import { deductCredits, CREDIT_COSTS } from "../lib/creditsService";
 
 import { FileData } from "../types";
+
+const SPINNER_FRAMES = ["⠄", "⡀", "⡈", "⡐", "⡠", "⣀", "⣄", "⣤", "⣦", "⣶", "⣿", "⡿", "⠿", "⠟", "⠛", "⠉"];
+const DEPLOY_STEPS = [
+  "Validating project...",
+  "Building files...",
+  "Optimizing assets...",
+  "Generating output...",
+];
 
 interface DeployModalProps {
   isOpen: boolean;
@@ -24,6 +32,20 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
   const [isCopying, setIsCopying] = useState(false);
   const [entryFiles, setEntryFiles] = useState<string[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<string>("");
+  const [completedSteps, setCompletedSteps] = useState<number>(-1);
+  const [spinnerFrame, setSpinnerFrame] = useState(0);
+  const spinnerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (step === "deploying") {
+      setCompletedSteps(-1);
+      setSpinnerFrame(0);
+      spinnerRef.current = setInterval(() => setSpinnerFrame(f => (f + 1) % SPINNER_FRAMES.length), 80);
+    } else {
+      if (spinnerRef.current) clearInterval(spinnerRef.current);
+    }
+    return () => { if (spinnerRef.current) clearInterval(spinnerRef.current); };
+  }, [step]);
 
   const handleCopy = async () => {
     try {
@@ -69,19 +91,30 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
 
   const handleDeploy = async (deployMethod: "internal", entryFile: string) => {
     setStep("deploying");
-    
+    setCompletedSteps(-1);
+
+    // Animate build steps in parallel with the actual deploy work
+    const animateSteps = async () => {
+      for (let i = 0; i < DEPLOY_STEPS.length; i++) {
+        await new Promise(r => setTimeout(r, 700));
+        setCompletedSteps(i);
+      }
+    };
+
     try {
       if (!auth.currentUser) throw new Error("Not authenticated");
 
-      // Deduct credits for deploy
-      const ok = await deductCredits(auth.currentUser.uid, "deploy");
+      const [ok] = await Promise.all([
+        deductCredits(auth.currentUser.uid, "deploy"),
+        animateSteps(),
+      ]);
+
       if (!ok) {
         toast.error(`Insufficient credits. Deploying costs ${CREDIT_COSTS.deploy} credits.`);
         setStep("select");
         return;
       }
 
-      // Fetch username for the URL
       const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
       const username = userDoc.exists() ? userDoc.data().username : null;
       
@@ -89,15 +122,12 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
         throw new Error("Please set a username in Profile Settings before deploying.");
       }
 
-      // Fetch project to get existing slug if available
       const projectDoc = await getDoc(doc(db, "projects", projectId));
       const projectData = projectDoc.data();
       
-      // Format: /u/{username}/{projectSlug}
       const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
       const url = `${window.location.origin}/u/${username}/${projectSlug}`;
       
-      // Save to Firestore
       const projectRef = doc(db, "projects", projectId);
       await updateDoc(projectRef, {
         projectSlug,
