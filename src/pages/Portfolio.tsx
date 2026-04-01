@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
+import Footer from "../components/Footer";
 
 export default function Portfolio() {
   const { username } = useParams<{ username: string }>();
@@ -431,6 +432,8 @@ export default function Portfolio() {
           </p>
         </div>
       </footer>
+
+      <Footer />
     </div>
   );
 }

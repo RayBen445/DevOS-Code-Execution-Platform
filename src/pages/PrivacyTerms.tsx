@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Shield, Lock, FileText, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 export default function PrivacyTerms() {
   return (
@@ -131,6 +132,7 @@ export default function PrivacyTerms() {
           </div>
         </motion.div>
       </main>
+      <Footer />
     </div>
   );
 }

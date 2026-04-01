@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 export default function TemplatePage() {
   const [user] = useAuthState(auth);
@@ -267,6 +268,7 @@ export default function TemplatePage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }
