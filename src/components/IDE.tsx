@@ -14,7 +14,7 @@ import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -54,6 +54,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [terminalInitialized, setTerminalInitialized] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const terminalInputRef = useRef<HTMLInputElement>(null);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const scrollToBottom = () => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -280,6 +283,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   };
 
   const isReadOnly = project && user && project.ownerId !== user.uid && !project.collaborators.includes(user.uid);
+  const isDeployed = !!project?.deployUrl;
 
   useEffect(() => {
     if (!user || !projectId) return;
@@ -432,6 +436,35 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   const togglePanel = (panel: PanelType) => {
     setActivePanel(prev => prev === panel ? null : panel);
+  };
+
+  const toggleFocusMode = () => {
+    setIsFocusMode(prev => {
+      if (!prev) setActivePanel(null);
+      return !prev;
+    });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleContextMenuCopy = async () => {
+    const selection = window.getSelection()?.toString();
+    if (selection) {
+      await navigator.clipboard.writeText(selection).catch(() => {});
+      toast.success("Copied to clipboard");
+    }
+    setContextMenu(null);
+  };
+
+  const handleContextMenuPaste = async () => {
+    const text = await navigator.clipboard.readText().catch(() => null);
+    if (text && activeFile && !isReadOnly) {
+      await handleUpdateFile(activeFile.id, (activeFile.content ?? "") + text);
+    }
+    setContextMenu(null);
   };
 
   const handleFork = async () => {
@@ -591,27 +624,34 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden">
-      <header className="h-12 border-b border-white/5 flex items-center justify-between px-4 bg-[#111]">
-        <div className="flex items-center gap-4">
+    <div
+      className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden"
+      onClick={() => contextMenu && setContextMenu(null)}
+    >
+      <header className="h-12 border-b border-white/5 flex items-center justify-between px-4 bg-[#111] flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
           <button
             onClick={onBack}
-            className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 min-w-0">
             {project?.systemType !== 'portfolio' && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-white">{project?.name}</span>
-                <span className="text-xs text-white/20">/</span>
-                <span className="text-xs text-white/40">{activeFile?.path}</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-sm font-bold text-white truncate max-w-[100px] md:max-w-none">{project?.name}</span>
+                {activeFile?.path && (
+                  <>
+                    <span className="text-xs text-white/20 flex-shrink-0">/</span>
+                    <span className="text-xs text-white/40 truncate max-w-[80px] md:max-w-none">{activeFile?.path}</span>
+                  </>
+                )}
               </div>
             )}
             {project?.systemType === 'portfolio' && (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-white">Portfolio Editor</span>
-                <span className="px-2 py-0.5 rounded-md bg-yellow-500/10 text-yellow-400 text-[10px] font-bold uppercase tracking-wider ml-2">
+                <span className="hidden sm:inline px-2 py-0.5 rounded-md bg-yellow-500/10 text-yellow-400 text-[10px] font-bold uppercase tracking-wider">
                   Structured UI
                 </span>
               </div>
@@ -619,15 +659,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
           {isReadOnly && (
             <button
               onClick={handleFork}
               disabled={isForking}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all disabled:opacity-50"
             >
               {isForking ? <Loader2 className="w-3 h-3 animate-spin" /> : <GitFork className="w-3 h-3" />}
-              Fork to Edit
+              <span className="hidden sm:inline">Fork to Edit</span>
             </button>
           )}
           {project?.systemType !== 'portfolio' && (
@@ -636,35 +676,68 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 onClick={handleRun}
                 disabled={isRunning}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-600/10 text-green-500 hover:bg-green-600 hover:text-white text-xs font-bold transition-all disabled:opacity-50",
+                  "flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-lg bg-green-600/10 text-green-500 hover:bg-green-600 hover:text-white text-xs font-bold transition-all disabled:opacity-50",
                   isRunning && "animate-pulse"
                 )}
               >
                 {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                {isRunning ? "Running..." : "Run"}
+                <span className="hidden sm:inline">{isRunning ? "Running..." : "Run"}</span>
               </button>
-              <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 text-xs font-bold transition-all">
+              <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 text-xs font-bold transition-all">
                 <Share2 className="w-3 h-3" />
                 Share
               </button>
               {!isReadOnly && (
                 <button 
                   onClick={() => setIsDeployModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+                  className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
                 >
-                  <Rocket className="w-3.5 h-3.5" />
-                  Deploy
+                  {isDeployed ? <Globe className="w-3.5 h-3.5" /> : <Rocket className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">{isDeployed ? "Sync" : "Deploy"}</span>
                 </button>
               )}
             </>
           )}
+          {/* Focus mode toggle — only for non-portfolio and desktop */}
+          {project?.systemType !== 'portfolio' && (
+            <button
+              onClick={toggleFocusMode}
+              title={isFocusMode ? "Exit Focus Mode" : "Focus Mode"}
+              className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white transition-colors hidden md:flex"
+            >
+              {isFocusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          )}
+          {/* Mobile sidebar toggle */}
+          {project?.systemType !== 'portfolio' && (
+            <button
+              onClick={() => setIsMobileSidebarOpen(v => !v)}
+              title="Files & Tools"
+              className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors md:hidden"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar Tabs */}
-        {project?.systemType !== 'portfolio' && (
-          <div className="w-12 border-r border-white/5 bg-[#0a0a0a] flex flex-col items-center py-4 gap-4 flex-shrink-0">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile sidebar backdrop */}
+        <AnimatePresence>
+          {isMobileSidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 z-30 md:hidden"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Sidebar icon tabs — hidden on mobile (controlled via hamburger), hidden in focus mode */}
+        {project?.systemType !== 'portfolio' && !isFocusMode && (
+          <div className="hidden md:flex w-12 border-r border-white/5 bg-[#0a0a0a] flex-col items-center py-4 gap-4 flex-shrink-0">
             <button
               onClick={() => togglePanel("explorer")}
               className={cn(
@@ -708,41 +781,110 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           </div>
         )}
 
+        {/* Mobile slide-in sidebar drawer */}
+        <AnimatePresence>
+          {isMobileSidebarOpen && project?.systemType !== 'portfolio' && (
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed top-0 left-0 h-full w-72 bg-[#111] border-r border-white/10 z-40 flex flex-col md:hidden shadow-2xl"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                <span className="text-xs font-bold uppercase tracking-widest text-white/40">Files & Tools</span>
+                <button
+                  onClick={() => setIsMobileSidebarOpen(false)}
+                  className="p-1 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {/* Tab selector */}
+              <div className="flex border-b border-white/5">
+                {[
+                  { panel: "explorer" as PanelType, icon: Files, label: "Files" },
+                  { panel: "git" as PanelType, icon: GitBranch, label: "Git" },
+                  { panel: "terminal" as PanelType, icon: Terminal, label: "Terminal" },
+                  { panel: "settings" as PanelType, icon: Settings, label: "Settings" },
+                ].map(({ panel, icon: Icon, label }) => (
+                  <button
+                    key={panel}
+                    onClick={() => { setActivePanel(panel); setIsMobileSidebarOpen(false); }}
+                    className={cn(
+                      "flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors",
+                      activePanel === panel ? "text-blue-400 border-b-2 border-blue-500" : "text-white/30 hover:text-white/60"
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {activePanel === "explorer" && (
+                  <Sidebar
+                    files={files}
+                    activeFileId={activeFileId}
+                    onSelectFile={(id) => { setActiveFileId(id); setIsMobileSidebarOpen(false); }}
+                    projectId={projectId}
+                    readOnly={isReadOnly}
+                  />
+                )}
+                {activePanel === "git" && <GitPanel projectId={projectId} files={files} />}
+                {activePanel === "settings" && (
+                  <SettingsPanel projectId={projectId} project={project} files={files} onDelete={onBack} />
+                )}
+                {activePanel === "terminal" && (
+                  <p className="p-4 text-xs text-white/30">Terminal is shown below the editor.</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Main Content Area: Split Screen */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Pane: Explorer + Editor + Terminal */}
           <div className="flex-1 flex flex-col border-r border-white/5 overflow-hidden">
             <div className="flex-1 flex overflow-hidden">
-              {/* Explorer Panel */}
-              {project?.systemType !== 'portfolio' && activePanel === "explorer" && (
-                <Sidebar
-                  files={files}
-                  activeFileId={activeFileId}
-                  onSelectFile={setActiveFileId}
-                  projectId={projectId}
-                  readOnly={isReadOnly}
-                />
+              {/* Explorer Panel — hidden on mobile (use drawer), hidden in focus mode */}
+              {project?.systemType !== 'portfolio' && activePanel === "explorer" && !isFocusMode && (
+                <div className="hidden md:flex">
+                  <Sidebar
+                    files={files}
+                    activeFileId={activeFileId}
+                    onSelectFile={setActiveFileId}
+                    projectId={projectId}
+                    readOnly={isReadOnly}
+                  />
+                </div>
               )}
 
-              {/* Git Panel */}
-              {project?.systemType !== 'portfolio' && activePanel === "git" && (
-                <div className="w-80 border-r border-white/5">
+              {/* Git Panel — hidden on mobile, hidden in focus mode */}
+              {project?.systemType !== 'portfolio' && activePanel === "git" && !isFocusMode && (
+                <div className="hidden md:flex w-80 border-r border-white/5">
                   <GitPanel projectId={projectId} files={files} />
                 </div>
               )}
 
-              {/* Settings Panel */}
-              {project?.systemType !== 'portfolio' && activePanel === "settings" && (
-                <SettingsPanel 
-                  projectId={projectId} 
-                  project={project} 
-                  files={files} 
-                  onDelete={onBack}
-                />
+              {/* Settings Panel — hidden on mobile, hidden in focus mode */}
+              {project?.systemType !== 'portfolio' && activePanel === "settings" && !isFocusMode && (
+                <div className="hidden md:flex">
+                  <SettingsPanel 
+                    projectId={projectId} 
+                    project={project} 
+                    files={files} 
+                    onDelete={onBack}
+                  />
+                </div>
               )}
 
               {/* Editor Area */}
-              <main className="flex-1 relative bg-[#0a0a0a] flex flex-col overflow-hidden">
+              <main
+                className="flex-1 relative bg-[#0a0a0a] flex flex-col overflow-hidden"
+                onContextMenu={handleContextMenu}
+              >
                 <div className="flex-1 relative">
                   {project?.systemType === 'portfolio' ? (
                     <PortfolioEditor 
@@ -758,7 +900,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       readOnly={isReadOnly}
                     />
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center bg-[#0a0a0a] p-12 text-center">
+                    <div className="h-full flex flex-col items-center justify-center bg-[#0a0a0a] p-8 md:p-12 text-center">
                       <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-8">
                         <Files className="w-10 h-10 text-white/20" />
                       </div>
@@ -781,16 +923,48 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     </div>
                   )}
                 </div>
+
+                {/* Custom context menu */}
+                <AnimatePresence>
+                  {contextMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.1 }}
+                      style={{ top: contextMenu.y, left: contextMenu.x }}
+                      className="fixed z-50 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl overflow-hidden min-w-[140px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={handleContextMenuCopy}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy
+                      </button>
+                      {!isReadOnly && (
+                        <button
+                          onClick={handleContextMenuPaste}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left"
+                        >
+                          <Clipboard className="w-3.5 h-3.5" />
+                          Paste
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </main>
             </div>
 
-            {/* Terminal at the bottom of the Left Pane */}
-            {activePanel === "terminal" && (
+            {/* Terminal — hidden in focus mode; on mobile it shows as a bottom sheet */}
+            {activePanel === "terminal" && !isFocusMode && (
               <motion.div 
                 initial={{ y: 256 }}
                 animate={{ y: 0 }}
                 exit={{ y: 256 }}
-                className="h-72 border-t border-white/5 bg-[#050505] flex flex-col relative z-10 shadow-2xl"
+                className="h-64 md:h-72 border-t border-white/5 bg-[#050505] flex flex-col relative z-10 shadow-2xl"
               >
                 {/* Terminal title bar */}
                 <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-[#0a0a0a] flex-shrink-0">
@@ -891,8 +1065,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
             )}
           </div>
 
-          {/* Right Pane: Live Preview */}
-          {project?.systemType !== 'portfolio' && (
+          {/* Right Pane: Live Preview — hidden on mobile, hidden in focus mode */}
+          {project?.systemType !== 'portfolio' && !isFocusMode && (
             <div className="w-1/2 bg-[#050505] hidden md:flex flex-col border-l border-white/5">
               <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#0a0a0a]">
                 <div className="flex items-center gap-2 text-white/40">
