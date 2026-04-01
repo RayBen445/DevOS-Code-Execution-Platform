@@ -22,26 +22,28 @@ export default function ProjectPreview() {
       if (!username || !projectSlug) return;
       
       try {
-        // 1. Find project by projectSlug (single-field query; no composite index needed).
-        //    ProjectSlugs include a random suffix making them practically unique, so limit(1)
-        //    is sufficient. ownerUsername is then verified client-side to ensure the URL
-        //    owner matches.
+        // 1. Find the deployed (public) project by ownerUsername and projectSlug.
+        //    The isPublic constraint is required: Firestore security rules for
+        //    unauthenticated list queries mandate that the WHERE clauses imply the
+        //    rule condition (isPublic == true).  A composite index on
+        //    (isPublic ASC, ownerUsername ASC, projectSlug ASC) covers this query
+        //    — see firestore.indexes.json.
         const q = query(
           collection(db, "projects"),
+          where("isPublic", "==", true),
+          where("ownerUsername", "==", username),
           where("projectSlug", "==", projectSlug),
           limit(1)
         );
         
         const snapshot = await getDocs(q);
-        const firstDoc = snapshot.docs[0];
-        const matchingDoc = (firstDoc && firstDoc.data().ownerUsername === username) ? firstDoc : undefined;
-        if (!matchingDoc) {
+        if (snapshot.empty) {
           setError("Project not found");
           setLoading(false);
           return;
         }
         
-        const projectData = { id: matchingDoc.id, ...matchingDoc.data() } as Project;
+        const projectData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Project;
         setProject(projectData);
         
         // 2. Fetch files for the project

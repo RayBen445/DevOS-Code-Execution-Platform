@@ -109,7 +109,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         isTemplate: false,
         forksCount: 0,
         views: 0,
-        systemType: selectedTemplateId === "portfolio" ? "portfolio" : null,
+        ...(selectedTemplateId === "portfolio" ? { systemType: "portfolio" } : {}),
         deployUrl: `/u/${settings?.username || "anonymous"}/${projectSlug}`
       });
 

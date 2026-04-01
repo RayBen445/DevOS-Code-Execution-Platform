@@ -117,7 +117,7 @@ service cloud.firestore {
              (!('githubRepo' in data) || (data.githubRepo is string && data.githubRepo.size() <= 200)) &&
              (!('githubUrl' in data) || (data.githubUrl is string && data.githubUrl.size() <= 1000)) &&
              (!('isSystem' in data) || data.isSystem is bool) &&
-             (!('systemType' in data) || (data.systemType is string && data.systemType in ['portfolio', 'blog', 'docs'])) &&
+             (!('systemType' in data) || data.systemType == null || (data.systemType is string && data.systemType in ['portfolio', 'blog', 'docs'])) &&
              (!('isEditable' in data) || data.isEditable is bool) &&
              (!('isDeletable' in data) || data.isDeletable is bool) &&
              (!('draft' in data) || data.draft is map) &&
