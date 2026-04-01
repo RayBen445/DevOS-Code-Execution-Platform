@@ -2,13 +2,16 @@ import React, { useState, useEffect } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff } from "lucide-react";
+import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime } from "../lib/utils";
 import GitHubImportModal from "./GitHubImportModal";
+import PublishTemplateModal from "./PublishTemplateModal";
 import { toast } from "sonner";
 import { TEMPLATES, ProjectTemplate } from "../constants/templates";
+import { deductCredits, getCredits, CREDIT_COSTS } from "../lib/creditsService";
+import { useNavigate } from "react-router-dom";
 
 interface DashboardProps {
   onSelectProject: (projectId: string) => void;
@@ -16,6 +19,7 @@ interface DashboardProps {
 
 export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [user] = useAuthState(auth);
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isQuickStarting, setIsQuickStarting] = useState(false);
@@ -27,6 +31,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [publicProjects, setPublicProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<"my-projects" | "public-projects">("my-projects");
+  const [publishTemplateProject, setPublishTemplateProject] = useState<Project | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -93,6 +98,13 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
     const toastId = toast.loading("Creating project...");
 
     try {
+      // Deduct credits for project creation
+      const ok = await deductCredits(user.uid, "createProject");
+      if (!ok) {
+        toast.error(`Insufficient credits. Creating a project costs ${CREDIT_COSTS.createProject} credits.`, { id: toastId });
+        return;
+      }
+
       const projectSlug = newProjectName.toLowerCase().replace(/[^a-z0-9]/g, "-");
       const template = TEMPLATES.find(t => t.id === selectedTemplateId) || TEMPLATES[0];
       
@@ -417,6 +429,13 @@ p {
             Try Demo Project
           </button>
           <button
+            onClick={() => navigate("/templates")}
+            className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
+          >
+            <Layout className="w-5 h-5 text-purple-400" />
+            Marketplace
+          </button>
+          <button
             onClick={() => setIsCreating(true)}
             className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-white/90 transition-all active:scale-95"
           >
@@ -633,13 +652,22 @@ p {
             className="group p-6 rounded-2xl bg-[#111] border border-white/5 hover:border-white/20 cursor-pointer transition-all relative"
           >
             {project.ownerId === user?.uid && project.isDeletable !== false ? (
-              <button
-                onClick={(e) => handleDeleteProject(e, project.id)}
-                className="absolute top-4 right-4 p-2 rounded-lg bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all z-10"
-                title="Delete Project"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 z-10">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setPublishTemplateProject(project); }}
+                  className="p-2 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white transition-all"
+                  title="Publish as Template"
+                >
+                  <Upload className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => handleDeleteProject(e, project.id)}
+                  className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                  title="Delete Project"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             ) : project.ownerId !== user?.uid ? (
               <button
                 onClick={(e) => handleForkProject(e, project)}
@@ -709,6 +737,15 @@ p {
           <span>Tech Visionaries Network</span>
         </div>
       </div>
+
+      {publishTemplateProject && (
+        <PublishTemplateModal
+          isOpen={!!publishTemplateProject}
+          onClose={() => setPublishTemplateProject(null)}
+          projectName={publishTemplateProject.name}
+          projectId={publishTemplateProject.id}
+        />
+      )}
     </div>
   );
 }
