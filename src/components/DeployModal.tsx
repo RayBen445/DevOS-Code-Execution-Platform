@@ -97,6 +97,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
         title: projectName,
         ownerUsername: username,
         entryFile,
+        isPublic: true,
         updatedAt: serverTimestamp()
       });
 
