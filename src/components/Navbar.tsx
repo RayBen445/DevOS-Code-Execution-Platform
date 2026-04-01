@@ -4,7 +4,6 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
-import SettingsModal from "./SettingsModal";
 import NotificationBell from "./NotificationBell";
 import RedeemCodeModal from "./RedeemCodeModal";
 import { UserSettings, Credits } from "../types";
@@ -20,7 +19,6 @@ interface NavbarProps {
 export default function Navbar({ onSignIn }: NavbarProps) {
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRedeemOpen, setIsRedeemOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -156,13 +154,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                         View Profile
                       </Link>
                     )}
-                    <button
-                      onClick={() => { setIsProfileOpen(false); setIsSettingsOpen(true); }}
+                    <Link
+                      to="/settings"
+                      onClick={() => setIsProfileOpen(false)}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left"
                     >
                       <Settings className="w-4 h-4" />
                       Account Settings
-                    </button>
+                    </Link>
                     <button
                       onClick={() => { setIsProfileOpen(false); setIsRedeemOpen(true); }}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left"
@@ -194,7 +193,6 @@ export default function Navbar({ onSignIn }: NavbarProps) {
         )}
       </div>
 
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <RedeemCodeModal isOpen={isRedeemOpen} onClose={() => setIsRedeemOpen(false)} />
     </nav>
   );

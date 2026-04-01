@@ -81,7 +81,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role'];
+      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role', 'links'];
       return data.keys().hasOnly(allowedFields) &&
              data.uid is string && data.uid == request.auth.uid &&
              data.email is string &&
@@ -92,7 +92,8 @@ service cloud.firestore {
              (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 1000)) &&
              (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 1000)) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp) &&
-             (!('role' in data) || data.role in ['user', 'admin']);
+             (!('role' in data) || data.role in ['user', 'admin']) &&
+             (!('links' in data) || data.links is map);
     }
 
     function isValidProject(data) {
@@ -162,7 +163,7 @@ service cloud.firestore {
     }
 
     function isValidUserSettings(data) {
-      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId'];
+      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId', 'links', 'preferences', 'notifications'];
       return data.keys().hasOnly(allowedFields) &&
              (!('githubToken' in data) || data.githubToken is string) &&
              (!('vercelToken' in data) || data.vercelToken is string) &&
@@ -172,13 +173,17 @@ service cloud.firestore {
              (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
              (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 1000)) &&
              (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 1000)) &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp);
+             (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+             (!('links' in data) || data.links is map) &&
+             (!('preferences' in data) || data.preferences is map) &&
+             (!('notifications' in data) || data.notifications is map);
     }
 
     // Rules
     match /users/{uid} {
       allow read: if true;
       allow create, update: if isOwner(uid) && isValidUser(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     match /user_settings/{uid} {

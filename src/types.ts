@@ -96,6 +96,19 @@ export interface UserSettings {
   avatar?: string;
   githubToken?: string;
   githubInstallationId?: string;
+  links?: {
+    github?: string;
+    twitter?: string;
+    website?: string;
+  };
+  preferences?: {
+    fontSize?: number;
+    tabSize?: number;
+  };
+  notifications?: {
+    deployments?: boolean;
+    adminAnnouncements?: boolean;
+  };
   updatedAt?: any;
 }
 
@@ -143,6 +156,11 @@ export interface UserProfile {
   bio: string;
   role?: 'user' | 'admin';
   credits?: Credits;
+  links?: {
+    github?: string;
+    twitter?: string;
+    website?: string;
+  };
   updatedAt: any;
 }
 
