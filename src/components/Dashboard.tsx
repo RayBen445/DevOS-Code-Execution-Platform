@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload } from "lucide-react";
+import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime } from "../lib/utils";
 import GitHubImportModal from "./GitHubImportModal";
 import PublishTemplateModal from "./PublishTemplateModal";
+import ProjectSettingsModal from "./ProjectSettingsModal";
 import { toast } from "sonner";
 import { TEMPLATES, ProjectTemplate } from "../constants/templates";
 import { deductCredits, getCredits, CREDIT_COSTS } from "../lib/creditsService";
@@ -32,6 +33,8 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [publicProjects, setPublicProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<"my-projects" | "public-projects">("my-projects");
   const [publishTemplateProject, setPublishTemplateProject] = useState<Project | null>(null);
+  const [settingsProject, setSettingsProject] = useState<Project | null>(null);
+  const [resettingPortfolio, setResettingPortfolio] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -383,9 +386,66 @@ p {
     }
   };
 
+  const handleResetPortfolio = async (portfolio: Project) => {
+    if (!user) return;
+    if (!window.confirm("Reset your portfolio? This will clear all custom files and restore the default template. Your portfolio URL and ID are preserved.")) return;
+    setResettingPortfolio(true);
+    try {
+      // Delete existing files in batches of 500
+      const filesSnap = await getDocs(collection(db, "projects", portfolio.id, "files"));
+      const BATCH_SIZE = 500;
+      const docs = filesSnap.docs;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        docs.slice(i, i + BATCH_SIZE).forEach((f) => batch.delete(f.ref));
+        await batch.commit();
+      }
+
+      // Restore default portfolio files
+      const username = settings?.username || "user";
+      const defaultFiles = [
+        {
+          name: "portfolio.json",
+          path: "portfolio.json",
+          language: "json",
+          content: JSON.stringify({
+            displayName: settings?.displayName || user.displayName || username,
+            username,
+            bio: settings?.bio || "Full-stack developer. Building cool things with DevOS.",
+            featuredProjects: [],
+            socialLinks: { github: "", twitter: "", linkedin: "" },
+          }, null, 2),
+        },
+        {
+          name: "layout.json",
+          path: "layout.json",
+          language: "json",
+          content: JSON.stringify({ sections: ["hero", "projects", "activity"] }, null, 2),
+        },
+        {
+          name: "theme.json",
+          path: "theme.json",
+          language: "json",
+          content: JSON.stringify({ colorScheme: "dark", accentColor: "#3b82f6" }, null, 2),
+        },
+      ];
+      const filesRef = collection(db, "projects", portfolio.id, "files");
+      await Promise.all(
+        defaultFiles.map((f) =>
+          addDoc(filesRef, { ...f, projectId: portfolio.id, updatedAt: serverTimestamp() })
+        )
+      );
+      await updateDoc(doc(db, "projects", portfolio.id), { updatedAt: serverTimestamp() });
+      toast.success("Portfolio reset to default.");
+    } catch {
+      toast.error("Failed to reset portfolio.");
+    } finally {
+      setResettingPortfolio(false);
+    }
+  };
+
   const displayName = settings?.displayName || user?.displayName || "Developer";
   const avatarUrl = settings?.avatarUrl || user?.photoURL;
-
   return (
     <div className="max-w-6xl mx-auto p-8">
       {/* Header / Profile Section */}
@@ -413,34 +473,37 @@ p {
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-4">
-          <button
-            onClick={() => setIsQuickStarting(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
-          >
-            <Rocket className="w-5 h-5 text-blue-500" />
-            Quick Start
-          </button>
-          <button
-            onClick={handleTryDemo}
-            className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
-          >
-            <Sparkles className="w-5 h-5 text-yellow-500" />
-            Try Demo Project
-          </button>
-          <button
-            onClick={() => navigate("/templates")}
-            className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
-          >
-            <Layout className="w-5 h-5 text-purple-400" />
-            Marketplace
-          </button>
+        <div className="flex flex-wrap gap-3">
+          {/* Primary */}
           <button
             onClick={() => setIsCreating(true)}
             className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-white/90 transition-all active:scale-95"
           >
             <Plus className="w-5 h-5" />
             New Project
+          </button>
+          {/* Secondary */}
+          <button
+            onClick={() => setIsQuickStarting(true)}
+            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
+          >
+            <Rocket className="w-4 h-4 text-blue-400" />
+            Quick Start
+          </button>
+          <button
+            onClick={() => navigate("/templates")}
+            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
+          >
+            <Layout className="w-4 h-4 text-purple-400" />
+            Marketplace
+          </button>
+          {/* Tertiary */}
+          <button
+            onClick={handleTryDemo}
+            className="flex items-center gap-2 px-4 py-3 text-white/40 hover:text-white/70 rounded-xl font-medium transition-all active:scale-95 text-sm"
+          >
+            <Sparkles className="w-4 h-4 text-yellow-500/60" />
+            Try Demo
           </button>
         </div>
       </div>
@@ -647,75 +710,150 @@ p {
         {(activeTab === "my-projects" ? projects : publicProjects).map((project) => (
           <motion.div
             key={project.id}
-            whileHover={{ y: -4 }}
-            onClick={() => onSelectProject(project.id)}
-            className="group p-6 rounded-2xl bg-[#111] border border-white/5 hover:border-white/20 cursor-pointer transition-all relative"
+            whileHover={{ y: -2 }}
+            className={cn(
+              "group rounded-2xl border transition-all relative flex flex-col",
+              project.systemType === 'portfolio'
+                ? "bg-gradient-to-br from-yellow-500/5 to-yellow-600/5 border-yellow-500/20 hover:border-yellow-500/40"
+                : "bg-[#111] border-white/5 hover:border-white/20"
+            )}
           >
-            {project.ownerId === user?.uid && project.isDeletable !== false ? (
-              <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 z-10">
-                {/* Only non-portfolio projects can be published as templates */}
-                {project.systemType !== 'portfolio' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setPublishTemplateProject(project); }}
-                    className="p-2 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white transition-all"
-                    title="Publish as Template"
-                  >
-                    <Upload className="w-4 h-4" />
-                  </button>
-                )}
-                <button
-                  onClick={(e) => handleDeleteProject(e, project.id)}
-                  className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
-                  title="Delete Project"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+            {/* Portfolio badge */}
+            {project.systemType === 'portfolio' && (
+              <div className="px-4 pt-3 pb-0">
+                <span className="text-[10px] font-bold text-yellow-400/80 uppercase tracking-widest">
+                  ⭐ Your Public Profile
+                </span>
               </div>
-            ) : project.ownerId !== user?.uid ? (
-              <button
-                onClick={(e) => handleForkProject(e, project)}
-                className="absolute top-4 right-4 p-2 rounded-lg bg-blue-500/10 text-blue-500 opacity-0 group-hover:opacity-100 hover:bg-blue-500 hover:text-white transition-all z-10 flex items-center gap-2"
-                title="Fork Project"
-              >
-                <GitFork className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase">Fork</span>
-              </button>
-            ) : null}
-            <div className="flex items-start justify-between mb-4">
-              <div className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center transition-all",
-                project.systemType === 'portfolio' ? "bg-yellow-600/20 text-yellow-500 group-hover:bg-yellow-600 group-hover:text-white" :
-                project.isTemplate ? "bg-purple-600/20 text-purple-500 group-hover:bg-purple-600 group-hover:text-white" : "bg-blue-600/20 text-blue-500 group-hover:bg-blue-600 group-hover:text-white"
-              )}>
-                {project.systemType === 'portfolio' ? <UserIcon className="w-6 h-6" /> : <FolderCode className="w-6 h-6" />}
+            )}
+
+            {/* Card body */}
+            <div
+              className="p-5 flex-1 cursor-pointer"
+              onClick={() => onSelectProject(project.id)}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                  project.systemType === 'portfolio' ? "bg-yellow-600/20 text-yellow-500 group-hover:bg-yellow-600 group-hover:text-white" :
+                  project.isTemplate ? "bg-purple-600/20 text-purple-500 group-hover:bg-purple-600 group-hover:text-white" : "bg-blue-600/20 text-blue-500 group-hover:bg-blue-600 group-hover:text-white"
+                )}>
+                  {project.systemType === 'portfolio' ? <UserIcon className="w-5 h-5" /> : <FolderCode className="w-5 h-5" />}
+                </div>
+                <div className="flex gap-1.5 items-center">
+                  {project.isPublic ? (
+                    <span className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-wider">Public</span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-md bg-white/5 text-white/30 text-[10px] font-bold uppercase tracking-wider">Private</span>
+                  )}
+                  {project.isTemplate && (
+                    <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider">Template</span>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-2">
-                {project.isPublic && (
-                  <span className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-wider">Public</span>
-                )}
-                {project.systemType === 'portfolio' && (
-                  <span className="px-2 py-0.5 rounded-md bg-yellow-500/10 text-yellow-400 text-[10px] font-bold uppercase tracking-wider">Portfolio</span>
-                )}
-                {project.isTemplate && (
-                  <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider">Template</span>
-                )}
-                <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-white transition-colors" />
+              <h3 className="text-base font-bold text-white mb-1">{project.name}</h3>
+              {project.description && (
+                <p className="text-xs text-white/40 mb-3 line-clamp-2 leading-relaxed">{project.description}</p>
+              )}
+              <div className="flex items-center gap-3 text-xs text-white/30">
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{formatRelativeTime(project.updatedAt)}</span>
+                </div>
+                <div className="w-1 h-1 rounded-full bg-white/10" />
+                <div className="flex items-center gap-1">
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>{project.views || 0}</span>
+                </div>
               </div>
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">{project.name}</h3>
-            {project.description && (
-              <p className="text-sm text-white/40 mb-4 line-clamp-2">{project.description}</p>
-            )}
-            <div className="flex items-center gap-4 text-sm text-white/40">
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4" />
-                <span>Updated {formatRelativeTime(project.updatedAt)}</span>
-              </div>
-              <div className="w-1 h-1 rounded-full bg-white/10" />
-              <div className="flex items-center gap-1.5">
-                <Eye className="w-4 h-4" />
-                <span>{project.views || 0} views</span>
-              </div>
+
+            {/* Card actions footer */}
+            <div className="px-4 pb-4 flex gap-2">
+              {project.systemType === 'portfolio' ? (
+                /* Portfolio-specific actions */
+                <>
+                  <button
+                    onClick={() => onSelectProject(project.id)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-all text-xs font-bold"
+                  >
+                    <FolderCode className="w-3.5 h-3.5" />
+                    Open
+                  </button>
+                  {settings?.username && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate(`/u/${settings.username}`); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      View Portfolio
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleResetPortfolio(project); }}
+                    disabled={resettingPortfolio}
+                    className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-orange-500/10 hover:text-orange-400 transition-all"
+                    title="Reset Portfolio"
+                  >
+                    <RefreshCw className={cn("w-3.5 h-3.5", resettingPortfolio && "animate-spin")} />
+                  </button>
+                </>
+              ) : project.ownerId === user?.uid ? (
+                /* Owner actions */
+                <>
+                  <button
+                    onClick={() => onSelectProject(project.id)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 transition-all text-xs font-bold"
+                  >
+                    <FolderCode className="w-3.5 h-3.5" />
+                    Open
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSettingsProject(project); }}
+                    className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all"
+                    title="Project Settings"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </button>
+                  {!['portfolio' as string].includes(project.systemType ?? '') && !project.isTemplate && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPublishTemplateProject(project); }}
+                      className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-purple-500/10 hover:text-purple-400 transition-all"
+                      title="Publish as Template"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {project.isDeletable !== false && (
+                    <button
+                      onClick={(e) => handleDeleteProject(e, project.id)}
+                      className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                      title="Delete Project"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </>
+              ) : (
+                /* Public project - fork */
+                <>
+                  <button
+                    onClick={() => onSelectProject(project.id)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
+                  >
+                    <FolderCode className="w-3.5 h-3.5" />
+                    Open
+                  </button>
+                  <button
+                    onClick={(e) => handleForkProject(e, project)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all text-xs font-bold"
+                    title="Fork Project"
+                  >
+                    <GitFork className="w-3.5 h-3.5" />
+                    Fork
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         ))}
@@ -765,6 +903,14 @@ p {
           onClose={() => setPublishTemplateProject(null)}
           projectName={publishTemplateProject.name}
           projectId={publishTemplateProject.id}
+        />
+      )}
+
+      {settingsProject && (
+        <ProjectSettingsModal
+          project={settingsProject}
+          isOpen={!!settingsProject}
+          onClose={() => setSettingsProject(null)}
         />
       )}
     </div>

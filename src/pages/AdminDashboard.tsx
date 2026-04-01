@@ -10,10 +10,13 @@ import {
   updateDoc,
   query,
   orderBy,
+  onSnapshot,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById } from "../lib/templateService";
 import { adjustCredits, getCredits, DAILY_CREDITS_AMOUNT } from "../lib/creditsService";
-import { Template, UserProfile, Credits } from "../types";
+import { sendNotification } from "../lib/notificationService";
+import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
+import { Template, UserProfile, Credits, RedeemCode, NotificationType } from "../types";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -30,12 +33,17 @@ import {
   Plus,
   Star,
   Trash2,
+  Bell,
+  Gift,
+  Send,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Navbar from "../components/Navbar";
 
-type Tab = "overview" | "templates" | "users" | "credits";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem";
 
 interface UserWithCredits extends UserProfile {
   credits?: Credits;
@@ -74,6 +82,24 @@ export default function AdminDashboard() {
   const [creatingTemplate, setCreatingTemplate] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
 
+  // Notifications state
+  const [notifUserId, setNotifUserId] = useState("all");
+  const [notifType, setNotifType] = useState<NotificationType>("admin_message");
+  const [notifTitle, setNotifTitle] = useState("");
+  const [notifMessage, setNotifMessage] = useState("");
+  const [sendingNotif, setSendingNotif] = useState(false);
+
+  // Redeem codes state
+  const [redeemCodes, setRedeemCodes] = useState<RedeemCode[]>([]);
+  const [loadingCodes, setLoadingCodes] = useState(false);
+  const [showCreateCode, setShowCreateCode] = useState(false);
+  const [newCode, setNewCode] = useState("");
+  const [newCodeValue, setNewCodeValue] = useState("50");
+  const [newCodeUsageLimit, setNewCodeUsageLimit] = useState("100");
+  const [newCodePerUser, setNewCodePerUser] = useState("1");
+  const [newCodeExpiry, setNewCodeExpiry] = useState("");
+  const [creatingCode, setCreatingCode] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     const checkAdmin = async () => {
@@ -91,6 +117,12 @@ export default function AdminDashboard() {
     };
     checkAdmin();
   }, [user]);
+
+  useEffect(() => {
+    if (activeTab === "redeem" && isAdmin && redeemCodes.length === 0) {
+      loadRedeemCodes();
+    }
+  }, [activeTab, isAdmin]);
 
   const loadData = async () => {
     setLoading(true);
@@ -201,6 +233,95 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSendNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !notifTitle.trim() || !notifMessage.trim()) return;
+    setSendingNotif(true);
+    try {
+      await sendNotification({
+        userId: notifUserId.trim() || "all",
+        type: notifType,
+        title: notifTitle.trim(),
+        message: notifMessage.trim(),
+        createdBy: user.uid,
+      });
+      toast.success(
+        notifUserId === "all" || !notifUserId.trim()
+          ? "Notification sent to all users."
+          : `Notification sent to ${notifUserId}.`
+      );
+      setNotifTitle("");
+      setNotifMessage("");
+    } catch {
+      toast.error("Failed to send notification.");
+    } finally {
+      setSendingNotif(false);
+    }
+  };
+
+  const loadRedeemCodes = async () => {
+    setLoadingCodes(true);
+    try {
+      const snap = await getDocs(collection(db, "redeem_codes"));
+      setRedeemCodes(snap.docs.map((d) => ({ id: d.id, ...d.data() } as RedeemCode)));
+    } catch {
+      toast.error("Failed to load redeem codes.");
+    } finally {
+      setLoadingCodes(false);
+    }
+  };
+
+  const handleCreateRedeemCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !newCode.trim()) return;
+    setCreatingCode(true);
+    try {
+      await createRedeemCode({
+        code: newCode,
+        type: "credits",
+        value: parseInt(newCodeValue, 10) || 50,
+        usageLimit: parseInt(newCodeUsageLimit, 10) || -1,
+        perUserLimit: parseInt(newCodePerUser, 10) || 1,
+        expiresAt: newCodeExpiry ? new Date(newCodeExpiry) : null,
+        createdBy: user.uid,
+      });
+      toast.success("Redeem code created!");
+      setNewCode("");
+      setNewCodeValue("50");
+      setNewCodeUsageLimit("100");
+      setNewCodePerUser("1");
+      setNewCodeExpiry("");
+      setShowCreateCode(false);
+      await loadRedeemCodes();
+    } catch {
+      toast.error("Failed to create code.");
+    } finally {
+      setCreatingCode(false);
+    }
+  };
+
+  const handleToggleCode = async (codeId: string, isActive: boolean) => {
+    try {
+      await toggleRedeemCode(codeId, !isActive);
+      setRedeemCodes((prev) =>
+        prev.map((c) => (c.id === codeId ? { ...c, isActive: !isActive } : c))
+      );
+    } catch {
+      toast.error("Failed to update code.");
+    }
+  };
+
+  const handleDeleteCode = async (codeId: string) => {
+    if (!window.confirm(`Delete code "${codeId}"?`)) return;
+    try {
+      await deleteRedeemCode(codeId);
+      setRedeemCodes((prev) => prev.filter((c) => c.id !== codeId));
+      toast.success("Code deleted.");
+    } catch {
+      toast.error("Failed to delete code.");
+    }
+  };
+
   const handleAdjustCredits = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!creditTarget.trim() || !creditAmount) return;
@@ -289,6 +410,8 @@ export default function AdminDashboard() {
     },
     { id: "users", label: "Users", icon: <Users className="w-4 h-4" /> },
     { id: "credits", label: "Credits", icon: <Zap className="w-4 h-4" /> },
+    { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
+    { id: "redeem", label: "Redeem Codes", icon: <Gift className="w-4 h-4" /> },
   ];
 
   return (
@@ -570,8 +693,7 @@ export default function AdminDashboard() {
             )}
 
             {/* Credits Tab */}
-            {activeTab === "credits" && (
-              <div className="space-y-8">
+            {activeTab === "credits" && (              <div className="space-y-8">
                 <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-lg">
                   <h2 className="text-xl font-bold text-white mb-2">Adjust User Credits</h2>
                   <p className="text-white/40 text-sm mb-6">
@@ -680,6 +802,197 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Notifications Tab */}
+            {activeTab === "notifications" && (
+              <div className="space-y-8">
+                <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-lg">
+                  <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-blue-400" />
+                    Send Notification
+                  </h2>
+                  <p className="text-white/40 text-sm mb-6">
+                    Send a message to all users or a specific user.
+                  </p>
+                  <form onSubmit={handleSendNotification} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Recipient (UID or "all")</label>
+                      <input
+                        type="text"
+                        value={notifUserId}
+                        onChange={(e) => setNotifUserId(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                        placeholder="all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
+                      <select
+                        value={notifType}
+                        onChange={(e) => setNotifType(e.target.value as NotificationType)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                      >
+                        <option value="admin_message">Admin Message</option>
+                        <option value="system_update">System Update</option>
+                        <option value="credit_warning">Credit Warning</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Title</label>
+                      <input
+                        type="text"
+                        value={notifTitle}
+                        onChange={(e) => setNotifTitle(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                        required
+                        placeholder="Notification title"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Message</label>
+                      <textarea
+                        value={notifMessage}
+                        onChange={(e) => setNotifMessage(e.target.value)}
+                        rows={3}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none"
+                        required
+                        placeholder="Notification message..."
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={sendingNotif}
+                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      {sendingNotif ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {sendingNotif ? "Sending..." : "Send Notification"}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Redeem Codes Tab */}
+            {activeTab === "redeem" && (
+              <div className="space-y-8">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Gift className="w-5 h-5 text-yellow-400" />
+                    Redeem Codes
+                  </h2>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={loadRedeemCodes}
+                      className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                      title="Refresh"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setShowCreateCode((v) => !v)}
+                      className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-bold text-sm transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Code
+                    </button>
+                  </div>
+                </div>
+
+                {showCreateCode && (
+                  <form onSubmit={handleCreateRedeemCode} className="bg-[#111] border border-white/10 rounded-2xl p-6 space-y-4 max-w-xl">
+                    <h3 className="text-base font-bold text-white">New Redeem Code</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5 col-span-2">
+                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Code</label>
+                        <input
+                          type="text"
+                          value={newCode}
+                          onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white font-mono tracking-widest focus:outline-none focus:border-yellow-500/50 transition-all uppercase"
+                          required placeholder="DEVOS2024"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Credits Value</label>
+                        <input type="number" value={newCodeValue} onChange={(e) => setNewCodeValue(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Usage Limit (-1 = ∞)</label>
+                        <input type="number" value={newCodeUsageLimit} onChange={(e) => setNewCodeUsageLimit(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" required />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Per User Limit</label>
+                        <input type="number" value={newCodePerUser} onChange={(e) => setNewCodePerUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Expires At (optional)</label>
+                        <input type="datetime-local" value={newCodeExpiry} onChange={(e) => setNewCodeExpiry(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" />
+                      </div>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <button type="button" onClick={() => setShowCreateCode(false)} className="px-5 py-2.5 rounded-xl font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
+                      <button type="submit" disabled={creatingCode} className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-bold transition-all flex items-center gap-2 disabled:opacity-60">
+                        {creatingCode && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {creatingCode ? "Creating..." : "Create Code"}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {loadingCodes ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
+                  </div>
+                ) : redeemCodes.length === 0 ? (
+                  <div className="py-12 text-center text-white/20 text-sm">
+                    No redeem codes yet. Create one above.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {redeemCodes.map((code) => (
+                      <div key={code.id} className="p-5 rounded-2xl bg-[#111] border border-white/5 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono font-bold text-white text-lg tracking-widest">{code.id}</span>
+                            <span className={cn(
+                              "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
+                              code.isActive ? "bg-green-500/10 text-green-400" : "bg-white/5 text-white/20"
+                            )}>
+                              {code.isActive ? "Active" : "Disabled"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-white/40">
+                            +{code.value} credits · Used {code.usedCount} / {code.usageLimit === -1 ? "∞" : code.usageLimit} · {code.perUserLimit}×/user
+                            {code.expiresAt && (
+                              <> · Expires {new Date(code.expiresAt.toMillis?.() ?? code.expiresAt).toLocaleDateString()}</>
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => handleToggleCode(code.id, code.isActive)}
+                            className={cn(
+                              "p-2 rounded-lg transition-all",
+                              code.isActive ? "bg-green-500/10 text-green-400 hover:bg-green-500/20" : "bg-white/5 text-white/30 hover:bg-white/10"
+                            )}
+                            title={code.isActive ? "Disable" : "Enable"}
+                          >
+                            {code.isActive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCode(code.id)}
+                            className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>

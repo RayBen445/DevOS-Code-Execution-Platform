@@ -226,5 +226,49 @@ service cloud.firestore {
       allow read: if isOwner(uid) || isAdmin();
       allow write: if isAdmin();
     }
+
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && (
+        resource.data.get('userId', '') == request.auth.uid ||
+        resource.data.get('userId', '') == 'all' ||
+        isAdmin()
+      );
+      allow create: if isAdmin();
+      allow update: if isAuthenticated() && (
+        // Allow user to mark their targeted notification as read
+        resource.data.get('userId', '') == request.auth.uid ||
+        // Allow any user to mark broadcast notifications as read (add themselves to readBy)
+        resource.data.get('userId', '') == 'all' ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /redeem_codes/{codeId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{uid}/redeemed_codes/{codeId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /feed/{postId} {
+      allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.get('userId', '') == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.get('userId', '') == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    match /system_config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
   }
 }

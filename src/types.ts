@@ -145,3 +145,52 @@ export interface UserProfile {
   credits?: Credits;
   updatedAt: any;
 }
+
+export type NotificationType =
+  | 'deployment_success'
+  | 'deployment_failed'
+  | 'credit_warning'
+  | 'system_update'
+  | 'admin_message';
+
+export interface Notification {
+  id: string;
+  userId: string; // specific uid or "all" for broadcast
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead?: boolean; // for targeted (userId != "all")
+  readBy?: string[]; // for broadcast (userId == "all")
+  createdAt: any;
+  createdBy: string;
+  projectId?: string;
+}
+
+export interface FeedPost {
+  id: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  content: string;
+  type: 'update' | 'deployment' | 'snippet';
+  projectId?: string;
+  projectName?: string;
+  createdAt: any;
+  likes: number;
+  likedBy?: string[];
+  isPublic: boolean;
+}
+
+export interface RedeemCode {
+  id: string; // the code itself
+  type: 'credits';
+  value: number; // credit amount
+  expiresAt: any | null;
+  usageLimit: number; // -1 = unlimited
+  usedCount: number;
+  perUserLimit: number; // 1 = once per user
+  isActive: boolean;
+  createdBy: string;
+  createdAt: any;
+}
