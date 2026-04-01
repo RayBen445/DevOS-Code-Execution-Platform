@@ -81,7 +81,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt'];
+      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role'];
       return data.keys().hasOnly(allowedFields) &&
              data.uid is string && data.uid == request.auth.uid &&
              data.email is string &&
@@ -91,7 +91,8 @@ service cloud.firestore {
              (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
              (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 1000)) &&
              (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 1000)) &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp);
+             (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+             (!('role' in data) || data.role in ['user', 'admin']);
     }
 
     function isValidProject(data) {
@@ -212,6 +213,18 @@ service cloud.firestore {
         allow read: if canReadProject(projectId, getProjectData(projectId));
         allow create, delete: if canWriteProject(projectId, getProjectData(projectId));
       }
+    }
+
+    match /templates/{templateId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.authorId == request.auth.uid);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.authorId == request.auth.uid);
+    }
+
+    match /user_credits/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
     }
   }
 }

@@ -653,13 +653,16 @@ p {
           >
             {project.ownerId === user?.uid && project.isDeletable !== false ? (
               <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 z-10">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setPublishTemplateProject(project); }}
-                  className="p-2 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white transition-all"
-                  title="Publish as Template"
-                >
-                  <Upload className="w-4 h-4" />
-                </button>
+                {/* Only non-portfolio projects can be published as templates */}
+                {project.systemType !== 'portfolio' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setPublishTemplateProject(project); }}
+                    className="p-2 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white transition-all"
+                    title="Publish as Template"
+                  >
+                    <Upload className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={(e) => handleDeleteProject(e, project.id)}
                   className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
@@ -720,9 +723,27 @@ p {
         {(activeTab === "my-projects" ? projects : publicProjects).length === 0 && !isCreating && (
           <div className="col-span-full py-20 text-center rounded-3xl border-2 border-dashed border-white/5">
             <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-4" />
-            <p className="text-white/40 font-medium">
+            <p className="text-white/40 font-medium mb-6">
               {activeTab === "my-projects" ? "No projects yet. Create your first one to get started!" : "No public projects found."}
             </p>
+            {activeTab === "my-projects" && (
+              <div className="flex items-center justify-center gap-4 flex-wrap">
+                <button
+                  onClick={() => setIsCreating(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Project
+                </button>
+                <button
+                  onClick={() => navigate("/templates")}
+                  className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
+                >
+                  <Layout className="w-4 h-4 text-purple-400" />
+                  Use Template
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

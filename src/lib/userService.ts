@@ -15,6 +15,43 @@ import { initializeCredits } from "./creditsService";
 
 const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "oladoyeheritage445@gmail.com";
 
+/**
+ * Called immediately after email sign-up to persist fullName and username
+ * chosen by the user in the registration form.
+ */
+export const registerUserProfile = async (
+  user: { uid: string; email: string | null; displayName: string | null; photoURL: string | null },
+  profile: { fullName: string; username: string }
+) => {
+  const isAdmin = user.email === ADMIN_EMAIL;
+  const userRef = doc(db, "users", user.uid);
+  const settingsRef = doc(db, "user_settings", user.uid);
+
+  await setDoc(userRef, {
+    uid: user.uid,
+    email: user.email || "",
+    username: profile.username,
+    displayName: profile.fullName || profile.username,
+    fullName: profile.fullName,
+    avatarUrl: user.photoURL || "",
+    bio: "Building the future on DevOS.",
+    role: isAdmin ? "admin" : "user",
+    updatedAt: serverTimestamp(),
+  });
+
+  await setDoc(settingsRef, {
+    username: profile.username,
+    displayName: profile.fullName || profile.username,
+    fullName: profile.fullName,
+    avatarUrl: user.photoURL || "",
+    bio: "Building the future on DevOS.",
+    updatedAt: serverTimestamp(),
+  });
+
+  await initializeCredits(user.uid);
+  await createPortfolioProject(user.uid, profile.username);
+};
+
 export const initializeUser = async (user: any) => {
   if (!user) return;
 
