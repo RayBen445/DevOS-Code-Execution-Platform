@@ -7,6 +7,9 @@ import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Loader2, Zap, 
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
+import { resolveAvatar } from "../lib/avatars";
+import { useSEO } from "../hooks/useSEO";
+import Footer from "../components/Footer";
 
 export default function Portfolio() {
   const { username } = useParams<{ username: string }>();
@@ -28,7 +31,6 @@ export default function Portfolio() {
 
     setLoading(true);
     setError(null);
-    document.title = `${username} | DevOS Portfolio`;
 
     // 1. Fetch user by username from users (public)
     const usersRef = collection(db, "users");
@@ -140,12 +142,19 @@ export default function Portfolio() {
 
     return () => {
       unsubUser();
-      document.title = "DevOS | Collaborative IDE";
     };
   }, [username]);
 
-  const handleCopyLink = async (url: string, id: string) => {
-    try {
+  const portfolioAvatarUrl = resolveAvatar(userSettings?.avatar || userSettings?.avatarUrl);
+  const portfolioDisplayName = userSettings?.fullName || userSettings?.displayName || userSettings?.username || username || "";
+  useSEO({
+    title: `@${username ?? ""} — DevOS Portfolio`,
+    description: `Explore projects built by @${username ?? ""} on DevOS`,
+    ogImage: portfolioAvatarUrl,
+    ogUrl: typeof window !== "undefined" ? window.location.href : undefined,
+  });
+
+  const handleCopyLink = async (url: string, id: string) => {    try {
       await navigator.clipboard.writeText(url);
       setCopiedId(id);
       toast.success("Link copied to clipboard");
@@ -236,18 +245,12 @@ export default function Portfolio() {
               className="absolute inset-[-8px] rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 opacity-20 blur-md group-hover:opacity-40 transition-opacity"
             />
             <div className="relative w-32 h-32 rounded-full bg-[#111] border-2 border-white/10 overflow-hidden shadow-2xl">
-              {(userSettings.avatar || userSettings.avatarUrl) ? (
-                <img
-                  src={userSettings.avatar || userSettings.avatarUrl}
-                  alt={userSettings.fullName || userSettings.username}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white/20">
-                  <UserIcon className="w-12 h-12" />
-                </div>
-              )}
+              <img
+                src={portfolioAvatarUrl}
+                alt={portfolioDisplayName}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-blue-600 border-4 border-[#050505] flex items-center justify-center shadow-lg">
               <Zap className="w-3.5 h-3.5 text-white fill-white" />
@@ -429,6 +432,8 @@ export default function Portfolio() {
           </p>
         </div>
       </footer>
+
+      <Footer />
     </div>
   );
 }

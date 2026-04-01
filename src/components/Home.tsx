@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Code2, Terminal, Shield, Zap, Github, Globe, ChevronRight, Rocket, Sparkles, X, Plus, Code, Share2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "./Navbar";
+import Footer from "./Footer";
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
 
@@ -198,6 +199,7 @@ export default function Home({ setShowLogin }: HomeProps) {
           </div>
         )}
       </AnimatePresence>
+      <Footer />
     </div>
   );
 }

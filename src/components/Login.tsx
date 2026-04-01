@@ -4,6 +4,7 @@ import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { registerUserProfile } from "../lib/userService";
+import { getAuthErrorMessage } from "../lib/errorMessages";
 
 interface LoginProps {
   onClose: () => void;
@@ -49,7 +50,7 @@ export default function Login({ onClose }: LoginProps) {
       onClose();
     } catch (error: any) {
       console.error("Email auth error:", error);
-      setError(error.message || "Authentication failed.");
+      setError(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }

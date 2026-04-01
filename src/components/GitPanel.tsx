@@ -5,6 +5,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { GitBranch, GitCommit, GitPullRequest, History, Check, X, Loader2, ArrowUp, ArrowDown, Github, Plus } from "lucide-react";
 import { FileData, Commit, PullRequest } from "../types";
 import { cn } from "../lib/utils";
+import ConfirmModal from "./ConfirmModal";
 
 interface GitPanelProps {
   projectId: string;
@@ -18,6 +19,8 @@ export default function GitPanel({ projectId, files }: GitPanelProps) {
   const [commitMessage, setCommitMessage] = useState("");
   const [isCommitting, setIsCommitting] = useState(false);
   const [view, setView] = useState<"commits" | "prs">("commits");
+  const [restoreConfirm, setRestoreConfirm] = useState<Commit | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
   
   // PR Form State
   const [isCreatingPR, setIsCreatingPR] = useState(false);
@@ -111,8 +114,13 @@ export default function GitPanel({ projectId, files }: GitPanelProps) {
   };
 
   const handleRestore = async (commit: Commit) => {
-    if (!window.confirm(`Restore project to commit: "${commit.message}"? This will overwrite current files.`)) return;
+    setRestoreConfirm(commit);
+  };
 
+  const confirmRestore = async () => {
+    const commit = restoreConfirm;
+    if (!commit) return;
+    setIsRestoring(true);
     try {
       const batch = writeBatch(db);
       for (const fileData of commit.filesSnapshot) {
@@ -124,12 +132,16 @@ export default function GitPanel({ projectId, files }: GitPanelProps) {
         });
       }
       await batch.commit();
+      setRestoreConfirm(null);
     } catch (error) {
       console.error("Error restoring commit:", error);
+    } finally {
+      setIsRestoring(false);
     }
   };
 
   return (
+    <>
     <div className="flex flex-col h-full bg-[#111]">
       <div className="p-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex gap-4">
@@ -236,5 +248,17 @@ export default function GitPanel({ projectId, files }: GitPanelProps) {
         )}
       </div>
     </div>
+
+    <ConfirmModal
+      open={!!restoreConfirm}
+      title="Restore Commit"
+      description={restoreConfirm ? `Restore project to: "${restoreConfirm.message}"?` : ""}
+      warning="This will overwrite all current files. This action cannot be undone."
+      confirmLabel="Restore"
+      loading={isRestoring}
+      onConfirm={confirmRestore}
+      onCancel={() => setRestoreConfirm(null)}
+    />
+    </>
   );
 }

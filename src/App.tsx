@@ -7,11 +7,17 @@ import Dashboard from "./components/Dashboard";
 import IDE from "./components/IDE";
 import Login from "./components/Login";
 import Home from "./components/Home";
+import Footer from "./components/Footer";
 import PrivacyTerms from "./pages/PrivacyTerms";
 import Portfolio from "./pages/Portfolio";
 import ProjectPreview from "./pages/ProjectPreview";
 import TemplatePage from "./pages/TemplatePage";
 import AdminDashboard from "./pages/AdminDashboard";
+import StatusPage from "./pages/StatusPage";
+import DocsPage from "./pages/DocsPage";
+import SettingsPage from "./pages/SettingsPage";
+import SearchPage from "./pages/SearchPage";
+import ExplorePage from "./pages/ExplorePage";
 import ScrollToTop from "./components/ScrollToTop";
 import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -65,6 +71,11 @@ export default function App() {
           <Route path="/terms" element={<PrivacyTerms />} />
           <Route path="/templates" element={<TemplatePage />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/status" element={<StatusPage />} />
+          <Route path="/docs" element={<DocsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/explore" element={<ExplorePage />} />
           <Route path="/u/:username" element={<Portfolio />} />
           <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
           <Route path="/" element={
@@ -80,9 +91,12 @@ export default function App() {
             ) : selectedProjectId ? (
               <IDE projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
             ) : (
-              <div className="min-h-screen bg-[#0a0a0a] text-white">
+              <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
                 <Navbar />
-                <Dashboard onSelectProject={setSelectedProjectId} />
+                <div className="flex-1">
+                  <Dashboard onSelectProject={setSelectedProjectId} />
+                </div>
+                <Footer />
               </div>
             )
           } />

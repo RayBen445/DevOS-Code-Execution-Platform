@@ -6,6 +6,7 @@ import { collection, addDoc, serverTimestamp, deleteDoc, doc, updateDoc } from "
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { cn } from "../lib/utils";
 import JSZip from "jszip";
+import ConfirmModal from "./ConfirmModal";
 
 interface SidebarProps {
   files: FileData[];
@@ -46,6 +47,7 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null); // path of the folder
   const [editingFileName, setEditingFileName] = useState("");
   const [editingFolderName, setEditingFolderName] = useState("");
+  const [deleteFolderConfirm, setDeleteFolderConfirm] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const folderEditInputRef = useRef<HTMLInputElement>(null);
 
@@ -216,14 +218,18 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
   const handleDeleteFolder = async (e: React.MouseEvent, folderPath: string) => {
     e.stopPropagation();
     if (readOnly) return;
-    
-    if (!window.confirm(`Are you sure you want to delete the folder "${folderPath}" and all its contents?`)) return;
+    setDeleteFolderConfirm(folderPath);
+  };
 
+  const confirmDeleteFolder = async () => {
+    const folderPath = deleteFolderConfirm;
+    if (!folderPath) return;
     const filesToDelete = files.filter(f => f.path.startsWith(`${folderPath}/`) || f.path === folderPath);
     
     try {
       const deletePromises = filesToDelete.map(f => deleteDoc(doc(db, "projects", projectId, "files", f.id)));
       await Promise.all(deletePromises);
+      setDeleteFolderConfirm(null);
     } catch (error) {
       console.error("Error deleting folder:", error);
     }
@@ -574,6 +580,7 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
   };
 
   return (
+    <>
     <div className="w-64 border-r border-white/5 bg-[#111] flex flex-col">
       <div className="p-4 flex items-center justify-between border-b border-white/5">
         <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Explorer</span>
@@ -666,5 +673,16 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
         </div>
       </div>
     </div>
+
+    <ConfirmModal
+      open={!!deleteFolderConfirm}
+      title="Delete Folder"
+      description={deleteFolderConfirm ? `Delete the folder "${deleteFolderConfirm}" and all its contents?` : ""}
+      warning="This action cannot be undone."
+      confirmLabel="Delete Folder"
+      onConfirm={confirmDeleteFolder}
+      onCancel={() => setDeleteFolderConfirm(null)}
+    />
+    </>
   );
 }

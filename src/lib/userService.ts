@@ -8,10 +8,12 @@ import {
   where, 
   getDocs, 
   addDoc, 
-  serverTimestamp 
+  serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 import { Project } from "../types";
 import { initializeCredits } from "./creditsService";
+import { DEFAULT_USER_AVATAR } from "./avatars";
 
 const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "oladoyeheritage445@gmail.com";
 
@@ -26,6 +28,7 @@ export const registerUserProfile = async (
   const isAdmin = user.email === ADMIN_EMAIL;
   const userRef = doc(db, "users", user.uid);
   const settingsRef = doc(db, "user_settings", user.uid);
+  const avatar = user.photoURL || DEFAULT_USER_AVATAR;
 
   await setDoc(userRef, {
     uid: user.uid,
@@ -33,7 +36,7 @@ export const registerUserProfile = async (
     username: profile.username,
     displayName: profile.fullName || profile.username,
     fullName: profile.fullName,
-    avatarUrl: user.photoURL || "",
+    avatarUrl: avatar,
     bio: "Building the future on DevOS.",
     role: isAdmin ? "admin" : "user",
     updatedAt: serverTimestamp(),
@@ -43,7 +46,7 @@ export const registerUserProfile = async (
     username: profile.username,
     displayName: profile.fullName || profile.username,
     fullName: profile.fullName,
-    avatarUrl: user.photoURL || "",
+    avatarUrl: avatar,
     bio: "Building the future on DevOS.",
     updatedAt: serverTimestamp(),
   });
@@ -63,6 +66,7 @@ export const initializeUser = async (user: any) => {
     // Create initial settings
     const username = user.email?.split("@")[0] || `user_${user.uid.slice(0, 5)}`;
     const isAdmin = user.email === ADMIN_EMAIL;
+    const avatar = user.photoURL || DEFAULT_USER_AVATAR;
     
     // Create public user profile
     await setDoc(userRef, {
@@ -70,7 +74,7 @@ export const initializeUser = async (user: any) => {
       email: user.email || "",
       username,
       displayName: user.displayName || username,
-      avatarUrl: user.photoURL || "",
+      avatarUrl: avatar,
       bio: "Building the future on DevOS.",
       role: isAdmin ? "admin" : "user",
       updatedAt: serverTimestamp(),
@@ -80,7 +84,7 @@ export const initializeUser = async (user: any) => {
     await setDoc(settingsRef, {
       username,
       displayName: user.displayName || username,
-      avatarUrl: user.photoURL || "",
+      avatarUrl: avatar,
       bio: "Building the future on DevOS.",
       updatedAt: serverTimestamp(),
     });
@@ -111,7 +115,6 @@ export const initializeUser = async (user: any) => {
       const userSnap2 = userSnap;
       const existingRole = userSnap2.data()?.role;
       if (user.email === ADMIN_EMAIL && existingRole !== "admin") {
-        const { updateDoc } = await import("firebase/firestore");
         await updateDoc(userRef, { role: "admin" });
       }
     }
