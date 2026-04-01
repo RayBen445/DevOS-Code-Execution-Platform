@@ -169,7 +169,8 @@ export type NotificationType =
   | 'deployment_failed'
   | 'credit_warning'
   | 'system_update'
-  | 'admin_message';
+  | 'admin_message'
+  | 'follow';
 
 export interface Notification {
   id: string;

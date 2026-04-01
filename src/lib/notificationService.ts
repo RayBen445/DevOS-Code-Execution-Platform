@@ -172,3 +172,25 @@ export async function notifyCreditWarning(
     createdBy: "system",
   });
 }
+
+/**
+ * Send a follow notification to the followed user.
+ * Called client-side by the follower; Firestore rules allow follow-type
+ * notifications to be created by the initiating user.
+ */
+export async function notifyFollow(params: {
+  followerId: string;
+  followerUsername: string;
+  followingId: string;
+}): Promise<void> {
+  await addDoc(collection(db, "notifications"), {
+    userId: params.followingId,
+    type: "follow",
+    title: "New follower",
+    message: `@${params.followerUsername} started following you.`,
+    isRead: false,
+    readBy: [],
+    createdAt: serverTimestamp(),
+    createdBy: params.followerId,
+  });
+}

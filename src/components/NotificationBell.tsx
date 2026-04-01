@@ -20,6 +20,7 @@ const TYPE_ICON: Record<string, string> = {
   credit_warning: "⚡",
   system_update: "📢",
   admin_message: "👑",
+  follow: "👤",
 };
 
 export default function NotificationBell() {

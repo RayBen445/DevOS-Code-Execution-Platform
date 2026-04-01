@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -83,6 +83,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
         {user && (
           <div className="flex items-center gap-1">
             <Link
+              to="/explore"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <Compass className="w-4 h-4" />
+              Explore
+            </Link>
+            <Link
               to="/templates"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
             >
@@ -116,6 +123,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             )}
 
             {/* Notification bell */}
+            <Link
+              to="/search"
+              className="p-2 rounded-lg hover:bg-white/5 text-white/60 hover:text-white transition-colors"
+              title="Search developers"
+            >
+              <Search className="w-5 h-5" />
+            </Link>
             <NotificationBell />
 
             {/* Profile dropdown */}

@@ -16,6 +16,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import StatusPage from "./pages/StatusPage";
 import DocsPage from "./pages/DocsPage";
 import SettingsPage from "./pages/SettingsPage";
+import SearchPage from "./pages/SearchPage";
+import ExplorePage from "./pages/ExplorePage";
 import ScrollToTop from "./components/ScrollToTop";
 import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -72,6 +74,8 @@ export default function App() {
           <Route path="/status" element={<StatusPage />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/explore" element={<ExplorePage />} />
           <Route path="/u/:username" element={<Portfolio />} />
           <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
           <Route path="/" element={

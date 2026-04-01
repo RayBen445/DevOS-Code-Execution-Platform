@@ -238,7 +238,14 @@ service cloud.firestore {
         resource.data.get('userId', '') == 'all' ||
         isAdmin()
       );
-      allow create: if isAdmin();
+      allow create: if isAdmin() || (
+        // Allow authenticated users to create follow notifications for other users
+        isAuthenticated() &&
+        request.resource.data.type == 'follow' &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.userId != request.auth.uid &&
+        request.resource.data.get('isRead', false) == false
+      );
       allow update: if isAuthenticated() && (
         // Allow user to mark their targeted notification as read
         resource.data.get('userId', '') == request.auth.uid ||
@@ -274,6 +281,18 @@ service cloud.firestore {
     match /system_config/{configId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
+    }
+
+    match /follows/{followId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        request.resource.data.followerId == request.auth.uid &&
+        request.resource.data.followingId != request.auth.uid &&
+        request.resource.data.followerId is string &&
+        request.resource.data.followingId is string &&
+        request.resource.data.createdAt is timestamp;
+      allow delete: if isAuthenticated() &&
+        resource.data.followerId == request.auth.uid;
     }
   }
 }
