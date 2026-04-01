@@ -22,9 +22,15 @@ export default function ProjectPreview() {
       if (!username || !projectSlug) return;
       
       try {
-        // 1. Find project by ownerUsername and projectSlug
+        // 1. Find the deployed (public) project by ownerUsername and projectSlug.
+        //    The isPublic constraint is required: Firestore security rules for
+        //    unauthenticated list queries mandate that the WHERE clauses imply the
+        //    rule condition (isPublic == true).  A composite index on
+        //    (isPublic ASC, ownerUsername ASC, projectSlug ASC) covers this query
+        //    — see firestore.indexes.json.
         const q = query(
           collection(db, "projects"),
+          where("isPublic", "==", true),
           where("ownerUsername", "==", username),
           where("projectSlug", "==", projectSlug),
           limit(1)
@@ -47,9 +53,15 @@ export default function ProjectPreview() {
         
         // 3. Generate preview content
         generatePreview(projectData, filesData);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error fetching project:", err);
-        setError("Failed to load project");
+        const code = err?.code || "";
+        if (code === "permission-denied") {
+          setError("This project is private or you don't have access to view it.");
+        } else {
+          const msg = err?.message || String(err);
+          setError(`Failed to load project: ${msg}`);
+        }
       } finally {
         setLoading(false);
       }

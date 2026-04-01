@@ -197,6 +197,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
+  const handleFileInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    (e.target as HTMLInputElement).value = "";
+  };
+
+  const handleAvatarUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAvatar(e.target.value);
+    setAvatarUrl(e.target.value);
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -269,7 +278,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <div className="absolute -bottom-2 -right-2 flex flex-col gap-1">
                         <label className="p-2 bg-blue-600 rounded-xl cursor-pointer hover:bg-blue-700 transition-all shadow-lg active:scale-90 group/upload">
                           <Upload className="w-4 h-4 text-white" />
-                          <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
+                          <input type="file" className="hidden" accept="image/*" onClick={handleFileInputClick} onChange={handleImageUpload} disabled={isUploading} />
                           <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black text-white text-[10px] font-bold rounded opacity-0 group-hover/upload:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">
                             Upload Image
                           </div>
@@ -335,7 +344,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <input
                       type="text"
                       value={avatar}
-                      onChange={(e) => setAvatar(e.target.value)}
+                      onChange={handleAvatarUrlChange}
                       placeholder="https://example.com/avatar.jpg"
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
                     />
