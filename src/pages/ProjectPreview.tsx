@@ -22,22 +22,26 @@ export default function ProjectPreview() {
       if (!username || !projectSlug) return;
       
       try {
-        // 1. Find project by ownerUsername and projectSlug
+        // 1. Find project by projectSlug (single-field query; no composite index needed).
+        //    ProjectSlugs include a random suffix making them practically unique, so limit(1)
+        //    is sufficient. ownerUsername is then verified client-side to ensure the URL
+        //    owner matches.
         const q = query(
           collection(db, "projects"),
-          where("ownerUsername", "==", username),
           where("projectSlug", "==", projectSlug),
           limit(1)
         );
         
         const snapshot = await getDocs(q);
-        if (snapshot.empty) {
+        const firstDoc = snapshot.docs[0];
+        const matchingDoc = (firstDoc && firstDoc.data().ownerUsername === username) ? firstDoc : undefined;
+        if (!matchingDoc) {
           setError("Project not found");
           setLoading(false);
           return;
         }
         
-        const projectData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Project;
+        const projectData = { id: matchingDoc.id, ...matchingDoc.data() } as Project;
         setProject(projectData);
         
         // 2. Fetch files for the project
@@ -47,9 +51,15 @@ export default function ProjectPreview() {
         
         // 3. Generate preview content
         generatePreview(projectData, filesData);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error fetching project:", err);
-        setError("Failed to load project");
+        const code = err?.code || "";
+        if (code === "permission-denied") {
+          setError("This project is private or you don't have access to view it.");
+        } else {
+          const msg = err?.message || String(err);
+          setError(`Failed to load project: ${msg}`);
+        }
       } finally {
         setLoading(false);
       }
