@@ -88,3 +88,40 @@ export const toggleLike = async (templateId: string, liked: boolean): Promise<vo
     likes: increment(liked ? 1 : -1),
   });
 };
+
+export const createOfficialTemplate = async (params: {
+  name: string;
+  description: string;
+  files: Template['files'];
+  tags?: string[];
+}): Promise<string> => {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not authenticated");
+  const docRef = await addDoc(collection(db, "templates"), {
+    name: params.name,
+    description: params.description,
+    authorId: user.uid,
+    authorName: user.displayName || "DevOS Admin",
+    authorUsername: "devos",
+    files: params.files,
+    tags: params.tags || [],
+    downloads: 0,
+    likes: 0,
+    isApproved: true,
+    isOfficial: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return docRef.id;
+};
+
+export const updateTemplate = async (templateId: string, updates: Partial<Pick<Template, 'name' | 'description' | 'tags'>>): Promise<void> => {
+  await updateDoc(doc(db, "templates", templateId), {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+};
+
+export const deleteTemplateById = async (templateId: string): Promise<void> => {
+  await deleteDoc(doc(db, "templates", templateId));
+};

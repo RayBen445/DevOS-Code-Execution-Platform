@@ -26,10 +26,12 @@ interface IDEProps {
 type PanelType = "explorer" | "git" | "terminal" | "preview" | "settings" | null;
 
 interface LogEntry {
-  type: "system" | "success" | "error" | "info" | "output";
+  type: "system" | "success" | "error" | "info" | "output" | "warning";
   message: string;
   timestamp: string;
 }
+
+const SPINNER_FRAMES = ["⠄", "⡀", "⡈", "⡐", "⡠", "⣀", "⣄", "⣤", "⣦", "⣶", "⣿", "⡿", "⠿", "⠟", "⠛", "⠉"];
 
 export default function IDE({ projectId, onBack }: IDEProps) {
   const [user] = useAuthState(auth);
@@ -49,6 +51,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState(-1);
   const [isExecRunning, setIsExecRunning] = useState(false);
+  const [terminalInitialized, setTerminalInitialized] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const terminalInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,12 +63,87 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     if (activePanel === "terminal") {
       scrollToBottom();
       terminalInputRef.current?.focus();
+      if (!terminalInitialized) {
+        setTerminalInitialized(true);
+        const ts = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setRunOutput(prev => [
+          ...prev,
+          { type: "info", message: "DevOS Terminal v1.0", timestamp: ts },
+          { type: "output", message: "Type 'help' to see available commands.", timestamp: ts },
+        ]);
+      }
     }
-  }, [runOutput, activePanel]);
+  }, [runOutput, activePanel, terminalInitialized]);
 
   const addLog = (type: LogEntry["type"], message: string) => {
     const timestamp = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setRunOutput(prev => [...prev, { type, message, timestamp }]);
+  };
+
+  const updateLastLog = (type: LogEntry["type"], message: string) => {
+    setRunOutput(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      return [...prev.slice(0, -1), { ...last, type, message }];
+    });
+  };
+
+  const animateStep = async (text: string) => {
+    const timestamp = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setRunOutput(prev => [...prev, { type: "info", message: `${SPINNER_FRAMES[0]} ${text}`, timestamp }]);
+    for (let f = 1; f < SPINNER_FRAMES.length; f++) {
+      await new Promise(r => setTimeout(r, 80));
+      updateLastLog("info", `${SPINNER_FRAMES[f]} ${text}`);
+    }
+    updateLastLog("info", `${SPINNER_FRAMES[SPINNER_FRAMES.length - 1]} ${text}`);
+    await new Promise(r => setTimeout(r, 150));
+  };
+
+  const handleTerminalDeploy = async () => {
+    const hasIndexHtml = files.some(f => f.name.toLowerCase() === "index.html");
+    if (!hasIndexHtml) {
+      addLog("error", "✖ Deployment failed");
+      addLog("error", "Reason: Missing index.html");
+      return;
+    }
+
+    await animateStep("Preparing project...");
+    await animateStep("Validating files...");
+    await animateStep("Building preview...");
+    await animateStep("Optimizing assets...");
+    await animateStep("Uploading deployment...");
+
+    try {
+      if (!auth.currentUser) throw new Error("Not authenticated");
+
+      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+      const username = userDoc.exists() ? userDoc.data().username : null;
+      if (!username) throw new Error("Please set a username in Profile Settings before deploying.");
+
+      const projectDoc = await getDoc(doc(db, "projects", projectId));
+      const projectData = projectDoc.data();
+      const projectSlug = projectData?.projectSlug || `${(project?.name || "project").toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
+      const url = `${window.location.origin}/u/${username}/${projectSlug}`;
+      const htmlFile = files.find(f => f.name.toLowerCase() === "index.html");
+      const entryFile = htmlFile?.path || "index.html";
+
+      await updateDoc(doc(db, "projects", projectId), {
+        projectSlug,
+        deployUrl: url,
+        liveUrl: url,
+        title: project?.name || "Project",
+        ownerUsername: username,
+        entryFile,
+        isPublic: true,
+        updatedAt: serverTimestamp()
+      });
+
+      addLog("success", "✔ Deployment successful");
+      addLog("info", `🌐 ${url}`);
+    } catch (error: any) {
+      addLog("error", "✖ Deployment failed");
+      addLog("error", `Reason: ${error.message}`);
+    }
   };
 
   const handleTerminalSubmit = async (e: React.FormEvent) => {
@@ -73,22 +151,74 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     const cmd = terminalInput.trim();
     if (!cmd || isExecRunning) return;
 
-    // Record in history
     setCmdHistory(prev => [cmd, ...prev]);
     setHistoryIdx(-1);
     setTerminalInput("");
 
-    // Show the prompt + command in the log
-    addLog("system", `$ ${cmd}`);
+    const projectName = project?.name || "project";
+    addLog("system", `devos ▶ ${projectName} $ ${cmd}`);
     setIsExecRunning(true);
 
-    // Handle built-in "clear"
+    // clear
     if (cmd === "clear" || cmd === "cls") {
       setRunOutput([]);
       setIsExecRunning(false);
       return;
     }
 
+    // help
+    if (cmd === "help") {
+      addLog("info", "Available commands:");
+      addLog("output", "  deploy    Deploy project to DevOS (live URL)");
+      addLog("output", "  sync      Sync and deploy project");
+      addLog("output", "  run       Run active file in terminal");
+      addLog("output", "  clear     Clear terminal output");
+      addLog("output", "  help      Show this help");
+      addLog("info", "Tips:");
+      addLog("output", "  • Use Preview panel for instant live rendering");
+      addLog("output", "  • Use Deploy button or 'deploy' for a public URL");
+      addLog("output", "  • Use ZIP upload to import entire projects");
+      setIsExecRunning(false);
+      setTimeout(() => terminalInputRef.current?.focus(), 0);
+      return;
+    }
+
+    // Block npm/yarn/pnpm package manager commands
+    const npmBlocked = [
+      /^npm\s+install\b/i,
+      /^npm\s+run\b/i,
+      /^npm\s+start\b/i,
+      /^yarn\b/i,
+      /^pnpm\b/i,
+    ];
+    if (npmBlocked.some(p => p.test(cmd))) {
+      addLog("error", "npm commands are not supported in DevOS.");
+      addLog("warning", "Suggestions:");
+      addLog("output", "  • Use Preview panel for instant rendering");
+      addLog("output", "  • Use 'deploy' command for a live URL");
+      addLog("output", "  • Use Templates or ZIP upload to import projects");
+      setIsExecRunning(false);
+      setTimeout(() => terminalInputRef.current?.focus(), 0);
+      return;
+    }
+
+    // deploy / sync
+    if (cmd === "deploy" || cmd === "sync") {
+      await handleTerminalDeploy();
+      setIsExecRunning(false);
+      setTimeout(() => terminalInputRef.current?.focus(), 0);
+      return;
+    }
+
+    // run — execute active file
+    if (cmd === "run") {
+      await handleRun();
+      setIsExecRunning(false);
+      setTimeout(() => terminalInputRef.current?.focus(), 0);
+      return;
+    }
+
+    // Other commands → send to /api/terminal
     try {
       const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch("/api/terminal", {
@@ -100,13 +230,20 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         body: JSON.stringify({ command: cmd }),
       });
 
-      if (!response.ok) {
-        const err = await response.json();
-        addLog("error", err.error || "Command failed");
+      const rawText = await response.text();
+      let data: { stdout: string; stderr: string; exitCode: number };
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        addLog("error", "Failed to parse server response");
+        addLog("output", rawText.slice(0, 300));
         return;
       }
 
-      const data: { stdout: string; stderr: string; exitCode: number } = await response.json();
+      if (!response.ok) {
+        addLog("error", (data as any).error || "Command failed");
+        return;
+      }
 
       if (data.stdout) {
         data.stdout.trimEnd().split("\n").forEach((line) => addLog("output", line));
@@ -115,7 +252,6 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         data.stderr.trimEnd().split("\n").forEach((line) => addLog("error", line));
       }
       if (!data.stdout && !data.stderr) {
-        // Command ran but produced no output
         addLog("info", `(exited with code ${data.exitCode})`);
       } else if (data.exitCode !== 0) {
         addLog("error", `Process exited with code ${data.exitCode}`);
@@ -234,45 +370,60 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   const handleRun = async () => {
     if (!activeFile) return;
-    
+
     setIsRunning(true);
     setActivePanel("terminal");
-    setRunOutput([]);
-    addLog("system", "Starting execution...");
+    addLog("system", `devos ▶ ${project?.name || "project"} $ run`);
+
+    // Block unsupported file types
+    const blockedExtensions = [".ts", ".tsx", ".jsx"];
+    const fileExt = activeFile.name.includes(".") ? `.${activeFile.name.split(".").pop()?.toLowerCase()}` : "";
+    if (blockedExtensions.includes(fileExt)) {
+      addLog("error", "✖ Execution failed");
+      addLog("error", `File: ${activeFile.path}`);
+      addLog("error", `Reason: Unsupported file type (${fileExt}). Use Preview instead.`);
+      setIsRunning(false);
+      return;
+    }
+
     addLog("info", `Running ${activeFile.name}...`);
 
-    // Handle client-side files locally
+    // HTML / CSS / JSON → render in Preview
     if (activeFile.language === "html" || activeFile.language === "css" || activeFile.language === "json") {
-      setTimeout(() => {
-        addLog("info", `[Frontend] ${activeFile.name} is a static/client-side file.`);
-        addLog("info", `[Frontend] Rendering updates in the Live Preview panel...`);
-        addLog("success", "Preview updated successfully.");
-        setIsRunning(false);
-      }, 500);
+      await new Promise(r => setTimeout(r, 400));
+      addLog("info", `[Frontend] ${activeFile.name} is a client-side file.`);
+      addLog("info", "[Frontend] Rendering updates in the Live Preview panel...");
+      addLog("success", "✔ Preview updated successfully.");
+      setIsRunning(false);
       return;
     }
 
     try {
       const response = await fetch("/api/run", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          language: activeFile.language,
-          content: activeFile.content
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: activeFile.language, content: activeFile.content })
       });
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Execution failed");
+      const rawText = await response.text();
+      let data: { logs?: string[]; error?: string };
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        addLog("error", "Failed to parse execution response");
+        addLog("output", rawText.slice(0, 300));
+        setIsRunning(false);
+        return;
       }
 
-      const data = await response.json();
-      data.logs.forEach((log: string) => addLog("output", log));
-      addLog("success", "Execution completed successfully.");
+      if (!response.ok) {
+        throw new Error(data.error || "Execution failed");
+      }
+
+      (data.logs || []).forEach((log: string) => addLog("output", log));
+      addLog("success", "✔ Execution completed successfully.");
     } catch (error: any) {
+      addLog("error", "✖ Execution failed");
       addLog("error", error.message);
     } finally {
       setIsRunning(false);
@@ -646,7 +797,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 text-white/40">
                       <Terminal className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Terminal</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">DevOS Terminal v1.0</span>
                     </div>
                     <div className="h-3 w-[1px] bg-white/5" />
                     <div className="flex items-center gap-2">
@@ -658,7 +809,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button 
-                      onClick={() => { setRunOutput([]); setCmdHistory([]); setHistoryIdx(-1); }}
+                      onClick={() => { setRunOutput([]); setCmdHistory([]); setHistoryIdx(-1); setTerminalInitialized(false); }}
                       className="text-[9px] font-bold uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors px-2 py-1 rounded hover:bg-white/5"
                     >
                       Clear
@@ -680,7 +831,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   <div className="space-y-1.5">
                     {runOutput.length === 0 && (
                       <div className="text-white/20 italic text-[10px]">
-                        Type a command below and press Enter. Use ↑/↓ to navigate history.
+                        DevOS Terminal v1.0 — Type 'help' for available commands. Use ↑/↓ for history.
                       </div>
                     )}
                     {runOutput.map((log, i) => (
@@ -692,6 +843,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                           log.type === "info" && "text-blue-400",
                           log.type === "success" && "text-green-400",
                           log.type === "error" && "text-red-400",
+                          log.type === "warning" && "text-yellow-400",
                           log.type === "output" && "text-white/80"
                         )}>
                           {log.message}
@@ -716,7 +868,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   onSubmit={handleTerminalSubmit}
                   className="flex items-center gap-2 px-4 py-2 border-t border-white/5 bg-[#0a0a0a] flex-shrink-0"
                 >
-                  <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0">$</span>
+                  <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0 whitespace-nowrap">
+                    devos ▶ {project?.name || "project"} $
+                  </span>
                   <input
                     ref={terminalInputRef}
                     type="text"
@@ -724,7 +878,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     onChange={(e) => setTerminalInput(e.target.value)}
                     onKeyDown={handleTerminalKeyDown}
                     disabled={isExecRunning || isRunning}
-                    placeholder={isExecRunning || isRunning ? "Running…" : "Enter command…"}
+                    placeholder={isExecRunning || isRunning ? "Running…" : ""}
                     className="flex-1 bg-transparent outline-none font-mono text-[11px] text-white placeholder-white/20 disabled:opacity-50"
                     autoComplete="off"
                     spellCheck={false}

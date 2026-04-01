@@ -120,6 +120,7 @@ export interface Template {
   downloads: number;
   likes: number;
   isApproved: boolean;
+  isOfficial?: boolean;
   createdAt: any;
   updatedAt: any;
   tags?: string[];

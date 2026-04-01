@@ -11,7 +11,7 @@ import {
   query,
   orderBy,
 } from "firebase/firestore";
-import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates } from "../lib/templateService";
+import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById } from "../lib/templateService";
 import { adjustCredits, getCredits, DAILY_CREDITS_AMOUNT } from "../lib/creditsService";
 import { Template, UserProfile, Credits } from "../types";
 import { motion } from "framer-motion";
@@ -27,6 +27,9 @@ import {
   RefreshCw,
   FolderCode,
   Layout,
+  Plus,
+  Star,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -63,11 +66,22 @@ export default function AdminDashboard() {
   // Template moderation state
   const [moderating, setModerating] = useState<string | null>(null);
 
+  // Create official template state
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+  const [newTplName, setNewTplName] = useState("");
+  const [newTplDesc, setNewTplDesc] = useState("");
+  const [newTplTags, setNewTplTags] = useState("");
+  const [creatingTemplate, setCreatingTemplate] = useState(false);
+  const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user) return;
     const checkAdmin = async () => {
       const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists() && userDoc.data().role === "admin") {
+      const userData = userDoc.exists() ? userDoc.data() : null;
+      const role = userData?.role ?? "user";
+      console.log("User:", { uid: user.uid, email: user.email, role, userData });
+      if (role === "admin") {
         setIsAdmin(true);
         loadData();
       } else {
@@ -147,6 +161,43 @@ export default function AdminDashboard() {
       toast.error("Failed to reject template.");
     } finally {
       setModerating(null);
+    }
+  };
+
+  const handleCreateOfficialTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTplName.trim() || !newTplDesc.trim()) return;
+    setCreatingTemplate(true);
+    try {
+      await createOfficialTemplate({
+        name: newTplName.trim(),
+        description: newTplDesc.trim(),
+        files: [],
+        tags: newTplTags.split(",").map(t => t.trim()).filter(Boolean),
+      });
+      toast.success("Official template created!");
+      setNewTplName(""); setNewTplDesc(""); setNewTplTags("");
+      setShowCreateTemplate(false);
+      await loadData();
+    } catch {
+      toast.error("Failed to create template.");
+    } finally {
+      setCreatingTemplate(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!window.confirm("Delete this template permanently?")) return;
+    setDeletingTemplate(templateId);
+    try {
+      await deleteTemplateById(templateId);
+      toast.success("Template deleted.");
+      setAllTemplates(prev => prev.filter(t => t.id !== templateId));
+      setTotalTemplates(prev => Math.max(0, prev - 1));
+    } catch {
+      toast.error("Failed to delete template.");
+    } finally {
+      setDeletingTemplate(null);
     }
   };
 
@@ -350,6 +401,46 @@ export default function AdminDashboard() {
             {/* Templates Tab */}
             {activeTab === "templates" && (
               <div className="space-y-8">
+                {/* Create Official Template */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Star className="w-5 h-5 text-yellow-400" />
+                      Official Templates
+                    </h2>
+                    <button
+                      onClick={() => setShowCreateTemplate(v => !v)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all active:scale-95"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Template
+                    </button>
+                  </div>
+                  {showCreateTemplate && (
+                    <form onSubmit={handleCreateOfficialTemplate} className="bg-[#111] border border-white/10 rounded-2xl p-6 mb-6 space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Template Name</label>
+                        <input value={newTplName} onChange={e => setNewTplName(e.target.value)} required placeholder="My Official Template" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Description</label>
+                        <textarea value={newTplDesc} onChange={e => setNewTplDesc(e.target.value)} required placeholder="What does this template do?" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Tags (comma-separated)</label>
+                        <input value={newTplTags} onChange={e => setNewTplTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={() => setShowCreateTemplate(false)} className="px-5 py-2.5 rounded-xl font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
+                        <button type="submit" disabled={creatingTemplate} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60">
+                          {creatingTemplate && <Loader2 className="w-4 h-4 animate-spin" />}
+                          {creatingTemplate ? "Creating..." : "Create Official Template"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+
                 {pendingTemplates.length > 0 && (
                   <div>
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
@@ -391,14 +482,32 @@ export default function AdminDashboard() {
                             className="p-5 rounded-2xl bg-[#111] border border-white/5 flex items-center justify-between"
                           >
                             <div>
-                              <p className="font-bold text-white">{template.name}</p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-bold text-white">{template.name}</p>
+                                {template.isOfficial && (
+                                  <span className="px-2 py-0.5 rounded-md bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase flex items-center gap-1">
+                                    <Star className="w-2.5 h-2.5" />
+                                    DevOS Official
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-sm text-white/40">
                                 by {template.authorUsername || template.authorName} · {template.downloads} downloads · {template.likes} likes
                               </p>
                             </div>
-                            <span className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-bold">
-                              Live
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-bold">
+                                Live
+                              </span>
+                              <button
+                                onClick={() => handleDeleteTemplate(template.id)}
+                                disabled={deletingTemplate === template.id}
+                                className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
+                                title="Delete Template"
+                              >
+                                {deletingTemplate === template.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </button>
+                            </div>
                           </div>
                         ))}
                     </div>

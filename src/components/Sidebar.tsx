@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FileData } from "../types";
-import { File, Folder, Plus, Search, ChevronDown, ChevronRight, FileCode, FileJson, FileType, Upload, Loader2, Image as ImageIcon, Trash2, Edit2, Check, X } from "lucide-react";
+import { File, Folder, Plus, Search, ChevronDown, ChevronRight, FileCode, FileJson, FileType, Upload, Loader2, Image as ImageIcon, Trash2, Edit2, Check, X, PackageOpen } from "lucide-react";
 import { db, storage } from "../lib/firebase";
 import { collection, addDoc, serverTimestamp, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { cn } from "../lib/utils";
+import JSZip from "jszip";
 
 interface SidebarProps {
   files: FileData[];
@@ -36,6 +37,9 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['']));
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isZipUploading, setIsZipUploading] = useState(false);
+  const [zipStatus, setZipStatus] = useState<string | null>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
   const [newFileName, setNewFileName] = useState("");
   
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
@@ -343,6 +347,82 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
     }
   };
 
+  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.name.toLowerCase().endsWith(".zip")) return;
+    // Reset input so the same file can be re-uploaded
+    e.target.value = "";
+
+    setIsZipUploading(true);
+    setZipStatus("Extracting files...");
+
+    try {
+      const zip = new JSZip();
+      const zipContent = await zip.loadAsync(file);
+
+      const languageMap: Record<string, string> = {
+        js: "javascript", ts: "typescript", tsx: "typescript",
+        jsx: "javascript", json: "json", css: "css", html: "html", md: "markdown"
+      };
+
+      const fileEntries: Array<{ path: string; name: string; content: string; language: string }> = [];
+
+      for (const [relativePath, zipEntry] of Object.entries(zipContent.files)) {
+        if (zipEntry.dir) continue;
+        // Skip hidden/system files
+        const parts = relativePath.split("/");
+        if (parts.some(p => p.startsWith("."))) continue;
+
+        const content = await zipEntry.async("string");
+        const nameParts = relativePath.split("/");
+        const name = nameParts[nameParts.length - 1];
+        const ext = name.split(".").pop()?.toLowerCase() || "txt";
+
+        fileEntries.push({
+          path: relativePath,
+          name,
+          content,
+          language: languageMap[ext] || "plaintext"
+        });
+      }
+
+      // Check for conflicts with existing files
+      const existingPaths = new Set(files.map(f => f.path));
+
+      for (const entry of fileEntries) {
+        if (existingPaths.has(entry.path)) {
+          // Update existing file
+          const existingFile = files.find(f => f.path === entry.path);
+          if (existingFile) {
+            await updateDoc(doc(db, "projects", projectId, "files", existingFile.id), {
+              content: entry.content,
+              updatedAt: serverTimestamp()
+            });
+          }
+        } else {
+          // Create new file
+          await addDoc(collection(db, "projects", projectId, "files"), {
+            projectId,
+            name: entry.name,
+            path: entry.path,
+            content: entry.content,
+            language: entry.language,
+            updatedAt: serverTimestamp()
+          });
+        }
+      }
+
+      setZipStatus("Project imported successfully");
+      setTimeout(() => setZipStatus(null), 3000);
+    } catch (error) {
+      console.error("ZIP upload error:", error);
+      setZipStatus("Failed to extract ZIP");
+      setTimeout(() => setZipStatus(null), 3000);
+    } finally {
+      setIsZipUploading(false);
+    }
+  };
+
   const getFileIcon = (name: string, language?: string) => {
     const ext = name.split(".").pop()?.toLowerCase();
     if (language === "image" || ["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext || "")) 
@@ -499,6 +579,24 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
         <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Explorer</span>
         {!readOnly && (
           <div className="flex items-center gap-1">
+            <label
+              className="p-1 hover:bg-white/5 rounded text-white/40 hover:text-white transition-colors cursor-pointer"
+              title="Upload ZIP"
+            >
+              {isZipUploading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              ) : (
+                <PackageOpen className="w-4 h-4" />
+              )}
+              <input
+                ref={zipInputRef}
+                type="file"
+                accept=".zip"
+                className="hidden"
+                onChange={handleZipUpload}
+                disabled={isZipUploading}
+              />
+            </label>
             <label className="p-1 hover:bg-white/5 rounded text-white/40 hover:text-white transition-colors cursor-pointer relative">
               {isUploading ? (
                 <div className="relative">
@@ -530,6 +628,15 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
           </div>
         )}
       </div>
+
+      {zipStatus && (
+        <div className={cn(
+          "px-4 py-2 text-[10px] font-bold border-b border-white/5",
+          zipStatus.startsWith("Failed") ? "text-red-400 bg-red-500/5" : "text-green-400 bg-green-500/5"
+        )}>
+          {zipStatus}
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-2">
         {isCreating?.parentPath === '' && (
