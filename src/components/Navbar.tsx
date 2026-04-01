@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -24,6 +24,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [credits, setCredits] = useState<Credits | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const dailyRemaining = credits?.daily ?? null;
 
   return (
-    <nav className="h-14 border-b border-white/10 bg-[#0a0a0a] flex items-center justify-between px-6 sticky top-0 z-50">
+    <nav className="h-14 border-b border-white/10 bg-[#0a0a0a] flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
       <div className="flex items-center gap-4">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -81,7 +82,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
           <span className="font-bold text-lg tracking-tight text-white">DevOS</span>
         </Link>
         {user && (
-          <div className="flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1">
             <Link
               to="/explore"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
@@ -109,12 +110,12 @@ export default function Navbar({ onSignIn }: NavbarProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3">
         {user ? (
           <>
-            {/* Credit display */}
+            {/* Credit display — hidden on mobile */}
             {dailyRemaining !== null && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                 <Zap className="w-3.5 h-3.5 text-yellow-400" />
                 <span className="text-yellow-300 font-bold text-sm">
                   ⚡ {Math.min(dailyRemaining, DAILY_CREDITS_AMOUNT)} / {DAILY_CREDITS_AMOUNT} today
@@ -122,7 +123,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               </div>
             )}
 
-            {/* Notification bell */}
+            {/* Search */}
             <Link
               to="/search"
               className="p-2 rounded-lg hover:bg-white/5 text-white/60 hover:text-white transition-colors"
@@ -132,8 +133,8 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             </Link>
             <NotificationBell />
 
-            {/* Profile dropdown */}
-            <div className="relative" ref={profileDropdownRef}>
+            {/* Profile dropdown — hidden on mobile, shown via hamburger */}
+            <div className="hidden md:block relative" ref={profileDropdownRef}>
               <button
                 onClick={() => setIsProfileOpen((v) => !v)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-white/20 transition-all"
@@ -195,6 +196,15 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setIsMobileMenuOpen((v) => !v)}
+              className="md:hidden p-2 rounded-lg hover:bg-white/5 text-white/60 hover:text-white transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
           </>
         ) : (
           <button
@@ -206,6 +216,131 @@ export default function Navbar({ onSignIn }: NavbarProps) {
           </button>
         )}
       </div>
+
+      {/* Mobile slide-in drawer */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/60 z-40 md:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed top-0 right-0 h-full w-72 bg-[#111] border-l border-white/10 z-50 flex flex-col md:hidden shadow-2xl"
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <UserIcon className="w-4 h-4 text-white/60" />
+                    </div>
+                  )}
+                  <div className="flex flex-col leading-none">
+                    <span className="text-sm font-semibold text-white">{displayName}</span>
+                    {username && <span className="text-[11px] text-white/40">@{username}</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Credits on mobile */}
+              {dailyRemaining !== null && (
+                <div className="mx-4 mt-4 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                  <Zap className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                  <span className="text-yellow-300 font-bold text-sm">
+                    {Math.min(dailyRemaining, DAILY_CREDITS_AMOUNT)} / {DAILY_CREDITS_AMOUNT} credits today
+                  </span>
+                </div>
+              )}
+
+              <nav className="flex-1 px-4 py-4 space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Navigate</p>
+                <Link
+                  to="/explore"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <Compass className="w-4 h-4" />
+                  Explore
+                </Link>
+                <Link
+                  to="/templates"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <Layout className="w-4 h-4" />
+                  Templates
+                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-500/10 text-red-400/70 hover:text-red-400 transition-colors text-sm font-medium"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    Admin
+                  </Link>
+                )}
+
+                <div className="border-t border-white/5 my-2" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Account</p>
+                {username && (
+                  <Link
+                    to={`/u/${username}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm"
+                  >
+                    <UserIcon className="w-4 h-4" />
+                    View Profile
+                  </Link>
+                )}
+                <Link
+                  to="/settings"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm"
+                >
+                  <Settings className="w-4 h-4" />
+                  Account Settings
+                </Link>
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); setIsRedeemOpen(true); }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"
+                >
+                  <Gift className="w-4 h-4" />
+                  Redeem Code
+                </button>
+              </nav>
+
+              <div className="px-4 pb-6">
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); logout(); }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-500/10 text-red-400/70 hover:text-red-400 transition-colors text-sm text-left"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <RedeemCodeModal isOpen={isRedeemOpen} onClose={() => setIsRedeemOpen(false)} />
     </nav>
