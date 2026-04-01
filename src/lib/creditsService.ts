@@ -14,7 +14,13 @@ export const CREDIT_COSTS = {
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Returns true if the given timestamp is in a different calendar month than now */
+function isNewCalendarMonth(lastResetMs: number): boolean {
+  const last = new Date(lastResetMs);
+  const now = new Date();
+  return now.getFullYear() !== last.getFullYear() || now.getMonth() !== last.getMonth();
+}
 
 export const initializeCredits = async (uid: string): Promise<Credits> => {
   const creditsRef = doc(db, "user_credits", uid);
@@ -57,7 +63,7 @@ export const getCredits = async (uid: string): Promise<Credits> => {
     needsUpdate = true;
   }
 
-  if (now - lastMonthly >= ONE_MONTH_MS) {
+  if (isNewCalendarMonth(lastMonthly)) {
     updates.monthly = MONTHLY_CREDITS_AMOUNT;
     updates.lastMonthlyReset = serverTimestamp();
     needsUpdate = true;

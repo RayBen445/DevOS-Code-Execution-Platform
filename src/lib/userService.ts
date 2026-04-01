@@ -13,7 +13,7 @@ import {
 import { Project } from "../types";
 import { initializeCredits } from "./creditsService";
 
-const ADMIN_EMAIL = "oladoyeheritage445@gmail.com";
+const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "oladoyeheritage445@gmail.com";
 
 export const initializeUser = async (user: any) => {
   if (!user) return;
