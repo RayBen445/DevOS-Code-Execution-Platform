@@ -45,7 +45,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
     });
 
     // Load credits
-    getCredits(user.uid).then(setCredits).catch(() => {});
+    getCredits(user.uid).then(setCredits).catch((err) => console.error("Failed to load credits:", err));
 
     return () => {
       unsubscribe();

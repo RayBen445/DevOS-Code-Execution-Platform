@@ -82,15 +82,15 @@ export const deductCredits = async (uid: string, action: CreditAction): Promise<
   const cost = CREDIT_COSTS[action];
   const credits = await getCredits(uid);
 
-  // Use daily first, then monthly
-  let remaining = cost;
-  const newDaily = Math.max(0, credits.daily - remaining);
-  remaining -= credits.daily - newDaily;
-  const newMonthly = Math.max(0, credits.monthly - remaining);
-
   if (credits.daily + credits.monthly < cost) {
     return false;
   }
+
+  // Drain daily first, then monthly for the remainder
+  const dailyUsed = Math.min(credits.daily, cost);
+  const remaining = cost - dailyUsed;
+  const newDaily = credits.daily - dailyUsed;
+  const newMonthly = credits.monthly - remaining;
 
   const creditsRef = doc(db, "user_credits", uid);
   await updateDoc(creditsRef, { daily: newDaily, monthly: newMonthly });
