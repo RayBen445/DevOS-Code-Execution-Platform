@@ -35,6 +35,9 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null });
+  };
+
+  private handleReload = () => {
     window.location.reload();
   };
 
@@ -65,13 +68,21 @@ export default class ErrorBoundary extends Component<Props, State> {
             <p className="text-white/40 mb-8 text-sm leading-relaxed">
               {errorMessage}
             </p>
-            <button
-              onClick={this.handleReset}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-white/90 transition-all active:scale-95"
-            >
-              <RefreshCcw className="w-4 h-4" />
-              Reload Application
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={this.handleReset}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95"
+              >
+                <RefreshCcw className="w-4 h-4" />
+                Try Again
+              </button>
+              <button
+                onClick={this.handleReload}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white/60 rounded-xl font-medium hover:bg-white/10 transition-all"
+              >
+                Reload Application
+              </button>
+            </div>
             {isFirestoreError && (
               <p className="mt-6 text-[10px] text-white/20 uppercase tracking-widest font-bold">
                 Firestore Permission Error

@@ -25,6 +25,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
 import { db } from "../lib/firebase";
+import ConfirmModal from "./ConfirmModal";
 import { 
   doc, 
   updateDoc, 
@@ -56,6 +57,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
   const [versions, setVersions] = useState<ProjectVersion[]>([]);
   const [deployMessage, setDeployMessage] = useState("");
   const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreVersionConfirm, setRestoreVersionConfirm] = useState<ProjectVersion | null>(null);
 
   // Find files
   const portfolioFile = files.find(f => f.name === "portfolio.json");
@@ -199,7 +201,12 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
   };
 
   const handleRestore = async (version: ProjectVersion) => {
-    if (!window.confirm("Restore this version to draft? Current draft changes will be overwritten.")) return;
+    setRestoreVersionConfirm(version);
+  };
+
+  const confirmRestoreVersion = async () => {
+    const version = restoreVersionConfirm;
+    if (!version) return;
     
     setIsRestoring(true);
     try {
@@ -221,6 +228,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
       
       toast.success("Version restored to draft");
       setShowVersions(false);
+      setRestoreVersionConfirm(null);
     } catch (error) {
       console.error("Restore failed:", error);
       toast.error("Failed to restore version");
@@ -241,6 +249,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
   }
 
   return (
+    <>
     <div className="h-full flex flex-col bg-[#0a0a0a]">
       {/* Tabs */}
       <div className="flex border-b border-white/5 bg-[#111]">
@@ -596,5 +605,18 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
         )}
       </AnimatePresence>
     </div>
+
+    <ConfirmModal
+      open={!!restoreVersionConfirm}
+      title="Restore Version"
+      description="Restore this version to draft? Current draft changes will be overwritten."
+      warning="This action cannot be undone."
+      confirmLabel="Restore"
+      danger={false}
+      loading={isRestoring}
+      onConfirm={confirmRestoreVersion}
+      onCancel={() => setRestoreVersionConfirm(null)}
+    />
+    </>
   );
 }

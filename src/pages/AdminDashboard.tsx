@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
 import Navbar from "../components/Navbar";
+import ConfirmModal from "../components/ConfirmModal";
 
 type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts";
 
@@ -84,6 +85,8 @@ export default function AdminDashboard() {
   const [newTplTags, setNewTplTags] = useState("");
   const [creatingTemplate, setCreatingTemplate] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
+  const [deleteTemplateConfirm, setDeleteTemplateConfirm] = useState<string | null>(null);
+  const [deleteCodeConfirm, setDeleteCodeConfirm] = useState<string | null>(null);
 
   // Notifications state
   const [notifUserId, setNotifUserId] = useState("all");
@@ -227,13 +230,19 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteTemplate = async (templateId: string) => {
-    if (!window.confirm("Delete this template permanently?")) return;
+    setDeleteTemplateConfirm(templateId);
+  };
+
+  const confirmDeleteTemplate = async () => {
+    const templateId = deleteTemplateConfirm;
+    if (!templateId) return;
     setDeletingTemplate(templateId);
     try {
       await deleteTemplateById(templateId);
       toast.success("Template deleted.");
       setAllTemplates(prev => prev.filter(t => t.id !== templateId));
       setTotalTemplates(prev => Math.max(0, prev - 1));
+      setDeleteTemplateConfirm(null);
     } catch {
       toast.error("Failed to delete template.");
     } finally {
@@ -339,11 +348,17 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteCode = async (codeId: string) => {
-    if (!window.confirm(`Delete code "${codeId}"?`)) return;
+    setDeleteCodeConfirm(codeId);
+  };
+
+  const confirmDeleteCode = async () => {
+    const codeId = deleteCodeConfirm;
+    if (!codeId) return;
     try {
       await deleteRedeemCode(codeId);
       setRedeemCodes((prev) => prev.filter((c) => c.id !== codeId));
       toast.success("Code deleted.");
+      setDeleteCodeConfirm(null);
     } catch {
       toast.error("Failed to delete code.");
     }
@@ -443,6 +458,7 @@ export default function AdminDashboard() {
   ];
 
   return (
+    <>
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Navbar />
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -1083,6 +1099,28 @@ export default function AdminDashboard() {
         )}
       </div>
     </div>
+
+    <ConfirmModal
+      open={!!deleteTemplateConfirm}
+      title="Delete Template"
+      description="This template will be permanently removed from the marketplace."
+      warning="This action cannot be undone."
+      confirmLabel="Delete Template"
+      loading={!!deletingTemplate}
+      onConfirm={confirmDeleteTemplate}
+      onCancel={() => setDeleteTemplateConfirm(null)}
+    />
+
+    <ConfirmModal
+      open={!!deleteCodeConfirm}
+      title="Delete Code"
+      description={deleteCodeConfirm ? `Delete redeem code "${deleteCodeConfirm}"? Users will no longer be able to use it.` : ""}
+      warning="This action cannot be undone."
+      confirmLabel="Delete Code"
+      onConfirm={confirmDeleteCode}
+      onCancel={() => setDeleteCodeConfirm(null)}
+    />
+    </>
   );
 }
 

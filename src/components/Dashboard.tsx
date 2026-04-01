@@ -9,6 +9,7 @@ import { cn, formatRelativeTime } from "../lib/utils";
 import GitHubImportModal from "./GitHubImportModal";
 import PublishTemplateModal from "./PublishTemplateModal";
 import ProjectSettingsModal from "./ProjectSettingsModal";
+import ConfirmModal from "./ConfirmModal";
 import { toast } from "sonner";
 import { TEMPLATES, ProjectTemplate } from "../constants/templates";
 import { deductCredits, getCredits, CREDIT_COSTS } from "../lib/creditsService";
@@ -37,6 +38,11 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [publishTemplateProject, setPublishTemplateProject] = useState<Project | null>(null);
   const [settingsProject, setSettingsProject] = useState<Project | null>(null);
   const [resettingPortfolio, setResettingPortfolio] = useState(false);
+
+  // Confirm modals
+  const [deleteConfirm, setDeleteConfirm] = useState<{ projectId: string } | null>(null);
+  const [deletingProject, setDeletingProject] = useState(false);
+  const [resetPortfolioConfirm, setResetPortfolioConfirm] = useState<Project | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -315,8 +321,13 @@ p {
 
   const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) return;
+    setDeleteConfirm({ projectId });
+  };
 
+  const confirmDeleteProject = async () => {
+    if (!deleteConfirm) return;
+    const { projectId } = deleteConfirm;
+    setDeletingProject(true);
     try {
       const batch = writeBatch(db);
       
@@ -342,9 +353,13 @@ p {
       batch.delete(doc(db, "projects", projectId));
 
       await batch.commit();
+      toast.success("Project deleted.");
+      setDeleteConfirm(null);
     } catch (error) {
       console.error("Error deleting project:", error);
-      alert("Failed to delete project. Please try again.");
+      toast.error("Failed to delete project. Please try again.");
+    } finally {
+      setDeletingProject(false);
     }
   };
 
@@ -390,7 +405,12 @@ p {
 
   const handleResetPortfolio = async (portfolio: Project) => {
     if (!user) return;
-    if (!window.confirm("Reset your portfolio? This will clear all custom files and restore the default template. Your portfolio URL and ID are preserved.")) return;
+    setResetPortfolioConfirm(portfolio);
+  };
+
+  const confirmResetPortfolio = async () => {
+    const portfolio = resetPortfolioConfirm;
+    if (!user || !portfolio) return;
     setResettingPortfolio(true);
     try {
       // Delete existing files in batches of 500
@@ -439,6 +459,7 @@ p {
       );
       await updateDoc(doc(db, "projects", portfolio.id), { updatedAt: serverTimestamp() });
       toast.success("Portfolio reset to default.");
+      setResetPortfolioConfirm(null);
     } catch {
       toast.error("Failed to reset portfolio.");
     } finally {
@@ -911,6 +932,28 @@ p {
           onClose={() => setSettingsProject(null)}
         />
       )}
+
+      <ConfirmModal
+        open={!!deleteConfirm}
+        title="Delete Project"
+        description="This will permanently delete this project, all its files, commits, and pull requests."
+        warning="This action cannot be undone."
+        confirmLabel="Delete Project"
+        loading={deletingProject}
+        onConfirm={confirmDeleteProject}
+        onCancel={() => setDeleteConfirm(null)}
+      />
+
+      <ConfirmModal
+        open={!!resetPortfolioConfirm}
+        title="Reset Portfolio"
+        description="This will remove all your custom files and restore the default template. Your profile URL remains unchanged."
+        warning="This action cannot be undone."
+        confirmLabel="Reset Portfolio"
+        loading={resettingPortfolio}
+        onConfirm={confirmResetPortfolio}
+        onCancel={() => setResetPortfolioConfirm(null)}
+      />
     </div>
   );
 }
