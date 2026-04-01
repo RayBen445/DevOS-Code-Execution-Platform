@@ -14,7 +14,7 @@ import {
   increment,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { FeedPost } from "../types";
+import { DEFAULT_USER_AVATAR, SYSTEM_AVATAR } from "./avatars";
 
 /** Subscribe to the public developer feed */
 export function subscribeFeed(
@@ -101,4 +101,29 @@ export async function toggleLike(postId: string, uid: string, liked: boolean): P
   } else {
     await updateDoc(postRef, { likes: increment(1), likedBy: arrayUnion(uid) });
   }
+}
+
+/**
+ * Create an official DevOS post in the public feed.
+ * Always public and marked as official.
+ */
+export async function createAdminPost(params: {
+  content: string;
+  type: "announcement" | "update" | "feature";
+  createdBy: string;
+}): Promise<string> {
+  const docRef = await addDoc(collection(db, "feed"), {
+    userId: "admin",
+    username: "DevOS",
+    displayName: "DevOS",
+    avatarUrl: SYSTEM_AVATAR,
+    content: params.content,
+    type: params.type,
+    createdAt: serverTimestamp(),
+    likes: 0,
+    likedBy: [],
+    isPublic: true,
+    isOfficial: true,
+  });
+  return docRef.id;
 }

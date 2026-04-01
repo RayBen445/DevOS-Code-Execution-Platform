@@ -12,6 +12,8 @@ import ProjectSettingsModal from "./ProjectSettingsModal";
 import { toast } from "sonner";
 import { TEMPLATES, ProjectTemplate } from "../constants/templates";
 import { deductCredits, getCredits, CREDIT_COSTS } from "../lib/creditsService";
+import { resolveAvatar } from "../lib/avatars";
+import { useSEO } from "../hooks/useSEO";
 import { useNavigate } from "react-router-dom";
 
 interface DashboardProps {
@@ -445,20 +447,16 @@ p {
   };
 
   const displayName = settings?.displayName || user?.displayName || "Developer";
-  const avatarUrl = settings?.avatarUrl || user?.photoURL;
+  const avatarUrl = resolveAvatar(settings?.avatarUrl || user?.photoURL);
+
+  useSEO({ title: "Dashboard — DevOS" });
   return (
     <div className="max-w-6xl mx-auto p-8">
       {/* Header / Profile Section */}
       <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="flex items-center gap-6">
           <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 overflow-hidden flex-shrink-0">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-white/20">
-                <UserIcon className="w-8 h-8" />
-              </div>
-            )}
+            <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">Welcome, {displayName}</h1>

@@ -173,13 +173,14 @@ export interface FeedPost {
   displayName?: string;
   avatarUrl?: string;
   content: string;
-  type: 'update' | 'deployment' | 'snippet';
+  type: 'update' | 'deployment' | 'snippet' | 'announcement' | 'feature';
   projectId?: string;
   projectName?: string;
   createdAt: any;
   likes: number;
   likedBy?: string[];
   isPublic: boolean;
+  isOfficial?: boolean;
 }
 
 export interface RedeemCode {

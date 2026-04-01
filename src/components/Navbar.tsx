@@ -9,6 +9,7 @@ import NotificationBell from "./NotificationBell";
 import RedeemCodeModal from "./RedeemCodeModal";
 import { UserSettings, Credits } from "../types";
 import { getCredits, DAILY_CREDITS_AMOUNT } from "../lib/creditsService";
+import { resolveAvatar } from "../lib/avatars";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -68,7 +69,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   }, []);
 
   const displayName = settings?.displayName || user?.displayName || "User";
-  const avatarUrl = settings?.avatarUrl || user?.photoURL;
+  const avatarUrl = resolveAvatar(settings?.avatarUrl || user?.photoURL);
   const username = settings?.username;
   const dailyRemaining = credits?.daily ?? null;
 
@@ -129,8 +130,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   <img src={avatarUrl} alt={displayName} className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <UserIcon className="w-4 h-4 text-white/60" />
-                )}
-                <div className="flex flex-col leading-none text-left">
+                )}                <div className="flex flex-col leading-none text-left">
                   <span className="text-sm font-medium text-white/80">{displayName}</span>
                   {username && <span className="text-[10px] text-white/40">@{username}</span>}
                 </div>

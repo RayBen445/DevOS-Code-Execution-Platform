@@ -16,6 +16,7 @@ import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, 
 import { adjustCredits, getCredits, DAILY_CREDITS_AMOUNT } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
+import { createAdminPost } from "../lib/feedService";
 import { Template, UserProfile, Credits, RedeemCode, NotificationType } from "../types";
 import { motion } from "framer-motion";
 import {
@@ -38,12 +39,14 @@ import {
   Send,
   ToggleLeft,
   ToggleRight,
+  Newspaper,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
+import { resolveAvatar } from "../lib/avatars";
 import Navbar from "../components/Navbar";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts";
 
 interface UserWithCredits extends UserProfile {
   credits?: Credits;
@@ -99,6 +102,11 @@ export default function AdminDashboard() {
   const [newCodePerUser, setNewCodePerUser] = useState("1");
   const [newCodeExpiry, setNewCodeExpiry] = useState("");
   const [creatingCode, setCreatingCode] = useState(false);
+
+  // Admin posts state
+  const [postContent, setPostContent] = useState("");
+  const [postType, setPostType] = useState<"announcement" | "update" | "feature">("announcement");
+  const [publishingPost, setPublishingPost] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -230,6 +238,25 @@ export default function AdminDashboard() {
       toast.error("Failed to delete template.");
     } finally {
       setDeletingTemplate(null);
+    }
+  };
+
+  const handlePublishAdminPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !postContent.trim()) return;
+    setPublishingPost(true);
+    try {
+      await createAdminPost({
+        content: postContent.trim(),
+        type: postType,
+        createdBy: user.uid,
+      });
+      toast.success("Post published to feed!");
+      setPostContent("");
+    } catch {
+      toast.error("Failed to publish post.");
+    } finally {
+      setPublishingPost(false);
     }
   };
 
@@ -412,6 +439,7 @@ export default function AdminDashboard() {
     { id: "credits", label: "Credits", icon: <Zap className="w-4 h-4" /> },
     { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
     { id: "redeem", label: "Redeem Codes", icon: <Gift className="w-4 h-4" /> },
+    { id: "posts", label: "Posts", icon: <Newspaper className="w-4 h-4" /> },
   ];
 
   return (
@@ -651,15 +679,18 @@ export default function AdminDashboard() {
                     >
                       {u.avatarUrl ? (
                         <img
-                          src={u.avatarUrl}
+                          src={resolveAvatar(u.avatarUrl)}
                           alt={u.displayName}
                           className="w-10 h-10 rounded-full object-cover"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40">
-                          <Users className="w-5 h-5" />
-                        </div>
+                        <img
+                          src={resolveAvatar(null)}
+                          alt={u.displayName}
+                          className="w-10 h-10 rounded-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -993,6 +1024,59 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Admin Posts Tab */}
+            {activeTab === "posts" && (
+              <div className="space-y-8">
+                <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-2xl">
+                  <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <Newspaper className="w-5 h-5 text-blue-400" />
+                    Publish Official Post
+                  </h2>
+                  <p className="text-white/40 text-sm mb-6">
+                    Posts are published as <span className="text-yellow-400 font-bold">DevOS Official</span> and appear in the public developer feed.
+                  </p>
+                  <form onSubmit={handlePublishAdminPost} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
+                      <select
+                        value={postType}
+                        onChange={(e) => setPostType(e.target.value as typeof postType)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                      >
+                        <option value="announcement">📣 Announcement</option>
+                        <option value="update">🔄 Feature Update</option>
+                        <option value="feature">✨ New Feature</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Content</label>
+                      <textarea
+                        value={postContent}
+                        onChange={(e) => setPostContent(e.target.value)}
+                        rows={5}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none"
+                        required
+                        placeholder="Write your official announcement here..."
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="submit"
+                        disabled={publishingPost}
+                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all"
+                      >
+                        {publishingPost ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        {publishingPost ? "Publishing..." : "Publish to Feed"}
+                      </button>
+                      <p className="text-xs text-white/30">
+                        Will appear as <span className="text-yellow-400">DevOS Official</span> with system avatar
+                      </p>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </>
