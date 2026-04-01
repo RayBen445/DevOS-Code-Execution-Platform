@@ -38,7 +38,8 @@ import {
   deleteDoc, 
   onSnapshot,
   writeBatch,
-  increment
+  increment,
+  deleteField
 } from "firebase/firestore";
 
 interface PortfolioEditorProps {
@@ -166,9 +167,10 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
 
       await updateDoc(doc(db, "projects", project.id), {
         published,
+        isSystem: true,
         deployStatus: "success",
         lastDeployedAt: serverTimestamp(),
-        deployError: null
+        deployError: deleteField()
       });
 
       setDeployMessage("");
