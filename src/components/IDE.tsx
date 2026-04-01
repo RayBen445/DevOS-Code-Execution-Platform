@@ -45,7 +45,12 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [runOutput, setRunOutput] = useState<LogEntry[]>([]);
   const [isForking, setIsForking] = useState(false);
   const [editorMode, setEditorMode] = useState<"code" | "visual">("visual");
+  const [terminalInput, setTerminalInput] = useState("");
+  const [cmdHistory, setCmdHistory] = useState<string[]>([]);
+  const [historyIdx, setHistoryIdx] = useState(-1);
+  const [isExecRunning, setIsExecRunning] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
+  const terminalInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,12 +59,88 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   useEffect(() => {
     if (activePanel === "terminal") {
       scrollToBottom();
+      terminalInputRef.current?.focus();
     }
   }, [runOutput, activePanel]);
 
   const addLog = (type: LogEntry["type"], message: string) => {
     const timestamp = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setRunOutput(prev => [...prev, { type, message, timestamp }]);
+  };
+
+  const handleTerminalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cmd = terminalInput.trim();
+    if (!cmd || isExecRunning) return;
+
+    // Record in history
+    setCmdHistory(prev => [cmd, ...prev]);
+    setHistoryIdx(-1);
+    setTerminalInput("");
+
+    // Show the prompt + command in the log
+    addLog("system", `$ ${cmd}`);
+    setIsExecRunning(true);
+
+    // Handle built-in "clear"
+    if (cmd === "clear" || cmd === "cls") {
+      setRunOutput([]);
+      setIsExecRunning(false);
+      return;
+    }
+
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch("/api/terminal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
+        body: JSON.stringify({ command: cmd }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        addLog("error", err.error || "Command failed");
+        return;
+      }
+
+      const data: { stdout: string; stderr: string; exitCode: number } = await response.json();
+
+      if (data.stdout) {
+        data.stdout.trimEnd().split("\n").forEach((line) => addLog("output", line));
+      }
+      if (data.stderr) {
+        data.stderr.trimEnd().split("\n").forEach((line) => addLog("error", line));
+      }
+      if (!data.stdout && !data.stderr) {
+        // Command ran but produced no output
+        addLog("info", `(exited with code ${data.exitCode})`);
+      } else if (data.exitCode !== 0) {
+        addLog("error", `Process exited with code ${data.exitCode}`);
+      }
+    } catch (err: any) {
+      addLog("error", err.message || "Connection error");
+    } finally {
+      setIsExecRunning(false);
+      setTimeout(() => terminalInputRef.current?.focus(), 0);
+    }
+  };
+
+  const handleTerminalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (cmdHistory.length === 0) return;
+      const next = Math.min(historyIdx + 1, cmdHistory.length - 1);
+      setHistoryIdx(next);
+      setTerminalInput(cmdHistory[next] ?? "");
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = Math.max(historyIdx - 1, -1);
+      setHistoryIdx(next);
+      setTerminalInput(next === -1 ? "" : (cmdHistory[next] ?? ""));
+    }
   };
 
   const isReadOnly = project && user && project.ownerId !== user.uid && !project.collaborators.includes(user.uid);
@@ -558,9 +639,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 initial={{ y: 256 }}
                 animate={{ y: 0 }}
                 exit={{ y: 256 }}
-                className="h-64 border-t border-white/5 bg-[#050505] flex flex-col relative z-10 shadow-2xl"
+                className="h-72 border-t border-white/5 bg-[#050505] flex flex-col relative z-10 shadow-2xl"
               >
-                <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-[#0a0a0a]">
+                {/* Terminal title bar */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-[#0a0a0a] flex-shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 text-white/40">
                       <Terminal className="w-3.5 h-3.5" />
@@ -568,15 +650,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     </div>
                     <div className="h-3 w-[1px] bg-white/5" />
                     <div className="flex items-center gap-2">
-                      <div className={cn("w-1.5 h-1.5 rounded-full", isRunning ? "bg-yellow-500 animate-pulse" : "bg-green-500")} />
+                      <div className={cn("w-1.5 h-1.5 rounded-full", (isRunning || isExecRunning) ? "bg-yellow-500 animate-pulse" : "bg-green-500")} />
                       <span className="text-[9px] text-white/20 font-bold uppercase tracking-tighter">
-                        {isRunning ? "Executing" : "Ready"}
+                        {(isRunning || isExecRunning) ? "Running" : "Ready"}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button 
-                      onClick={() => setRunOutput([])}
+                      onClick={() => { setRunOutput([]); setCmdHistory([]); setHistoryIdx(-1); }}
                       className="text-[9px] font-bold uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors px-2 py-1 rounded hover:bg-white/5"
                     >
                       Clear
@@ -589,37 +671,68 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     </button>
                   </div>
                 </div>
-                <div className="flex-1 p-4 font-mono text-[11px] overflow-y-auto custom-scrollbar">
+
+                {/* Output log */}
+                <div
+                  className="flex-1 px-4 py-3 font-mono text-[11px] overflow-y-auto custom-scrollbar"
+                  onClick={() => terminalInputRef.current?.focus()}
+                >
                   <div className="space-y-1.5">
+                    {runOutput.length === 0 && (
+                      <div className="text-white/20 italic text-[10px]">
+                        Type a command below and press Enter. Use ↑/↓ to navigate history.
+                      </div>
+                    )}
                     {runOutput.map((log, i) => (
                       <div key={i} className="flex gap-3 group">
                         <span className="text-white/10 select-none shrink-0 tabular-nums">{log.timestamp}</span>
                         <span className={cn(
-                          "break-all leading-relaxed",
-                          log.type === "system" && "text-blue-400/60 font-bold",
+                          "break-all leading-relaxed whitespace-pre-wrap",
+                          log.type === "system" && "text-green-400/80 font-bold",
                           log.type === "info" && "text-blue-400",
                           log.type === "success" && "text-green-400",
                           log.type === "error" && "text-red-400",
                           log.type === "output" && "text-white/80"
                         )}>
-                          {log.type === "error" && <span className="mr-2">✖</span>}
-                          {log.type === "success" && <span className="mr-2">✔</span>}
                           {log.message}
                         </span>
                       </div>
                     ))}
-                    {isRunning && (
+                    {(isRunning || isExecRunning) && (
                       <div className="flex gap-3 animate-pulse">
                         <span className="text-white/10 select-none shrink-0">--:--:--</span>
                         <div className="flex items-center gap-2 text-white/40 italic">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          Processing...
+                          Running...
                         </div>
                       </div>
                     )}
                     <div ref={terminalEndRef} />
                   </div>
                 </div>
+
+                {/* Command input */}
+                <form
+                  onSubmit={handleTerminalSubmit}
+                  className="flex items-center gap-2 px-4 py-2 border-t border-white/5 bg-[#0a0a0a] flex-shrink-0"
+                >
+                  <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0">$</span>
+                  <input
+                    ref={terminalInputRef}
+                    type="text"
+                    value={terminalInput}
+                    onChange={(e) => setTerminalInput(e.target.value)}
+                    onKeyDown={handleTerminalKeyDown}
+                    disabled={isExecRunning || isRunning}
+                    placeholder={isExecRunning || isRunning ? "Running…" : "Enter command…"}
+                    className="flex-1 bg-transparent outline-none font-mono text-[11px] text-white placeholder-white/20 disabled:opacity-50"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  {(isExecRunning || isRunning) && (
+                    <Loader2 className="w-3 h-3 text-white/30 animate-spin flex-shrink-0" />
+                  )}
+                </form>
               </motion.div>
             )}
           </div>

@@ -103,3 +103,44 @@ export interface CursorPosition {
   lineNumber: number;
   column: number;
 }
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  authorId: string;
+  authorName?: string;
+  authorUsername?: string;
+  files: {
+    name: string;
+    path: string;
+    content: string;
+    language: string;
+  }[];
+  downloads: number;
+  likes: number;
+  isApproved: boolean;
+  createdAt: any;
+  updatedAt: any;
+  tags?: string[];
+  previewImageUrl?: string;
+}
+
+export interface Credits {
+  daily: number;
+  monthly: number;
+  lastDailyReset: any;
+  lastMonthlyReset: any;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string;
+  bio: string;
+  role?: 'user' | 'admin';
+  credits?: Credits;
+  updatedAt: any;
+}

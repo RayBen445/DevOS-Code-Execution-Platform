@@ -5,6 +5,7 @@ import { cn } from "../lib/utils";
 import { db, auth } from "../lib/firebase";
 import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
+import { deductCredits, CREDIT_COSTS } from "../lib/creditsService";
 
 import { FileData } from "../types";
 
@@ -71,6 +72,14 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
     
     try {
       if (!auth.currentUser) throw new Error("Not authenticated");
+
+      // Deduct credits for deploy
+      const ok = await deductCredits(auth.currentUser.uid, "deploy");
+      if (!ok) {
+        toast.error(`Insufficient credits. Deploying costs ${CREDIT_COSTS.deploy} credits.`);
+        setStep("select");
+        return;
+      }
 
       // Fetch username for the URL
       const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));

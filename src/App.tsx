@@ -10,6 +10,8 @@ import Home from "./components/Home";
 import PrivacyTerms from "./pages/PrivacyTerms";
 import Portfolio from "./pages/Portfolio";
 import ProjectPreview from "./pages/ProjectPreview";
+import TemplatePage from "./pages/TemplatePage";
+import AdminDashboard from "./pages/AdminDashboard";
 import ScrollToTop from "./components/ScrollToTop";
 import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -61,6 +63,8 @@ export default function App() {
         <Routes>
           <Route path="/privacy" element={<PrivacyTerms />} />
           <Route path="/terms" element={<PrivacyTerms />} />
+          <Route path="/templates" element={<TemplatePage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/u/:username" element={<Portfolio />} />
           <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
           <Route path="/" element={

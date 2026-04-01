@@ -330,6 +330,98 @@ async function startServer() {
     }
   });
 
+  // Per-user in-memory rate limit for the terminal (30 commands per minute)
+  const terminalRateLimit = new Map<string, { count: number; resetAt: number }>();
+  const TERMINAL_RATE_MAX = 30;
+  const TERMINAL_RATE_WINDOW_MS = 60_000;
+
+  // Terminal Command API
+  // NOTE: Commands execute in the server process. Auth is required.
+  // This is a development platform; full sandbox isolation requires a separate execution service.
+  app.post("/api/terminal", async (req, res) => {
+    // Require Firebase auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const idToken = authHeader.split("Bearer ")[1];
+    let uid: string;
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      uid = decoded.uid;
+    } catch {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    // Rate limiting per authenticated user
+    const now = Date.now();
+    const entry = terminalRateLimit.get(uid);
+    if (entry && now < entry.resetAt) {
+      if (entry.count >= TERMINAL_RATE_MAX) {
+        return res.status(429).json({ error: "Rate limit exceeded. Try again in a moment." });
+      }
+      entry.count++;
+    } else {
+      terminalRateLimit.set(uid, { count: 1, resetAt: now + TERMINAL_RATE_WINDOW_MS });
+    }
+
+    const { command } = req.body;
+    if (!command || typeof command !== "string") {
+      return res.status(400).json({ error: "No command provided" });
+    }
+
+    const cmd = command.trim();
+
+    // Reject shell command-chaining operators to prevent injection
+    // (semicolons, &&, ||, backtick substitution, $() substitution)
+    if (/;|&&|\|\|/m.test(cmd) || /`[^`]*`/.test(cmd) || /\$\(/.test(cmd)) {
+      return res.json({ stdout: "", stderr: "Command chaining and substitution are not supported.", exitCode: 1 });
+    }
+
+    // Allowlist by first command word
+    const ALLOWED_COMMANDS = new Set([
+      "node", "npm", "npx", "yarn", "pnpm",
+      "git", "ls", "pwd", "echo", "cat",
+      "mkdir", "touch", "rm", "mv", "cp",
+      "which", "date", "whoami",
+      "python", "python3", "pip", "pip3",
+      "java", "javac", "go", "cargo", "rustc",
+      "tsc", "tsx",
+    ]);
+    const firstWord = cmd.split(/\s+/)[0].toLowerCase();
+    if (!ALLOWED_COMMANDS.has(firstWord)) {
+      return res.json({ stdout: "", stderr: `Command not permitted: '${firstWord}'. Allowed tools: node, npm, git, ls, pwd, echo, cat, and common dev utilities.`, exitCode: 1 });
+    }
+
+    // Block destructive patterns even for allowed commands
+    const BLOCKED_PATTERNS = [
+      /rm\s+-[^\s]*r/i,           // rm -r, rm -rf ...
+      /:\(\)\s*\{/,               // fork bomb
+      /shutdown/i,
+      /reboot/i,
+      /mkfs/i,
+      /dd\s+if=/i,
+      />\s*\/dev\/(sd|hd|nvme)/i, // overwrite block devices
+    ];
+    if (BLOCKED_PATTERNS.some(p => p.test(cmd))) {
+      return res.json({ stdout: "", stderr: "Command blocked for safety.", exitCode: 1 });
+    }
+
+    // Build an args array from the validated command so exec is called without a shell
+    const parts = cmd.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
+    const executable = parts[0];
+    const args = parts.slice(1).map(a => a.replace(/^['"]|['"]$/g, ""));
+
+    const { execFile } = await import("child_process");
+    execFile(executable, args, { timeout: 10_000, cwd: process.cwd() }, (error, stdout, stderr) => {
+      res.json({
+        stdout: stdout || "",
+        stderr: stderr || "",
+        exitCode: error?.code ?? (error ? 1 : 0),
+      });
+    });
+  });
+
   // Run Code API
   app.post("/api/run", async (req, res) => {
     const { language, content } = req.body;
