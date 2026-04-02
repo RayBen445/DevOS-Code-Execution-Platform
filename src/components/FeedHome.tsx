@@ -317,7 +317,7 @@ function FeedItem({
       {/* Project preview */}
       {post.projectName && (
         <a
-          href={post.projectId ? `/projects` : undefined}
+          href={post.username ? `/u/${post.username}` : undefined}
           className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-sm text-white/60 hover:text-white w-fit max-w-full"
         >
           <FolderCode className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" />

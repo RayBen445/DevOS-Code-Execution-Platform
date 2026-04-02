@@ -38,10 +38,11 @@ export default function MobileBottomNav() {
     >
       <div className="flex items-center justify-around safe-area-bottom">
         {tabs.map((tab) => {
+          // Use exact match for root "/" to avoid matching every path
           const isActive =
             tab.href === "/"
               ? location.pathname === "/"
-              : location.pathname.startsWith(tab.href);
+              : location.pathname === tab.href || location.pathname.startsWith(tab.href + "/");
           return (
             <Link
               key={tab.href}
