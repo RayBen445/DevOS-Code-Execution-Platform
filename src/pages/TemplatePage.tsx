@@ -158,7 +158,7 @@ export default function TemplatePage() {
     <motion.div
       key={template.id}
       whileHover={{ y: -4 }}
-      className="group p-6 rounded-2xl bg-[#111] border border-white/5 hover:border-white/20 transition-all flex flex-col"
+      className="group p-6 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all flex flex-col"
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -272,14 +272,14 @@ export default function TemplatePage() {
               className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-all"
             />
           </div>
-          {/* Category chips */}
-          <div className="flex flex-wrap gap-2">
+          {/* Category chips — horizontally scrollable on mobile */}
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all",
+                  "px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0",
                   activeCategory === cat
                     ? "bg-blue-600 text-white"
                     : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10"

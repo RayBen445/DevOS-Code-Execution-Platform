@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "./lib/firebase";
 import { initializeUser } from "./lib/userService";
@@ -25,9 +25,46 @@ import ExplorePage from "./pages/ExplorePage";
 import ScrollToTop from "./components/ScrollToTop";
 import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 
 import { Toaster } from "sonner";
+
+/* ─── Paths excluded from tracking (privacy-sensitive or utility) ─── */
+const EXCLUDED_ROUTES = ["/admin", "/settings", "/privacy", "/terms", "/docs", "/status"];
+const STORAGE_KEY = "devos_lastRoute";
+
+/** Saves every meaningful navigation to localStorage and auto-restores on first load. */
+function RouteTracker({ user }: { user: any }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const restoredRef = useRef(false);
+
+  // Persist route on every change (skip excluded paths)
+  useEffect(() => {
+    const path = location.pathname + location.search;
+    const isExcluded = EXCLUDED_ROUTES.some((p) => path.startsWith(p));
+    if (!isExcluded) {
+      localStorage.setItem(STORAGE_KEY, path);
+    }
+  }, [location]);
+
+  // Auto-restore once per browser session when landing at "/"
+  useEffect(() => {
+    if (!user || restoredRef.current) return;
+    if (location.pathname !== "/") return;
+    // Only restore once per tab session
+    if (sessionStorage.getItem("devos_restored")) return;
+
+    const lastRoute = localStorage.getItem(STORAGE_KEY);
+    if (lastRoute && lastRoute !== "/" && !lastRoute.startsWith("/?")) {
+      restoredRef.current = true;
+      sessionStorage.setItem("devos_restored", "1");
+      navigate(lastRoute, { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
+
+  return null;
+}
 
 export default function App() {
   const [user, loading] = useAuthState(auth);
@@ -92,6 +129,7 @@ export default function App() {
     <>
       <Toaster position="top-right" richColors theme="dark" />
       <ScrollToTop />
+      <RouteTracker user={user} />
       <AnimatePresence mode="wait">
         <Routes>
           <Route path="/privacy" element={<PrivacyTerms />} />

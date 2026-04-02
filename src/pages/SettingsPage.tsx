@@ -43,6 +43,7 @@ import {
   Link as LinkIcon,
   Gift,
   Loader2 as Loader2Icon,
+  Menu,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -162,10 +163,52 @@ function ReferralsTab({ uid }: { uid: string }) {
   );
 }
 
+/* ─── Settings Sidebar Nav ─── */
+
+function SettingsSidebarNav({
+  activeTab,
+  onSelect,
+}: {
+  activeTab: Tab;
+  onSelect: (id: Tab) => void;
+}) {
+  return (
+    <>
+      <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-4 px-3">
+        Settings
+      </p>
+      <nav className="flex flex-col gap-1">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => onSelect(tab.id)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
+              activeTab === tab.id
+                ? tab.id === "danger"
+                  ? "bg-red-500/15 text-red-400"
+                  : "bg-white/8 text-white"
+                : tab.id === "danger"
+                ? "text-red-400/60 hover:bg-red-500/10 hover:text-red-400"
+                : "text-white/50 hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+            {activeTab === tab.id && (
+              <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/30" />
+            )}
+          </button>
+        ))}
+      </nav>
+    </>
+  );
+}
+
 export default function SettingsPage() {
   const [user, authLoading] = useAuthState(auth);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useSEO({ title: "Account Settings — DevOS" });
 
@@ -183,36 +226,61 @@ export default function SettingsPage() {
 
   if (!user) return null;
 
+  const handleTabSelect = (id: Tab) => {
+    setActiveTab(id);
+    setSidebarOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
-      <div className="flex-1 max-w-6xl mx-auto w-full px-6 py-10 flex gap-8">
-        {/* Sidebar */}
-        <aside className="w-52 flex-shrink-0">
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-4 px-3">Settings</p>
-          <nav className="flex flex-col gap-1">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
-                  activeTab === tab.id
-                    ? tab.id === "danger"
-                      ? "bg-red-500/15 text-red-400"
-                      : "bg-white/8 text-white"
-                    : tab.id === "danger"
-                    ? "text-red-400/60 hover:bg-red-500/10 hover:text-red-400"
-                    : "text-white/50 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-                {activeTab === tab.id && (
-                  <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/30" />
-                )}
-              </button>
-            ))}
-          </nav>
+
+      {/* Mobile header bar — only visible below md */}
+      <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-[#0a0a0a] sticky top-0 z-20">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-2 rounded-xl hover:bg-white/5 text-white/50 hover:text-white transition-colors"
+          aria-label="Open settings menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <span className="text-sm font-semibold text-white/70">
+          {TABS.find((t) => t.id === activeTab)?.label ?? "Settings"}
+        </span>
+      </div>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile slide-in drawer */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-60 bg-[#0B0F17] border-r border-white/5 z-40 flex flex-col p-5 transform transition-transform duration-300 ease-in-out md:hidden ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <span className="text-sm font-bold text-white">Settings</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-1.5 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+            aria-label="Close settings menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <SettingsSidebarNav activeTab={activeTab} onSelect={handleTabSelect} />
+      </aside>
+
+      {/* Main layout */}
+      <div className="flex-1 max-w-6xl mx-auto w-full px-4 md:px-6 py-6 md:py-10 flex gap-8">
+        {/* Desktop sidebar — always visible on md+ */}
+        <aside className="hidden md:block w-52 flex-shrink-0">
+          <SettingsSidebarNav activeTab={activeTab} onSelect={handleTabSelect} />
         </aside>
 
         {/* Panel */}

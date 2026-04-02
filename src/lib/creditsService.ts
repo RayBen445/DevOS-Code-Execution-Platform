@@ -13,6 +13,32 @@ export const CREDIT_COSTS = {
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
+export interface CreditConfig {
+  creditsEnabled: boolean;
+  chargePerAction: number; // 0 = use per-action defaults from CREDIT_COSTS
+}
+
+/** Read the global credit config from system_config/global */
+export const getCreditConfig = async (): Promise<CreditConfig> => {
+  const snap = await getDoc(doc(db, "system_config", "global"));
+  if (!snap.exists()) {
+    return { creditsEnabled: true, chargePerAction: 0 };
+  }
+  const data = snap.data();
+  return {
+    creditsEnabled: data.creditsEnabled ?? true,
+    chargePerAction: data.chargePerAction ?? 0,
+  };
+};
+
+/** Persist the global credit config (admin only — enforced by Firestore rules) */
+export const saveCreditConfig = async (config: CreditConfig): Promise<void> => {
+  await setDoc(doc(db, "system_config", "global"), {
+    creditsEnabled: config.creditsEnabled,
+    chargePerAction: config.chargePerAction,
+  });
+};
+
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Returns true if the given timestamp is in a different calendar month than now */
@@ -79,7 +105,19 @@ export const getCredits = async (uid: string): Promise<Credits> => {
 
 /** Returns true if credits were deducted, false if insufficient */
 export const deductCredits = async (uid: string, action: CreditAction): Promise<boolean> => {
-  const cost = CREDIT_COSTS[action];
+  // Admins bypass all credit checks
+  const userDoc = await getDoc(doc(db, "users", uid));
+  if (userDoc.exists() && userDoc.data()?.role === "admin") {
+    return true;
+  }
+
+  // Respect global on/off switch
+  const config = await getCreditConfig();
+  if (!config.creditsEnabled) {
+    return true;
+  }
+
+  const cost = config.chargePerAction > 0 ? config.chargePerAction : CREDIT_COSTS[action];
   const credits = await getCredits(uid);
 
   if (credits.daily + credits.monthly < cost) {
