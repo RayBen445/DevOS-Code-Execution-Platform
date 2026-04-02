@@ -436,6 +436,35 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       setIsSaved(true);
       setPreviewSaveKey(k => k + 1);
       if (!silent) toast.success("Project saved");
+
+      // Create a version snapshot on every manual save (not auto-save).
+      // Best-effort: a version failure must never block the normal save flow.
+      if (!silent && files.length > 0) {
+        try {
+          const MAX_FILE_BYTES = 32_000;
+          const filesSnapshot = files.map(f => {
+            const truncated = f.content.length > MAX_FILE_BYTES;
+            return {
+              name: f.name,
+              path: f.path,
+              content: truncated ? f.content.slice(0, MAX_FILE_BYTES) : f.content,
+              language: f.language,
+              truncated,
+            };
+          });
+          // Include a descriptive message with the list of files in this snapshot.
+          const fileNames = files.map(f => f.name).join(", ");
+          const versionMessage = `Manual save — ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (${files.length} file${files.length !== 1 ? "s" : ""}: ${fileNames.slice(0, 120)}${fileNames.length > 120 ? "…" : ""})`;
+          await addDoc(collection(db, "projects", projectId, "versions"), {
+            filesSnapshot,
+            createdAt: serverTimestamp(),
+            message: versionMessage,
+          });
+        } catch (versionErr) {
+          // Version creation is best-effort; log for debugging but do not surface to user.
+          console.warn("Version snapshot failed:", versionErr);
+        }
+      }
     } catch (error) {
       console.error("Error saving project:", error);
       if (!silent) toast.error("Failed to save project");
@@ -761,7 +790,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               </button>
               {!isReadOnly && (
                 <button
-                  onClick={handleSave}
+                  onClick={() => handleSave()}
                   disabled={isSaving}
                   title={isSaved ? "Project saved" : "Save project"}
                   className={cn(
