@@ -41,6 +41,8 @@ import {
   Users,
   Copy,
   Link as LinkIcon,
+  Gift,
+  Loader2 as Loader2Icon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -49,8 +51,10 @@ import { getAuthErrorMessage } from "../lib/errorMessages";
 import ConfirmModal from "../components/ConfirmModal";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 import { getReferralStats, REFERRER_BONUS, REFERRED_BONUS } from "../lib/referralService";
+import { redeemCode } from "../lib/redeemCodeService";
 import { ReferralStats } from "../types";
 
 type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
@@ -233,13 +237,10 @@ export default function SettingsPage() {
         </main>
       </div>
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 }
-
-/* ─────────────────────────────────────────────────────── */
-/*  Profile Tab                                            */
-/* ─────────────────────────────────────────────────────── */
 function ProfileTab() {
   const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(true);
@@ -435,12 +436,33 @@ function ProfileTab() {
 /* ─────────────────────────────────────────────────────── */
 function AccountTab() {
   const [user] = useAuthState(auth);
+  const [redeemCodeValue, setRedeemCodeValue] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+
+  const handleRedeem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !redeemCodeValue.trim()) return;
+    setRedeeming(true);
+    try {
+      const result = await redeemCode(redeemCodeValue.trim(), user.uid);
+      if (result.success) {
+        toast.success(`Code redeemed! +${result.value} credits added.`);
+        setRedeemCodeValue("");
+      } else {
+        toast.error((result as { success: false; error: string }).error);
+      }
+    } catch {
+      toast.error("Failed to redeem code. Please try again.");
+    } finally {
+      setRedeeming(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-white">Account</h1>
-        <p className="text-white/40 text-sm mt-1">Your account details and subscription plan.</p>
+        <p className="text-white/40 text-sm mt-1">Your account details, subscription plan, and credits.</p>
       </div>
 
       <div className="space-y-4">
@@ -458,6 +480,38 @@ function AccountTab() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Redeem Code */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Gift className="w-4 h-4 text-yellow-400" />
+          <h2 className="text-sm font-bold text-white uppercase tracking-widest">Redeem Code</h2>
+        </div>
+        <p className="text-white/40 text-sm">Have a promo code? Enter it below to add credits to your account.</p>
+        <form onSubmit={handleRedeem} className="flex gap-3">
+          <input
+            type="text"
+            value={redeemCodeValue}
+            onChange={(e) => setRedeemCodeValue(e.target.value.toUpperCase())}
+            placeholder="e.g. DEVOS2024"
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono tracking-widest text-center focus:outline-none focus:border-yellow-500/50 transition-all uppercase placeholder-white/20"
+          />
+          <button
+            type="submit"
+            disabled={redeeming || !redeemCodeValue.trim()}
+            className="px-5 py-3 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed text-black rounded-xl font-bold transition-all flex items-center gap-2 flex-shrink-0"
+          >
+            {redeeming ? (
+              <Loader2Icon className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <Gift className="w-4 h-4" />
+                Redeem
+              </>
+            )}
+          </button>
+        </form>
       </div>
     </div>
   );

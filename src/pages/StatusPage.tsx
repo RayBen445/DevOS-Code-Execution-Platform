@@ -2,6 +2,7 @@ import { CheckCircle2, AlertTriangle, XCircle, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 
 type ServiceStatus = "operational" | "degraded" | "down";
@@ -148,6 +149,7 @@ export default function StatusPage() {
       </main>
 
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 }

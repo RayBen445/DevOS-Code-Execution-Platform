@@ -4,6 +4,7 @@ import { Shield, Lock, FileText, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import MobileBottomNav from "../components/MobileBottomNav";
 
 export default function PrivacyTerms() {
   return (
@@ -133,6 +134,7 @@ export default function PrivacyTerms() {
         </motion.div>
       </main>
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 }

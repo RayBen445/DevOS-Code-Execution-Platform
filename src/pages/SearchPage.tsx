@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { db, auth } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
-import { Search, User, Loader2, X } from "lucide-react";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { Search, User, Loader2, X, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { resolveAvatar } from "../lib/avatars";
 import FollowButton from "../components/FollowButton";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 import { UserProfile } from "../types";
 
@@ -76,8 +77,16 @@ export default function SearchPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
 
-      <div className="flex-1 max-w-2xl mx-auto w-full px-6 py-12">
+      <div className="flex-1 max-w-2xl mx-auto w-full px-6 py-12 pb-24 md:pb-12">
+        {/* Back button + header */}
         <div className="mb-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm mb-6 group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Back
+          </button>
           <h1 className="text-3xl font-extrabold text-white mb-2">Search Developers</h1>
           <p className="text-white/40 text-sm">Find developers by username or name.</p>
         </div>
@@ -138,6 +147,7 @@ export default function SearchPage() {
       </div>
 
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 }
