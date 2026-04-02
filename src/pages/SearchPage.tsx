@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { db, auth } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import {
@@ -57,8 +57,10 @@ function rangeQuery(field: string, term: string) {
 export default function SearchPage() {
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [searchTerm, setSearchTerm] = useState("");
+  // Search term is the source of truth from the URL (?q=...)
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") ?? "");
   const [filter, setFilter] = useState<FilterType>("all");
   const [sort, setSort] = useState<SortType>("recent");
 
@@ -116,6 +118,27 @@ export default function SearchPage() {
     };
     loadSuggestions();
   }, []);
+
+  // Sync searchTerm → URL (?q=...) with a small debounce to avoid thrashing
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const trimmed = searchTerm.trim();
+      if (trimmed) {
+        setSearchParams({ q: trimmed }, { replace: true });
+      } else {
+        setSearchParams({}, { replace: true });
+      }
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+
+  // If URL ?q param changes externally (back/forward), sync into state
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    setSearchTerm((prev) => (prev === q ? prev : q));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get("q")]);
 
   // Re-run search when filter or sort changes while there's an active term
   useEffect(() => {
