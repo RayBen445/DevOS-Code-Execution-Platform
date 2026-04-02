@@ -69,12 +69,31 @@ function RouteTracker({ user }: { user: any }) {
 
 export default function App() {
   const [user, loading] = useAuthState(auth);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
+    // Restore last-opened project for authenticated sessions.
+    // Cleared when the user explicitly closes the project (onBack).
+    try { return sessionStorage.getItem("devos_active_project") ?? null; } catch { return null; }
+  });
   const [showLogin, setShowLogin] = useState(false);
+
+  // Keep sessionStorage in sync with the active project
+  useEffect(() => {
+    try {
+      if (selectedProjectId) {
+        sessionStorage.setItem("devos_active_project", selectedProjectId);
+      } else {
+        sessionStorage.removeItem("devos_active_project");
+      }
+    } catch { /* noop */ }
+  }, [selectedProjectId]);
 
   useEffect(() => {
     if (user) {
       initializeUser(user);
+    } else {
+      // Clear the project session when the user logs out
+      try { sessionStorage.removeItem("devos_active_project"); } catch { /* noop */ }
+      setSelectedProjectId(null);
     }
   }, [user]);
 

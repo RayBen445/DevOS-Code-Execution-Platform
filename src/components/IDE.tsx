@@ -39,9 +39,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [user] = useAuthState(auth);
   const [project, setProject] = useState<Project | null>(null);
   const [files, setFiles] = useState<FileData[]>([]);
-  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [activeFileId, setActiveFileId] = useState<string | null>(() => {
+    // Restore last active file for this specific project on mount
+    try { return localStorage.getItem(`ide_file_${projectId}`) ?? null; } catch { return null; }
+  });
   const [loading, setLoading] = useState(true);
-  const [activePanel, setActivePanel] = useState<PanelType>("explorer");
+  const [activePanel, setActivePanel] = useState<PanelType>(() => {
+    try { return (localStorage.getItem(`ide_panel_${projectId}`) as PanelType) ?? "explorer"; } catch { return "explorer"; }
+  });
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -64,6 +69,19 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [openFileIds, setOpenFileIds] = useState<string[]>([]);
   const [previewSaveKey, setPreviewSaveKey] = useState(0);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Persist active file and panel to localStorage (per-project key)
+  useEffect(() => {
+    if (activeFileId) {
+      try { localStorage.setItem(`ide_file_${projectId}`, activeFileId); } catch { /* storage full or private mode */ }
+    }
+  }, [activeFileId, projectId]);
+
+  useEffect(() => {
+    if (activePanel) {
+      try { localStorage.setItem(`ide_panel_${projectId}`, activePanel); } catch { /* noop */ }
+    }
+  }, [activePanel, projectId]);
 
   const scrollToBottom = () => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -349,11 +367,17 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         ...doc.data()
       })) as FileData[];
       setFiles(fileList);
-      
-      if (!activeFileId && fileList.length > 0) {
-        setActiveFileId(fileList[0].id);
-        setOpenFileIds(prev => prev.length === 0 ? [fileList[0].id] : prev);
-      }
+
+      // Restore persisted active file if it still exists; otherwise fall back to first file.
+      setActiveFileId(prev => {
+        if (prev && fileList.some(f => f.id === prev)) return prev; // valid restore
+        if (fileList.length > 0) return fileList[0].id;
+        return null;
+      });
+      setOpenFileIds(prev => {
+        if (prev.length > 0) return prev;
+        return fileList.length > 0 ? [fileList[0].id] : [];
+      });
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, `projects/${projectId}/files`);
