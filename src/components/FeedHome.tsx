@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,7 +18,7 @@ import {
   MessageCircle,
   Repeat2,
   Eye,
-  Download,
+  ImageDown,
   Layers,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
@@ -42,6 +42,7 @@ import MobileBottomNav from "./MobileBottomNav";
 import Avatar from "./Avatar";
 import { useSEO } from "../hooks/useSEO";
 import { toast } from "sonner";
+import { FeedPostShareCard, useShareAsImage } from "./ShareAsImageCard";
 
 interface FeedHomeProps {
   onOpenProject: (projectId: string) => void;
@@ -647,6 +648,11 @@ function FeedItem({
   const [repostText, setRepostText] = useState("");
   const [isReposting, setIsReposting] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
+  const { capture: captureImage, capturing } = useShareAsImage(
+    shareCardRef,
+    `devos-post-${post.id.slice(0, 8)}.png`
+  );
 
   // Subscribe to comments when expanded
   useEffect(() => {
@@ -671,103 +677,18 @@ function FeedItem({
     setIsReposting(false);
   };
 
-  /** Export the post card to a downloadable PNG using Canvas */
-  const handleShareAsImage = useCallback(async () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 600;
-    canvas.height = 340;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Background
-    ctx.fillStyle = "#0f0f11";
-    ctx.roundRect(0, 0, 600, 340, 20);
-    ctx.fill();
-
-    // Blue accent bar
-    const grad = ctx.createLinearGradient(0, 0, 600, 0);
-    grad.addColorStop(0, "#3b82f6");
-    grad.addColorStop(1, "#8b5cf6");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 600, 4);
-
-    // Avatar placeholder circle
-    ctx.fillStyle = "#1e3a5f";
-    ctx.beginPath();
-    ctx.arc(44, 64, 22, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Initial letter in avatar
-    ctx.fillStyle = "#93c5fd";
-    ctx.font = "bold 18px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText((post.displayName || post.username || "U")[0].toUpperCase(), 44, 71);
-
-    // Display name
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 15px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(post.displayName || post.username, 76, 58);
-
-    // Username + time
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.font = "12px sans-serif";
-    ctx.fillText(`@${post.username}  ·  ${post.createdAt ? formatRelativeTime(post.createdAt) : ""}`, 76, 76);
-
-    // Post content — word-wrap
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.font = "14px sans-serif";
-    const words = post.content.split(" ");
-    let line = "";
-    let y = 116;
-    const maxW = 540;
-    for (const word of words) {
-      const test = line + word + " ";
-      if (ctx.measureText(test).width > maxW && line !== "") {
-        ctx.fillText(line, 30, y);
-        line = word + " ";
-        y += 22;
-        if (y > 240) { ctx.fillText("…", 30, y); break; }
-      } else {
-        line = test;
-      }
-    }
-    if (y <= 240) ctx.fillText(line, 30, y);
-
-    // Metrics row
-    y = Math.min(y + 36, 272);
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.font = "12px sans-serif";
-    ctx.fillText(`❤️ ${post.likes ?? 0}   💬 ${post.commentsCount ?? 0}   🔁 ${post.repostCount ?? 0}`, 30, y);
-
-    // DevOS branding
-    ctx.fillStyle = "#3b82f6";
-    ctx.font = "bold 13px sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText("DevOS", 570, 320);
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
-    ctx.font = "11px sans-serif";
-    ctx.fillText("devos.io", 570, 335);
-
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `devos-post-${post.id.slice(0, 8)}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-  }, [post]);
-
   return (
-    <motion.div
-      ref={cardRef}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.3 }}
-      className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/10 transition-all p-5"
-    >
+    <>
+      {/* Hidden card rendered off-screen for html2canvas capture */}
+      <FeedPostShareCard post={post} cardRef={shareCardRef} />
+
+      <motion.div
+        ref={cardRef}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.04, duration: 0.3 }}
+        className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/10 transition-all p-5"
+      >
       {/* Repost header */}
       {post.type === "repost" && (
         <div className="flex items-center gap-1.5 text-xs text-teal-400/70 mb-3 font-medium">
@@ -908,12 +829,17 @@ function FeedItem({
 
         {/* Share as Image */}
         <button
-          onClick={handleShareAsImage}
-          className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-white/40 hover:text-blue-400 hover:bg-blue-500/5 transition-all ml-auto"
+          onClick={captureImage}
+          disabled={capturing}
+          className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-white/40 hover:text-blue-400 hover:bg-blue-500/5 transition-all ml-auto disabled:opacity-50"
           aria-label="Share as image"
           title="Download as image"
         >
-          <Download className="w-3.5 h-3.5" />
+          {capturing ? (
+            <span className="w-3.5 h-3.5 border-[1.5px] border-white/30 border-t-blue-400 rounded-full animate-spin" />
+          ) : (
+            <ImageDown className="w-3.5 h-3.5" />
+          )}
         </button>
       </div>
 
@@ -1034,7 +960,8 @@ function FeedItem({
           </>
         )}
       </AnimatePresence>
-    </motion.div>
+      </motion.div>
+    </>
   );
 }
 

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink } from "lucide-react";
+import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime } from "../lib/utils";
@@ -16,6 +16,7 @@ import { deductCredits, getCredits, CREDIT_COSTS } from "../lib/creditsService";
 import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import { useNavigate } from "react-router-dom";
+import { ProjectShareCard, useShareAsImage } from "./ShareAsImageCard";
 
 interface DashboardProps {
   onSelectProject: (projectId: string) => void;
@@ -816,6 +817,7 @@ p {
                   >
                     <RefreshCw className={cn("w-3.5 h-3.5", resettingPortfolio && "animate-spin")} />
                   </button>
+                  <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
                 </>
               ) : project.ownerId === user?.uid ? (
                 /* Owner actions */
@@ -843,6 +845,7 @@ p {
                       <Upload className="w-3.5 h-3.5" />
                     </button>
                   )}
+                  <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
                   {project.isDeletable !== false && (
                     <button
                       onClick={(e) => handleDeleteProject(e, project.id)}
@@ -871,6 +874,7 @@ p {
                     <GitFork className="w-3.5 h-3.5" />
                     Fork
                   </button>
+                  <ProjectShareButton project={project} username={project.ownerUsername} avatarUrl={null} />
                 </>
               )}
             </div>
@@ -955,5 +959,44 @@ p {
         onCancel={() => setResetPortfolioConfirm(null)}
       />
     </div>
+  );
+}
+
+/* ─── Project Share Button ─── */
+
+function ProjectShareButton({
+  project,
+  username,
+  avatarUrl,
+}: {
+  project: Project;
+  username?: string | null;
+  avatarUrl?: string | null;
+}) {
+  const shareCardRef = useRef<HTMLDivElement>(null);
+  const filename = `devos-${project.name.replace(/\s+/g, "-").toLowerCase().slice(0, 40)}.png`;
+  const { capture, capturing } = useShareAsImage(shareCardRef, filename);
+
+  return (
+    <>
+      <ProjectShareCard
+        project={project}
+        username={username}
+        avatarUrl={avatarUrl}
+        cardRef={shareCardRef}
+      />
+      <button
+        onClick={(e) => { e.stopPropagation(); capture(); }}
+        disabled={capturing}
+        className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-blue-500/10 hover:text-blue-400 transition-all disabled:opacity-50"
+        title="Share as Image"
+      >
+        {capturing ? (
+          <span className="w-3.5 h-3.5 border-[1.5px] border-white/20 border-t-blue-400 rounded-full animate-spin" />
+        ) : (
+          <ImageDown className="w-3.5 h-3.5" />
+        )}
+      </button>
+    </>
   );
 }
