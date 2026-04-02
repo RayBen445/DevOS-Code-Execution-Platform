@@ -10,7 +10,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
-import { adjustCredits } from "../lib/creditsService";
+import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
@@ -19,6 +19,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ShieldCheck,
+  Shield,
+  ShieldOff,
   Users,
   Zap,
   BarChart3,
@@ -42,6 +44,7 @@ import {
   FileCode,
   ChevronDown,
   ChevronUp,
+  Settings2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -129,6 +132,14 @@ export default function AdminDashboard() {
   const [postType, setPostType] = useState<"announcement" | "update" | "feature">("announcement");
   const [publishingPost, setPublishingPost] = useState(false);
 
+  // Credit config state
+  const [creditConfig, setCreditConfig] = useState<CreditConfig>({ creditsEnabled: true, chargePerAction: 0 });
+  const [loadingConfig, setLoadingConfig] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  // Role update state
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user) return;
     const checkAdmin = async () => {
@@ -150,6 +161,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === "redeem" && isAdmin && redeemCodes.length === 0) {
       loadRedeemCodes();
+    }
+  }, [activeTab, isAdmin]);
+
+  useEffect(() => {
+    if (activeTab === "credits" && isAdmin) {
+      setLoadingConfig(true);
+      getCreditConfig().then((cfg) => { setCreditConfig(cfg); setLoadingConfig(false); }).catch(() => setLoadingConfig(false));
     }
   }, [activeTab, isAdmin]);
 
@@ -478,6 +496,34 @@ export default function AdminDashboard() {
       toast.error("Failed to adjust credits.");
     } finally {
       setAdjusting(false);
+    }
+  };
+
+  const handleUpdateRole = async (uid: string, newRole: "user" | "admin") => {
+    setUpdatingRole(uid);
+    try {
+      await updateDoc(doc(db, "users", uid), { role: newRole });
+      setUsers((prev) =>
+        prev.map((u) => (u.uid === uid ? { ...u, role: newRole } : u))
+      );
+      toast.success(newRole === "admin" ? "User promoted to admin." : "User demoted to user.");
+    } catch {
+      toast.error("Failed to update role.");
+    } finally {
+      setUpdatingRole(null);
+    }
+  };
+
+  const handleSaveCreditConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingConfig(true);
+    try {
+      await saveCreditConfig(creditConfig);
+      toast.success("Credit config saved.");
+    } catch {
+      toast.error("Failed to save config.");
+    } finally {
+      setSavingConfig(false);
     }
   };
 
@@ -843,6 +889,30 @@ export default function AdminDashboard() {
                               {u.credits ? `${u.credits.daily + u.credits.monthly}` : "—"}
                             </p>
                           </div>
+                          {/* Role controls */}
+                          <div className="shrink-0 ml-2">
+                            {u.role === "admin" ? (
+                              <button
+                                onClick={() => handleUpdateRole(u.uid, "user")}
+                                disabled={updatingRole === u.uid}
+                                title="Demote to user"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                              >
+                                {updatingRole === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">Demote</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleUpdateRole(u.uid, "admin")}
+                                disabled={updatingRole === u.uid}
+                                title="Promote to admin"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                              >
+                                {updatingRole === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">Promote</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                       {users.length === 0 && (
@@ -855,6 +925,64 @@ export default function AdminDashboard() {
                 {/* Credits Tab */}
                 {activeTab === "credits" && (
                   <div className="space-y-8">
+                    {/* Global Credit Config */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Settings2 className="w-4 h-4 text-purple-400" />
+                        Global Credit Config
+                      </h2>
+                      <p className="text-white/40 text-sm mb-6">Control whether credits are enforced platform-wide and set a universal action cost.</p>
+                      {loadingConfig ? (
+                        <div className="flex items-center gap-2 text-white/30 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Loading config…</div>
+                      ) : (
+                        <form onSubmit={handleSaveCreditConfig} className="space-y-5">
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Credits Enabled</p>
+                              <p className="text-xs text-white/40">When disabled, all actions are free for everyone.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setCreditConfig((c) => ({ ...c, creditsEnabled: !c.creditsEnabled }))}
+                              className={cn(
+                                "w-12 h-6 rounded-full transition-all relative flex-shrink-0",
+                                creditConfig.creditsEnabled ? "bg-blue-600" : "bg-white/10"
+                              )}
+                            >
+                              <span className={cn(
+                                "absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow",
+                                creditConfig.creditsEnabled ? "left-7" : "left-1"
+                              )} />
+                            </button>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
+                              Charge Per Action (0 = use defaults)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={creditConfig.chargePerAction}
+                              onChange={(e) => setCreditConfig((c) => ({ ...c, chargePerAction: parseInt(e.target.value, 10) || 0 }))}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all"
+                              placeholder="0"
+                            />
+                            <p className="text-[11px] text-white/30">Set a flat cost per action. Leave 0 to use per-action defaults (createProject: 5, deploy: 10, sync: 3).</p>
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={savingConfig}
+                            className={cn(
+                              "w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
+                              savingConfig ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700 text-white active:scale-95"
+                            )}
+                          >
+                            {savingConfig ? <><Loader2 className="w-4 h-4 animate-spin" />Saving…</> : <><Settings2 className="w-4 h-4" />Save Config</>}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+
                     <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
                       <h2 className="text-lg font-bold text-white mb-1">Adjust User Credits</h2>
                       <p className="text-white/40 text-sm mb-6">Enter username, email, or UID and the amount to add (positive) or subtract (negative).</p>
