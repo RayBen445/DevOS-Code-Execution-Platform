@@ -163,7 +163,15 @@ export const initializeUser = async (user: any) => {
   getOrCreateReferralCode(user.uid).catch(() => {});
 };
 
-const createPortfolioProject = async (uid: string, username: string) => {
+/**
+ * Returns true when the given username is not yet taken in the `users`
+ * collection. Used for real-time availability feedback during sign-up.
+ */
+export const checkUsernameAvailable = async (username: string): Promise<boolean> => {
+  const q = query(collection(db, "users"), where("username", "==", username));
+  const snap = await getDocs(q);
+  return snap.empty;
+};
   const portfolioConfig = {
     bio: "I am a developer building awesome things with DevOS.",
     featuredProjects: [],

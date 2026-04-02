@@ -75,6 +75,9 @@ export default function App() {
     try { return sessionStorage.getItem("devos_active_project") ?? null; } catch { return null; }
   });
   const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+
+  const closeAuth = () => { setShowLogin(false); setShowSignup(false); };
 
   // Keep sessionStorage in sync with the active project
   useEffect(() => {
@@ -171,9 +174,10 @@ export default function App() {
               path="/projects"
               element={user ? DashboardView : (
                 <>
-                  <Home setShowLogin={setShowLogin} />
+                  <Home setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
                   <AnimatePresence>
-                    {showLogin && <Login onClose={() => setShowLogin(false)} />}
+                    {showLogin && <Login onClose={closeAuth} initialMode="login" />}
+                    {showSignup && <Login onClose={closeAuth} initialMode="signup" />}
                   </AnimatePresence>
                 </>
               )}
@@ -184,11 +188,10 @@ export default function App() {
               element={
                 !user ? (
                   <>
-                    <Home setShowLogin={setShowLogin} />
+                    <Home setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
                     <AnimatePresence>
-                      {showLogin && (
-                        <Login onClose={() => setShowLogin(false)} />
-                      )}
+                      {showLogin && <Login onClose={closeAuth} initialMode="login" />}
+                      {showSignup && <Login onClose={closeAuth} initialMode="signup" />}
                     </AnimatePresence>
                   </>
                 ) : selectedProjectId ? (

@@ -1,24 +1,63 @@
-import React, { useState } from "react";
-import { signInWithGoogle, signInWithGithub, signUpWithEmail, signInWithEmail, db } from "../lib/firebase";
-import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { signInWithGoogle, signInWithGithub, signUpWithEmail, signInWithEmail } from "../lib/firebase";
+import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { registerUserProfile } from "../lib/userService";
+import { registerUserProfile, checkUsernameAvailable } from "../lib/userService";
 import { getAuthErrorMessage } from "../lib/errorMessages";
 
 interface LoginProps {
   onClose: () => void;
+  /** Open directly in signup or login mode. Defaults to "login". */
+  initialMode?: "login" | "signup";
 }
 
-export default function Login({ onClose }: LoginProps) {
-  const [isEmailMode, setIsEmailMode] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+export default function Login({ onClose, initialMode = "login" }: LoginProps) {
+  const [isEmailMode, setIsEmailMode] = useState(initialMode === "signup");
+  const [isSignUp, setIsSignUp] = useState(initialMode === "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Live username availability
+  type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
+  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Autofocus first field when email mode activates
+  const firstFieldRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (isEmailMode) {
+      setTimeout(() => firstFieldRef.current?.focus(), 50);
+    }
+  }, [isEmailMode]);
+
+  // Debounced username availability check
+  useEffect(() => {
+    if (!isSignUp) return;
+    if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
+
+    const uname = username.trim();
+    if (!uname) { setUsernameStatus("idle"); return; }
+    if (!/^[a-z0-9_-]{3,20}$/.test(uname)) { setUsernameStatus("invalid"); return; }
+
+    setUsernameStatus("checking");
+    usernameDebounceRef.current = setTimeout(async () => {
+      try {
+        const available = await checkUsernameAvailable(uname);
+        setUsernameStatus(available ? "available" : "taken");
+      } catch {
+        setUsernameStatus("idle");
+      }
+    }, 400);
+
+    return () => {
+      if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
+    };
+  }, [username, isSignUp]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,35 +65,51 @@ export default function Login({ onClose }: LoginProps) {
     setError("");
     try {
       if (isSignUp) {
-        // Validate username
         const uname = username.trim().toLowerCase();
         if (!uname || !/^[a-z0-9_-]{3,20}$/.test(uname)) {
           setError("Username must be 3–20 characters: letters, numbers, _ or -");
           setLoading(false);
           return;
         }
-        // Check uniqueness
-        const q = query(collection(db, "users"), where("username", "==", uname));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
+        if (usernameStatus === "taken") {
           setError("Username is already taken. Please choose another.");
           setLoading(false);
           return;
         }
+        // Final availability check in case debounce hasn't resolved yet
+        if (usernameStatus !== "available") {
+          const available = await checkUsernameAvailable(uname);
+          if (!available) {
+            setError("Username is already taken. Please choose another.");
+            setLoading(false);
+            return;
+          }
+        }
         const cred = await signUpWithEmail(email, password);
-        // Set up user profile with fullName and username
         await registerUserProfile(cred.user, { fullName: fullName.trim(), username: uname });
       } else {
         await signInWithEmail(email, password);
       }
       onClose();
-    } catch (error: any) {
-      console.error("Email auth error:", error);
-      setError(getAuthErrorMessage(error));
+    } catch (err: any) {
+      console.error("Email auth error:", err);
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
+
+  const switchMode = () => {
+    setIsSignUp(v => !v);
+    setError("");
+    setUsernameStatus("idle");
+    setUsername("");
+  };
+
+  const heading = isSignUp ? "Create your account" : "Welcome back";
+  const subheading = isSignUp
+    ? "Join DevOS — the professional cloud IDE."
+    : "Sign in to continue building on DevOS.";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -66,13 +121,13 @@ export default function Login({ onClose }: LoginProps) {
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
       />
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-3xl p-8 shadow-2xl"
       >
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-6 right-6 p-2 hover:bg-white/5 rounded-full transition-colors"
         >
@@ -83,8 +138,8 @@ export default function Login({ onClose }: LoginProps) {
           <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-600/20">
             <Zap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome to DevOS</h1>
-          <p className="text-white/40 text-center">The professional cloud IDE for the next generation of developers.</p>
+          <h1 className="text-2xl font-bold text-white mb-1">{heading}</h1>
+          <p className="text-white/40 text-center text-sm">{subheading}</p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -97,12 +152,22 @@ export default function Login({ onClose }: LoginProps) {
               className="space-y-4"
             >
               <button
-                onClick={() => setIsEmailMode(true)}
+                onClick={() => { setIsEmailMode(true); }}
                 className="w-full py-4 bg-white/5 text-white/60 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-white/10 transition-all active:scale-[0.98]"
               >
                 <Mail className="w-5 h-5" />
                 Continue with Email
               </button>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={switchMode}
+                  className="text-sm text-white/40 hover:text-white transition-colors"
+                >
+                  {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+                </button>
+              </div>
             </motion.div>
           ) : (
             <motion.form
@@ -116,9 +181,11 @@ export default function Login({ onClose }: LoginProps) {
               <div className="space-y-2">
                 {isSignUp && (
                   <>
+                    {/* Full name */}
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
                       <input
+                        ref={firstFieldRef}
                         type="text"
                         required
                         placeholder="Full Name"
@@ -127,59 +194,116 @@ export default function Login({ onClose }: LoginProps) {
                         className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
                       />
                     </div>
-                    <div className="relative">
-                      <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="Username (e.g. johndoe)"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                      />
+
+                    {/* Username with live availability */}
+                    <div>
+                      <div className="relative">
+                        <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
+                        <input
+                          type="text"
+                          required
+                          placeholder="Username (e.g. johndoe)"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                          className={`w-full bg-black/40 border rounded-2xl pl-12 pr-10 py-4 text-white focus:outline-none transition-colors ${
+                            usernameStatus === "taken" || usernameStatus === "invalid"
+                              ? "border-red-500/60 focus:border-red-500"
+                              : usernameStatus === "available"
+                              ? "border-green-500/60 focus:border-green-500"
+                              : "border-white/10 focus:border-blue-500"
+                          }`}
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2">
+                          {usernameStatus === "checking" && <Loader2 className="w-4 h-4 text-white/30 animate-spin" />}
+                          {usernameStatus === "available" && <CheckCircle2 className="w-4 h-4 text-green-400" />}
+                          {usernameStatus === "taken" && <XCircle className="w-4 h-4 text-red-400" />}
+                          {usernameStatus === "invalid" && <XCircle className="w-4 h-4 text-red-400" />}
+                        </span>
+                      </div>
+                      {/* Inline status message */}
+                      {usernameStatus === "available" && (
+                        <p className="text-[11px] text-green-400 px-1 mt-1">✓ Username available</p>
+                      )}
+                      {usernameStatus === "taken" && (
+                        <p className="text-[11px] text-red-400 px-1 mt-1">✗ Username already taken</p>
+                      )}
+                      {usernameStatus === "invalid" && (
+                        <p className="text-[11px] text-red-400 px-1 mt-1">3–20 chars: letters, numbers, _ or -</p>
+                      )}
+                      {usernameStatus === "idle" && (
+                        <p className="text-[11px] text-yellow-400/70 px-1 mt-1">⚠ Username cannot be changed later</p>
+                      )}
                     </div>
-                    <p className="text-[11px] text-yellow-400/70 px-1">⚠ Username cannot be changed later</p>
                   </>
                 )}
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="Email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                  />
-                </div>
+
+                {/* Email */}
+                {!isSignUp && (
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
+                    <input
+                      ref={isSignUp ? undefined : firstFieldRef}
+                      type="email"
+                      required
+                      placeholder="Email address"
+                      value={email}
+                      autoFocus={!isSignUp}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                )}
+                {isSignUp && (
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="Email address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                )}
+
+                {/* Password with visibility toggle */}
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
-              {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+              {error && <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3">{error}</p>}
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (isSignUp && (usernameStatus === "taken" || usernameStatus === "invalid" || usernameStatus === "checking"))}
                 className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50"
               >
                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                 {isSignUp ? "Create Account" : "Sign In"}
               </button>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 text-center">
                 <button
                   type="button"
-                  onClick={() => { setIsSignUp(!isSignUp); setError(""); }}
+                  onClick={switchMode}
                   className="text-sm text-white/40 hover:text-white transition-colors"
                 >
                   {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}

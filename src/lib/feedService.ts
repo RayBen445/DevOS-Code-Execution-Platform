@@ -9,6 +9,7 @@ import {
   limit,
   updateDoc,
   doc,
+  deleteDoc,
   arrayUnion,
   arrayRemove,
   increment,
@@ -232,4 +233,9 @@ export async function repostPost(params: {
   await updateDoc(doc(db, "feed", params.originalPost.id), { repostCount: increment(1) });
 
   return docRef.id;
+}
+
+/** Delete a post by its ID. Only the owner should call this. */
+export async function deletePost(postId: string): Promise<void> {
+  await deleteDoc(doc(db, "feed", postId));
 }

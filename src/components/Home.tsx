@@ -9,6 +9,7 @@ import { AnimatePresence } from "framer-motion";
 
 interface HomeProps {
   setShowLogin: (show: boolean) => void;
+  setShowSignup?: (show: boolean) => void;
 }
 
 const VALUE_STRIP = [
@@ -19,7 +20,8 @@ const VALUE_STRIP = [
   { icon: Rocket, label: "Deploy Instantly" },
 ];
 
-export default function Home({ setShowLogin }: HomeProps) {
+export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
+  const openSignup = () => (setShowSignup ?? setShowLogin)(true);
   const [isQuickStarting, setIsQuickStarting] = useState(false);
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
@@ -50,7 +52,7 @@ export default function Home({ setShowLogin }: HomeProps) {
               
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
-                  onClick={() => setShowLogin(true)}
+                  onClick={openSignup}
                   className="w-full sm:w-auto px-7 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg transition-all active:scale-95 flex items-center justify-center gap-3 shadow-lg shadow-blue-600/25"
                 >
                   Get Started Free
@@ -215,7 +217,7 @@ export default function Home({ setShowLogin }: HomeProps) {
               Build in public, deploy instantly, and grow your portfolio — all from one platform.
             </p>
             <button
-              onClick={() => setShowLogin(true)}
+              onClick={openSignup}
               className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg transition-all active:scale-95 shadow-lg shadow-blue-600/25 inline-flex items-center gap-3"
             >
               Get Started Free
@@ -278,7 +280,7 @@ export default function Home({ setShowLogin }: HomeProps) {
                 <button
                   onClick={() => {
                     setIsQuickStarting(false);
-                    setShowLogin(true);
+                    openSignup();
                   }}
                   className="px-7 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20 text-sm"
                 >

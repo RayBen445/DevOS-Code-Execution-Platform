@@ -158,7 +158,9 @@ export interface UserProfile {
   displayName: string;
   avatarUrl: string;
   bio: string;
-  role?: 'user' | 'admin';
+  role?: 'user' | 'admin' | 'company';
+  companyName?: string;
+  verified?: boolean;
   credits?: Credits;
   links?: {
     github?: string;
@@ -199,6 +201,7 @@ export interface FeedPost {
   username: string;
   displayName?: string;
   avatarUrl?: string;
+  authorRole?: 'user' | 'admin' | 'company';
   content: string;
   type: 'update' | 'deployment' | 'snippet' | 'announcement' | 'feature' | 'repost';
   projectId?: string;

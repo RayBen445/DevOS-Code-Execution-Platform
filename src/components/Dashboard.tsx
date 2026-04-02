@@ -31,6 +31,8 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [isImporting, setIsImporting] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
+  const [projectNameTaken, setProjectNameTaken] = useState(false);
+  const [checkingProjectName, setCheckingProjectName] = useState(false);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("blank");
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -44,6 +46,28 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<{ projectId: string } | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
   const [resetPortfolioConfirm, setResetPortfolioConfirm] = useState<Project | null>(null);
+
+  // Debounced project name uniqueness check
+  useEffect(() => {
+    if (!user || !isCreating) return;
+    const name = newProjectName.trim();
+    if (!name) { setProjectNameTaken(false); return; }
+
+    setCheckingProjectName(true);
+    const t = setTimeout(async () => {
+      try {
+        const snap = await getDocs(
+          query(collection(db, "projects"), where("ownerId", "==", user.uid), where("name", "==", name))
+        );
+        setProjectNameTaken(!snap.empty);
+      } catch {
+        setProjectNameTaken(false);
+      } finally {
+        setCheckingProjectName(false);
+      }
+    }, 400);
+    return () => { clearTimeout(t); setCheckingProjectName(false); };
+  }, [newProjectName, user, isCreating]);
 
   useEffect(() => {
     if (!user) return;
@@ -119,6 +143,15 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
 
       const projectSlug = newProjectName.toLowerCase().replace(/[^a-z0-9]/g, "-");
       const template = TEMPLATES.find(t => t.id === selectedTemplateId) || TEMPLATES[0];
+
+      // Check if user already has a project with this exact name
+      const nameCheckSnap = await getDocs(
+        query(collection(db, "projects"), where("ownerId", "==", user.uid), where("name", "==", newProjectName.trim()))
+      );
+      if (!nameCheckSnap.empty) {
+        toast.error("You already have a project with this name. Please choose a different name.", { id: toastId });
+        return;
+      }
       
       const docRef = await addDoc(collection(db, "projects"), {
         name: newProjectName,
@@ -607,10 +640,21 @@ p {
                       type="text"
                       placeholder="My Awesome App"
                       value={newProjectName}
-                      onChange={(e) => setNewProjectName(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                      onChange={(e) => { setNewProjectName(e.target.value); setProjectNameTaken(false); }}
+                      className={cn(
+                        "w-full bg-white/5 border rounded-xl px-4 py-3 text-white focus:outline-none transition-all",
+                        projectNameTaken ? "border-red-500/60 focus:border-red-500" : "border-white/10 focus:border-blue-500"
+                      )}
                       required
                     />
+                    {projectNameTaken && (
+                      <p className="text-xs text-red-400 flex items-center gap-1">
+                        ✗ You already have a project with this name
+                      </p>
+                    )}
+                    {checkingProjectName && !projectNameTaken && (
+                      <p className="text-xs text-white/30">Checking availability…</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -688,7 +732,8 @@ p {
                   </button>
                   <button
                     type="submit"
-                    className="px-10 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
+                    disabled={projectNameTaken || checkingProjectName}
+                    className="px-10 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20 disabled:opacity-50"
                   >
                     Create Project
                   </button>
