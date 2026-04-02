@@ -4,6 +4,7 @@ import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, Ch
 import { cn } from "../lib/utils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 
 interface DocSection {
@@ -371,6 +372,7 @@ export default function DocsPage() {
       </div>
 
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 }

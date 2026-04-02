@@ -124,6 +124,7 @@ export async function sendNotification(params: {
   message: string;
   createdBy: string;
   projectId?: string;
+  link?: string;
 }): Promise<void> {
   await addDoc(collection(db, "notifications"), {
     userId: params.userId,
@@ -135,6 +136,7 @@ export async function sendNotification(params: {
     createdAt: serverTimestamp(),
     createdBy: params.createdBy,
     ...(params.projectId ? { projectId: params.projectId } : {}),
+    ...(params.link ? { link: params.link } : {}),
   });
 }
 
@@ -188,9 +190,52 @@ export async function notifyFollow(params: {
     type: "follow",
     title: "New follower",
     message: `@${params.followerUsername} started following you.`,
+    link: `/u/${params.followerUsername}`,
     isRead: false,
     readBy: [],
     createdAt: serverTimestamp(),
     createdBy: params.followerId,
+  });
+}
+
+/** Notify a post owner that someone commented on their post */
+export async function notifyComment(params: {
+  postOwnerId: string;
+  commenterUsername: string;
+  commenterId: string;
+  postId: string;
+}): Promise<void> {
+  if (params.postOwnerId === params.commenterId) return; // no self-notify
+  await addDoc(collection(db, "notifications"), {
+    userId: params.postOwnerId,
+    type: "post_comment",
+    title: "New comment",
+    message: `@${params.commenterUsername} commented on your post.`,
+    link: `/?post=${params.postId}`,
+    isRead: false,
+    readBy: [],
+    createdAt: serverTimestamp(),
+    createdBy: params.commenterId,
+  });
+}
+
+/** Notify a post owner that someone reposted their post */
+export async function notifyRepost(params: {
+  postOwnerId: string;
+  reposterUsername: string;
+  reposterId: string;
+  postId: string;
+}): Promise<void> {
+  if (params.postOwnerId === params.reposterId) return; // no self-notify
+  await addDoc(collection(db, "notifications"), {
+    userId: params.postOwnerId,
+    type: "post_repost",
+    title: "Your post was reposted",
+    message: `@${params.reposterUsername} reposted your post.`,
+    link: `/?post=${params.postId}`,
+    isRead: false,
+    readBy: [],
+    createdAt: serverTimestamp(),
+    createdBy: params.reposterId,
   });
 }

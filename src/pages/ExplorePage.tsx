@@ -27,6 +27,7 @@ import { resolveAvatar } from "../lib/avatars";
 import FollowButton from "../components/FollowButton";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 import { formatRelativeTime } from "../lib/utils";
 import { getFollowerCount } from "../lib/followService";
@@ -99,6 +100,7 @@ export default function ExplorePage() {
       </div>
 
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 }

@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
 import RedeemCodeModal from "./RedeemCodeModal";
 import { UserSettings, Credits } from "../types";
-import { getCredits, DAILY_CREDITS_AMOUNT } from "../lib/creditsService";
+import { getCredits, DAILY_CREDITS_AMOUNT, MONTHLY_CREDITS_AMOUNT } from "../lib/creditsService";
 import { resolveAvatar } from "../lib/avatars";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,11 +21,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const navigate = useNavigate();
   const [isRedeemOpen, setIsRedeemOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isCreditsPanelOpen, setIsCreditsPanelOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [credits, setCredits] = useState<Credits | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const creditsPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -62,6 +64,9 @@ export default function Navbar({ onSignIn }: NavbarProps) {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target as Node)) {
         setIsProfileOpen(false);
       }
+      if (creditsPanelRef.current && !creditsPanelRef.current.contains(e.target as Node)) {
+        setIsCreditsPanelOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -71,6 +76,10 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const avatarUrl = resolveAvatar(settings?.avatarUrl || user?.photoURL);
   const username = settings?.username;
   const dailyRemaining = credits?.daily ?? null;
+  const monthlyRemaining = credits?.monthly ?? null;
+  const totalRemaining = (credits?.daily ?? 0) + (credits?.monthly ?? 0);
+  const dailyPct = credits ? Math.round((credits.daily / DAILY_CREDITS_AMOUNT) * 100) : 0;
+  const monthlyPct = credits ? Math.round((credits.monthly / MONTHLY_CREDITS_AMOUNT) * 100) : 0;
 
   return (
     <nav className="h-14 border-b border-white/10 bg-[#0a0a0a] flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
@@ -84,6 +93,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
         {user && (
           <div className="hidden md:flex items-center gap-1">
             <Link
+              to="/"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <Home className="w-4 h-4" />
+              Feed
+            </Link>
+            <Link
               to="/explore"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
             >
@@ -96,6 +112,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             >
               <Layout className="w-4 h-4" />
               Templates
+            </Link>
+            <Link
+              to="/projects"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <FolderCode className="w-4 h-4" />
+              My Projects
             </Link>
             {isAdmin && (
               <Link
@@ -113,13 +136,87 @@ export default function Navbar({ onSignIn }: NavbarProps) {
       <div className="flex items-center gap-2 md:gap-3">
         {user ? (
           <>
-            {/* Credit display — hidden on mobile */}
+            {/* Credits display — clickable pill that opens a panel */}
             {dailyRemaining !== null && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-yellow-300 font-bold text-sm">
-                  ⚡ {Math.min(dailyRemaining, DAILY_CREDITS_AMOUNT)} / {DAILY_CREDITS_AMOUNT} today
-                </span>
+              <div className="relative hidden sm:block" ref={creditsPanelRef}>
+                <button
+                  onClick={() => { setIsCreditsPanelOpen((v) => !v); setIsProfileOpen(false); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition-all"
+                >
+                  <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                  <span className="text-yellow-300 font-bold text-sm">
+                    {dailyRemaining} credits
+                  </span>
+                  <TrendingUp className="w-3 h-3 text-yellow-400/60" />
+                </button>
+
+                <AnimatePresence>
+                  {isCreditsPanelOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.13 }}
+                      className="absolute right-0 top-full mt-2 w-64 bg-[#111] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 p-4"
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 rounded-lg bg-yellow-500/15 flex items-center justify-center">
+                          <Zap className="w-4 h-4 text-yellow-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-white">DevOS Credits</p>
+                          <p className="text-[11px] text-white/40">Used for projects &amp; deployments</p>
+                        </div>
+                      </div>
+
+                      {/* Total */}
+                      <div className="mb-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-white/50 font-semibold">Total Available</span>
+                          <span className="text-lg font-black text-yellow-300">{totalRemaining}</span>
+                        </div>
+                      </div>
+
+                      {/* Daily */}
+                      <div className="space-y-2">
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-white/50">Daily</span>
+                            <span className="font-bold text-white">{dailyRemaining} / {DAILY_CREDITS_AMOUNT}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className="h-full bg-yellow-400 rounded-full transition-all"
+                              style={{ width: `${Math.max(0, dailyPct)}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-white/50">Monthly</span>
+                            <span className="font-bold text-white">{monthlyRemaining ?? 0} / {MONTHLY_CREDITS_AMOUNT}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className="h-full bg-blue-400 rounded-full transition-all"
+                              style={{ width: `${Math.max(0, monthlyPct)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/5 mt-4 pt-3">
+                        <button
+                          onClick={() => { setIsCreditsPanelOpen(false); setIsRedeemOpen(true); }}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-white/70 hover:text-white transition-all font-semibold"
+                        >
+                          <Gift className="w-4 h-4" />
+                          Redeem Code
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -260,18 +357,45 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 </button>
               </div>
 
-              {/* Credits on mobile */}
+              {/* Credits on mobile — detailed breakdown */}
               {dailyRemaining !== null && (
-                <div className="mx-4 mt-4 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                  <Zap className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                  <span className="text-yellow-300 font-bold text-sm">
-                    {Math.min(dailyRemaining, DAILY_CREDITS_AMOUNT)} / {DAILY_CREDITS_AMOUNT} credits today
-                  </span>
+                <div className="mx-4 mt-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                      <span className="text-xs font-bold text-yellow-300 uppercase tracking-widest">Credits</span>
+                    </div>
+                    <span className="text-lg font-black text-yellow-300">{totalRemaining}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-white/50">Daily</span>
+                      <span className="text-white font-semibold">{dailyRemaining} / {DAILY_CREDITS_AMOUNT}</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                      <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${Math.max(0, dailyPct)}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-white/50">Monthly</span>
+                      <span className="text-white font-semibold">{monthlyRemaining ?? 0} / {MONTHLY_CREDITS_AMOUNT}</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                      <div className="h-full bg-blue-400 rounded-full" style={{ width: `${Math.max(0, monthlyPct)}%` }} />
+                    </div>
+                  </div>
                 </div>
               )}
 
               <nav className="flex-1 px-4 py-4 space-y-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Navigate</p>
+                <Link
+                  to="/"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <Home className="w-4 h-4" />
+                  Feed
+                </Link>
                 <Link
                   to="/explore"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -287,6 +411,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 >
                   <Layout className="w-4 h-4" />
                   Templates
+                </Link>
+                <Link
+                  to="/projects"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <FolderCode className="w-4 h-4" />
+                  My Projects
                 </Link>
                 {isAdmin && (
                   <Link

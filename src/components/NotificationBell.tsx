@@ -3,6 +3,7 @@ import { Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import { useNavigate } from "react-router-dom";
 import {
   subscribeToNotifications,
   countUnread,
@@ -21,6 +22,9 @@ const TYPE_ICON: Record<string, string> = {
   system_update: "📢",
   admin_message: "👑",
   follow: "👤",
+  post_comment: "💬",
+  post_repost: "🔁",
+  post_like: "❤️",
 };
 
 export default function NotificationBell() {
@@ -28,6 +32,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!user) return;
@@ -49,11 +54,15 @@ export default function NotificationBell() {
 
   const unread = countUnread(notifications, user.uid);
 
-  const handleMarkRead = async (n: Notification) => {
+  const handleClickNotification = async (n: Notification) => {
     if (n.userId === "all") {
       await markBroadcastRead(n.id, user.uid);
     } else {
       await markAsRead(n.id);
+    }
+    setIsOpen(false);
+    if (n.link) {
+      navigate(n.link);
     }
   };
 
@@ -111,7 +120,7 @@ export default function NotificationBell() {
                 notifications.map((n) => (
                   <button
                     key={n.id}
-                    onClick={() => handleMarkRead(n)}
+                    onClick={() => handleClickNotification(n)}
                     className={cn(
                       "w-full text-left px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors flex gap-3",
                       isUnread(n) && "bg-blue-500/5"

@@ -23,6 +23,8 @@ export interface Project {
   deployUrl?: string;
   liveUrl?: string;
   parentProjectId?: string;
+  forkedFrom?: string;           // projectId of the source project
+  forkedFromOwner?: string;      // username of the source project owner
   githubRepo?: string;
   githubUrl?: string;
   isSystem?: boolean;
@@ -36,6 +38,7 @@ export interface Project {
   deployError?: string;
   entryFile?: string;
   env?: Record<string, string>;
+  parentTemplateId?: string;
 }
 
 export interface ProjectVersion {
@@ -170,7 +173,10 @@ export type NotificationType =
   | 'credit_warning'
   | 'system_update'
   | 'admin_message'
-  | 'follow';
+  | 'follow'
+  | 'post_comment'
+  | 'post_repost'
+  | 'post_like';
 
 export interface Notification {
   id: string;
@@ -178,6 +184,7 @@ export interface Notification {
   type: NotificationType;
   title: string;
   message: string;
+  link?: string; // navigation target when clicked
   isRead?: boolean; // for targeted (userId != "all")
   readBy?: string[]; // for broadcast (userId == "all")
   createdAt: any;
@@ -192,14 +199,31 @@ export interface FeedPost {
   displayName?: string;
   avatarUrl?: string;
   content: string;
-  type: 'update' | 'deployment' | 'snippet' | 'announcement' | 'feature';
+  type: 'update' | 'deployment' | 'snippet' | 'announcement' | 'feature' | 'repost';
   projectId?: string;
   projectName?: string;
   createdAt: any;
   likes: number;
   likedBy?: string[];
+  commentsCount?: number;
+  repostCount?: number;
+  viewsCount?: number;
   isPublic: boolean;
   isOfficial?: boolean;
+  // Repost fields
+  originalPostId?: string;
+  originalPost?: Omit<FeedPost, 'originalPost'>; // embedded snapshot for display
+}
+
+export interface FeedComment {
+  id: string;
+  postId: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  content: string;
+  createdAt: any;
 }
 
 export interface RedeemCode {
@@ -213,4 +237,18 @@ export interface RedeemCode {
   isActive: boolean;
   createdBy: string;
   createdAt: any;
+}
+
+export interface Referral {
+  id: string;
+  referrerId: string;        // uid of the user who shared the link
+  referredId: string;        // uid of the new user who signed up
+  referralCode: string;
+  createdAt: any;
+}
+
+export interface ReferralStats {
+  code: string;
+  totalReferrals: number;
+  referrals: Referral[];
 }

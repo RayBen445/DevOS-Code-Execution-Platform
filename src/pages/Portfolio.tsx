@@ -1,26 +1,40 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { db } from "../lib/firebase";
+import { db, auth } from "../lib/firebase";
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
-import { UserSettings, Project } from "../types";
-import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Loader2, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye } from "lucide-react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { UserSettings, Project, FeedPost } from "../types";
+import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { cn } from "../lib/utils";
+import { cn, formatRelativeTime } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import Footer from "../components/Footer";
+import MobileBottomNav from "../components/MobileBottomNav";
+import Navbar from "../components/Navbar";
+import FollowButton from "../components/FollowButton";
+import { getFollowerCount, getFollowingCount } from "../lib/followService";
+import { subscribeFeed } from "../lib/feedService";
+
+type PortfolioTab = "projects" | "posts" | "about";
 
 export default function Portfolio() {
   const { username } = useParams<{ username: string }>();
+  const [currentUser] = useAuthState(auth);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [followerCount, setFollowerCount] = useState<number | null>(null);
+  const [followingCount, setFollowingCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [portfolioConfig, setPortfolioConfig] = useState<any>(null);
   const [themeConfig, setThemeConfig] = useState<any>(null);
   const [isPreview, setIsPreview] = useState(false);
+  const [activeTab, setActiveTab] = useState<PortfolioTab>("projects");
 
   useEffect(() => {
     if (!username) return;
@@ -46,6 +60,15 @@ export default function Portfolio() {
       const uid = userSnapshot.docs[0].id;
       const userData = userSnapshot.docs[0].data() as UserSettings;
       setUserSettings(userData);
+      setUid(uid);
+
+      // Load follower/following counts
+      Promise.all([getFollowerCount(uid), getFollowingCount(uid)]).then(
+        ([followers, following]) => {
+          setFollowerCount(followers);
+          setFollowingCount(following);
+        }
+      ).catch(() => {});
 
       // 2. Fetch the portfolio project for this user to get config
       const projectsRef = collection(db, "projects");
@@ -130,7 +153,12 @@ export default function Portfolio() {
           setLoading(false);
         });
 
-        return () => unsubProjects();
+        // 4. Subscribe to this user's feed posts
+        const unsubFeed = subscribeFeed((feedPosts) => {
+          setPosts(feedPosts);
+        }, { userId: uid });
+
+        return () => { unsubProjects(); unsubFeed(); };
       });
 
       return () => unsubPortfolio();
@@ -147,6 +175,9 @@ export default function Portfolio() {
 
   const portfolioAvatarUrl = resolveAvatar(userSettings?.avatar || userSettings?.avatarUrl);
   const portfolioDisplayName = userSettings?.fullName || userSettings?.displayName || userSettings?.username || username || "";
+  // True when logged-in user is viewing their own portfolio
+  const isOwner = !!(currentUser && uid && currentUser.uid === uid);
+
   useSEO({
     title: `@${username ?? ""} — DevOS Portfolio`,
     description: `Explore projects built by @${username ?? ""} on DevOS`,
@@ -202,6 +233,9 @@ export default function Portfolio() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30">
+      {/* Navbar — show for authenticated users */}
+      {currentUser && !isPreview && <Navbar />}
+
       <AnimatePresence>
         {isPreview && (
           <motion.div 
@@ -296,12 +330,46 @@ export default function Portfolio() {
             </div>
           )}
 
-          <div className="flex items-center gap-4">
-            <div className="px-6 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-bold text-white/60 flex items-center gap-2 backdrop-blur-sm">
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-2 mb-8">
+            {/* Follower/following counts */}
+            <button className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors">
+              <Users className="w-3.5 h-3.5" />
+              <span className="font-bold text-white">{followerCount ?? "…"}</span>
+              <span>followers</span>
+            </button>
+            <div className="w-1 h-1 rounded-full bg-white/10" />
+            <button className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors">
+              <span className="font-bold text-white">{followingCount ?? "…"}</span>
+              <span>following</span>
+            </button>
+            <div className="w-1 h-1 rounded-full bg-white/10" />
+            <div className="px-5 py-2 rounded-2xl bg-white/5 border border-white/10 text-xs font-bold text-white/60 flex items-center gap-2">
               <Globe className="w-3.5 h-3.5" />
-              {projects.length} Public Projects
+              {projects.length} projects
             </div>
-            <button 
+
+            {/* Owner vs Public actions */}
+            {isOwner ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/settings"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all active:scale-90"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Edit Profile
+                </Link>
+              </div>
+            ) : (
+              uid && (
+                <FollowButton
+                  targetUid={uid}
+                  targetUsername={userSettings.username ?? username ?? ""}
+                  followerUsername={currentUser?.displayName ?? undefined}
+                />
+              )
+            )}
+
+            <button
               onClick={() => handleCopyLink(window.location.href, "profile")}
               className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90"
             >
@@ -311,109 +379,254 @@ export default function Portfolio() {
         </motion.div>
       </header>
 
-      {/* Projects Grid */}
+      {/* Tabs + main content */}
       <main className="relative max-w-5xl mx-auto px-6 pb-32">
-        <div className="flex items-center justify-between mb-12">
-          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-3">
-            Featured Projects
-            <div className="h-[1px] w-12 bg-blue-500/30" />
-          </h2>
-          <div className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">
-            Sorted by Recency
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {projects.map((project, index) => (
-            <motion.div
-              key={project.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="group relative p-8 rounded-[32px] bg-[#0f0f0f] border border-white/5 hover:border-blue-500/30 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.1)] flex flex-col"
+        {/* Tab nav */}
+        <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl mb-10 w-fit">
+          {(["projects", "posts", "about"] as PortfolioTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "px-5 py-2 rounded-xl text-sm font-semibold transition-all capitalize",
+                activeTab === tab
+                  ? "bg-white text-black shadow"
+                  : "text-white/50 hover:text-white"
+              )}
             >
-              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[32px] pointer-events-none" />
-              
-              <div className="flex items-start justify-between mb-8 relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-lg shadow-blue-500/0 group-hover:shadow-blue-500/20">
-                  <Globe className="w-6 h-6" />
-                </div>
-                <div className="flex items-center gap-2">
-                  {(project.githubUrl || project.githubRepo) && (
-                    <a
-                      href={project.githubUrl || `https://github.com/${project.githubRepo}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2.5 hover:bg-white/5 rounded-xl text-white/20 hover:text-white transition-all"
-                      title="View Source"
-                    >
-                      <Github className="w-5 h-5" />
-                    </a>
-                  )}
-                  <button 
-                    onClick={() => handleCopyLink(project.liveUrl || project.deployUrl || "", project.id)}
-                    className="p-2.5 hover:bg-white/5 rounded-xl text-white/20 hover:text-white transition-all"
-                    title="Copy Link"
-                  >
-                    {copiedId === project.id ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative z-10 flex-1">
-                <h3 className="text-2xl font-bold mb-3 group-hover:text-blue-400 transition-colors tracking-tight">
-                  {project.title || project.name}
-                </h3>
-                
-                {project.description && (
-                  <p className="text-sm text-white/40 line-clamp-3 mb-8 leading-relaxed font-medium">
-                    {project.description}
-                  </p>
-                )}
-              </div>
-
-              <div className="mt-auto pt-8 border-t border-white/5 flex items-center justify-between relative z-10">
-                {(project.liveUrl || project.deployUrl) ? (
-                  <a
-                    href={project.liveUrl || project.deployUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black rounded-2xl text-xs font-bold hover:bg-white/90 transition-all active:scale-95 shadow-lg shadow-white/5"
-                  >
-                    Open Live
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </a>
-                ) : (
-                  <div className="text-[10px] text-white/20 font-bold uppercase tracking-widest py-2">
-                    Not Deployed
-                  </div>
-                )}
-
-                {project.updatedAt && (
-                  <div className="flex items-center gap-2 text-[10px] text-white/20 font-bold uppercase tracking-widest">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(project.updatedAt.seconds * 1000).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-                  </div>
-                )}
-              </div>
-            </motion.div>
+              {tab}
+            </button>
           ))}
         </div>
 
-        {projects.length === 0 && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="py-32 text-center"
-          >
-            <div className="w-24 h-24 rounded-[40px] bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-8 shadow-2xl">
-              <Globe className="w-10 h-10 text-white/10" />
+        {/* ── Projects tab ── */}
+        {activeTab === "projects" && (
+          <>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+                Featured Projects
+                <div className="h-[1px] w-12 bg-blue-500/30" />
+              </h2>
+              <div className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">
+                Sorted by Recency
+              </div>
             </div>
-            <h3 className="text-2xl font-bold text-white/60 mb-3 tracking-tight">No public projects yet</h3>
-            <p className="text-white/20 text-sm max-w-xs mx-auto leading-relaxed">
-              This user is currently building in stealth mode. Check back later for updates.
-            </p>
-          </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {projects.map((project, index) => (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08 }}
+                  className="group relative p-8 rounded-[32px] bg-[#0f0f0f] border border-white/5 hover:border-blue-500/30 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.1)] flex flex-col"
+                >
+                  <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[32px] pointer-events-none" />
+
+                  <div className="flex items-start justify-between mb-8 relative z-10">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                      <Globe className="w-6 h-6" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {(project.githubUrl || project.githubRepo) && (
+                        <a
+                          href={project.githubUrl || `https://github.com/${project.githubRepo}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 hover:bg-white/5 rounded-xl text-white/20 hover:text-white transition-all"
+                        >
+                          <Github className="w-5 h-5" />
+                        </a>
+                      )}
+                      <button
+                        onClick={() => handleCopyLink(project.liveUrl || project.deployUrl || "", project.id)}
+                        className="p-2.5 hover:bg-white/5 rounded-xl text-white/20 hover:text-white transition-all"
+                      >
+                        {copiedId === project.id ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative z-10 flex-1">
+                    <h3 className="text-2xl font-bold mb-3 group-hover:text-blue-400 transition-colors tracking-tight">
+                      {project.title || project.name}
+                    </h3>
+                    {project.description && (
+                      <p className="text-sm text-white/40 line-clamp-3 mb-4 leading-relaxed">
+                        {project.description}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-4 text-[11px] text-white/25 font-semibold">
+                      {project.views !== undefined && (
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {project.views} views
+                        </span>
+                      )}
+                      {project.forksCount > 0 && (
+                        <span className="flex items-center gap-1">
+                          <GitFork className="w-3 h-3" />
+                          {project.forksCount} forks
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between relative z-10">
+                    {(project.liveUrl || project.deployUrl) ? (
+                      <a
+                        href={project.liveUrl || project.deployUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black rounded-2xl text-xs font-bold hover:bg-white/90 transition-all active:scale-95"
+                      >
+                        Open Live
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </a>
+                    ) : (
+                      <Link
+                        to={`/project/${project.id}`}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white/60 rounded-2xl text-xs font-bold hover:border-white/20 transition-all"
+                      >
+                        View Project
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
+
+                    {project.updatedAt && (
+                      <div className="flex items-center gap-2 text-[10px] text-white/20 font-bold uppercase tracking-widest">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(project.updatedAt.seconds * 1000).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {projects.length === 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-32 text-center">
+                <div className="w-24 h-24 rounded-[40px] bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-8">
+                  <Globe className="w-10 h-10 text-white/10" />
+                </div>
+                <h3 className="text-2xl font-bold text-white/60 mb-3 tracking-tight">No public projects yet</h3>
+                <p className="text-white/20 text-sm max-w-xs mx-auto">
+                  This user is currently building in stealth mode. Check back later.
+                </p>
+              </motion.div>
+            )}
+          </>
+        )}
+
+        {/* ── Posts tab ── */}
+        {activeTab === "posts" && (
+          <div className="space-y-4 max-w-2xl">
+            {posts.length === 0 ? (
+              <div className="py-20 text-center rounded-2xl border border-dashed border-white/10">
+                <Heart className="w-10 h-10 text-white/10 mx-auto mb-3" />
+                <p className="text-white/30 text-sm">No posts yet</p>
+              </div>
+            ) : (
+              posts.map((post, i) => (
+                <motion.div
+                  key={post.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/10 transition-all"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-white/30 font-semibold capitalize">{post.type}</span>
+                    {post.createdAt && (
+                      <span className="text-xs text-white/20">{formatRelativeTime(post.createdAt)}</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-white/70 leading-relaxed">{post.content}</p>
+                  {post.projectName && (
+                    <div className="mt-3 flex items-center gap-1.5 text-xs text-blue-400">
+                      <ExternalLink className="w-3 h-3" />
+                      {post.projectName}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5 text-xs text-white/30">
+                    <Heart className="w-3.5 h-3.5" />
+                    {post.likes > 0 ? post.likes : "0"} likes
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ── About tab ── */}
+        {activeTab === "about" && (
+          <div className="max-w-xl space-y-6">
+            {(portfolioConfig?.bio || userSettings.bio) && (
+              <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Bio</p>
+                <p className="text-white/70 leading-relaxed">{portfolioConfig?.bio || userSettings.bio}</p>
+              </div>
+            )}
+
+            {portfolioConfig?.links && portfolioConfig.links.some((l: any) => l.url) && (
+              <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">Links</p>
+                <div className="flex flex-col gap-3">
+                  {portfolioConfig.links.map((link: any, index: number) => {
+                    if (!link.url) return null;
+                    return (
+                      <a
+                        key={index}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 text-sm text-white/60 hover:text-white transition-colors group"
+                      >
+                        {link.platform === "github" && <Github className="w-4 h-4 flex-shrink-0" />}
+                        {link.platform === "twitter" && <Twitter className="w-4 h-4 flex-shrink-0" />}
+                        {link.platform === "linkedin" && <Linkedin className="w-4 h-4 flex-shrink-0" />}
+                        <span className="truncate">{link.url}</span>
+                        <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-40 group-hover:opacity-100 ml-auto" />
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {userSettings.links && (
+              <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">External Links</p>
+                <div className="flex flex-col gap-3">
+                  {userSettings.links.github && (
+                    <a href={userSettings.links.github} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 text-sm text-white/60 hover:text-white transition-colors">
+                      <Github className="w-4 h-4" /> {userSettings.links.github}
+                    </a>
+                  )}
+                  {userSettings.links.twitter && (
+                    <a href={userSettings.links.twitter} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 text-sm text-white/60 hover:text-white transition-colors">
+                      <Twitter className="w-4 h-4" /> {userSettings.links.twitter}
+                    </a>
+                  )}
+                  {userSettings.links.website && (
+                    <a href={userSettings.links.website} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 text-sm text-white/60 hover:text-white transition-colors">
+                      <Globe className="w-4 h-4" /> {userSettings.links.website}
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!portfolioConfig?.bio && !userSettings.bio && !portfolioConfig?.links?.some((l: any) => l.url) && !userSettings.links && (
+              <div className="py-16 text-center rounded-2xl border border-dashed border-white/10">
+                <UserIcon className="w-10 h-10 text-white/10 mx-auto mb-3" />
+                <p className="text-white/30 text-sm">No about info yet</p>
+              </div>
+            )}
+          </div>
         )}
       </main>
 
@@ -434,6 +647,7 @@ export default function Portfolio() {
       </footer>
 
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 }

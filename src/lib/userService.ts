@@ -14,12 +14,14 @@ import {
 import { Project } from "../types";
 import { initializeCredits } from "./creditsService";
 import { DEFAULT_USER_AVATAR } from "./avatars";
+import { getOrCreateReferralCode, processReferral } from "./referralService";
 
 const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "oladoyeheritage445@gmail.com";
 
 /**
  * Called immediately after email sign-up to persist fullName and username
  * chosen by the user in the registration form.
+ * Optionally processes a referral code stored in sessionStorage.
  */
 export const registerUserProfile = async (
   user: { uid: string; email: string | null; displayName: string | null; photoURL: string | null },
@@ -53,6 +55,23 @@ export const registerUserProfile = async (
 
   await initializeCredits(user.uid);
   await createPortfolioProject(user.uid, profile.username);
+
+  // Generate referral code for the new user
+  await getOrCreateReferralCode(user.uid).catch(() => {});
+
+  // Process any pending referral (from ?ref= in the URL at time of visit)
+  const pendingRef = sessionStorage.getItem("devos_pending_ref");
+  if (pendingRef) {
+    try {
+      const rewarded = await processReferral(pendingRef, user.uid);
+      if (rewarded) {
+        // toast is not available here; caller can react to the promise resolving
+      }
+    } catch (_) {
+      // referral processing is best-effort
+    }
+    sessionStorage.removeItem("devos_pending_ref");
+  }
 };
 
 export const initializeUser = async (user: any) => {
@@ -139,6 +158,9 @@ export const initializeUser = async (user: any) => {
       await createPortfolioProject(user.uid, username);
     }
   }
+
+  // Ensure referral code exists for this user (fire-and-forget)
+  getOrCreateReferralCode(user.uid).catch(() => {});
 };
 
 const createPortfolioProject = async (uid: string, username: string) => {
