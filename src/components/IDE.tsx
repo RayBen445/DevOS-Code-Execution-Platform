@@ -451,8 +451,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     setActivePanel("terminal");
     addLog("system", `devos ▶ ${project?.name || "project"} $ run`);
 
-    // Block unsupported file types
-    const blockedExtensions = [".ts", ".tsx", ".jsx"];
+    // Block unsupported file types — .tsx/.jsx are React components; use Preview instead
+    const blockedExtensions = [".tsx", ".jsx"];
     const fileExt = activeFile.name.includes(".") ? `.${activeFile.name.split(".").pop()?.toLowerCase()}` : "";
     if (blockedExtensions.includes(fileExt)) {
       addLog("error", "✖ Execution failed");
@@ -475,9 +475,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
 
     try {
+      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch("/api/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body: JSON.stringify({ language: activeFile.language, content: activeFile.content })
       });
 
