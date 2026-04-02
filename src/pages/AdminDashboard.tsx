@@ -9,7 +9,7 @@ import {
   getDoc,
   updateDoc,
 } from "firebase/firestore";
-import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById } from "../lib/templateService";
+import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
 import { adjustCredits } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
@@ -39,6 +39,9 @@ import {
   Newspaper,
   Menu,
   X,
+  FileCode,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -46,6 +49,15 @@ import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
 type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts";
+
+const detectLanguage = (filename: string): string => {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  const map: Record<string, string> = {
+    html: "html", css: "css", js: "javascript", ts: "typescript",
+    tsx: "typescript", jsx: "javascript", json: "json", md: "markdown",
+  };
+  return map[ext] || "plaintext";
+};
 
 interface UserWithCredits extends UserProfile {
   credits?: Credits;
@@ -85,6 +97,14 @@ export default function AdminDashboard() {
   const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
   const [deleteTemplateConfirm, setDeleteTemplateConfirm] = useState<string | null>(null);
   const [deleteCodeConfirm, setDeleteCodeConfirm] = useState<string | null>(null);
+
+  // Template file editor state
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [editingTemplateFiles, setEditingTemplateFiles] = useState<Template['files']>([]);
+  const [savingTemplateFiles, setSavingTemplateFiles] = useState(false);
+  const [newTplFileName, setNewTplFileName] = useState("index.html");
+  const [newTplFileContent, setNewTplFileContent] = useState("");
+  const [expandedFileIndex, setExpandedFileIndex] = useState<number | null>(null);
 
   // Notifications state
   const [notifUserId, setNotifUserId] = useState("all");
@@ -229,6 +249,53 @@ export default function AdminDashboard() {
 
   const handleDeleteTemplate = async (templateId: string) => {
     setDeleteTemplateConfirm(templateId);
+  };
+
+  const handleOpenTemplateFileEditor = (template: Template) => {
+    setEditingTemplateId(template.id);
+    setEditingTemplateFiles(template.files ? [...template.files] : []);
+    setExpandedFileIndex(null);
+    setNewTplFileName("index.html");
+    setNewTplFileContent("");
+  };
+
+  const handleAddTemplateFile = () => {
+    const name = newTplFileName.trim();
+    if (!name) return;
+    setEditingTemplateFiles(prev => [
+      ...prev,
+      { name, path: name, content: newTplFileContent, language: detectLanguage(name) },
+    ]);
+    setNewTplFileName("index.html");
+    setNewTplFileContent("");
+  };
+
+  const handleUpdateTemplateFileContent = (index: number, content: string) => {
+    setEditingTemplateFiles(prev =>
+      prev.map((f, i) => i === index ? { ...f, content } : f)
+    );
+  };
+
+  const handleRemoveTemplateFile = (index: number) => {
+    setEditingTemplateFiles(prev => prev.filter((_, i) => i !== index));
+    setExpandedFileIndex(null);
+  };
+
+  const handleSaveTemplateFiles = async () => {
+    if (!editingTemplateId) return;
+    setSavingTemplateFiles(true);
+    try {
+      await updateTemplateFiles(editingTemplateId, editingTemplateFiles);
+      toast.success("Template files saved!");
+      setAllTemplates(prev =>
+        prev.map(t => t.id === editingTemplateId ? { ...t, files: editingTemplateFiles } : t)
+      );
+      setEditingTemplateId(null);
+    } catch {
+      toast.error("Failed to save template files.");
+    } finally {
+      setSavingTemplateFiles(false);
+    }
   };
 
   const confirmDeleteTemplate = async () => {
@@ -728,6 +795,14 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 <span className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-bold">Live</span>
                                 <button
+                                  onClick={() => handleOpenTemplateFileEditor(template)}
+                                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-all text-xs font-bold"
+                                  title="Edit files"
+                                >
+                                  <FileCode className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Files ({(template.files || []).length})</span>
+                                </button>
+                                <button
                                   onClick={() => handleDeleteTemplate(template.id)}
                                   disabled={deletingTemplate === template.id}
                                   className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
@@ -1046,6 +1121,136 @@ export default function AdminDashboard() {
       onConfirm={confirmDeleteCode}
       onCancel={() => setDeleteCodeConfirm(null)}
     />
+
+    {/* Template File Editor Modal */}
+    <AnimatePresence>
+      {editingTemplateId && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[#111827] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <FileCode className="w-5 h-5 text-blue-400" />
+                <div>
+                  <p className="font-bold text-white text-sm">
+                    Edit Template Files
+                  </p>
+                  <p className="text-xs text-white/40">
+                    {editingTemplateFiles.length} file{editingTemplateFiles.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingTemplateId(null)}
+                className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Existing files */}
+              {editingTemplateFiles.length === 0 && (
+                <p className="text-sm text-white/30 text-center py-4">No files yet. Add one below.</p>
+              )}
+              {editingTemplateFiles.map((file, index) => (
+                <div key={index} className="rounded-xl border border-white/10 overflow-hidden">
+                  <div
+                    className="flex items-center justify-between px-4 py-3 bg-white/5 cursor-pointer hover:bg-white/8 transition-colors"
+                    onClick={() => setExpandedFileIndex(expandedFileIndex === index ? null : index)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileCode className="w-4 h-4 text-white/40 flex-shrink-0" />
+                      <span className="text-sm font-mono text-white truncate">{file.path}</span>
+                      <span className="text-xs text-white/30 flex-shrink-0">{file.language}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRemoveTemplateFile(index); }}
+                        className="p-1 rounded hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-colors"
+                        title="Remove file"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      {expandedFileIndex === index
+                        ? <ChevronUp className="w-3.5 h-3.5 text-white/30" />
+                        : <ChevronDown className="w-3.5 h-3.5 text-white/30" />
+                      }
+                    </div>
+                  </div>
+                  {expandedFileIndex === index && (
+                    <textarea
+                      value={file.content}
+                      onChange={(e) => handleUpdateTemplateFileContent(index, e.target.value)}
+                      className="w-full bg-[#0D1117] text-white/80 font-mono text-xs p-4 resize-none outline-none border-t border-white/10"
+                      rows={12}
+                      spellCheck={false}
+                      placeholder="File content..."
+                    />
+                  )}
+                </div>
+              ))}
+
+              {/* Add new file */}
+              <div className="rounded-xl border border-dashed border-white/10 p-4 space-y-3">
+                <p className="text-xs font-bold text-white/40 uppercase tracking-wider">Add New File</p>
+                <input
+                  type="text"
+                  value={newTplFileName}
+                  onChange={(e) => setNewTplFileName(e.target.value)}
+                  placeholder="filename (e.g. css/style.css)"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-blue-500/50 font-mono"
+                />
+                <textarea
+                  value={newTplFileContent}
+                  onChange={(e) => setNewTplFileContent(e.target.value)}
+                  placeholder="File content (optional)..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-blue-500/50 font-mono resize-none"
+                  rows={6}
+                  spellCheck={false}
+                />
+                <button
+                  onClick={handleAddTemplateFile}
+                  disabled={!newTplFileName.trim()}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 text-sm rounded-lg font-bold transition-all disabled:opacity-40"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add File
+                </button>
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10 flex-shrink-0">
+              <button
+                onClick={() => setEditingTemplateId(null)}
+                className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTemplateFiles}
+                disabled={savingTemplateFiles}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50"
+              >
+                {savingTemplateFiles ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCode className="w-4 h-4" />}
+                {savingTemplateFiles ? "Saving..." : "Save Files"}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
     </>
   );
 }

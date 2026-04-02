@@ -13,6 +13,10 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+// Upload progress simulation constants (Cloudinary doesn't expose XHR progress via fetch)
+const PROGRESS_INCREMENT = 15;
+const PROGRESS_MAX = 85;
+const PROGRESS_INTERVAL_MS = 200;
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -107,11 +111,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
     setIsUploading(true);
     setUploadProgress(0);
-
-    // Progress simulation constants (Cloudinary doesn't expose XHR progress via fetch)
-    const PROGRESS_INCREMENT = 15;
-    const PROGRESS_MAX = 85;
-    const PROGRESS_INTERVAL_MS = 200;
 
     const progressInterval = setInterval(() => {
       setUploadProgress((p) => Math.min(p + PROGRESS_INCREMENT, PROGRESS_MAX));

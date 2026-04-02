@@ -125,3 +125,10 @@ export const updateTemplate = async (templateId: string, updates: Partial<Pick<T
 export const deleteTemplateById = async (templateId: string): Promise<void> => {
   await deleteDoc(doc(db, "templates", templateId));
 };
+
+export const updateTemplateFiles = async (templateId: string, files: Template['files']): Promise<void> => {
+  await updateDoc(doc(db, "templates", templateId), {
+    files,
+    updatedAt: serverTimestamp(),
+  });
+};

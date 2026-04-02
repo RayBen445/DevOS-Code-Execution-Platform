@@ -11,9 +11,10 @@ interface PreviewPanelProps {
   projectId: string;
   files: FileData[];
   entryFile?: string;
+  saveKey?: number;
 }
 
-export default function PreviewPanel({ projectId, files, entryFile }: PreviewPanelProps) {
+export default function PreviewPanel({ projectId, files, entryFile, saveKey }: PreviewPanelProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -202,7 +203,7 @@ export default function PreviewPanel({ projectId, files, entryFile }: PreviewPan
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
-  }, [files]);
+  }, [files, saveKey]);
 
   const handleOpenExternal = () => {
     if (previewUrl) {

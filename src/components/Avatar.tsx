@@ -36,7 +36,8 @@ export default function Avatar({
 }: AvatarProps) {
   const [imgError, setImgError] = useState(false);
   const resolvedSrc = resolveAvatar(src);
-  const initial = displayName?.trim() ? displayName.trim()[0].toUpperCase() : "?";
+  const trimmedName = displayName?.trim() || "";
+  const initial = trimmedName ? trimmedName[0].toUpperCase() : "?";
 
   return (
     <div className={cn("relative flex-shrink-0 group/avatar", SIZE_MAP[size], className)}>
