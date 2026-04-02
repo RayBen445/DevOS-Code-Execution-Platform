@@ -98,7 +98,7 @@ service cloud.firestore {
 
     function isValidProject(data) {
       let requiredFields = ['name', 'ownerId', 'createdAt', 'updatedAt', 'isPublic', 'isTemplate', 'forksCount', 'collaborators'];
-      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'env']);
+      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'parentTemplateId', 'forkedFrom', 'forkedFromOwner', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'savedAt', 'env']);
       return data.keys().hasAll(requiredFields) &&
              data.keys().hasOnly(allowedFields) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
@@ -108,12 +108,16 @@ service cloud.firestore {
              (!('ownerUsername' in data) || (data.ownerUsername is string && data.ownerUsername.size() <= 50)) &&
              (!('projectSlug' in data) || (data.projectSlug is string && data.projectSlug.size() <= 100)) &&
              (!('entryFile' in data) || (data.entryFile is string && data.entryFile.size() <= 500)) &&
+             (!('savedAt' in data) || data.savedAt is timestamp) &&
              (!('env' in data) || data.env is map) &&
              data.isPublic is bool &&
              data.isTemplate is bool &&
              data.forksCount is int &&
              (!('views' in data) || data.views is int) &&
              (!('parentProjectId' in data) || data.parentProjectId is string) &&
+             (!('parentTemplateId' in data) || data.parentTemplateId is string) &&
+             (!('forkedFrom' in data) || data.forkedFrom is string) &&
+             (!('forkedFromOwner' in data) || data.forkedFromOwner is string) &&
              (!('deployUrl' in data) || (data.deployUrl is string && data.deployUrl.size() <= 1000)) &&
              (!('liveUrl' in data) || (data.liveUrl is string && data.liveUrl.size() <= 1000)) &&
              (!('githubRepo' in data) || (data.githubRepo is string && data.githubRepo.size() <= 200)) &&
@@ -229,7 +233,12 @@ service cloud.firestore {
 
     match /user_credits/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow write: if isAdmin();
+      // Owner can create their own credits doc (initialisation on first deploy/load)
+      allow create: if isOwner(uid) || isAdmin();
+      // Owner can update their own credits (deduct on deploy/sync, reset daily/monthly)
+      // Admin can also adjust credits (top-up via dashboard)
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /notifications/{notifId} {
@@ -274,6 +283,18 @@ service cloud.firestore {
       );
       allow delete: if isAuthenticated() && (
         resource.data.get('userId', '') == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
         isAdmin()
       );
     }
