@@ -1,24 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   FolderCode,
   Sparkles,
   Clock,
   Heart,
-  Rocket,
   Globe,
   Lock,
   ExternalLink,
   Activity,
   Zap,
   Code2,
+  Send,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { subscribeFeed, toggleLike } from "../lib/feedService";
+import { subscribeFeed, toggleLike, createFeedPost } from "../lib/feedService";
 import { resolveAvatar } from "../lib/avatars";
 import { formatRelativeTime, cn } from "../lib/utils";
 import { FeedPost, Project, UserSettings } from "../types";
@@ -26,6 +28,7 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import MobileBottomNav from "./MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
+import { toast } from "sonner";
 
 interface FeedHomeProps {
   onOpenProject: (projectId: string) => void;
@@ -39,6 +42,14 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const [myProjects, setMyProjects] = useState<Project[]>([]);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [feedLoading, setFeedLoading] = useState(true);
+
+  // Post composer state
+  const [postText, setPostText] = useState("");
+  const [postType, setPostType] = useState<FeedPost["type"]>("update");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [isPosting, setIsPosting] = useState(false);
+  const [showMobileFab, setShowMobileFab] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useSEO({ title: "Home — DevOS" });
 
@@ -111,6 +122,33 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     await toggleLike(post.id, user.uid, liked);
   };
 
+  const handleSubmitPost = async () => {
+    if (!user) return;
+    setIsPosting(true);
+    try {
+      const selectedProject = myProjects.find((p) => p.id === selectedProjectId);
+      await createFeedPost({
+        userId: user.uid,
+        username: settings?.username || user.email?.split("@")[0] || "user",
+        displayName: settings?.displayName || user.displayName || undefined,
+        avatarUrl: settings?.avatarUrl || user.photoURL || undefined,
+        content: postText.trim(),
+        type: postType,
+        projectId: selectedProject?.id,
+        projectName: selectedProject?.name,
+        isPublic: true,
+      });
+      setPostText("");
+      setSelectedProjectId("");
+      setShowMobileFab(false);
+      toast.success("Post shared!");
+    } catch {
+      toast.error("Failed to share post.");
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
@@ -150,9 +188,29 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Feed (main column) */}
             <div className="lg:col-span-2 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-white/30 px-1">
-                Community Feed
-              </h2>
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
+                  Community Feed
+                </h2>
+              </div>
+
+              {/* Post Composer — desktop inline, mobile via FAB */}
+              {user && (
+                <PostComposer
+                  avatarUrl={resolveAvatar(settings?.avatarUrl || user.photoURL)}
+                  displayName={settings?.displayName || user.displayName || "You"}
+                  postText={postText}
+                  setPostText={setPostText}
+                  postType={postType}
+                  setPostType={setPostType}
+                  selectedProjectId={selectedProjectId}
+                  setSelectedProjectId={setSelectedProjectId}
+                  myProjects={myProjects}
+                  isPosting={isPosting}
+                  onSubmit={handleSubmitPost}
+                  textareaRef={textareaRef}
+                />
+              )}
 
               {feedLoading ? (
                 <div className="space-y-3">
@@ -222,8 +280,180 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         </div>
       </main>
 
+      {/* Mobile FAB — floating post button */}
+      {user && (
+        <>
+          <button
+            onClick={() => setShowMobileFab(true)}
+            className="md:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/30 flex items-center justify-center text-white transition-all active:scale-90"
+            aria-label="New post"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+
+          {/* Mobile post sheet */}
+          <AnimatePresence>
+            {showMobileFab && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/70 z-40 md:hidden"
+                  onClick={() => setShowMobileFab(false)}
+                />
+                <motion.div
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                  className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#111] border-t border-white/10 rounded-t-2xl p-4 pb-8"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-white">New Post</h3>
+                    <button onClick={() => setShowMobileFab(false)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/40">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <PostComposer
+                    avatarUrl={resolveAvatar(settings?.avatarUrl || user.photoURL)}
+                    displayName={settings?.displayName || user.displayName || "You"}
+                    postText={postText}
+                    setPostText={setPostText}
+                    postType={postType}
+                    setPostType={setPostType}
+                    selectedProjectId={selectedProjectId}
+                    setSelectedProjectId={setSelectedProjectId}
+                    myProjects={myProjects}
+                    isPosting={isPosting}
+                    onSubmit={handleSubmitPost}
+                    textareaRef={textareaRef}
+                  />
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </>
+      )}
+
       <Footer />
       <MobileBottomNav />
+    </div>
+  );
+}
+
+/* ─── Post Composer ─── */
+
+interface PostComposerProps {
+  avatarUrl: string;
+  displayName: string;
+  postText: string;
+  setPostText: (v: string) => void;
+  postType: FeedPost["type"];
+  setPostType: (v: FeedPost["type"]) => void;
+  selectedProjectId: string;
+  setSelectedProjectId: (v: string) => void;
+  myProjects: Project[];
+  isPosting: boolean;
+  onSubmit: () => void;
+  textareaRef: React.RefObject<HTMLTextAreaElement>;
+}
+
+function PostComposer({
+  avatarUrl,
+  displayName,
+  postText,
+  setPostText,
+  postType,
+  setPostType,
+  selectedProjectId,
+  setSelectedProjectId,
+  myProjects,
+  isPosting,
+  onSubmit,
+  textareaRef,
+}: PostComposerProps) {
+  const typeOptions: { value: FeedPost["type"]; label: string; emoji: string }[] = [
+    { value: "update", label: "Update", emoji: "🔄" },
+    { value: "snippet", label: "Snippet", emoji: "💾" },
+    { value: "feature", label: "Feature", emoji: "✨" },
+    { value: "deployment", label: "Deployment", emoji: "🚀" },
+  ];
+
+  return (
+    <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 space-y-3">
+      <div className="flex items-start gap-3">
+        <img
+          src={avatarUrl}
+          alt={displayName}
+          className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+          referrerPolicy="no-referrer"
+        />
+        <textarea
+          ref={textareaRef}
+          value={postText}
+          onChange={(e) => setPostText(e.target.value)}
+          placeholder="Share something with the community…"
+          rows={2}
+          className="flex-1 bg-transparent text-sm text-white placeholder-white/30 resize-none focus:outline-none leading-relaxed"
+        />
+      </div>
+
+      {/* Options row */}
+      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/5">
+        {/* Post type selector */}
+        <div className="relative">
+          <select
+            value={postType}
+            onChange={(e) => setPostType(e.target.value as FeedPost["type"])}
+            className="appearance-none text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white focus:outline-none focus:border-white/20 pr-6 cursor-pointer transition-all"
+          >
+            {typeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.emoji} {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" />
+        </div>
+
+        {/* Project selector */}
+        {myProjects.length > 0 && (
+          <div className="relative">
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="appearance-none text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white focus:outline-none focus:border-white/20 pr-6 cursor-pointer transition-all max-w-[140px]"
+            >
+              <option value="">📁 Attach project</option>
+              {myProjects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" />
+          </div>
+        )}
+
+        <div className="ml-auto">
+          <button
+            onClick={onSubmit}
+            disabled={isPosting || !postText.trim()}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-bold transition-all",
+              postText.trim() && !isPosting
+                ? "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
+                : "bg-white/5 text-white/30 cursor-not-allowed"
+            )}
+          >
+            {isPosting ? (
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Send className="w-3.5 h-3.5" />
+            )}
+            Post
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

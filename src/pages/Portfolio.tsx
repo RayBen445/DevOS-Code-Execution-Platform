@@ -4,13 +4,15 @@ import { db, auth } from "../lib/firebase";
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { UserSettings, Project, FeedPost } from "../types";
-import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Loader2, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users } from "lucide-react";
+import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn, formatRelativeTime } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import Footer from "../components/Footer";
+import MobileBottomNav from "../components/MobileBottomNav";
+import Navbar from "../components/Navbar";
 import FollowButton from "../components/FollowButton";
 import { getFollowerCount, getFollowingCount } from "../lib/followService";
 import { subscribeFeed } from "../lib/feedService";
@@ -173,6 +175,9 @@ export default function Portfolio() {
 
   const portfolioAvatarUrl = resolveAvatar(userSettings?.avatar || userSettings?.avatarUrl);
   const portfolioDisplayName = userSettings?.fullName || userSettings?.displayName || userSettings?.username || username || "";
+  // True when logged-in user is viewing their own portfolio
+  const isOwner = !!(currentUser && uid && currentUser.uid === uid);
+
   useSEO({
     title: `@${username ?? ""} — DevOS Portfolio`,
     description: `Explore projects built by @${username ?? ""} on DevOS`,
@@ -228,6 +233,9 @@ export default function Portfolio() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30">
+      {/* Navbar — show for authenticated users */}
+      {currentUser && !isPreview && <Navbar />}
+
       <AnimatePresence>
         {isPreview && (
           <motion.div 
@@ -339,13 +347,28 @@ export default function Portfolio() {
               <Globe className="w-3.5 h-3.5" />
               {projects.length} projects
             </div>
-            {uid && (
-              <FollowButton
-                targetUid={uid}
-                targetUsername={userSettings.username ?? username ?? ""}
-                followerUsername={currentUser?.displayName ?? undefined}
-              />
+
+            {/* Owner vs Public actions */}
+            {isOwner ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/settings"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all active:scale-90"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Edit Profile
+                </Link>
+              </div>
+            ) : (
+              uid && (
+                <FollowButton
+                  targetUid={uid}
+                  targetUsername={userSettings.username ?? username ?? ""}
+                  followerUsername={currentUser?.displayName ?? undefined}
+                />
+              )
             )}
+
             <button
               onClick={() => handleCopyLink(window.location.href, "profile")}
               className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90"
@@ -624,6 +647,7 @@ export default function Portfolio() {
       </footer>
 
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 }
