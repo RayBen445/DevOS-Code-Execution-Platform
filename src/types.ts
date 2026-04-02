@@ -173,7 +173,10 @@ export type NotificationType =
   | 'credit_warning'
   | 'system_update'
   | 'admin_message'
-  | 'follow';
+  | 'follow'
+  | 'post_comment'
+  | 'post_repost'
+  | 'post_like';
 
 export interface Notification {
   id: string;
@@ -181,6 +184,7 @@ export interface Notification {
   type: NotificationType;
   title: string;
   message: string;
+  link?: string; // navigation target when clicked
   isRead?: boolean; // for targeted (userId != "all")
   readBy?: string[]; // for broadcast (userId == "all")
   createdAt: any;
@@ -195,14 +199,31 @@ export interface FeedPost {
   displayName?: string;
   avatarUrl?: string;
   content: string;
-  type: 'update' | 'deployment' | 'snippet' | 'announcement' | 'feature';
+  type: 'update' | 'deployment' | 'snippet' | 'announcement' | 'feature' | 'repost';
   projectId?: string;
   projectName?: string;
   createdAt: any;
   likes: number;
   likedBy?: string[];
+  commentsCount?: number;
+  repostCount?: number;
+  viewsCount?: number;
   isPublic: boolean;
   isOfficial?: boolean;
+  // Repost fields
+  originalPostId?: string;
+  originalPost?: Omit<FeedPost, 'originalPost'>; // embedded snapshot for display
+}
+
+export interface FeedComment {
+  id: string;
+  postId: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  content: string;
+  createdAt: any;
 }
 
 export interface RedeemCode {

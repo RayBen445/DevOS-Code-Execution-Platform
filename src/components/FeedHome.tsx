@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,14 +16,26 @@ import {
   Send,
   ChevronDown,
   X,
+  MessageCircle,
+  Repeat2,
+  Eye,
+  Download,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { subscribeFeed, toggleLike, createFeedPost } from "../lib/feedService";
+import {
+  subscribeFeed,
+  toggleLike,
+  createFeedPost,
+  addComment,
+  subscribeComments,
+  repostPost,
+} from "../lib/feedService";
+import { notifyComment, notifyRepost } from "../lib/notificationService";
 import { resolveAvatar } from "../lib/avatars";
 import { formatRelativeTime, cn } from "../lib/utils";
-import { FeedPost, Project, UserSettings } from "../types";
+import { FeedPost, FeedComment, Project, UserSettings } from "../types";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import MobileBottomNav from "./MobileBottomNav";
@@ -120,6 +132,51 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     if (!user) return;
     const liked = post.likedBy?.includes(user.uid) ?? false;
     await toggleLike(post.id, user.uid, liked);
+  };
+
+  const handleRepost = async (originalPost: FeedPost, commentary: string) => {
+    if (!user) return;
+    try {
+      await repostPost({
+        originalPost,
+        userId: user.uid,
+        username: settings?.username || user.email?.split("@")[0] || "user",
+        displayName: settings?.displayName || user.displayName || undefined,
+        avatarUrl: settings?.avatarUrl || user.photoURL || undefined,
+        commentary,
+      });
+      await notifyRepost({
+        postOwnerId: originalPost.userId,
+        reposterUsername: settings?.username || user.email?.split("@")[0] || "user",
+        reposterId: user.uid,
+        postId: originalPost.id,
+      });
+      toast.success("Reposted!");
+    } catch {
+      toast.error("Failed to repost.");
+    }
+  };
+
+  const handleAddComment = async (post: FeedPost, content: string) => {
+    if (!user || !content.trim()) return;
+    try {
+      await addComment({
+        postId: post.id,
+        userId: user.uid,
+        username: settings?.username || user.email?.split("@")[0] || "user",
+        displayName: settings?.displayName || user.displayName || undefined,
+        avatarUrl: settings?.avatarUrl || user.photoURL || undefined,
+        content: content.trim(),
+      });
+      await notifyComment({
+        postOwnerId: post.userId,
+        commenterUsername: settings?.username || user.email?.split("@")[0] || "user",
+        commenterId: user.uid,
+        postId: post.id,
+      });
+    } catch {
+      toast.error("Failed to post comment.");
+    }
   };
 
   const handleSubmitPost = async () => {
@@ -234,7 +291,15 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                 </div>
               ) : (
                 feed.map((post, i) => (
-                  <FeedItem key={post.id} post={post} userId={user?.uid} onLike={handleLike} index={i} />
+                  <FeedItem
+                    key={post.id}
+                    post={post}
+                    userId={user?.uid}
+                    onLike={handleLike}
+                    onRepost={handleRepost}
+                    onComment={handleAddComment}
+                    index={i}
+                  />
                 ))
               )}
             </div>
@@ -460,43 +525,179 @@ function PostComposer({
 
 /* ─── Feed Item ─── */
 
+const TYPE_COLORS: Record<string, string> = {
+  deployment: "bg-green-500/10 text-green-400 border-green-500/20",
+  announcement: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  feature: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  update: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  snippet: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  repost: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  deployment: "🚀 Deployment",
+  announcement: "📢 Announcement",
+  feature: "✨ Feature",
+  update: "🔄 Update",
+  snippet: "💾 Snippet",
+  repost: "🔁 Repost",
+};
+
 function FeedItem({
   post,
   userId,
   onLike,
+  onRepost,
+  onComment,
   index,
 }: {
   post: FeedPost;
   userId?: string;
   onLike: (post: FeedPost) => void;
+  onRepost: (post: FeedPost, commentary: string) => void;
+  onComment: (post: FeedPost, content: string) => void;
   index: number;
 }) {
   const liked = userId ? (post.likedBy?.includes(userId) ?? false) : false;
   const avatarUrl = resolveAvatar(post.avatarUrl || null);
 
-  const typeColors: Record<string, string> = {
-    deployment: "bg-green-500/10 text-green-400 border-green-500/20",
-    announcement: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    feature: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    update: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-    snippet: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<FeedComment[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [showRepostModal, setShowRepostModal] = useState(false);
+  const [repostText, setRepostText] = useState("");
+  const [isReposting, setIsReposting] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Subscribe to comments when expanded
+  useEffect(() => {
+    if (!showComments) return;
+    const unsub = subscribeComments(post.id, setComments);
+    return unsub;
+  }, [showComments, post.id]);
+
+  const handleSubmitComment = async () => {
+    if (!commentText.trim()) return;
+    setIsSubmittingComment(true);
+    await onComment(post, commentText);
+    setCommentText("");
+    setIsSubmittingComment(false);
   };
 
-  const typeLabel: Record<string, string> = {
-    deployment: "🚀 Deployment",
-    announcement: "📢 Announcement",
-    feature: "✨ Feature",
-    update: "🔄 Update",
-    snippet: "💾 Snippet",
+  const handleRepost = async () => {
+    setIsReposting(true);
+    await onRepost(post, repostText);
+    setRepostText("");
+    setShowRepostModal(false);
+    setIsReposting(false);
   };
+
+  /** Export the post card to a downloadable PNG using Canvas */
+  const handleShareAsImage = useCallback(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 600;
+    canvas.height = 340;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Background
+    ctx.fillStyle = "#0f0f11";
+    ctx.roundRect(0, 0, 600, 340, 20);
+    ctx.fill();
+
+    // Blue accent bar
+    const grad = ctx.createLinearGradient(0, 0, 600, 0);
+    grad.addColorStop(0, "#3b82f6");
+    grad.addColorStop(1, "#8b5cf6");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 600, 4);
+
+    // Avatar placeholder circle
+    ctx.fillStyle = "#1e3a5f";
+    ctx.beginPath();
+    ctx.arc(44, 64, 22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Initial letter in avatar
+    ctx.fillStyle = "#93c5fd";
+    ctx.font = "bold 18px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText((post.displayName || post.username || "U")[0].toUpperCase(), 44, 71);
+
+    // Display name
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 15px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(post.displayName || post.username, 76, 58);
+
+    // Username + time
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(`@${post.username}  ·  ${post.createdAt ? formatRelativeTime(post.createdAt) : ""}`, 76, 76);
+
+    // Post content — word-wrap
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.font = "14px sans-serif";
+    const words = post.content.split(" ");
+    let line = "";
+    let y = 116;
+    const maxW = 540;
+    for (const word of words) {
+      const test = line + word + " ";
+      if (ctx.measureText(test).width > maxW && line !== "") {
+        ctx.fillText(line, 30, y);
+        line = word + " ";
+        y += 22;
+        if (y > 240) { ctx.fillText("…", 30, y); break; }
+      } else {
+        line = test;
+      }
+    }
+    if (y <= 240) ctx.fillText(line, 30, y);
+
+    // Metrics row
+    y = Math.min(y + 36, 272);
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(`❤️ ${post.likes ?? 0}   💬 ${post.commentsCount ?? 0}   🔁 ${post.repostCount ?? 0}`, 30, y);
+
+    // DevOS branding
+    ctx.fillStyle = "#3b82f6";
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText("DevOS", 570, 320);
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("devos.io", 570, 335);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `devos-post-${post.id.slice(0, 8)}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }, [post]);
 
   return (
     <motion.div
+      ref={cardRef}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.3 }}
       className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/10 transition-all p-5"
     >
+      {/* Repost header */}
+      {post.type === "repost" && (
+        <div className="flex items-center gap-1.5 text-xs text-teal-400/70 mb-3 font-medium">
+          <Repeat2 className="w-3.5 h-3.5" />
+          <span>{post.displayName || post.username} reposted</span>
+        </div>
+      )}
+
       {/* Author row */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -523,32 +724,58 @@ function FeedItem({
             </p>
             <p className="text-[11px] text-white/40 truncate">
               @{post.username}
-              {post.createdAt && (
-                <> · {formatRelativeTime(post.createdAt)}</>
-              )}
+              {post.createdAt && <> · {formatRelativeTime(post.createdAt)}</>}
             </p>
           </div>
         </div>
 
         {/* Type badge */}
-        <span
-          className={cn(
-            "flex-shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full border",
-            typeColors[post.type] ?? "bg-white/5 text-white/40 border-white/10"
-          )}
-        >
-          {typeLabel[post.type] ?? post.type}
-        </span>
+        {post.type !== "repost" && (
+          <span
+            className={cn(
+              "flex-shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full border",
+              TYPE_COLORS[post.type] ?? "bg-white/5 text-white/40 border-white/10"
+            )}
+          >
+            {TYPE_LABEL[post.type] ?? post.type}
+          </span>
+        )}
       </div>
 
-      {/* Content */}
-      <p className="text-sm text-white/70 leading-relaxed mb-3">{post.content}</p>
+      {/* Content (only show if not a silent repost) */}
+      {post.content && (
+        <p className="text-sm text-white/70 leading-relaxed mb-3">{post.content}</p>
+      )}
+
+      {/* Embedded original post (for reposts) */}
+      {post.type === "repost" && post.originalPost && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
+              <Code2 className="w-3.5 h-3.5 text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white/80 truncate">
+                {post.originalPost.displayName || post.originalPost.username}
+              </p>
+              <p className="text-[10px] text-white/30">@{post.originalPost.username}</p>
+            </div>
+          </div>
+          <p className="text-sm text-white/60 leading-relaxed">{post.originalPost.content}</p>
+          {post.originalPost.projectName && (
+            <div className="flex items-center gap-1.5 mt-2 text-xs text-blue-400">
+              <FolderCode className="w-3 h-3" />
+              {post.originalPost.projectName}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Project preview */}
-      {post.projectName && (
+      {post.projectName && post.type !== "repost" && (
         <a
           href={post.username ? `/u/${post.username}` : undefined}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-sm text-white/60 hover:text-white w-fit max-w-full"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-sm text-white/60 hover:text-white w-fit max-w-full mb-3"
         >
           <FolderCode className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" />
           <span className="truncate font-medium">{post.projectName}</span>
@@ -556,20 +783,179 @@ function FeedItem({
         </a>
       )}
 
-      {/* Engagement */}
-      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/5">
+      {/* Metrics row */}
+      {(post.viewsCount ?? 0) > 0 && (
+        <div className="flex items-center gap-1.5 text-[11px] text-white/20 mb-2">
+          <Eye className="w-3 h-3" />
+          <span>{post.viewsCount} views</span>
+        </div>
+      )}
+
+      {/* Engagement bar */}
+      <div className="flex items-center gap-1 mt-3 pt-3 border-t border-white/5">
+        {/* Like */}
         <button
           onClick={() => onLike(post)}
           className={cn(
-            "flex items-center gap-1.5 text-xs font-medium transition-colors",
-            liked ? "text-red-400 hover:text-red-300" : "text-white/40 hover:text-white/70"
+            "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl transition-all hover:bg-white/5",
+            liked ? "text-red-400" : "text-white/40 hover:text-white/70"
           )}
           aria-label={liked ? "Unlike" : "Like"}
         >
           <Heart className={cn("w-3.5 h-3.5", liked && "fill-current")} />
-          {post.likes > 0 && <span>{post.likes}</span>}
+          {(post.likes ?? 0) > 0 && <span>{post.likes}</span>}
+        </button>
+
+        {/* Comment toggle */}
+        <button
+          onClick={() => setShowComments((v) => !v)}
+          className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-white/40 hover:text-white/70 hover:bg-white/5 transition-all"
+          aria-label="View comments"
+        >
+          <MessageCircle className="w-3.5 h-3.5" />
+          {(post.commentsCount ?? 0) > 0 && <span>{post.commentsCount}</span>}
+        </button>
+
+        {/* Repost */}
+        {post.type !== "repost" && (
+          <button
+            onClick={() => setShowRepostModal(true)}
+            className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-white/40 hover:text-teal-400 hover:bg-teal-500/5 transition-all"
+            aria-label="Repost"
+          >
+            <Repeat2 className="w-3.5 h-3.5" />
+            {(post.repostCount ?? 0) > 0 && <span>{post.repostCount}</span>}
+          </button>
+        )}
+
+        {/* Share as Image */}
+        <button
+          onClick={handleShareAsImage}
+          className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-white/40 hover:text-blue-400 hover:bg-blue-500/5 transition-all ml-auto"
+          aria-label="Share as image"
+          title="Download as image"
+        >
+          <Download className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Comments section */}
+      <AnimatePresence>
+        {showComments && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-3 pt-3 border-t border-white/5 space-y-3">
+              {comments.length === 0 ? (
+                <p className="text-xs text-white/25 text-center py-2">No comments yet</p>
+              ) : (
+                comments.map((c) => (
+                  <div key={c.id} className="flex gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
+                      {c.avatarUrl ? (
+                        <img src={resolveAvatar(c.avatarUrl)} alt={c.username} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <Code2 className="w-3.5 h-3.5 text-blue-400" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-1.5 mb-0.5">
+                        <span className="text-xs font-semibold text-white/80">{c.displayName || c.username}</span>
+                        <span className="text-[10px] text-white/25">{formatRelativeTime(c.createdAt)}</span>
+                      </div>
+                      <p className="text-xs text-white/60 leading-relaxed">{c.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {/* Comment input */}
+              {userId && (
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
+                    placeholder="Write a comment…"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                  />
+                  <button
+                    onClick={handleSubmitComment}
+                    disabled={isSubmittingComment || !commentText.trim()}
+                    className="p-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Repost Modal */}
+      <AnimatePresence>
+        {showRepostModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 z-50"
+              onClick={() => setShowRepostModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-[#111] border border-white/10 rounded-2xl shadow-2xl p-5"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-white">Repost</h3>
+                <button onClick={() => setShowRepostModal(false)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/40">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <textarea
+                value={repostText}
+                onChange={(e) => setRepostText(e.target.value)}
+                placeholder="Add your thoughts… (optional)"
+                rows={3}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 resize-none mb-3"
+              />
+
+              {/* Original post preview */}
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 mb-4">
+                <p className="text-xs font-semibold text-white/50 mb-1">@{post.username}</p>
+                <p className="text-xs text-white/60 leading-relaxed line-clamp-3">{post.content}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowRepostModal(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white/60 hover:text-white transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRepost}
+                  disabled={isReposting}
+                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-all disabled:opacity-50"
+                >
+                  {isReposting ? "Reposting…" : "🔁 Repost"}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

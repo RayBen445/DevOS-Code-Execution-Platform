@@ -12,9 +12,11 @@ import {
   arrayUnion,
   arrayRemove,
   increment,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { DEFAULT_USER_AVATAR, SYSTEM_AVATAR } from "./avatars";
+import { FeedComment, FeedPost } from "../types";
 
 /** Subscribe to the public developer feed */
 export function subscribeFeed(
@@ -70,6 +72,9 @@ export async function createFeedPost(params: {
     createdAt: serverTimestamp(),
     likes: 0,
     likedBy: [],
+    commentsCount: 0,
+    repostCount: 0,
+    viewsCount: 0,
     isPublic: params.isPublic,
   });
   return docRef.id;
@@ -125,5 +130,106 @@ export async function createAdminPost(params: {
     isPublic: true,
     isOfficial: true,
   });
+  return docRef.id;
+}
+
+/** Increment viewsCount when a post is opened/expanded */
+export async function incrementViewCount(postId: string): Promise<void> {
+  await updateDoc(doc(db, "feed", postId), { viewsCount: increment(1) });
+}
+
+/** Add a comment on a feed post */
+export async function addComment(params: {
+  postId: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  content: string;
+}): Promise<string> {
+  const commentRef = await addDoc(collection(db, "comments"), {
+    postId: params.postId,
+    userId: params.userId,
+    username: params.username,
+    displayName: params.displayName ?? "",
+    avatarUrl: params.avatarUrl ?? "",
+    content: params.content,
+    createdAt: serverTimestamp(),
+  });
+  // Increment comment count on the post
+  await updateDoc(doc(db, "feed", params.postId), { commentsCount: increment(1) });
+  return commentRef.id;
+}
+
+/** Subscribe to comments for a specific post */
+export function subscribeComments(
+  postId: string,
+  callback: (comments: FeedComment[]) => void
+): () => void {
+  const q = query(
+    collection(db, "comments"),
+    where("postId", "==", postId),
+    orderBy("createdAt", "asc"),
+    limit(100)
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as FeedComment)));
+  });
+}
+
+/**
+ * Repost a feed post with optional commentary.
+ * Prevents infinite repost chains: if the original is already a repost,
+ * we reference its originalPostId instead.
+ */
+export async function repostPost(params: {
+  originalPost: FeedPost;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  commentary: string;
+}): Promise<string> {
+  // Prevent chain reposts — always reference the root post
+  const rootPostId = params.originalPost.originalPostId ?? params.originalPost.id;
+
+  // Snapshot of the original for embedded display
+  const originalSnapshot: Omit<FeedPost, "originalPost"> = {
+    id: params.originalPost.id,
+    userId: params.originalPost.userId,
+    username: params.originalPost.username,
+    displayName: params.originalPost.displayName,
+    avatarUrl: params.originalPost.avatarUrl,
+    content: params.originalPost.content,
+    type: params.originalPost.type,
+    projectId: params.originalPost.projectId,
+    projectName: params.originalPost.projectName,
+    createdAt: params.originalPost.createdAt,
+    likes: params.originalPost.likes,
+    isPublic: params.originalPost.isPublic,
+    isOfficial: params.originalPost.isOfficial,
+  };
+
+  const docRef = await addDoc(collection(db, "feed"), {
+    userId: params.userId,
+    username: params.username,
+    displayName: params.displayName ?? "",
+    avatarUrl: params.avatarUrl ?? "",
+    content: params.commentary,
+    type: "repost",
+    originalPostId: rootPostId,
+    originalPost: originalSnapshot,
+    createdAt: serverTimestamp(),
+    likes: 0,
+    likedBy: [],
+    commentsCount: 0,
+    repostCount: 0,
+    viewsCount: 0,
+    isPublic: true,
+  });
+
+  // Increment repost count on the original post
+  await updateDoc(doc(db, "feed", params.originalPost.id), { repostCount: increment(1) });
+
   return docRef.id;
 }
