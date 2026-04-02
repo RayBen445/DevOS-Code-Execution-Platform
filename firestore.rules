@@ -278,8 +278,28 @@ service cloud.firestore {
       allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (
+        // Post owner and admins may update any field
         resource.data.get('userId', '') == request.auth.uid ||
-        isAdmin()
+        isAdmin() ||
+        // Any authenticated user may update engagement counters / arrays only
+        // (likes, likedBy, commentsCount, repostCount, viewsCount).
+        // Additionally, when likedBy is changed the requester may only add or
+        // remove their own UID, preventing arbitrary manipulation of the array.
+        (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['likes', 'likedBy', 'commentsCount', 'repostCount', 'viewsCount'])
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['likedBy'])
+            || (
+              request.resource.data.likedBy.toSet()
+                .difference(resource.data.likedBy.toSet())
+                .hasOnly([request.auth.uid])
+              && resource.data.likedBy.toSet()
+                .difference(request.resource.data.likedBy.toSet())
+                .hasOnly([request.auth.uid])
+            )
+          )
+        )
       );
       allow delete: if isAuthenticated() && (
         resource.data.get('userId', '') == request.auth.uid ||

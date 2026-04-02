@@ -130,14 +130,33 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       : []),
   ];
 
+  /** Returns true when an error is a Firestore permission-denied error. */
+  const isPermissionError = (err: any): boolean =>
+    err?.code === "permission-denied" ||
+    (err?.message ?? "").includes("PERMISSION_DENIED");
+
   const handleLike = async (post: FeedPost) => {
-    if (!user) return;
-    const liked = post.likedBy?.includes(user.uid) ?? false;
-    await toggleLike(post.id, user.uid, liked);
+    if (!user) {
+      toast.error("Sign in to like posts.");
+      return;
+    }
+    try {
+      const liked = post.likedBy?.includes(user.uid) ?? false;
+      await toggleLike(post.id, user.uid, liked);
+    } catch (err: any) {
+      toast.error(
+        isPermissionError(err)
+          ? "Permission denied. Firebase rules may need updating."
+          : "Failed to update like. Please try again."
+      );
+    }
   };
 
   const handleRepost = async (originalPost: FeedPost, commentary: string) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("Sign in to repost.");
+      return;
+    }
     try {
       await repostPost({
         originalPost,
@@ -154,8 +173,12 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         postId: originalPost.id,
       });
       toast.success("Reposted!");
-    } catch {
-      toast.error("Failed to repost.");
+    } catch (err: any) {
+      toast.error(
+        isPermissionError(err)
+          ? "Permission denied. Firebase rules may need updating."
+          : "Failed to repost."
+      );
     }
   };
 
@@ -176,8 +199,12 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         commenterId: user.uid,
         postId: post.id,
       });
-    } catch {
-      toast.error("Failed to post comment.");
+    } catch (err: any) {
+      toast.error(
+        isPermissionError(err)
+          ? "Permission denied. Firebase rules may need updating."
+          : "Failed to post comment."
+      );
     }
   };
 

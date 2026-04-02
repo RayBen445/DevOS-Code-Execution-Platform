@@ -8,6 +8,9 @@ import {
   doc,
   getDoc,
   updateDoc,
+  query,
+  limit,
+  where,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
 import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig } from "../lib/creditsService";
@@ -45,6 +48,10 @@ import {
   ChevronDown,
   ChevronUp,
   Settings2,
+  AlertTriangle,
+  Activity,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -65,6 +72,14 @@ const detectLanguage = (filename: string): string => {
 interface UserWithCredits extends UserProfile {
   credits?: Credits;
   projectCount?: number;
+}
+
+interface SystemHealth {
+  firestoreOk: boolean;
+  feedReadable: boolean;
+  templatesReadable: boolean;
+  checkedAt: string | null;
+  errors: string[];
 }
 
 export default function AdminDashboard() {
@@ -139,6 +154,10 @@ export default function AdminDashboard() {
 
   // Role update state
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+
+  // System health state
+  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [runningHealthCheck, setRunningHealthCheck] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -514,6 +533,58 @@ export default function AdminDashboard() {
     }
   };
 
+  const runHealthCheck = async () => {
+    setRunningHealthCheck(true);
+    const errors: string[] = [];
+    let firestoreOk = false;
+    let feedReadable = false;
+    let templatesReadable = false;
+
+    // Check 1: Firestore connectivity + templates public read.
+    // `templates` must be publicly readable (allow read: if true).
+    // A permission-denied here means the rule is misconfigured.
+    try {
+      await getDocs(query(collection(db, "templates"), limit(1)));
+      templatesReadable = true;
+      firestoreOk = true;
+    } catch (err: any) {
+      const code = err?.code ?? "";
+      if (code === "permission-denied") {
+        // Templates are expected to be public — permission-denied is a misconfiguration.
+        firestoreOk = true; // Firestore itself is reachable
+        errors.push(
+          "Templates: permission-denied — the templates collection should allow public read (allow read: if true;)"
+        );
+      } else {
+        errors.push(`Firestore/templates: ${code || err?.message || "unknown"}`);
+      }
+    }
+
+    // Check 2: Feed public read (unauthenticated query for public posts).
+    try {
+      await getDocs(query(collection(db, "feed"), where("isPublic", "==", true), limit(1)));
+      feedReadable = true;
+    } catch (err: any) {
+      const code = err?.code ?? "";
+      if (code === "permission-denied") {
+        errors.push(
+          "Feed: permission-denied on public read — the feed rule should allow read for isPublic posts"
+        );
+      } else {
+        errors.push(`Feed: ${code || err?.message || "unknown"}`);
+      }
+    }
+
+    setSystemHealth({
+      firestoreOk,
+      feedReadable,
+      templatesReadable,
+      checkedAt: new Date().toLocaleTimeString(),
+      errors,
+    });
+    setRunningHealthCheck(false);
+  };
+
   const handleSaveCreditConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingConfig(true);
@@ -748,6 +819,121 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     )}
+
+                    {/* System Health */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                      <div className="flex items-center justify-between mb-5">
+                        <h2 className="text-base font-bold text-white flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-green-400" />
+                          System Health
+                        </h2>
+                        <button
+                          onClick={runHealthCheck}
+                          disabled={runningHealthCheck}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-bold transition-all disabled:opacity-50"
+                        >
+                          {runningHealthCheck
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <RefreshCw className="w-3.5 h-3.5" />}
+                          {runningHealthCheck ? "Checking…" : "Run Check"}
+                        </button>
+                      </div>
+
+                      {!systemHealth && !runningHealthCheck && (
+                        <p className="text-sm text-white/30 text-center py-4">
+                          Click "Run Check" to validate backend configuration.
+                        </p>
+                      )}
+
+                      {runningHealthCheck && (
+                        <div className="flex items-center justify-center py-6 gap-2 text-white/40 text-sm">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Running health checks…
+                        </div>
+                      )}
+
+                      {systemHealth && !runningHealthCheck && (
+                        <div className="space-y-3">
+                          {/* Checked at */}
+                          <p className="text-[11px] text-white/30 mb-4">
+                            Last checked at {systemHealth.checkedAt}
+                          </p>
+
+                          {[
+                            {
+                              label: "Firestore Connectivity",
+                              ok: systemHealth.firestoreOk,
+                              desc: systemHealth.firestoreOk
+                                ? "Firestore is reachable"
+                                : "Cannot connect to Firestore — check Firebase config",
+                            },
+                            {
+                              label: "Templates (public read)",
+                              ok: systemHealth.templatesReadable,
+                              desc: systemHealth.templatesReadable
+                                ? "Public template reads work correctly"
+                                : "Templates collection is unreadable",
+                            },
+                            {
+                              label: "Feed (public read)",
+                              ok: systemHealth.feedReadable,
+                              desc: systemHealth.feedReadable
+                                ? "Public feed reads work correctly"
+                                : "Feed collection unreadable — check Firestore rules",
+                            },
+                          ].map(({ label, ok, desc }) => (
+                            <div
+                              key={label}
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-xl border",
+                                ok
+                                  ? "bg-green-500/5 border-green-500/20"
+                                  : "bg-red-500/5 border-red-500/20"
+                              )}
+                            >
+                              {ok ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <p className={cn("text-sm font-semibold", ok ? "text-green-300" : "text-red-300")}>
+                                  {label}
+                                </p>
+                                <p className="text-xs text-white/40 truncate">{desc}</p>
+                              </div>
+                              <span className={cn(
+                                "ml-auto flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                                ok ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
+                              )}>
+                                {ok ? "OK" : "Fail"}
+                              </span>
+                            </div>
+                          ))}
+
+                          {systemHealth.errors.length > 0 && (
+                            <div className="mt-4 p-4 rounded-xl bg-red-500/5 border border-red-500/15">
+                              <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                Detected Issues
+                              </p>
+                              <ul className="space-y-1">
+                                {systemHealth.errors.map((e, i) => (
+                                  <li key={i} className="text-xs text-red-300/70 font-mono">{e}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {systemHealth.errors.length === 0 && (
+                            <div className="flex items-center gap-2 mt-2 text-xs text-green-400/60">
+                              <Wifi className="w-3.5 h-3.5" />
+                              All systems operational
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 

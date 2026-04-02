@@ -23,6 +23,7 @@ import SettingsPage from "./pages/SettingsPage";
 import SearchPage from "./pages/SearchPage";
 import ExplorePage from "./pages/ExplorePage";
 import ScrollToTop from "./components/ScrollToTop";
+import ConfigGuard from "./components/ConfigGuard";
 import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
@@ -128,60 +129,62 @@ export default function App() {
   return (
     <>
       <Toaster position="top-right" richColors theme="dark" />
-      <ScrollToTop />
-      <RouteTracker user={user} />
-      <AnimatePresence mode="wait">
-        <Routes>
-          <Route path="/privacy" element={<PrivacyTerms />} />
-          <Route path="/terms" element={<PrivacyTerms />} />
-          <Route path="/templates" element={<TemplatePage />} />
-          <Route path="/templates/:templateId" element={<TemplatePreviewPage />} />
-          <Route path="/project/:projectId" element={<ProjectView />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/status" element={<StatusPage />} />
-          <Route path="/docs" element={<DocsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/explore" element={<ExplorePage />} />
-          <Route path="/u/:username" element={<Portfolio />} />
-          <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
-          {/* /projects — full dashboard & project management */}
-          <Route
-            path="/projects"
-            element={user ? DashboardView : (
-              <>
-                <Home setShowLogin={setShowLogin} />
-                <AnimatePresence>
-                  {showLogin && <Login onClose={() => setShowLogin(false)} />}
-                </AnimatePresence>
-              </>
-            )}
-          />
-          {/* / — feed-first home for authenticated users, landing page for guests */}
-          <Route
-            path="/"
-            element={
-              !user ? (
+      <ConfigGuard>
+        <ScrollToTop />
+        <RouteTracker user={user} />
+        <AnimatePresence mode="wait">
+          <Routes>
+            <Route path="/privacy" element={<PrivacyTerms />} />
+            <Route path="/terms" element={<PrivacyTerms />} />
+            <Route path="/templates" element={<TemplatePage />} />
+            <Route path="/templates/:templateId" element={<TemplatePreviewPage />} />
+            <Route path="/project/:projectId" element={<ProjectView />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/status" element={<StatusPage />} />
+            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/explore" element={<ExplorePage />} />
+            <Route path="/u/:username" element={<Portfolio />} />
+            <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
+            {/* /projects — full dashboard & project management */}
+            <Route
+              path="/projects"
+              element={user ? DashboardView : (
                 <>
                   <Home setShowLogin={setShowLogin} />
                   <AnimatePresence>
-                    {showLogin && (
-                      <Login onClose={() => setShowLogin(false)} />
-                    )}
+                    {showLogin && <Login onClose={() => setShowLogin(false)} />}
                   </AnimatePresence>
                 </>
-              ) : selectedProjectId ? (
-                <IDE projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
-              ) : (
-                <FeedHome
-                  onOpenProject={setSelectedProjectId}
-                  onShowLogin={() => setShowLogin(true)}
-                />
-              )
-            }
-          />
-        </Routes>
-      </AnimatePresence>
+              )}
+            />
+            {/* / — feed-first home for authenticated users, landing page for guests */}
+            <Route
+              path="/"
+              element={
+                !user ? (
+                  <>
+                    <Home setShowLogin={setShowLogin} />
+                    <AnimatePresence>
+                      {showLogin && (
+                        <Login onClose={() => setShowLogin(false)} />
+                      )}
+                    </AnimatePresence>
+                  </>
+                ) : selectedProjectId ? (
+                  <IDE projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
+                ) : (
+                  <FeedHome
+                    onOpenProject={setSelectedProjectId}
+                    onShowLogin={() => setShowLogin(true)}
+                  />
+                )
+              }
+            />
+          </Routes>
+        </AnimatePresence>
+      </ConfigGuard>
     </>
   );
 }
