@@ -11,9 +11,10 @@ interface PreviewPanelProps {
   projectId: string;
   files: FileData[];
   entryFile?: string;
+  saveKey?: number;
 }
 
-export default function PreviewPanel({ projectId, files, entryFile }: PreviewPanelProps) {
+export default function PreviewPanel({ projectId, files, entryFile, saveKey }: PreviewPanelProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +67,12 @@ export default function PreviewPanel({ projectId, files, entryFile }: PreviewPan
       const resolveRelativePath = (relPath: string) => {
         if (relPath.startsWith('http') || relPath.startsWith('//') || relPath.startsWith('data:')) return null;
         
+        // Handle absolute paths by stripping the leading slash and treating as root-relative
+        if (relPath.startsWith('/')) {
+          const stripped = relPath.slice(1);
+          return stripped || null;
+        }
+
         // Remove leading ./
         let cleanRelPath = relPath.startsWith('./') ? relPath.slice(2) : relPath;
         
@@ -196,7 +203,7 @@ export default function PreviewPanel({ projectId, files, entryFile }: PreviewPan
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
-  }, [files]);
+  }, [files, saveKey]);
 
   const handleOpenExternal = () => {
     if (previewUrl) {

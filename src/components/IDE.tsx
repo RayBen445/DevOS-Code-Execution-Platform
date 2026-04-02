@@ -14,7 +14,7 @@ import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu, Save, Check } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -32,6 +32,8 @@ interface LogEntry {
 }
 
 const SPINNER_FRAMES = ["⠄", "⡀", "⡈", "⡐", "⡠", "⣀", "⣄", "⣤", "⣦", "⣶", "⣿", "⡿", "⠿", "⠟", "⠛", "⠉"];
+
+const AUTO_SAVE_DELAY_MS = 2500;
 
 export default function IDE({ projectId, onBack }: IDEProps) {
   const [user] = useAuthState(auth);
@@ -57,6 +59,11 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [isSaved, setIsSaved] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [openFileIds, setOpenFileIds] = useState<string[]>([]);
+  const [previewSaveKey, setPreviewSaveKey] = useState(0);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollToBottom = () => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -172,6 +179,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     // help
     if (cmd === "help") {
       addLog("info", "Available commands:");
+      addLog("output", "  save      Save project and refresh preview");
       addLog("output", "  deploy    Deploy project to DevOS (live URL)");
       addLog("output", "  sync      Sync and deploy project");
       addLog("output", "  run       Run active file in terminal");
@@ -179,7 +187,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       addLog("output", "  help      Show this help");
       addLog("info", "Tips:");
       addLog("output", "  • Use Preview panel for instant live rendering");
-      addLog("output", "  • Use Deploy button or 'deploy' for a public URL");
+      addLog("output", "  • Use 'save' then 'deploy' to publish your project");
       addLog("output", "  • Use ZIP upload to import entire projects");
       setIsExecRunning(false);
       setTimeout(() => terminalInputRef.current?.focus(), 0);
@@ -200,6 +208,20 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       addLog("output", "  • Use Preview panel for instant rendering");
       addLog("output", "  • Use 'deploy' command for a live URL");
       addLog("output", "  • Use Templates or ZIP upload to import projects");
+      setIsExecRunning(false);
+      setTimeout(() => terminalInputRef.current?.focus(), 0);
+      return;
+    }
+
+    // save
+    if (cmd === "save") {
+      addLog("info", "Saving project...");
+      try {
+        await handleSave();
+        addLog("success", "✔ Project saved successfully.");
+      } catch (error: any) {
+        addLog("error", `✖ Save failed: ${error.message}`);
+      }
       setIsExecRunning(false);
       setTimeout(() => terminalInputRef.current?.focus(), 0);
       return;
@@ -330,6 +352,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       
       if (!activeFileId && fileList.length > 0) {
         setActiveFileId(fileList[0].id);
+        setOpenFileIds(prev => prev.length === 0 ? [fileList[0].id] : prev);
       }
       setLoading(false);
     }, (error) => {
@@ -340,6 +363,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       unsubProject();
       unsubFiles();
       socket.disconnect();
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, [user, projectId]);
 
@@ -367,9 +391,57 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
   };
 
+  const openFileInTab = (id: string) => {
+    setActiveFileId(id);
+    setOpenFileIds(prev => prev.includes(id) ? prev : [...prev, id]);
+  };
+
+  const closeFileTab = (id: string) => {
+    setOpenFileIds(prev => {
+      const next = prev.filter(fid => fid !== id);
+      if (id === activeFileId) {
+        const idx = prev.indexOf(id);
+        const newActive = next[idx] ?? next[idx - 1] ?? null;
+        setActiveFileId(newActive);
+      }
+      return next;
+    });
+  };
+
   const handleCodeChange = async (content: string) => {
     if (!activeFileId) return;
+    setIsSaved(false);
     await handleUpdateFile(activeFileId, content);
+
+    // Schedule auto-save after 2.5s of idle
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      handleSave(true);
+    }, AUTO_SAVE_DELAY_MS);
+  };
+
+  const handleSave = async (silent = false) => {
+    if (!projectId || isReadOnly || isSaving) return;
+    // Cancel any pending auto-save timer
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(db, "projects", projectId), {
+        savedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      setIsSaved(true);
+      setPreviewSaveKey(k => k + 1);
+      if (!silent) toast.success("Project saved");
+    } catch (error) {
+      console.error("Error saving project:", error);
+      if (!silent) toast.error("Failed to save project");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleRun = async () => {
@@ -531,7 +603,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         language: languageMap[extension] || "plaintext",
         updatedAt: serverTimestamp()
       });
-      setActiveFileId(docRef.id);
+      openFileInTab(docRef.id);
       toast.success(`File "${name}" created`);
     } catch (error) {
       console.error("Error creating file:", error);
@@ -617,7 +689,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0a0a0a]">
+      <div className="h-screen flex items-center justify-center bg-[#0D1117]">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
@@ -625,10 +697,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   return (
     <div
-      className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden"
+      className="h-screen flex flex-col bg-[#0D1117] overflow-hidden"
       onClick={() => contextMenu && setContextMenu(null)}
     >
-      <header className="h-12 border-b border-white/5 flex items-center justify-between px-4 bg-[#111] flex-shrink-0">
+      <header className="h-12 border-b border-[#30363D] flex items-center justify-between px-4 bg-[#161B22] flex-shrink-0">
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
           <button
             onClick={onBack}
@@ -683,6 +755,22 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                 <span className="hidden sm:inline">{isRunning ? "Running..." : "Run"}</span>
               </button>
+              {!isReadOnly && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  title={isSaved ? "Project saved" : "Save project"}
+                  className={cn(
+                    "flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50",
+                    isSaved
+                      ? "bg-green-600/10 text-green-500"
+                      : "bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20"
+                  )}
+                >
+                  {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : isSaved ? <Check className="w-3 h-3" /> : <Save className="w-3 h-3" />}
+                  <span className="hidden sm:inline">{isSaving ? "Saving..." : isSaved ? "Saved" : "Save"}</span>
+                </button>
+              )}
               <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 text-xs font-bold transition-all">
                 <Share2 className="w-3 h-3" />
                 Share
@@ -737,7 +825,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
         {/* Sidebar icon tabs — hidden on mobile (controlled via hamburger), hidden in focus mode */}
         {project?.systemType !== 'portfolio' && !isFocusMode && (
-          <div className="hidden md:flex w-12 border-r border-white/5 bg-[#0a0a0a] flex-col items-center py-4 gap-4 flex-shrink-0">
+          <div className="hidden md:flex w-12 border-r border-[#30363D] bg-[#0D1117] flex-col items-center py-4 gap-4 flex-shrink-0">
             <button
               onClick={() => togglePanel("explorer")}
               className={cn(
@@ -789,9 +877,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-0 left-0 h-full w-72 bg-[#111] border-r border-white/10 z-40 flex flex-col md:hidden shadow-2xl"
+              className="fixed top-0 left-0 h-full w-72 bg-[#161B22] border-r border-[#30363D] z-40 flex flex-col md:hidden shadow-2xl"
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#30363D]">
                 <span className="text-xs font-bold uppercase tracking-widest text-white/40">Files & Tools</span>
                 <button
                   onClick={() => setIsMobileSidebarOpen(false)}
@@ -826,7 +914,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   <Sidebar
                     files={files}
                     activeFileId={activeFileId}
-                    onSelectFile={(id) => { setActiveFileId(id); setIsMobileSidebarOpen(false); }}
+                    onSelectFile={(id) => { openFileInTab(id); setIsMobileSidebarOpen(false); }}
                     projectId={projectId}
                     readOnly={isReadOnly}
                   />
@@ -846,7 +934,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         {/* Main Content Area: Split Screen */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Pane: Explorer + Editor + Terminal */}
-          <div className="flex-1 flex flex-col border-r border-white/5 overflow-hidden">
+          <div className="flex-1 flex flex-col border-r border-[#30363D] overflow-hidden">
             <div className="flex-1 flex overflow-hidden">
               {/* Explorer Panel — hidden on mobile (use drawer), hidden in focus mode */}
               {project?.systemType !== 'portfolio' && activePanel === "explorer" && !isFocusMode && (
@@ -854,7 +942,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   <Sidebar
                     files={files}
                     activeFileId={activeFileId}
-                    onSelectFile={setActiveFileId}
+                    onSelectFile={openFileInTab}
                     projectId={projectId}
                     readOnly={isReadOnly}
                   />
@@ -882,9 +970,43 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
               {/* Editor Area */}
               <main
-                className="flex-1 relative bg-[#0a0a0a] flex flex-col overflow-hidden"
+                className="flex-1 relative bg-[#0D1117] flex flex-col overflow-hidden"
                 onContextMenu={handleContextMenu}
               >
+                {/* File tabs */}
+                {project?.systemType !== 'portfolio' && openFileIds.filter(id => files.some(f => f.id === id)).length > 0 && (
+                  <div className="flex items-center overflow-x-auto border-b border-[#30363D] bg-[#161B22] flex-shrink-0 custom-scrollbar">
+                    {openFileIds.filter(id => files.some(f => f.id === id)).map(fileId => {
+                      const file = files.find(f => f.id === fileId);
+                      if (!file) return null;
+                      const isActive = fileId === activeFileId;
+                      return (
+                        <div
+                          key={fileId}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-2 text-xs cursor-pointer border-r border-[#30363D] flex-shrink-0 group select-none min-w-0",
+                            isActive
+                              ? "bg-[#0D1117] text-white border-t-2 border-t-[#2F81F7] pt-[6px]"
+                              : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                          )}
+                          onClick={() => setActiveFileId(fileId)}
+                        >
+                          <span className="truncate max-w-[120px]">{file.name}</span>
+                          {!isReadOnly && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); closeFileTab(fileId); }}
+                              className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all flex-shrink-0 ml-0.5"
+                              title="Close tab"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="flex-1 relative">
                   {project?.systemType === 'portfolio' ? (
                     <PortfolioEditor 
@@ -900,7 +1022,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       readOnly={isReadOnly}
                     />
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center bg-[#0a0a0a] p-8 md:p-12 text-center">
+                    <div className="h-full flex flex-col items-center justify-center bg-[#0D1117] p-8 md:p-12 text-center">
                       <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-8">
                         <Files className="w-10 h-10 text-white/20" />
                       </div>
@@ -933,7 +1055,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.1 }}
                       style={{ top: contextMenu.y, left: contextMenu.x }}
-                      className="fixed z-50 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl overflow-hidden min-w-[140px]"
+                      className="fixed z-50 bg-[#161B22] border border-[#30363D] rounded-lg shadow-2xl overflow-hidden min-w-[140px]"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
@@ -964,10 +1086,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 initial={{ y: 256 }}
                 animate={{ y: 0 }}
                 exit={{ y: 256 }}
-                className="h-64 md:h-72 border-t border-white/5 bg-[#050505] flex flex-col relative z-10 shadow-2xl"
+                className="h-64 md:h-72 border-t border-[#30363D] bg-[#0D1117] flex flex-col relative z-10 shadow-2xl"
               >
                 {/* Terminal title bar */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-[#0a0a0a] flex-shrink-0">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[#30363D] bg-[#161B22] flex-shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 text-white/40">
                       <Terminal className="w-3.5 h-3.5" />
@@ -1040,7 +1162,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {/* Command input */}
                 <form
                   onSubmit={handleTerminalSubmit}
-                  className="flex items-center gap-2 px-4 py-2 border-t border-white/5 bg-[#0a0a0a] flex-shrink-0"
+                  className="flex items-center gap-2 px-4 py-2 border-t border-[#30363D] bg-[#161B22] flex-shrink-0"
                 >
                   <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0 whitespace-nowrap">
                     devos ▶ {project?.name || "project"} $
@@ -1067,15 +1189,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
           {/* Right Pane: Live Preview — hidden on mobile, hidden in focus mode */}
           {project?.systemType !== 'portfolio' && !isFocusMode && (
-            <div className="w-1/2 bg-[#050505] hidden md:flex flex-col border-l border-white/5">
-              <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#0a0a0a]">
+            <div className="w-1/2 bg-[#0D1117] hidden md:flex flex-col border-l border-[#30363D]">
+              <div className="h-10 border-b border-[#30363D] flex items-center justify-between px-4 bg-[#161B22]">
                 <div className="flex items-center gap-2 text-white/40">
                   <Globe className="w-3.5 h-3.5" />
                   <span className="text-[10px] font-bold uppercase tracking-widest">Live Preview</span>
                 </div>
               </div>
               <div className="flex-1">
-                <PreviewPanel projectId={projectId} files={files} entryFile={project?.entryFile} />
+                <PreviewPanel projectId={projectId} files={files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
               </div>
             </div>
           )}

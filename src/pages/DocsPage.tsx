@@ -315,8 +315,8 @@ export default function DocsPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
 
-      <div className="flex-1 flex max-w-7xl mx-auto w-full px-6 py-12 gap-8">
-        {/* Sidebar */}
+      <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12 gap-8">
+        {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col gap-1 w-52 flex-shrink-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3 px-3">
             Documentation
@@ -342,23 +342,44 @@ export default function DocsPage() {
           })}
         </aside>
 
-        {/* Mobile section picker */}
-        <div className="md:hidden w-full mb-6">
-          <select
-            value={activeSection}
-            onChange={(e) => setActiveSection(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+        {/* Mobile: horizontal scrollable chip nav */}
+        <div className="md:hidden w-full flex flex-col">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4">
+            {sections.map((section) => {
+              const Icon = section.icon;
+              const isActive = section.id === activeSection;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold transition-all flex-shrink-0 border",
+                    isActive
+                      ? "bg-blue-600/20 border-blue-500/50 text-blue-300"
+                      : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/20"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  {section.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Mobile Content */}
+          <motion.div
+            key={activeSection}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="bg-[#111] border border-white/5 rounded-2xl p-6"
           >
-            {sections.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+            {current.content}
+          </motion.div>
         </div>
 
-        {/* Content */}
-        <main className="flex-1 min-w-0">
+        {/* Desktop Content */}
+        <main className="hidden md:block flex-1 min-w-0">
           <motion.div
             key={activeSection}
             initial={{ opacity: 0, x: 10 }}

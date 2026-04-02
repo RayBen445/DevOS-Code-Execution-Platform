@@ -8,17 +8,14 @@ import {
   doc,
   getDoc,
   updateDoc,
-  query,
-  orderBy,
-  onSnapshot,
 } from "firebase/firestore";
-import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById } from "../lib/templateService";
-import { adjustCredits, getCredits, DAILY_CREDITS_AMOUNT } from "../lib/creditsService";
+import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
+import { adjustCredits } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
 import { Template, UserProfile, Credits, RedeemCode, NotificationType } from "../types";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -40,14 +37,27 @@ import {
   ToggleLeft,
   ToggleRight,
   Newspaper,
+  Menu,
+  X,
+  FileCode,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
-import { resolveAvatar } from "../lib/avatars";
-import Navbar from "../components/Navbar";
+import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
 type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts";
+
+const detectLanguage = (filename: string): string => {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  const map: Record<string, string> = {
+    html: "html", css: "css", js: "javascript", ts: "typescript",
+    tsx: "typescript", jsx: "javascript", json: "json", md: "markdown",
+  };
+  return map[ext] || "plaintext";
+};
 
 interface UserWithCredits extends UserProfile {
   credits?: Credits;
@@ -87,6 +97,14 @@ export default function AdminDashboard() {
   const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
   const [deleteTemplateConfirm, setDeleteTemplateConfirm] = useState<string | null>(null);
   const [deleteCodeConfirm, setDeleteCodeConfirm] = useState<string | null>(null);
+
+  // Template file editor state
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [editingTemplateFiles, setEditingTemplateFiles] = useState<Template['files']>([]);
+  const [savingTemplateFiles, setSavingTemplateFiles] = useState(false);
+  const [newTplFileName, setNewTplFileName] = useState("index.html");
+  const [newTplFileContent, setNewTplFileContent] = useState("");
+  const [expandedFileIndex, setExpandedFileIndex] = useState<number | null>(null);
 
   // Notifications state
   const [notifUserId, setNotifUserId] = useState("all");
@@ -231,6 +249,53 @@ export default function AdminDashboard() {
 
   const handleDeleteTemplate = async (templateId: string) => {
     setDeleteTemplateConfirm(templateId);
+  };
+
+  const handleOpenTemplateFileEditor = (template: Template) => {
+    setEditingTemplateId(template.id);
+    setEditingTemplateFiles(template.files ? [...template.files] : []);
+    setExpandedFileIndex(null);
+    setNewTplFileName("index.html");
+    setNewTplFileContent("");
+  };
+
+  const handleAddTemplateFile = () => {
+    const name = newTplFileName.trim();
+    if (!name) return;
+    setEditingTemplateFiles(prev => [
+      ...prev,
+      { name, path: name, content: newTplFileContent, language: detectLanguage(name) },
+    ]);
+    setNewTplFileName("index.html");
+    setNewTplFileContent("");
+  };
+
+  const handleUpdateTemplateFileContent = (index: number, content: string) => {
+    setEditingTemplateFiles(prev =>
+      prev.map((f, i) => i === index ? { ...f, content } : f)
+    );
+  };
+
+  const handleRemoveTemplateFile = (index: number) => {
+    setEditingTemplateFiles(prev => prev.filter((_, i) => i !== index));
+    setExpandedFileIndex(null);
+  };
+
+  const handleSaveTemplateFiles = async () => {
+    if (!editingTemplateId) return;
+    setSavingTemplateFiles(true);
+    try {
+      await updateTemplateFiles(editingTemplateId, editingTemplateFiles);
+      toast.success("Template files saved!");
+      setAllTemplates(prev =>
+        prev.map(t => t.id === editingTemplateId ? { ...t, files: editingTemplateFiles } : t)
+      );
+      setEditingTemplateId(null);
+    } catch {
+      toast.error("Failed to save template files.");
+    } finally {
+      setSavingTemplateFiles(false);
+    }
   };
 
   const confirmDeleteTemplate = async () => {
@@ -457,646 +522,582 @@ export default function AdminDashboard() {
     { id: "posts", label: "Posts", icon: <Newspaper className="w-4 h-4" /> },
   ];
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const SidebarNav = ({ onSelect }: { onSelect?: () => void }) => (
+    <nav className="flex flex-col gap-1 p-4">
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/25 px-3 mb-3">
+        Platform Control
+      </p>
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => { setActiveTab(tab.id); onSelect?.(); }}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left relative",
+            activeTab === tab.id
+              ? "bg-blue-600/15 text-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]"
+              : "text-white/40 hover:text-white hover:bg-white/5"
+          )}
+        >
+          {tab.icon}
+          <span className="flex-1">{tab.label}</span>
+          {tab.badge !== undefined && (
+            <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold min-w-[18px] text-center">
+              {tab.badge}
+            </span>
+          )}
+          {activeTab === tab.id && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-500 rounded-r-full" />
+          )}
+        </button>
+      ))}
+    </nav>
+  );
+
   return (
     <>
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      <Navbar />
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-10">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+    <div className="min-h-screen bg-[#0B0F17] text-white flex flex-col">
+      {/* Top Navbar */}
+      <div className="border-b border-white/5 bg-[#0B0F17]/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="flex items-center justify-between h-14 px-4 md:px-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-600/20 text-red-400 flex items-center justify-center">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold text-white">Admin Dashboard</h1>
-              <p className="text-white/40 text-sm">DevOS Platform Control</p>
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => navigate("/")}
+              className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-red-600/20 text-red-400 flex items-center justify-center">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-sm font-extrabold text-white leading-none block">Admin</span>
+                <span className="text-[10px] text-white/30 leading-none">DevOS Control</span>
+              </div>
             </div>
           </div>
           <button
             onClick={loadData}
-            className="ml-auto p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+            className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
             title="Refresh"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-4 h-4" />
           </button>
         </div>
+      </div>
 
-        {/* Tabs */}
-        <div className="flex gap-6 mb-10 border-b border-white/5">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "pb-4 text-sm font-bold uppercase tracking-widest transition-all relative flex items-center gap-2",
-                activeTab === tab.id
-                  ? "text-white"
-                  : "text-white/20 hover:text-white/40"
-              )}
-            >
-              {tab.icon}
-              {tab.label}
-              {tab.badge !== undefined && (
-                <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold min-w-[18px] text-center">
-                  {tab.badge}
-                </span>
-              )}
-              {activeTab === tab.id && (
-                <motion.div
-                  layoutId="adminTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500"
-                />
-              )}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop sidebar */}
+        <aside className="hidden md:flex w-60 flex-shrink-0 flex-col border-r border-white/5 bg-[#0B0F17] overflow-y-auto">
+          <SidebarNav />
+        </aside>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-          </div>
-        ) : (
-          <>
-            {/* Overview Tab */}
-            {activeTab === "overview" && (
-              <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <StatCard
-                    icon={<Users className="w-6 h-6" />}
-                    label="Total Users"
-                    value={totalUsers}
-                    color="blue"
-                  />
-                  <StatCard
-                    icon={<FolderCode className="w-6 h-6" />}
-                    label="Total Projects"
-                    value={totalProjects}
-                    color="green"
-                  />
-                  <StatCard
-                    icon={<Layout className="w-6 h-6" />}
-                    label="Approved Templates"
-                    value={totalTemplates}
-                    color="purple"
-                  />
+        {/* Mobile slide-in drawer */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/70 z-40 md:hidden"
+                onClick={() => setSidebarOpen(false)}
+              />
+              <motion.aside
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="fixed left-0 top-0 h-full w-72 bg-[#111827] border-r border-white/10 z-50 md:hidden flex flex-col shadow-2xl overflow-y-auto"
+              >
+                <div className="flex items-center justify-between p-4 border-b border-white/5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-red-600/20 text-red-400 flex items-center justify-center">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-bold text-white">Admin Dashboard</span>
+                  </div>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
+                <SidebarNav onSelect={() => setSidebarOpen(false)} />
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
 
-                {pendingTemplates.length > 0 && (
-                  <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-6">
-                    <h3 className="text-yellow-400 font-bold mb-2 flex items-center gap-2">
-                      <Layout className="w-4 h-4" />
-                      {pendingTemplates.length} template(s) awaiting review
-                    </h3>
-                    <button
-                      onClick={() => setActiveTab("templates")}
-                      className="text-sm text-yellow-400/70 hover:text-yellow-400 underline"
-                    >
-                      Review now →
-                    </button>
-                  </div>
-                )}
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+            {/* Page title */}
+            <div className="mb-8">
+              <h1 className="text-2xl font-extrabold text-white">
+                {tabs.find((t) => t.id === activeTab)?.label}
+              </h1>
+              <p className="text-sm text-white/40 mt-0.5">
+                {activeTab === "overview" && "Platform health and key metrics"}
+                {activeTab === "templates" && "Review, approve, and manage all templates"}
+                {activeTab === "users" && "View and manage all registered users"}
+                {activeTab === "credits" && "Adjust user credit balances"}
+                {activeTab === "notifications" && "Send targeted or global notifications"}
+                {activeTab === "redeem" && "Create and manage promotional codes"}
+                {activeTab === "posts" && "Publish official announcements to the feed"}
+              </p>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-32">
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
               </div>
-            )}
+            ) : (
+              <>
+                {/* Overview Tab */}
+                {activeTab === "overview" && (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <StatCard
+                        icon={<Users className="w-6 h-6" />}
+                        label="Total Users"
+                        value={totalUsers}
+                        color="blue"
+                      />
+                      <StatCard
+                        icon={<FolderCode className="w-6 h-6" />}
+                        label="Total Projects"
+                        value={totalProjects}
+                        color="green"
+                      />
+                      <StatCard
+                        icon={<Layout className="w-6 h-6" />}
+                        label="Approved Templates"
+                        value={totalTemplates}
+                        color="purple"
+                      />
+                    </div>
 
-            {/* Templates Tab */}
-            {activeTab === "templates" && (
-              <div className="space-y-8">
-                {/* Create Official Template */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Star className="w-5 h-5 text-yellow-400" />
-                      Official Templates
-                    </h2>
-                    <button
-                      onClick={() => setShowCreateTemplate(v => !v)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all active:scale-95"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Create Template
-                    </button>
-                  </div>
-                  {showCreateTemplate && (
-                    <form onSubmit={handleCreateOfficialTemplate} className="bg-[#111] border border-white/10 rounded-2xl p-6 mb-6 space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Template Name</label>
-                        <input value={newTplName} onChange={e => setNewTplName(e.target.value)} required placeholder="My Official Template" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Description</label>
-                        <textarea value={newTplDesc} onChange={e => setNewTplDesc(e.target.value)} required placeholder="What does this template do?" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Tags (comma-separated)</label>
-                        <input value={newTplTags} onChange={e => setNewTplTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
-                      </div>
-                      <div className="flex gap-3 pt-2">
-                        <button type="button" onClick={() => setShowCreateTemplate(false)} className="px-5 py-2.5 rounded-xl font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
-                        <button type="submit" disabled={creatingTemplate} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60">
-                          {creatingTemplate && <Loader2 className="w-4 h-4 animate-spin" />}
-                          {creatingTemplate ? "Creating..." : "Create Official Template"}
+                    {pendingTemplates.length > 0 && (
+                      <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-6">
+                        <h3 className="text-yellow-400 font-bold mb-2 flex items-center gap-2">
+                          <Layout className="w-4 h-4" />
+                          {pendingTemplates.length} template(s) awaiting review
+                        </h3>
+                        <button
+                          onClick={() => setActiveTab("templates")}
+                          className="text-sm text-yellow-400/70 hover:text-yellow-400 underline"
+                        >
+                          Review now →
                         </button>
                       </div>
-                    </form>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
 
-                {pendingTemplates.length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-bold">
-                        PENDING
-                      </span>
-                      Awaiting Approval
-                    </h2>
-                    <div className="space-y-4">
-                      {pendingTemplates.map((template) => (
-                        <TemplateCard
-                          key={template.id}
-                          template={template}
-                          moderating={moderating}
-                          onApprove={() => handleApprove(template.id)}
-                          onReject={() => handleReject(template.id)}
-                        />
-                      ))}
+                {/* Templates Tab */}
+                {activeTab === "templates" && (
+                  <div className="space-y-8">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                          <Star className="w-4 h-4 text-yellow-400" />
+                          Official Templates
+                        </h2>
+                        <button
+                          onClick={() => setShowCreateTemplate(v => !v)}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all active:scale-95"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Create Template
+                        </button>
+                      </div>
+                      {showCreateTemplate && (
+                        <form onSubmit={handleCreateOfficialTemplate} className="bg-[#111827] border border-white/10 rounded-2xl p-6 mb-6 space-y-4">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Template Name</label>
+                            <input value={newTplName} onChange={e => setNewTplName(e.target.value)} required placeholder="My Official Template" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Description</label>
+                            <textarea value={newTplDesc} onChange={e => setNewTplDesc(e.target.value)} required placeholder="What does this template do?" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Tags (comma-separated)</label>
+                            <input value={newTplTags} onChange={e => setNewTplTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+                          </div>
+                          <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={() => setShowCreateTemplate(false)} className="px-5 py-2.5 rounded-xl font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
+                            <button type="submit" disabled={creatingTemplate} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60">
+                              {creatingTemplate && <Loader2 className="w-4 h-4 animate-spin" />}
+                              {creatingTemplate ? "Creating..." : "Create Official Template"}
+                            </button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+
+                    {pendingTemplates.length > 0 && (
+                      <div>
+                        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-bold">PENDING</span>
+                          Awaiting Approval
+                        </h2>
+                        <div className="space-y-4">
+                          {pendingTemplates.map((template) => (
+                            <TemplateCard
+                              key={template.id}
+                              template={template}
+                              moderating={moderating}
+                              onApprove={() => handleApprove(template.id)}
+                              onReject={() => handleReject(template.id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-bold">LIVE</span>
+                        Approved Templates
+                      </h2>
+                      {allTemplates.filter((t) => t.isApproved).length === 0 ? (
+                        <p className="text-white/30 text-sm py-8 text-center">No approved templates yet.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {allTemplates.filter((t) => t.isApproved).map((template) => (
+                            <div key={template.id} className="p-4 rounded-2xl bg-[#111827] border border-white/5 flex items-center justify-between gap-4">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <p className="font-bold text-white truncate">{template.name}</p>
+                                  {template.isOfficial && (
+                                    <span className="px-2 py-0.5 rounded-md bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase flex items-center gap-1 flex-shrink-0">
+                                      <Star className="w-2.5 h-2.5" />
+                                      Official
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-white/40">
+                                  by {template.authorUsername || template.authorName} · {template.downloads} downloads · {template.likes} likes
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-bold">Live</span>
+                                <button
+                                  onClick={() => handleOpenTemplateFileEditor(template)}
+                                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-all text-xs font-bold"
+                                  title="Edit files"
+                                >
+                                  <FileCode className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Files ({(template.files || []).length})</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTemplate(template.id)}
+                                  disabled={deletingTemplate === template.id}
+                                  className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
+                                >
+                                  {deletingTemplate === template.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
-                <div>
-                  <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-bold">
-                      APPROVED
-                    </span>
-                    Live Templates
-                  </h2>
-                  {allTemplates.filter((t) => t.isApproved).length === 0 ? (
-                    <p className="text-white/30 text-sm">No approved templates yet.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {allTemplates
-                        .filter((t) => t.isApproved)
-                        .map((template) => (
-                          <div
-                            key={template.id}
-                            className="p-5 rounded-2xl bg-[#111] border border-white/5 flex items-center justify-between"
-                          >
+                {/* Users Tab */}
+                {activeTab === "users" && (
+                  <div>
+                    <p className="text-white/40 text-sm mb-6">{users.length} registered users</p>
+                    {/* Desktop: table-like rows; Mobile: cards */}
+                    <div className="space-y-2">
+                      {users.map((u) => (
+                        <div key={u.uid} className="p-4 rounded-2xl bg-[#111827] border border-white/5 flex items-center gap-3">
+                          <Avatar src={u.avatarUrl} displayName={u.displayName} size="md" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-bold text-white text-sm truncate">{u.displayName}</p>
+                              {u.role === "admin" && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-red-500/20 text-red-400 text-[10px] font-bold uppercase flex-shrink-0">Admin</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-white/40 truncate">@{u.username} · {u.email}</p>
+                          </div>
+                          <div className="text-right text-xs text-white/40 shrink-0 hidden sm:block">
+                            <p>{u.projectCount || 0} projects</p>
+                            <p className="flex items-center gap-1 justify-end text-yellow-400/70">
+                              <Zap className="w-3 h-3" />
+                              {u.credits ? `${u.credits.daily + u.credits.monthly}` : "—"}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {users.length === 0 && (
+                        <p className="text-white/30 text-sm py-8 text-center">No users found.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Credits Tab */}
+                {activeTab === "credits" && (
+                  <div className="space-y-8">
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                      <h2 className="text-lg font-bold text-white mb-1">Adjust User Credits</h2>
+                      <p className="text-white/40 text-sm mb-6">Enter username, email, or UID and the amount to add (positive) or subtract (negative).</p>
+                      <form onSubmit={handleAdjustCredits} className="space-y-5">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Target User</label>
+                          <input type="text" value={creditTarget} onChange={(e) => setCreditTarget(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="username, email, or UID" required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Amount</label>
+                            <input type="number" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="10" required />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
+                            <select value={creditType} onChange={(e) => setCreditType(e.target.value as "daily" | "monthly")} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all">
+                              <option value="daily">Daily</option>
+                              <option value="monthly">Monthly</option>
+                            </select>
+                          </div>
+                        </div>
+                        <button type="submit" disabled={adjusting} className={cn("w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2", adjusting ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95")}>
+                          {adjusting ? <><Loader2 className="w-4 h-4 animate-spin" />Adjusting...</> : <><Zap className="w-4 h-4" />Apply Credits Adjustment</>}
+                        </button>
+                      </form>
+                    </div>
+
+                    <div>
+                      <h2 className="text-lg font-bold text-white mb-4">User Credits Overview</h2>
+                      <div className="space-y-2">
+                        {users.map((u) => (
+                          <div key={u.uid} className="p-4 rounded-2xl bg-[#111827] border border-white/5 flex items-center justify-between">
                             <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-bold text-white">{template.name}</p>
-                                {template.isOfficial && (
-                                  <span className="px-2 py-0.5 rounded-md bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase flex items-center gap-1">
-                                    <Star className="w-2.5 h-2.5" />
-                                    DevOS Official
-                                  </span>
+                              <p className="font-bold text-white text-sm">@{u.username}</p>
+                              <p className="text-xs text-white/30">{u.email}</p>
+                            </div>
+                            <div className="text-right text-sm">
+                              <p className="text-yellow-400 font-bold flex items-center gap-1 justify-end">
+                                <Zap className="w-3 h-3" />
+                                {u.credits ? `${u.credits.daily + u.credits.monthly}` : "—"} total
+                              </p>
+                              {u.credits && (
+                                <p className="text-white/30 text-xs">{u.credits.daily} daily + {u.credits.monthly} monthly</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notifications Tab */}
+                {activeTab === "notifications" && (
+                  <div className="space-y-8">
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-blue-400" />
+                        Send Notification
+                      </h2>
+                      <p className="text-white/40 text-sm mb-6">Send a message to all users or a specific user.</p>
+                      <form onSubmit={handleSendNotification} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Recipient (UID or "all")</label>
+                          <input type="text" value={notifUserId} onChange={(e) => setNotifUserId(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="all" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {(["admin_message", "system_update", "credit_warning"] as NotificationType[]).map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setNotifType(t)}
+                                className={cn(
+                                  "py-2 px-3 rounded-xl text-xs font-bold border transition-all",
+                                  notifType === t
+                                    ? "bg-blue-600/20 border-blue-500 text-blue-300"
+                                    : "bg-white/5 border-white/10 text-white/50 hover:border-white/20"
                                 )}
+                              >
+                                {t.replace("_", " ")}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Title</label>
+                          <input type="text" value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" required placeholder="Notification title" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Message</label>
+                          <textarea value={notifMessage} onChange={(e) => setNotifMessage(e.target.value)} rows={3} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none" required placeholder="Notification message..." />
+                        </div>
+                        <button type="submit" disabled={sendingNotif} className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                          {sendingNotif ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                          {sendingNotif ? "Sending..." : "Send Notification"}
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                {/* Redeem Codes Tab */}
+                {activeTab === "redeem" && (
+                  <div className="space-y-8">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Gift className="w-4 h-4 text-yellow-400" />
+                        Redeem Codes
+                      </h2>
+                      <div className="flex gap-2">
+                        <button onClick={loadRedeemCodes} className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors" title="Refresh">
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setShowCreateCode((v) => !v)} className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-bold text-sm transition-all">
+                          <Plus className="w-4 h-4" />
+                          Create Code
+                        </button>
+                      </div>
+                    </div>
+
+                    {showCreateCode && (
+                      <form onSubmit={handleCreateRedeemCode} className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-4 max-w-xl">
+                        <h3 className="text-base font-bold text-white">New Redeem Code</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5 col-span-2">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Code</label>
+                            <input type="text" value={newCode} onChange={(e) => setNewCode(e.target.value.toUpperCase())} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white font-mono tracking-widest focus:outline-none focus:border-yellow-500/50 transition-all uppercase" required placeholder="DEVOS2024" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Credits Value</label>
+                            <input type="number" value={newCodeValue} onChange={(e) => setNewCodeValue(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Usage Limit (-1 = ∞)</label>
+                            <input type="number" value={newCodeUsageLimit} onChange={(e) => setNewCodeUsageLimit(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" required />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Per User Limit</label>
+                            <input type="number" value={newCodePerUser} onChange={(e) => setNewCodePerUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Expires At (optional)</label>
+                            <input type="datetime-local" value={newCodeExpiry} onChange={(e) => setNewCodeExpiry(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" />
+                          </div>
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                          <button type="button" onClick={() => setShowCreateCode(false)} className="px-5 py-2.5 rounded-xl font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
+                          <button type="submit" disabled={creatingCode} className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-bold transition-all flex items-center gap-2 disabled:opacity-60">
+                            {creatingCode && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {creatingCode ? "Creating..." : "Create Code"}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {loadingCodes ? (
+                      <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-white/20 animate-spin" /></div>
+                    ) : redeemCodes.length === 0 ? (
+                      <div className="py-12 text-center text-white/20 text-sm">No redeem codes yet.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {redeemCodes.map((code) => (
+                          <div key={code.id} className="p-4 rounded-2xl bg-[#111827] border border-white/5 flex items-center gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="font-mono font-bold text-white tracking-widest">{code.id}</span>
+                                <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-bold uppercase", code.isActive ? "bg-green-500/10 text-green-400" : "bg-white/5 text-white/20")}>
+                                  {code.isActive ? "Active" : "Disabled"}
+                                </span>
                               </div>
-                              <p className="text-sm text-white/40">
-                                by {template.authorUsername || template.authorName} · {template.downloads} downloads · {template.likes} likes
+                              <p className="text-xs text-white/40">
+                                +{code.value} credits · Used {code.usedCount} / {code.usageLimit === -1 ? "∞" : code.usageLimit} · {code.perUserLimit}×/user
+                                {code.expiresAt && <> · Expires {new Date(code.expiresAt.toMillis?.() ?? code.expiresAt).toLocaleDateString()}</>}
                               </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-bold">
-                                Live
-                              </span>
-                              <button
-                                onClick={() => handleDeleteTemplate(template.id)}
-                                disabled={deletingTemplate === template.id}
-                                className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
-                                title="Delete Template"
-                              >
-                                {deletingTemplate === template.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button onClick={() => handleToggleCode(code.id, code.isActive)} className={cn("p-2 rounded-lg transition-all", code.isActive ? "bg-green-500/10 text-green-400 hover:bg-green-500/20" : "bg-white/5 text-white/30 hover:bg-white/10")} title={code.isActive ? "Disable" : "Enable"}>
+                                {code.isActive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+                              </button>
+                              <button onClick={() => handleDeleteCode(code.id)} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all" title="Delete">
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </div>
                         ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Users Tab */}
-            {activeTab === "users" && (
-              <div>
-                <h2 className="text-xl font-bold text-white mb-6">All Users ({users.length})</h2>
-                <div className="space-y-3">
-                  {users.map((u) => (
-                    <div
-                      key={u.uid}
-                      className="p-5 rounded-2xl bg-[#111] border border-white/5 flex items-center gap-4"
-                    >
-                      {u.avatarUrl ? (
-                        <img
-                          src={resolveAvatar(u.avatarUrl)}
-                          alt={u.displayName}
-                          className="w-10 h-10 rounded-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <img
-                          src={resolveAvatar(null)}
-                          alt={u.displayName}
-                          className="w-10 h-10 rounded-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-white truncate">{u.displayName}</p>
-                          {u.role === "admin" && (
-                            <span className="px-2 py-0.5 rounded-md bg-red-500/20 text-red-400 text-[10px] font-bold uppercase">
-                              Admin
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-white/40">
-                          @{u.username} · {u.email}
-                        </p>
                       </div>
-                      <div className="text-right text-sm text-white/40 shrink-0">
-                        <p>{u.projectCount || 0} projects</p>
-                        <p className="flex items-center gap-1 justify-end text-yellow-400/70">
-                          <Zap className="w-3 h-3" />
-                          {u.credits
-                            ? `${u.credits.daily + u.credits.monthly} credits`
-                            : "—"}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {users.length === 0 && (
-                    <p className="text-white/30 text-sm py-8 text-center">No users found.</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Credits Tab */}
-            {activeTab === "credits" && (              <div className="space-y-8">
-                <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-lg">
-                  <h2 className="text-xl font-bold text-white mb-2">Adjust User Credits</h2>
-                  <p className="text-white/40 text-sm mb-6">
-                    Enter username, email, or UID and the amount to add (positive) or subtract
-                    (negative).
-                  </p>
-                  <form onSubmit={handleAdjustCredits} className="space-y-5">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
-                        Target User (username / email / UID)
-                      </label>
-                      <input
-                        type="text"
-                        value={creditTarget}
-                        onChange={(e) => setCreditTarget(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
-                        placeholder="username or email"
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
-                          Amount
-                        </label>
-                        <input
-                          type="number"
-                          value={creditAmount}
-                          onChange={(e) => setCreditAmount(e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
-                          placeholder="10"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
-                          Credit Type
-                        </label>
-                        <select
-                          value={creditType}
-                          onChange={(e) =>
-                            setCreditType(e.target.value as "daily" | "monthly")
-                          }
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
-                        >
-                          <option value="daily">Daily</option>
-                          <option value="monthly">Monthly</option>
-                        </select>
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={adjusting}
-                      className={cn(
-                        "w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
-                        adjusting
-                          ? "bg-white/5 text-white/30 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
-                      )}
-                    >
-                      {adjusting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Adjusting...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-4 h-4" />
-                          Apply Credits Adjustment
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </div>
-
-                {/* Credits overview per user */}
-                <div>
-                  <h2 className="text-xl font-bold text-white mb-4">User Credits Overview</h2>
-                  <div className="space-y-3">
-                    {users.map((u) => (
-                      <div
-                        key={u.uid}
-                        className="p-4 rounded-2xl bg-[#111] border border-white/5 flex items-center justify-between"
-                      >
-                        <div>
-                          <p className="font-bold text-white text-sm">
-                            @{u.username}
-                          </p>
-                          <p className="text-xs text-white/30">{u.email}</p>
-                        </div>
-                        <div className="text-right text-sm">
-                          <p className="text-yellow-400 font-bold flex items-center gap-1 justify-end">
-                            <Zap className="w-3 h-3" />
-                            {u.credits
-                              ? `${u.credits.daily + u.credits.monthly}`
-                              : "—"}{" "}
-                            total
-                          </p>
-                          {u.credits && (
-                            <p className="text-white/30 text-xs">
-                              {u.credits.daily} daily + {u.credits.monthly} monthly
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Notifications Tab */}
-            {activeTab === "notifications" && (
-              <div className="space-y-8">
-                <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-lg">
-                  <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-blue-400" />
-                    Send Notification
-                  </h2>
-                  <p className="text-white/40 text-sm mb-6">
-                    Send a message to all users or a specific user.
-                  </p>
-                  <form onSubmit={handleSendNotification} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Recipient (UID or "all")</label>
-                      <input
-                        type="text"
-                        value={notifUserId}
-                        onChange={(e) => setNotifUserId(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
-                        placeholder="all"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
-                      <select
-                        value={notifType}
-                        onChange={(e) => setNotifType(e.target.value as NotificationType)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
-                      >
-                        <option value="admin_message">Admin Message</option>
-                        <option value="system_update">System Update</option>
-                        <option value="credit_warning">Credit Warning</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Title</label>
-                      <input
-                        type="text"
-                        value={notifTitle}
-                        onChange={(e) => setNotifTitle(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
-                        required
-                        placeholder="Notification title"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Message</label>
-                      <textarea
-                        value={notifMessage}
-                        onChange={(e) => setNotifMessage(e.target.value)}
-                        rows={3}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none"
-                        required
-                        placeholder="Notification message..."
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={sendingNotif}
-                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
-                    >
-                      {sendingNotif ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                      {sendingNotif ? "Sending..." : "Send Notification"}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* Redeem Codes Tab */}
-            {activeTab === "redeem" && (
-              <div className="space-y-8">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Gift className="w-5 h-5 text-yellow-400" />
-                    Redeem Codes
-                  </h2>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={loadRedeemCodes}
-                      className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
-                      title="Refresh"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setShowCreateCode((v) => !v)}
-                      className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-bold text-sm transition-all"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Create Code
-                    </button>
-                  </div>
-                </div>
-
-                {showCreateCode && (
-                  <form onSubmit={handleCreateRedeemCode} className="bg-[#111] border border-white/10 rounded-2xl p-6 space-y-4 max-w-xl">
-                    <h3 className="text-base font-bold text-white">New Redeem Code</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5 col-span-2">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Code</label>
-                        <input
-                          type="text"
-                          value={newCode}
-                          onChange={(e) => setNewCode(e.target.value.toUpperCase())}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white font-mono tracking-widest focus:outline-none focus:border-yellow-500/50 transition-all uppercase"
-                          required placeholder="DEVOS2024"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Credits Value</label>
-                        <input type="number" value={newCodeValue} onChange={(e) => setNewCodeValue(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Usage Limit (-1 = ∞)</label>
-                        <input type="number" value={newCodeUsageLimit} onChange={(e) => setNewCodeUsageLimit(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" required />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Per User Limit</label>
-                        <input type="number" value={newCodePerUser} onChange={(e) => setNewCodePerUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Expires At (optional)</label>
-                        <input type="datetime-local" value={newCodeExpiry} onChange={(e) => setNewCodeExpiry(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" />
-                      </div>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button type="button" onClick={() => setShowCreateCode(false)} className="px-5 py-2.5 rounded-xl font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
-                      <button type="submit" disabled={creatingCode} className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-bold transition-all flex items-center gap-2 disabled:opacity-60">
-                        {creatingCode && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {creatingCode ? "Creating..." : "Create Code"}
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {loadingCodes ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
-                  </div>
-                ) : redeemCodes.length === 0 ? (
-                  <div className="py-12 text-center text-white/20 text-sm">
-                    No redeem codes yet. Create one above.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {redeemCodes.map((code) => (
-                      <div key={code.id} className="p-5 rounded-2xl bg-[#111] border border-white/5 flex items-center gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-mono font-bold text-white text-lg tracking-widest">{code.id}</span>
-                            <span className={cn(
-                              "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
-                              code.isActive ? "bg-green-500/10 text-green-400" : "bg-white/5 text-white/20"
-                            )}>
-                              {code.isActive ? "Active" : "Disabled"}
-                            </span>
-                          </div>
-                          <p className="text-sm text-white/40">
-                            +{code.value} credits · Used {code.usedCount} / {code.usageLimit === -1 ? "∞" : code.usageLimit} · {code.perUserLimit}×/user
-                            {code.expiresAt && (
-                              <> · Expires {new Date(code.expiresAt.toMillis?.() ?? code.expiresAt).toLocaleDateString()}</>
-                            )}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handleToggleCode(code.id, code.isActive)}
-                            className={cn(
-                              "p-2 rounded-lg transition-all",
-                              code.isActive ? "bg-green-500/10 text-green-400 hover:bg-green-500/20" : "bg-white/5 text-white/30 hover:bg-white/10"
-                            )}
-                            title={code.isActive ? "Disable" : "Enable"}
-                          >
-                            {code.isActive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCode(code.id)}
-                            className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                    )}
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Admin Posts Tab */}
-            {activeTab === "posts" && (
-              <div className="space-y-8">
-                <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-2xl">
-                  <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                    <Newspaper className="w-5 h-5 text-blue-400" />
-                    Publish Official Post
-                  </h2>
-                  <p className="text-white/40 text-sm mb-6">
-                    Posts are published as <span className="text-yellow-400 font-bold">DevOS Official</span> and appear in the public developer feed.
-                  </p>
-                  <form onSubmit={handlePublishAdminPost} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
-                      <select
-                        value={postType}
-                        onChange={(e) => setPostType(e.target.value as typeof postType)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
-                      >
-                        <option value="announcement">📣 Announcement</option>
-                        <option value="update">🔄 Feature Update</option>
-                        <option value="feature">✨ New Feature</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Content</label>
-                      <textarea
-                        value={postContent}
-                        onChange={(e) => setPostContent(e.target.value)}
-                        rows={5}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none"
-                        required
-                        placeholder="Write your official announcement here..."
-                      />
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="submit"
-                        disabled={publishingPost}
-                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all"
-                      >
-                        {publishingPost ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        {publishingPost ? "Publishing..." : "Publish to Feed"}
-                      </button>
-                      <p className="text-xs text-white/30">
-                        Will appear as <span className="text-yellow-400">DevOS Official</span> with system avatar
+                {/* Admin Posts Tab */}
+                {activeTab === "posts" && (
+                  <div className="space-y-8">
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-2xl">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Newspaper className="w-4 h-4 text-blue-400" />
+                        Publish Official Post
+                      </h2>
+                      <p className="text-white/40 text-sm mb-6">
+                        Posts appear in the community feed as <span className="text-yellow-400 font-bold">DevOS Official</span>.
                       </p>
+                      <form onSubmit={handlePublishAdminPost} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Post Type</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {(["announcement", "update", "feature"] as const).map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setPostType(t)}
+                                className={cn(
+                                  "py-2.5 px-3 rounded-xl text-xs font-bold border transition-all",
+                                  postType === t
+                                    ? "bg-blue-600/20 border-blue-500 text-blue-300"
+                                    : "bg-white/5 border-white/10 text-white/50 hover:border-white/20"
+                                )}
+                              >
+                                {t === "announcement" ? "📣 Announcement" : t === "update" ? "🔄 Update" : "✨ Feature"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Content</label>
+                          <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} rows={5} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none" required placeholder="Write your official announcement here..." />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button type="submit" disabled={publishingPost} className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all">
+                            {publishingPost ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            {publishingPost ? "Publishing..." : "Publish to Feed"}
+                          </button>
+                          <p className="text-xs text-white/30">Appears as <span className="text-yellow-400">DevOS Official</span></p>
+                        </div>
+                      </form>
                     </div>
-                  </form>
-                </div>
-              </div>
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
+          </div>
+        </main>
       </div>
     </div>
 
@@ -1120,6 +1121,136 @@ export default function AdminDashboard() {
       onConfirm={confirmDeleteCode}
       onCancel={() => setDeleteCodeConfirm(null)}
     />
+
+    {/* Template File Editor Modal */}
+    <AnimatePresence>
+      {editingTemplateId && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[#111827] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <FileCode className="w-5 h-5 text-blue-400" />
+                <div>
+                  <p className="font-bold text-white text-sm">
+                    Edit Template Files
+                  </p>
+                  <p className="text-xs text-white/40">
+                    {editingTemplateFiles.length} file{editingTemplateFiles.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingTemplateId(null)}
+                className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Existing files */}
+              {editingTemplateFiles.length === 0 && (
+                <p className="text-sm text-white/30 text-center py-4">No files yet. Add one below.</p>
+              )}
+              {editingTemplateFiles.map((file, index) => (
+                <div key={index} className="rounded-xl border border-white/10 overflow-hidden">
+                  <div
+                    className="flex items-center justify-between px-4 py-3 bg-white/5 cursor-pointer hover:bg-white/8 transition-colors"
+                    onClick={() => setExpandedFileIndex(expandedFileIndex === index ? null : index)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileCode className="w-4 h-4 text-white/40 flex-shrink-0" />
+                      <span className="text-sm font-mono text-white truncate">{file.path}</span>
+                      <span className="text-xs text-white/30 flex-shrink-0">{file.language}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRemoveTemplateFile(index); }}
+                        className="p-1 rounded hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-colors"
+                        title="Remove file"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      {expandedFileIndex === index
+                        ? <ChevronUp className="w-3.5 h-3.5 text-white/30" />
+                        : <ChevronDown className="w-3.5 h-3.5 text-white/30" />
+                      }
+                    </div>
+                  </div>
+                  {expandedFileIndex === index && (
+                    <textarea
+                      value={file.content}
+                      onChange={(e) => handleUpdateTemplateFileContent(index, e.target.value)}
+                      className="w-full bg-[#0D1117] text-white/80 font-mono text-xs p-4 resize-none outline-none border-t border-white/10"
+                      rows={12}
+                      spellCheck={false}
+                      placeholder="File content..."
+                    />
+                  )}
+                </div>
+              ))}
+
+              {/* Add new file */}
+              <div className="rounded-xl border border-dashed border-white/10 p-4 space-y-3">
+                <p className="text-xs font-bold text-white/40 uppercase tracking-wider">Add New File</p>
+                <input
+                  type="text"
+                  value={newTplFileName}
+                  onChange={(e) => setNewTplFileName(e.target.value)}
+                  placeholder="filename (e.g. css/style.css)"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-blue-500/50 font-mono"
+                />
+                <textarea
+                  value={newTplFileContent}
+                  onChange={(e) => setNewTplFileContent(e.target.value)}
+                  placeholder="File content (optional)..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-blue-500/50 font-mono resize-none"
+                  rows={6}
+                  spellCheck={false}
+                />
+                <button
+                  onClick={handleAddTemplateFile}
+                  disabled={!newTplFileName.trim()}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 text-sm rounded-lg font-bold transition-all disabled:opacity-40"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add File
+                </button>
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10 flex-shrink-0">
+              <button
+                onClick={() => setEditingTemplateId(null)}
+                className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTemplateFiles}
+                disabled={savingTemplateFiles}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50"
+              >
+                {savingTemplateFiles ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCode className="w-4 h-4" />}
+                {savingTemplateFiles ? "Saving..." : "Save Files"}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
     </>
   );
 }
