@@ -66,6 +66,12 @@ export default function PreviewPanel({ projectId, files, entryFile }: PreviewPan
       const resolveRelativePath = (relPath: string) => {
         if (relPath.startsWith('http') || relPath.startsWith('//') || relPath.startsWith('data:')) return null;
         
+        // Handle absolute paths by stripping the leading slash and treating as root-relative
+        if (relPath.startsWith('/')) {
+          const stripped = relPath.slice(1);
+          return stripped || null;
+        }
+
         // Remove leading ./
         let cleanRelPath = relPath.startsWith('./') ? relPath.slice(2) : relPath;
         

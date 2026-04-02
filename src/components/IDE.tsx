@@ -14,7 +14,7 @@ import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu, Save, Check } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -57,6 +57,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [isSaved, setIsSaved] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const scrollToBottom = () => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -172,6 +174,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     // help
     if (cmd === "help") {
       addLog("info", "Available commands:");
+      addLog("output", "  save      Save project (mark as saved)");
       addLog("output", "  deploy    Deploy project to DevOS (live URL)");
       addLog("output", "  sync      Sync and deploy project");
       addLog("output", "  run       Run active file in terminal");
@@ -179,7 +182,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       addLog("output", "  help      Show this help");
       addLog("info", "Tips:");
       addLog("output", "  • Use Preview panel for instant live rendering");
-      addLog("output", "  • Use Deploy button or 'deploy' for a public URL");
+      addLog("output", "  • Use 'save' then 'deploy' to publish your project");
       addLog("output", "  • Use ZIP upload to import entire projects");
       setIsExecRunning(false);
       setTimeout(() => terminalInputRef.current?.focus(), 0);
@@ -200,6 +203,24 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       addLog("output", "  • Use Preview panel for instant rendering");
       addLog("output", "  • Use 'deploy' command for a live URL");
       addLog("output", "  • Use Templates or ZIP upload to import projects");
+      setIsExecRunning(false);
+      setTimeout(() => terminalInputRef.current?.focus(), 0);
+      return;
+    }
+
+    // save
+    if (cmd === "save") {
+      addLog("info", "Saving project...");
+      try {
+        await updateDoc(doc(db, "projects", projectId), {
+          savedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        setIsSaved(true);
+        addLog("success", "✔ Project saved successfully.");
+      } catch (error: any) {
+        addLog("error", `✖ Save failed: ${error.message}`);
+      }
       setIsExecRunning(false);
       setTimeout(() => terminalInputRef.current?.focus(), 0);
       return;
@@ -369,7 +390,26 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   const handleCodeChange = async (content: string) => {
     if (!activeFileId) return;
+    setIsSaved(false);
     await handleUpdateFile(activeFileId, content);
+  };
+
+  const handleSave = async () => {
+    if (!projectId || isReadOnly || isSaving) return;
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(db, "projects", projectId), {
+        savedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      setIsSaved(true);
+      toast.success("Project saved");
+    } catch (error) {
+      console.error("Error saving project:", error);
+      toast.error("Failed to save project");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleRun = async () => {
@@ -683,6 +723,22 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                 <span className="hidden sm:inline">{isRunning ? "Running..." : "Run"}</span>
               </button>
+              {!isReadOnly && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  title={isSaved ? "Project saved" : "Save project"}
+                  className={cn(
+                    "flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50",
+                    isSaved
+                      ? "bg-green-600/10 text-green-500"
+                      : "bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20"
+                  )}
+                >
+                  {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : isSaved ? <Check className="w-3 h-3" /> : <Save className="w-3 h-3" />}
+                  <span className="hidden sm:inline">{isSaving ? "Saving..." : isSaved ? "Saved" : "Save"}</span>
+                </button>
+              )}
               <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 text-xs font-bold transition-all">
                 <Share2 className="w-3 h-3" />
                 Share

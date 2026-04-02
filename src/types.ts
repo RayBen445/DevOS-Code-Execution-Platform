@@ -37,6 +37,7 @@ export interface Project {
   lastDeployedAt?: any;
   deployError?: string;
   entryFile?: string;
+  savedAt?: any;
   env?: Record<string, string>;
   parentTemplateId?: string;
 }
