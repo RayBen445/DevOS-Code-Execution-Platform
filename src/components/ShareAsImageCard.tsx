@@ -8,6 +8,7 @@
  */
 import { useRef, useCallback, useState, RefObject } from "react";
 import html2canvas from "html2canvas";
+import { toast } from "sonner";
 import { FeedPost, Project } from "../types";
 import { resolveAvatar } from "../lib/avatars";
 import { formatRelativeTime } from "../lib/utils";
