@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -84,6 +84,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
         {user && (
           <div className="hidden md:flex items-center gap-1">
             <Link
+              to="/"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <Home className="w-4 h-4" />
+              Feed
+            </Link>
+            <Link
               to="/explore"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
             >
@@ -96,6 +103,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             >
               <Layout className="w-4 h-4" />
               Templates
+            </Link>
+            <Link
+              to="/projects"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <FolderCode className="w-4 h-4" />
+              My Projects
             </Link>
             {isAdmin && (
               <Link
@@ -273,6 +287,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               <nav className="flex-1 px-4 py-4 space-y-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Navigate</p>
                 <Link
+                  to="/"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <Home className="w-4 h-4" />
+                  Feed
+                </Link>
+                <Link
                   to="/explore"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
@@ -287,6 +309,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 >
                   <Layout className="w-4 h-4" />
                   Templates
+                </Link>
+                <Link
+                  to="/projects"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <FolderCode className="w-4 h-4" />
+                  My Projects
                 </Link>
                 {isAdmin && (
                   <Link

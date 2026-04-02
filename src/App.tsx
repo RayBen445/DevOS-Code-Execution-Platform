@@ -8,6 +8,8 @@ import IDE from "./components/IDE";
 import Login from "./components/Login";
 import Home from "./components/Home";
 import Footer from "./components/Footer";
+import FeedHome from "./components/FeedHome";
+import MobileBottomNav from "./components/MobileBottomNav";
 import PrivacyTerms from "./pages/PrivacyTerms";
 import Portfolio from "./pages/Portfolio";
 import ProjectPreview from "./pages/ProjectPreview";
@@ -61,6 +63,20 @@ export default function App() {
     );
   }
 
+  // Projects / Dashboard view (accessible at /projects)
+  const DashboardView = selectedProjectId ? (
+    <IDE projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
+  ) : (
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+      <Navbar />
+      <div className="flex-1 pb-16 md:pb-0">
+        <Dashboard onSelectProject={setSelectedProjectId} />
+      </div>
+      <Footer />
+      <MobileBottomNav />
+    </div>
+  );
+
   return (
     <>
       <Toaster position="top-right" richColors theme="dark" />
@@ -78,30 +94,44 @@ export default function App() {
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/u/:username" element={<Portfolio />} />
           <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
-          <Route path="/" element={
-            !user ? (
+          {/* /projects — full dashboard & project management */}
+          <Route
+            path="/projects"
+            element={user ? DashboardView : (
               <>
                 <Home setShowLogin={setShowLogin} />
                 <AnimatePresence>
-                  {showLogin && (
-                    <Login onClose={() => setShowLogin(false)} />
-                  )}
+                  {showLogin && <Login onClose={() => setShowLogin(false)} />}
                 </AnimatePresence>
               </>
-            ) : selectedProjectId ? (
-              <IDE projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
-            ) : (
-              <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
-                <Navbar />
-                <div className="flex-1">
-                  <Dashboard onSelectProject={setSelectedProjectId} />
-                </div>
-                <Footer />
-              </div>
-            )
-          } />
+            )}
+          />
+          {/* / — feed-first home for authenticated users, landing page for guests */}
+          <Route
+            path="/"
+            element={
+              !user ? (
+                <>
+                  <Home setShowLogin={setShowLogin} />
+                  <AnimatePresence>
+                    {showLogin && (
+                      <Login onClose={() => setShowLogin(false)} />
+                    )}
+                  </AnimatePresence>
+                </>
+              ) : selectedProjectId ? (
+                <IDE projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
+              ) : (
+                <FeedHome
+                  onOpenProject={setSelectedProjectId}
+                  onShowLogin={() => setShowLogin(true)}
+                />
+              )
+            }
+          />
         </Routes>
       </AnimatePresence>
     </>
   );
 }
+
