@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { X, Github, Globe, Loader2, Save, Check, User, AtSign, FileText, Image as ImageIcon, Zap, Upload } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Globe, Loader2, Save, Check, User, AtSign, FileText, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { db, auth, storage } from "../lib/firebase";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { db, auth } from "../lib/firebase";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "sonner";
+import Avatar from "./Avatar";
+import { uploadAvatarToCloudinary } from "../lib/avatars";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -19,13 +20,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatar, setAvatar] = useState("");
-  const [githubInstallationId, setGithubInstallationId] = useState<string | null>(null);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen && auth.currentUser) {
@@ -47,23 +48,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         setDisplayName(data.displayName || auth.currentUser.displayName || "");
         setFullName(data.fullName || "");
         setBio(data.bio || "");
-        setAvatarUrl(data.avatarUrl || auth.currentUser.photoURL || "");
-        setAvatar(data.avatar || "");
+        setAvatarUrl(data.avatar || data.avatarUrl || auth.currentUser.photoURL || "");
+        setAvatar(data.avatar || data.avatarUrl || "");
       } else if (settingsDoc.exists()) {
         const data = settingsDoc.data();
         setUsername(data.username || "");
         setDisplayName(data.displayName || auth.currentUser.displayName || "");
         setFullName(data.fullName || "");
         setBio(data.bio || "");
-        setAvatarUrl(data.avatarUrl || auth.currentUser.photoURL || "");
-        setAvatar(data.avatar || "");
+        setAvatarUrl(data.avatar || data.avatarUrl || auth.currentUser.photoURL || "");
+        setAvatar(data.avatar || data.avatarUrl || "");
       } else {
         setDisplayName(auth.currentUser.displayName || "");
         setAvatarUrl(auth.currentUser.photoURL || "");
-      }
-
-      if (settingsDoc.exists()) {
-        setGithubInstallationId(settingsDoc.data().githubInstallationId || null);
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -76,33 +73,22 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (!auth.currentUser) return;
     setIsSaving(true);
     try {
-      const publicData = {
+      const sharedData = {
         uid: auth.currentUser.uid,
         email: auth.currentUser.email,
         username,
         displayName,
         fullName,
         bio,
+        avatar: avatarUrl,
         avatarUrl,
-        avatar,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       };
 
-      const privateData = {
-        username,
-        displayName,
-        fullName,
-        bio,
-        avatarUrl,
-        avatar,
-        updatedAt: serverTimestamp()
-      };
-
-      // Save to public profile
-      await setDoc(doc(db, "users", auth.currentUser.uid), publicData, { merge: true });
-      
-      // Save to private settings
-      await setDoc(doc(db, "user_settings", auth.currentUser.uid), privateData, { merge: true });
+      await Promise.all([
+        setDoc(doc(db, "users", auth.currentUser.uid), sharedData, { merge: true }),
+        setDoc(doc(db, "user_settings", auth.currentUser.uid), sharedData, { merge: true }),
+      ]);
 
       toast.success("Settings saved successfully");
       setShowSuccess(true);
@@ -119,91 +105,48 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const file = e.target.files?.[0];
     if (!file || !auth.currentUser) return;
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File is too large. Maximum size is 5MB.");
-      return;
-    }
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file.");
-      return;
-    }
-
     setIsUploading(true);
     setUploadProgress(0);
 
+    // Progress simulation constants (Cloudinary doesn't expose XHR progress via fetch)
+    const PROGRESS_INCREMENT = 15;
+    const PROGRESS_MAX = 85;
+    const PROGRESS_INTERVAL_MS = 200;
+
+    const progressInterval = setInterval(() => {
+      setUploadProgress((p) => Math.min(p + PROGRESS_INCREMENT, PROGRESS_MAX));
+    }, PROGRESS_INTERVAL_MS);
+
     try {
-      // Use a unique filename to avoid collisions and potential overwrite issues
-      const fileExtension = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExtension}`;
-      const storageRef = ref(storage, `avatars/${auth.currentUser.uid}/${fileName}`);
-      
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const secureUrl = await uploadAvatarToCloudinary(file);
 
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        },
-        (error) => {
-          console.error("Upload error:", error);
-          setIsUploading(false);
-          toast.error("Upload failed: " + error.message);
-        },
-        async () => {
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            
-            // Update local state
-            setAvatarUrl(downloadURL);
-            setAvatar(downloadURL);
-            
-            // Persist immediately to both collections
-            const updateData = {
-              avatarUrl: downloadURL,
-              avatar: downloadURL,
-              updatedAt: serverTimestamp()
-            };
+      setUploadProgress(100);
 
-            const userRef = doc(db, "users", auth.currentUser!.uid);
-            const settingsRef = doc(db, "user_settings", auth.currentUser!.uid);
+      setAvatarUrl(secureUrl);
+      setAvatar(secureUrl);
 
-            // Use a batch or parallel setDoc
-            await Promise.all([
-              setDoc(userRef, {
-                ...updateData,
-                uid: auth.currentUser!.uid,
-                email: auth.currentUser!.email
-              }, { merge: true }),
-              setDoc(settingsRef, updateData, { merge: true })
-            ]);
-            
-            toast.success("Profile image updated!");
-          } catch (error: any) {
-            console.error("Error updating profile records:", error);
-            toast.error("Image uploaded but failed to update profile: " + error.message);
-          } finally {
-            setIsUploading(false);
-          }
-        }
-      );
+      // Persist immediately
+      const updateData = {
+        avatar: secureUrl,
+        avatarUrl: secureUrl,
+        updatedAt: serverTimestamp(),
+      };
+      await Promise.all([
+        updateDoc(doc(db, "users", auth.currentUser.uid), updateData),
+        updateDoc(doc(db, "user_settings", auth.currentUser.uid), updateData),
+      ]);
+
+      toast.success("Profile picture updated!");
     } catch (error: any) {
-      console.error("Error starting upload:", error);
-      toast.error("Failed to start upload: " + error.message);
+      console.error("Avatar upload error:", error);
+      toast.error(error.message || "Upload failed. Please try again.");
+    } finally {
+      clearInterval(progressInterval);
       setIsUploading(false);
+      setUploadProgress(0);
+      // Reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-  };
-
-  const handleFileInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
-    (e.target as HTMLInputElement).value = "";
-  };
-
-  const handleAvatarUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAvatar(e.target.value);
-    setAvatarUrl(e.target.value);
   };
 
   return (
@@ -253,56 +196,28 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <div className="space-y-6">
                   {/* Profile Section */}
                   <div className="flex items-center gap-6 mb-8">
-                    <div className="relative group">
-                      <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 overflow-hidden relative shadow-inner">
-                        {avatarUrl ? (
-                          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-white/20 bg-gradient-to-br from-white/5 to-white/0">
-                            <User className="w-10 h-10" />
-                          </div>
-                        )}
-                        {isUploading && (
-                          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-4">
-                            <Loader2 className="w-6 h-6 text-blue-500 animate-spin mb-2" />
-                            <div className="w-full bg-white/10 rounded-full h-1 overflow-hidden">
-                              <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${uploadProgress}%` }}
-                                className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="absolute -bottom-2 -right-2 flex flex-col gap-1">
-                        <label className="p-2 bg-blue-600 rounded-xl cursor-pointer hover:bg-blue-700 transition-all shadow-lg active:scale-90 group/upload">
-                          <Upload className="w-4 h-4 text-white" />
-                          <input type="file" className="hidden" accept="image/*" onClick={handleFileInputClick} onChange={handleImageUpload} disabled={isUploading} />
-                          <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black text-white text-[10px] font-bold rounded opacity-0 group-hover/upload:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">
-                            Upload Image
-                          </div>
-                        </label>
-                        {avatarUrl && (
-                          <button 
-                            onClick={() => {
-                              setAvatarUrl("");
-                              setAvatar("");
-                              toast.info("Image removed from view. Save to persist.");
-                            }}
-                            className="p-2 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-xl transition-all shadow-lg active:scale-90 group/remove"
-                          >
-                            <X className="w-4 h-4" />
-                            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black text-white text-[10px] font-bold rounded opacity-0 group-hover/remove:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">
-                              Remove Image
-                            </div>
-                          </button>
-                        )}
-                      </div>
+                    <div className="relative">
+                      <Avatar
+                        src={avatarUrl}
+                        displayName={fullName || displayName}
+                        size="xl"
+                        uploading={isUploading}
+                        uploadProgress={uploadProgress}
+                        onEditClick={() => fileInputRef.current?.click()}
+                      />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={isUploading}
+                      />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-white tracking-tight">{fullName || displayName || "Your Name"}</h3>
                       <p className="text-white/40 text-sm font-mono">@{username || "username"}</p>
+                      <p className="text-[11px] text-white/25 mt-1">Click avatar to change · jpg, png, webp · max 2 MB</p>
                     </div>
                   </div>
 
@@ -334,20 +249,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
                       />
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                      <ImageIcon className="w-3 h-3" />
-                      Avatar URL
-                    </label>
-                    <input
-                      type="text"
-                      value={avatar}
-                      onChange={handleAvatarUrlChange}
-                      placeholder="https://example.com/avatar.jpg"
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
-                    />
                   </div>
 
                   <div className="space-y-2">

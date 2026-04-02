@@ -212,11 +212,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     if (cmd === "save") {
       addLog("info", "Saving project...");
       try {
-        await updateDoc(doc(db, "projects", projectId), {
-          savedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        setIsSaved(true);
+        await handleSave();
         addLog("success", "✔ Project saved successfully.");
       } catch (error: any) {
         addLog("error", `✖ Save failed: ${error.message}`);

@@ -14,12 +14,12 @@ import {
   Zap,
   Code2,
   Send,
-  ChevronDown,
   X,
   MessageCircle,
   Repeat2,
   Eye,
   Download,
+  Layers,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -39,6 +39,7 @@ import { FeedPost, FeedComment, Project, UserSettings } from "../types";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import MobileBottomNav from "./MobileBottomNav";
+import Avatar from "./Avatar";
 import { useSEO } from "../hooks/useSEO";
 import { toast } from "sonner";
 
@@ -60,7 +61,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const [postType, setPostType] = useState<FeedPost["type"]>("update");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [isPosting, setIsPosting] = useState(false);
-  const [showMobileFab, setShowMobileFab] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useSEO({ title: "Home — DevOS" });
@@ -197,7 +198,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       });
       setPostText("");
       setSelectedProjectId("");
-      setShowMobileFab(false);
+      setShowComposer(false);
       toast.success("Post shared!");
     } catch {
       toast.error("Failed to share post.");
@@ -251,22 +252,24 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                 </h2>
               </div>
 
-              {/* Post Composer — desktop inline, mobile via FAB */}
+              {/* Post Composer — desktop trigger */}
               {user && (
-                <PostComposer
-                  avatarUrl={resolveAvatar(settings?.avatarUrl || user.photoURL)}
-                  displayName={settings?.displayName || user.displayName || "You"}
-                  postText={postText}
-                  setPostText={setPostText}
-                  postType={postType}
-                  setPostType={setPostType}
-                  selectedProjectId={selectedProjectId}
-                  setSelectedProjectId={setSelectedProjectId}
-                  myProjects={myProjects}
-                  isPosting={isPosting}
-                  onSubmit={handleSubmitPost}
-                  textareaRef={textareaRef}
-                />
+                <button
+                  onClick={() => setShowComposer(true)}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/15 hover:bg-white/[0.05] transition-all group text-left"
+                >
+                  <Avatar
+                    src={settings?.avatarUrl || user.photoURL}
+                    displayName={settings?.displayName || user.displayName}
+                    size="sm"
+                  />
+                  <span className="text-sm text-white/30 group-hover:text-white/50 transition-colors flex-1">
+                    What are you building?
+                  </span>
+                  <div className="w-7 h-7 rounded-lg bg-blue-600/20 flex items-center justify-center flex-shrink-0">
+                    <Plus className="w-4 h-4 text-blue-400" />
+                  </div>
+                </button>
               )}
 
               {feedLoading ? (
@@ -345,60 +348,35 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         </div>
       </main>
 
-      {/* Mobile FAB — floating post button */}
+      {/* FAB for mobile */}
       {user && (
-        <>
-          <button
-            onClick={() => setShowMobileFab(true)}
-            className="md:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/30 flex items-center justify-center text-white transition-all active:scale-90"
-            aria-label="New post"
-          >
-            <Plus className="w-6 h-6" />
-          </button>
+        <button
+          onClick={() => setShowComposer(true)}
+          className="md:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/30 flex items-center justify-center text-white transition-all active:scale-90"
+          aria-label="New post"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
 
-          {/* Mobile post sheet */}
-          <AnimatePresence>
-            {showMobileFab && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/70 z-40 md:hidden"
-                  onClick={() => setShowMobileFab(false)}
-                />
-                <motion.div
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                  className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#111] border-t border-white/10 rounded-t-2xl p-4 pb-8"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-white">New Post</h3>
-                    <button onClick={() => setShowMobileFab(false)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/40">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <PostComposer
-                    avatarUrl={resolveAvatar(settings?.avatarUrl || user.photoURL)}
-                    displayName={settings?.displayName || user.displayName || "You"}
-                    postText={postText}
-                    setPostText={setPostText}
-                    postType={postType}
-                    setPostType={setPostType}
-                    selectedProjectId={selectedProjectId}
-                    setSelectedProjectId={setSelectedProjectId}
-                    myProjects={myProjects}
-                    isPosting={isPosting}
-                    onSubmit={handleSubmitPost}
-                    textareaRef={textareaRef}
-                  />
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-        </>
+      {/* Fullscreen Post Composer Modal */}
+      {user && (
+        <PostComposerModal
+          open={showComposer}
+          onClose={() => { setShowComposer(false); setPostText(""); setSelectedProjectId(""); }}
+          avatarUrl={resolveAvatar(settings?.avatarUrl || user.photoURL)}
+          displayName={settings?.displayName || user.displayName || "You"}
+          postText={postText}
+          setPostText={setPostText}
+          postType={postType}
+          setPostType={setPostType}
+          selectedProjectId={selectedProjectId}
+          setSelectedProjectId={setSelectedProjectId}
+          myProjects={myProjects}
+          isPosting={isPosting}
+          onSubmit={handleSubmitPost}
+          textareaRef={textareaRef}
+        />
       )}
 
       <Footer />
@@ -407,9 +385,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   );
 }
 
-/* ─── Post Composer ─── */
+/* ─── Post Composer Modal ─── */
 
-interface PostComposerProps {
+interface PostComposerModalProps {
+  open: boolean;
+  onClose: () => void;
   avatarUrl: string;
   displayName: string;
   postText: string;
@@ -424,7 +404,16 @@ interface PostComposerProps {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
 }
 
-function PostComposer({
+const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; emoji: string; desc: string; color: string }[] = [
+  { value: "update", label: "Update", emoji: "🔄", desc: "Share what you're working on", color: "yellow" },
+  { value: "snippet", label: "Snippet", emoji: "💾", desc: "Share a code snippet", color: "orange" },
+  { value: "feature", label: "Feature", emoji: "✨", desc: "Announce a new feature", color: "purple" },
+  { value: "deployment", label: "Deployment", emoji: "🚀", desc: "You shipped something live", color: "green" },
+];
+
+function PostComposerModal({
+  open,
+  onClose,
   avatarUrl,
   displayName,
   postText,
@@ -437,89 +426,178 @@ function PostComposer({
   isPosting,
   onSubmit,
   textareaRef,
-}: PostComposerProps) {
-  const typeOptions: { value: FeedPost["type"]; label: string; emoji: string }[] = [
-    { value: "update", label: "Update", emoji: "🔄" },
-    { value: "snippet", label: "Snippet", emoji: "💾" },
-    { value: "feature", label: "Feature", emoji: "✨" },
-    { value: "deployment", label: "Deployment", emoji: "🚀" },
-  ];
-
+}: PostComposerModalProps) {
   return (
-    <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 space-y-3">
-      <div className="flex items-start gap-3">
-        <img
-          src={avatarUrl}
-          alt={displayName}
-          className="w-9 h-9 rounded-full object-cover flex-shrink-0"
-          referrerPolicy="no-referrer"
-        />
-        <textarea
-          ref={textareaRef}
-          value={postText}
-          onChange={(e) => setPostText(e.target.value)}
-          placeholder="Share something with the community…"
-          rows={2}
-          className="flex-1 bg-transparent text-sm text-white placeholder-white/30 resize-none focus:outline-none leading-relaxed"
-        />
-      </div>
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50"
+            onClick={onClose}
+          />
 
-      {/* Options row */}
-      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/5">
-        {/* Post type selector */}
-        <div className="relative">
-          <select
-            value={postType}
-            onChange={(e) => setPostType(e.target.value as FeedPost["type"])}
-            className="appearance-none text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white focus:outline-none focus:border-white/20 pr-6 cursor-pointer transition-all"
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 16 }}
+            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-lg z-50 bg-[#111827] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh]"
           >
-            {typeOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.emoji} {opt.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" />
-        </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+                <div>
+                  <p className="text-sm font-bold text-white leading-none">{displayName}</p>
+                  <p className="text-[11px] text-white/40 mt-0.5">New post</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-        {/* Project selector */}
-        {myProjects.length > 0 && (
-          <div className="relative">
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="appearance-none text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white focus:outline-none focus:border-white/20 pr-6 cursor-pointer transition-all max-w-[140px]"
-            >
-              <option value="">📁 Attach project</option>
-              {myProjects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-white/40 pointer-events-none" />
-          </div>
-        )}
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {/* Textarea */}
+              <textarea
+                ref={textareaRef}
+                value={postText}
+                onChange={(e) => setPostText(e.target.value)}
+                placeholder="What are you building?"
+                rows={4}
+                autoFocus
+                className="w-full bg-transparent text-white placeholder-white/25 text-base leading-relaxed resize-none focus:outline-none"
+              />
 
-        <div className="ml-auto">
-          <button
-            onClick={onSubmit}
-            disabled={isPosting || !postText.trim()}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-bold transition-all",
-              postText.trim() && !isPosting
-                ? "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
-                : "bg-white/5 text-white/30 cursor-not-allowed"
-            )}
-          >
-            {isPosting ? (
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <Send className="w-3.5 h-3.5" />
-            )}
-            Post
-          </button>
-        </div>
-      </div>
-    </div>
+              {/* Post type cards */}
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/30 mb-3">Post Type</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {TYPE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPostType(opt.value)}
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-xl border transition-all text-left",
+                        postType === opt.value
+                          ? "bg-blue-600/15 border-blue-500/60 shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
+                          : "bg-white/[0.03] border-white/[0.08] hover:border-white/15 hover:bg-white/[0.06]"
+                      )}
+                    >
+                      <span className="text-lg leading-none mt-0.5">{opt.emoji}</span>
+                      <div>
+                        <p className={cn(
+                          "text-xs font-bold leading-none mb-1",
+                          postType === opt.value ? "text-blue-300" : "text-white"
+                        )}>
+                          {opt.label}
+                        </p>
+                        <p className="text-[10px] text-white/35 leading-snug">{opt.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Project selector */}
+              {myProjects.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/30 mb-3">Attach Project</p>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {/* Deselect option */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProjectId("")}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition-all text-left",
+                        selectedProjectId === ""
+                          ? "bg-white/10 border-white/20"
+                          : "bg-white/[0.03] border-white/[0.08] hover:border-white/15"
+                      )}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                        <Layers className="w-3.5 h-3.5 text-white/50" />
+                      </div>
+                      <span className="text-xs text-white/50">No project attached</span>
+                    </button>
+                    {myProjects.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedProjectId(p.id)}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition-all text-left",
+                          selectedProjectId === p.id
+                            ? "bg-blue-600/15 border-blue-500/60"
+                            : "bg-white/[0.03] border-white/[0.08] hover:border-white/15 hover:bg-white/[0.06]"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0",
+                          selectedProjectId === p.id ? "bg-blue-600/30" : "bg-white/5"
+                        )}>
+                          <FolderCode className={cn("w-3.5 h-3.5", selectedProjectId === p.id ? "text-blue-400" : "text-white/40")} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            "text-xs font-semibold truncate",
+                            selectedProjectId === p.id ? "text-blue-300" : "text-white/80"
+                          )}>
+                            {p.name}
+                          </p>
+                          {p.description && <p className="text-[10px] text-white/30 truncate">{p.description}</p>}
+                        </div>
+                        {p.isPublic ? (
+                          <Globe className="w-3 h-3 text-white/20 flex-shrink-0" />
+                        ) : (
+                          <Lock className="w-3 h-3 text-white/20 flex-shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sticky Post button */}
+            <div className="p-4 border-t border-white/5">
+              <button
+                onClick={onSubmit}
+                disabled={isPosting || !postText.trim()}
+                className={cn(
+                  "w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
+                  postText.trim() && !isPosting
+                    ? "bg-blue-600 hover:bg-blue-700 text-white active:scale-[0.98] shadow-lg shadow-blue-500/20"
+                    : "bg-white/5 text-white/25 cursor-not-allowed"
+                )}
+              >
+                {isPosting ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Post
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 
