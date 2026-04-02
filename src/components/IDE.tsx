@@ -752,6 +752,17 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     );
   }
 
+  // Breadcrumb data
+  const breadcrumbUsername = project?.ownerUsername || user?.email?.split("@")[0] || "";
+  const breadcrumbFilePath = activeFile?.path ?? activeFile?.name ?? "";
+  const breadcrumbSegments = breadcrumbFilePath ? breadcrumbFilePath.split("/") : [];
+  const breadcrumbFileName = breadcrumbSegments[breadcrumbSegments.length - 1] ?? "";
+  const breadcrumbFolders = breadcrumbSegments.length > 1 ? breadcrumbSegments.slice(0, -1) : [];
+  const breadcrumbProjectHref =
+    project?.projectSlug && breadcrumbUsername
+      ? `/u/${breadcrumbUsername}/${project.projectSlug}`
+      : `/project/${projectId}`;
+
   return (
     <div
       className="h-screen flex flex-col bg-[#0D1117] overflow-hidden"
@@ -766,17 +777,62 @@ export default function IDE({ projectId, onBack }: IDEProps) {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2 min-w-0">
+            {/* ── GitHub-style breadcrumb ── */}
             {project?.systemType !== 'portfolio' && (
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-sm font-bold text-white truncate max-w-[100px] md:max-w-none">{project?.name}</span>
-                {activeFile?.path && (
+              <nav
+                aria-label="breadcrumb"
+                className="flex items-center gap-1 min-w-0 text-xs"
+              >
+                {/* @username — desktop only */}
+                {breadcrumbUsername && (
                   <>
-                    <span className="text-xs text-white/20 flex-shrink-0">/</span>
-                    <span className="text-xs text-white/40 truncate max-w-[80px] md:max-w-none">{activeFile?.path}</span>
+                    <a
+                      href={`/u/${breadcrumbUsername}`}
+                      className="hidden md:inline text-[#9CA3AF] hover:text-white font-medium transition-colors flex-shrink-0"
+                      title={`@${breadcrumbUsername}'s profile`}
+                    >
+                      @{breadcrumbUsername}
+                    </a>
+                    <span className="hidden md:inline text-white/20 flex-shrink-0 select-none">/</span>
                   </>
                 )}
-              </div>
+
+                {/* Project name */}
+                <a
+                  href={breadcrumbProjectHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#E5E7EB] hover:text-white font-semibold transition-colors truncate max-w-[90px] sm:max-w-[130px] md:max-w-none flex-shrink-0"
+                  title={project?.name}
+                >
+                  {project?.name}
+                </a>
+
+                {/* File path */}
+                {breadcrumbFilePath && (
+                  <>
+                    <span className="text-white/20 flex-shrink-0 select-none">/</span>
+
+                    {/* Folder segments — desktop only */}
+                    {breadcrumbFolders.map((seg, i) => (
+                      <span key={i} className="hidden md:contents">
+                        <span className="text-[#9CA3AF] font-medium">{seg}</span>
+                        <span className="text-white/20 select-none">/</span>
+                      </span>
+                    ))}
+
+                    {/* Filename — always visible, accent blue */}
+                    <span
+                      className="text-[#3B82F6] font-semibold truncate max-w-[90px] md:max-w-[180px]"
+                      title={breadcrumbFilePath}
+                    >
+                      {breadcrumbFileName}
+                    </span>
+                  </>
+                )}
+              </nav>
             )}
+
             {project?.systemType === 'portfolio' && (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-white">Portfolio Editor</span>
