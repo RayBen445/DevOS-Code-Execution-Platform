@@ -13,7 +13,9 @@ import MobileBottomNav from "./components/MobileBottomNav";
 import PrivacyTerms from "./pages/PrivacyTerms";
 import Portfolio from "./pages/Portfolio";
 import ProjectPreview from "./pages/ProjectPreview";
+import ProjectView from "./pages/ProjectView";
 import TemplatePage from "./pages/TemplatePage";
+import TemplatePreviewPage from "./pages/TemplatePreviewPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import StatusPage from "./pages/StatusPage";
 import DocsPage from "./pages/DocsPage";
@@ -37,6 +39,15 @@ export default function App() {
       initializeUser(user);
     }
   }, [user]);
+
+  // Capture ?ref= query param on first visit and persist to sessionStorage
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref && !sessionStorage.getItem("devos_pending_ref")) {
+      sessionStorage.setItem("devos_pending_ref", ref);
+    }
+  }, []);
 
   // Handle subdomain redirects for backward compatibility
   useEffect(() => {
@@ -86,6 +97,8 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyTerms />} />
           <Route path="/terms" element={<PrivacyTerms />} />
           <Route path="/templates" element={<TemplatePage />} />
+          <Route path="/templates/:templateId" element={<TemplatePreviewPage />} />
+          <Route path="/project/:projectId" element={<ProjectView />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/status" element={<StatusPage />} />
           <Route path="/docs" element={<DocsPage />} />

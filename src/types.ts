@@ -23,6 +23,8 @@ export interface Project {
   deployUrl?: string;
   liveUrl?: string;
   parentProjectId?: string;
+  forkedFrom?: string;           // projectId of the source project
+  forkedFromOwner?: string;      // username of the source project owner
   githubRepo?: string;
   githubUrl?: string;
   isSystem?: boolean;
@@ -36,6 +38,7 @@ export interface Project {
   deployError?: string;
   entryFile?: string;
   env?: Record<string, string>;
+  parentTemplateId?: string;
 }
 
 export interface ProjectVersion {
@@ -213,4 +216,18 @@ export interface RedeemCode {
   isActive: boolean;
   createdBy: string;
   createdAt: any;
+}
+
+export interface Referral {
+  id: string;
+  referrerId: string;        // uid of the user who shared the link
+  referredId: string;        // uid of the new user who signed up
+  referralCode: string;
+  createdAt: any;
+}
+
+export interface ReferralStats {
+  code: string;
+  totalReferrals: number;
+  referrals: Referral[];
 }

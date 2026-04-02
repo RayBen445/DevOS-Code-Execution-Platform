@@ -294,5 +294,27 @@ service cloud.firestore {
       allow delete: if isAuthenticated() &&
         resource.data.followerId == request.auth.uid;
     }
+
+    // Referral codes — public read so the service can look up a code during sign-up
+    match /referral_codes/{code} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Referral events — creator or admin can read; only authenticated users can create
+    match /referrals/{docId} {
+      allow read: if isAuthenticated() && (
+        resource.data.referrerId == request.auth.uid ||
+        resource.data.referredId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() &&
+        request.resource.data.referredId == request.auth.uid &&
+        request.resource.data.referralCode is string &&
+        request.resource.data.referrerId is string &&
+        request.resource.data.createdAt is timestamp;
+      allow update, delete: if isAdmin();
+    }
   }
 }

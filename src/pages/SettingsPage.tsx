@@ -38,6 +38,9 @@ import {
   Zap,
   ChevronRight,
   Code2,
+  Users,
+  Copy,
+  Link as LinkIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -47,8 +50,10 @@ import ConfirmModal from "../components/ConfirmModal";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useSEO } from "../hooks/useSEO";
+import { getReferralStats, REFERRER_BONUS, REFERRED_BONUS } from "../lib/referralService";
+import { ReferralStats } from "../types";
 
-type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "danger";
+type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "profile", label: "Profile", icon: <User className="w-4 h-4" /> },
@@ -56,8 +61,102 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "security", label: "Security", icon: <Lock className="w-4 h-4" /> },
   { id: "preferences", label: "Preferences", icon: <Settings className="w-4 h-4" /> },
   { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
+  { id: "referrals", label: "Referrals", icon: <Users className="w-4 h-4" /> },
   { id: "danger", label: "Danger Zone", icon: <ShieldAlert className="w-4 h-4" /> },
 ];
+
+function ReferralsTab({ uid }: { uid: string }) {
+  const [stats, setStats] = useState<ReferralStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    getReferralStats(uid).then(setStats).catch(() => {}).finally(() => setLoading(false));
+  }, [uid]);
+
+  const referralLink = stats ? `${window.location.origin}/?ref=${stats.code}` : "";
+
+  const handleCopy = async () => {
+    if (!referralLink) return;
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      setCopied(true);
+      toast.success("Referral link copied!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <div>
+        <h2 className="text-xl font-bold text-white mb-1">Referral Program</h2>
+        <p className="text-sm text-white/40">
+          Share your link and earn credits when friends sign up.
+        </p>
+      </div>
+
+      {/* Reward info */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20">
+          <p className="text-2xl font-black text-green-400">+{REFERRER_BONUS}</p>
+          <p className="text-xs text-white/50 mt-1">credits you earn per referral</p>
+        </div>
+        <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+          <p className="text-2xl font-black text-blue-400">+{REFERRED_BONUS}</p>
+          <p className="text-xs text-white/50 mt-1">credits your friend gets</p>
+        </div>
+      </div>
+
+      {/* Your link */}
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+          <LinkIcon className="w-3 h-3" />
+          Your Referral Link
+        </label>
+        <div className="flex gap-2">
+          <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono text-white/60 truncate">
+            {referralLink || "Generating…"}
+          </div>
+          <button
+            onClick={handleCopy}
+            disabled={!referralLink}
+            className="p-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl transition-all active:scale-95"
+          >
+            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          </button>
+        </div>
+        {stats?.code && (
+          <p className="text-[11px] text-white/30">
+            Your code: <span className="font-mono font-bold text-white/50">{stats.code}</span>
+          </p>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.07]">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-white/50">Total Referrals</span>
+          <span className="text-2xl font-black text-white">{stats?.totalReferrals ?? 0}</span>
+        </div>
+      </div>
+
+      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-white/40 leading-relaxed">
+        <strong className="text-white/60">Rules:</strong> No self-referrals. Each new user can only use one referral code.
+        Credits are awarded once per unique sign-up.
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const [user, authLoading] = useAuthState(auth);
@@ -127,6 +226,7 @@ export default function SettingsPage() {
               {activeTab === "security" && <SecurityTab />}
               {activeTab === "preferences" && <PreferencesTab />}
               {activeTab === "notifications" && <NotificationsTab />}
+              {activeTab === "referrals" && user && <ReferralsTab uid={user.uid} />}
               {activeTab === "danger" && <DangerZoneTab />}
             </motion.div>
           </AnimatePresence>
