@@ -42,7 +42,13 @@ export function useShareAsImage(
         URL.revokeObjectURL(url);
       }, "image/png");
     } catch {
-      // Silently ignore capture errors (CORS on avatars etc.)
+      // Show a user-friendly message — common cause is CORS on avatar images
+      try {
+        const { toast } = await import("sonner");
+        toast.error("Could not generate image. Try again.");
+      } catch {
+        // toast unavailable — fail silently
+      }
     } finally {
       setCapturing(false);
     }

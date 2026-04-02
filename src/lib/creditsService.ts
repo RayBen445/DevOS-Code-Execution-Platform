@@ -33,7 +33,6 @@ export const getCreditConfig = async (): Promise<CreditConfig> => {
 
 /** Persist the global credit config (admin only — enforced by Firestore rules) */
 export const saveCreditConfig = async (config: CreditConfig): Promise<void> => {
-  _cachedConfig = null; // invalidate cache on save
   await setDoc(doc(db, "system_config", "global"), {
     creditsEnabled: config.creditsEnabled,
     chargePerAction: config.chargePerAction,
