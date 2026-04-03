@@ -100,6 +100,9 @@ export interface UserSettings {
   avatar?: string;
   githubToken?: string;
   githubInstallationId?: string;
+  skills?: string[];
+  dailyStreak?: number;
+  monthlyStreak?: number;
   links?: {
     github?: string;
     twitter?: string;
@@ -161,6 +164,10 @@ export interface UserProfile {
   role?: 'user' | 'admin' | 'company';
   companyName?: string;
   verified?: boolean;
+  skills?: string[];
+  dailyStreak?: number;
+  monthlyStreak?: number;
+  lastActiveDate?: string; // ISO date string "YYYY-MM-DD"
   credits?: Credits;
   links?: {
     github?: string;

@@ -744,6 +744,31 @@ p {
         )}
       </AnimatePresence>
 
+      {/* ─── Continue Working banner ─── */}
+      {activeTab === "my-projects" && (() => {
+        const last = projects.find((p) => p.systemType !== "portfolio" && p.ownerId === user?.uid);
+        if (!last) return null;
+        return (
+          <div className="mb-8 rounded-2xl bg-gradient-to-r from-blue-600/10 to-blue-500/5 border border-blue-500/20 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] text-blue-400/70 font-bold uppercase tracking-widest mb-1">Continue Working</p>
+              <h3 className="text-white font-bold text-base truncate">{last.name}</h3>
+              <p className="text-xs text-white/40 mt-0.5">
+                Last updated {formatRelativeTime(last.updatedAt)}
+                {last.description && <> · {last.description}</>}
+              </p>
+            </div>
+            <button
+              onClick={() => onSelectProject(last.id)}
+              className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all active:scale-[0.97]"
+            >
+              <ChevronRight className="w-4 h-4" />
+              Resume
+            </button>
+          </div>
+        );
+      })()}
+
       <div className="flex gap-8 mb-8 border-b border-white/5">
         <button
           onClick={() => setActiveTab("my-projects")}
@@ -888,6 +913,15 @@ p {
                       title="Publish as Template"
                     >
                       <Upload className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {!['portfolio' as string].includes(project.systemType ?? '') && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
+                      title="Deploy project (open IDE → Deploy tab)"
+                    >
+                      <Rocket className="w-3.5 h-3.5" />
                     </button>
                   )}
                   <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />

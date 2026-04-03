@@ -81,7 +81,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role', 'links'];
+      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role', 'links', 'skills', 'dailyStreak', 'monthlyStreak', 'lastActiveDate', 'lastActiveMonth', 'activeDaysThisMonth', 'companyName', 'verified'];
       return data.keys().hasOnly(allowedFields) &&
              data.uid is string && data.uid == request.auth.uid &&
              data.email is string &&
@@ -167,7 +167,7 @@ service cloud.firestore {
     }
 
     function isValidUserSettings(data) {
-      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId', 'links', 'preferences', 'notifications'];
+      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId', 'links', 'preferences', 'notifications', 'skills'];
       return data.keys().hasOnly(allowedFields) &&
              (!('githubToken' in data) || data.githubToken is string) &&
              (!('vercelToken' in data) || data.vercelToken is string) &&

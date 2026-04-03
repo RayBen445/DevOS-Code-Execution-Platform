@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "./lib/firebase";
-import { initializeUser } from "./lib/userService";
+import { initializeUser, updateStreak } from "./lib/userService";
 import Navbar from "./components/Navbar";
 import Dashboard from "./components/Dashboard";
 import IDE from "./components/IDE";
@@ -93,6 +93,7 @@ export default function App() {
   useEffect(() => {
     if (user) {
       initializeUser(user);
+      updateStreak(user.uid).catch(() => {}); // fire-and-forget
     } else {
       // Clear the project session when the user logs out
       try { sessionStorage.removeItem("devos_active_project"); } catch { /* noop */ }

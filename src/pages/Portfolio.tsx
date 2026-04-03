@@ -4,7 +4,7 @@ import { db, auth } from "../lib/firebase";
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { UserSettings, Project, FeedPost } from "../types";
-import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil } from "lucide-react";
+import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil, Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn, formatRelativeTime } from "../lib/utils";
@@ -303,9 +303,41 @@ export default function Portfolio() {
           </div>
           
           {(portfolioConfig?.bio || userSettings.bio) && (
-            <p className="text-white/60 max-w-xl text-lg leading-relaxed mb-10 font-medium">
+            <p className="text-white/60 max-w-xl text-lg leading-relaxed mb-6 font-medium">
               {portfolioConfig?.bio || userSettings.bio}
             </p>
+          )}
+
+          {/* Skills tags */}
+          {userSettings.skills && userSettings.skills.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+              {userSettings.skills.map((skill) => (
+                <span
+                  key={skill}
+                  className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs font-semibold"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Streak badges */}
+          {((userSettings.dailyStreak ?? 0) > 0 || (userSettings.monthlyStreak ?? 0) > 0) && (
+            <div className="flex items-center justify-center gap-3 mb-8">
+              {(userSettings.dailyStreak ?? 0) > 0 && (
+                <div className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm font-bold">
+                  <Flame className="w-4 h-4" />
+                  {userSettings.dailyStreak} day{userSettings.dailyStreak !== 1 ? "s" : ""} streak
+                </div>
+              )}
+              {(userSettings.monthlyStreak ?? 0) > 0 && (
+                <div className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-bold">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {userSettings.monthlyStreak} month{userSettings.monthlyStreak !== 1 ? "s" : ""} streak
+                </div>
+              )}
+            </div>
           )}
 
           {portfolioConfig?.links && portfolioConfig.links.some((l: any) => l.url) && (

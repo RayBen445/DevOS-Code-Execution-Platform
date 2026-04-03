@@ -262,3 +262,49 @@ const createPortfolioProject = async (uid: string, username: string): Promise<st
 
   return docRef.id;
 };
+
+/**
+ * Call once per user session / page-load to keep streak counters current.
+ * - dailyStreak  increments when the user is active on a new calendar day;
+ *                resets to 1 if they skipped a day.
+ * - monthlyStreak increments when the user has been active on ≥20 distinct
+ *                  days during the current calendar month.
+ * Stores lastActiveDate as "YYYY-MM-DD" in the users doc.
+ */
+export const updateStreak = async (uid: string): Promise<void> => {
+  const userRef = doc(db, "users", uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+  const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const lastActive: string | undefined = data.lastActiveDate;
+
+  if (lastActive === todayStr) return; // already counted today
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+  const prevDaily: number = data.dailyStreak ?? 0;
+  const newDaily = lastActive === yesterdayStr ? prevDaily + 1 : 1;
+
+  // Monthly: count unique active days this month stored in activeDaysThisMonth[]
+  const currentMonth = todayStr.slice(0, 7); // "YYYY-MM"
+  const lastMonth: string | undefined = data.lastActiveMonth;
+  let activeDays: string[] = data.activeDaysThisMonth ?? [];
+  if (lastMonth !== currentMonth) activeDays = []; // new month → reset
+  if (!activeDays.includes(todayStr)) activeDays = [...activeDays, todayStr];
+
+  const newMonthly = activeDays.length >= 20
+    ? (data.monthlyStreak ?? 0) + 1
+    : data.monthlyStreak ?? 0;
+
+  await updateDoc(userRef, {
+    dailyStreak: newDaily,
+    monthlyStreak: newMonthly,
+    lastActiveDate: todayStr,
+    lastActiveMonth: currentMonth,
+    activeDaysThisMonth: activeDays,
+  });
+};

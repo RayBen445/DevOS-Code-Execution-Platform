@@ -44,6 +44,8 @@ import {
   Gift,
   Loader2 as Loader2Icon,
   Menu,
+  Tag,
+  Plus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -324,6 +326,8 @@ function ProfileTab() {
   const [github, setGithub] = useState("");
   const [twitter, setTwitter] = useState("");
   const [website, setWebsite] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -334,6 +338,7 @@ function ProfileTab() {
         setUsername(d.username || "");
         setBio(d.bio || "");
         setAvatarUrl(d.avatarUrl || user.photoURL || "");
+        setSkills(Array.isArray(d.skills) ? d.skills : []);
         const links = d.links || {};
         setGithub(links.github || "");
         setTwitter(links.twitter || "");
@@ -360,6 +365,7 @@ function ProfileTab() {
         displayName: fullName || username,
         fullName,
         bio,
+        skills,
         avatarUrl,
         avatar: avatarUrl,
         updatedAt: serverTimestamp(),
@@ -370,6 +376,7 @@ function ProfileTab() {
         displayName: fullName || username,
         fullName,
         bio,
+        skills,
         avatarUrl,
         avatar: avatarUrl,
         updatedAt: serverTimestamp(),
@@ -478,6 +485,61 @@ function ProfileTab() {
         <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell the world about yourself…" rows={3} maxLength={500} className={`${inputCls} resize-none`} />
         <p className="text-[11px] text-white/25 mt-1 text-right">{bio.length}/500</p>
       </Field>
+
+      {/* Skills */}
+      <div>
+        <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+          <Tag className="w-3.5 h-3.5" /> Skills
+        </p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {skills.map((skill) => (
+            <span key={skill} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs font-semibold">
+              {skill}
+              <button
+                type="button"
+                onClick={() => setSkills((prev) => prev.filter((s) => s !== skill))}
+                className="text-white/30 hover:text-red-400 transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={skillInput}
+            onChange={(e) => setSkillInput(e.target.value)}
+            onKeyDown={(ev) => {
+              if ((ev.key === "Enter" || ev.key === ",") && skillInput.trim()) {
+                ev.preventDefault();
+                const s = skillInput.trim().replace(/,/g, "");
+                if (s && !skills.includes(s) && skills.length < 20) {
+                  setSkills((prev) => [...prev, s]);
+                }
+                setSkillInput("");
+              }
+            }}
+            placeholder="e.g. React, TypeScript… (Enter to add)"
+            className={inputCls}
+            maxLength={30}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const s = skillInput.trim().replace(/,/g, "");
+              if (s && !skills.includes(s) && skills.length < 20) {
+                setSkills((prev) => [...prev, s]);
+              }
+              setSkillInput("");
+            }}
+            className="px-4 py-2.5 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 hover:bg-blue-600/20 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-[11px] text-white/25 mt-1">{skills.length}/20 skills</p>
+      </div>
 
       <div>
         <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Social Links</p>

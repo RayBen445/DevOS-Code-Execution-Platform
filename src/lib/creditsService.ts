@@ -9,6 +9,9 @@ export const CREDIT_COSTS = {
   createProject: 5,
   deploy: 10,
   sync: 3,
+  save: 1,
+  post: 2,
+  aiRequest: 5,
 } as const;
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
@@ -16,6 +19,7 @@ export type CreditAction = keyof typeof CREDIT_COSTS;
 export interface CreditConfig {
   creditsEnabled: boolean;
   chargePerAction: number; // 0 = use per-action defaults from CREDIT_COSTS
+  actionCosts?: Partial<Record<CreditAction, number>>;
 }
 
 /** Read the global credit config from system_config/global */
@@ -28,6 +32,7 @@ export const getCreditConfig = async (): Promise<CreditConfig> => {
   return {
     creditsEnabled: data.creditsEnabled ?? true,
     chargePerAction: data.chargePerAction ?? 0,
+    actionCosts: data.actionCosts ?? {},
   };
 };
 
@@ -36,6 +41,7 @@ export const saveCreditConfig = async (config: CreditConfig): Promise<void> => {
   await setDoc(doc(db, "system_config", "global"), {
     creditsEnabled: config.creditsEnabled,
     chargePerAction: config.chargePerAction,
+    actionCosts: config.actionCosts ?? {},
   });
 };
 
@@ -117,7 +123,9 @@ export const deductCredits = async (uid: string, action: CreditAction): Promise<
     return true;
   }
 
-  const cost = config.chargePerAction > 0 ? config.chargePerAction : CREDIT_COSTS[action];
+  const cost = config.chargePerAction > 0
+    ? config.chargePerAction
+    : (config.actionCosts?.[action] ?? CREDIT_COSTS[action]);
   const credits = await getCredits(uid);
 
   if (credits.daily + credits.monthly < cost) {

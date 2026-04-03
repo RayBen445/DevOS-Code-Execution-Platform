@@ -157,7 +157,7 @@ export default function AdminDashboard() {
   const [savingReserved, setSavingReserved] = useState(false);
 
   // Credit config state
-  const [creditConfig, setCreditConfig] = useState<CreditConfig>({ creditsEnabled: true, chargePerAction: 0 });
+  const [creditConfig, setCreditConfig] = useState<CreditConfig>({ creditsEnabled: true, chargePerAction: 0, actionCosts: {} });
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
 
@@ -1199,7 +1199,7 @@ export default function AdminDashboard() {
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
-                              Charge Per Action (0 = use defaults)
+                              Charge Per Action (0 = use per-action defaults)
                             </label>
                             <input
                               type="number"
@@ -1209,7 +1209,36 @@ export default function AdminDashboard() {
                               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all"
                               placeholder="0"
                             />
-                            <p className="text-[11px] text-white/30">Set a flat cost per action. Leave 0 to use per-action defaults (createProject: 5, deploy: 10, sync: 3).</p>
+                            <p className="text-[11px] text-white/30">Set a flat cost per action. Leave 0 to use individual action costs below.</p>
+                          </div>
+
+                          {/* Per-action cost overrides */}
+                          <div className="space-y-3">
+                            <p className="text-xs font-bold text-white/40 uppercase tracking-widest">Per-Action Cost Overrides</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              {(["createProject", "deploy", "sync", "save", "post", "aiRequest"] as const).map((action) => (
+                                <div key={action} className="space-y-1">
+                                  <label className="text-[11px] text-white/40 capitalize">{action === "aiRequest" ? "AI Request" : action.replace(/([A-Z])/g, " $1")}</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder={String({ createProject: 5, deploy: 10, sync: 3, save: 1, post: 2, aiRequest: 5 }[action])}
+                                    value={creditConfig.actionCosts?.[action] ?? ""}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10);
+                                      setCreditConfig((c) => ({
+                                        ...c,
+                                        actionCosts: {
+                                          ...c.actionCosts,
+                                          [action]: isNaN(val) ? undefined : val,
+                                        },
+                                      }));
+                                    }}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition-all"
+                                  />
+                                </div>
+                              ))}
+                            </div>
                           </div>
                           <button
                             type="submit"
