@@ -96,7 +96,7 @@ export async function autoPostDeployment(params: {
   if (!params.isPublic) return; // private projects excluded
   await createFeedPost({
     ...params,
-    content: `🚀 Just deployed "${params.projectName}"!`,
+    content: `Just deployed "${params.projectName}"!`,
     type: "deployment",
   });
 }

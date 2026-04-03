@@ -75,7 +75,7 @@ export default function ConfigGuard({ children }: { children: React.ReactNode })
           </div>
 
           <h1 className="text-xl font-extrabold text-white mb-2">
-            🚨 Configuration Required
+            Configuration Required
           </h1>
           <p className="text-sm text-white/60 leading-relaxed mb-4">
             DevOS cannot connect to its backend. Check your Firebase project

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Bell } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Bell, CheckCircle2, XCircle, Zap, Radio, Crown, User, MessageCircle, Repeat2, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -15,16 +15,17 @@ import { Notification } from "../types";
 import { cn } from "../lib/utils";
 import { formatRelativeTime } from "../lib/utils";
 
-const TYPE_ICON: Record<string, string> = {
-  deployment_success: "✅",
-  deployment_failed: "❌",
-  credit_warning: "⚡",
-  system_update: "📢",
-  admin_message: "👑",
-  follow: "👤",
-  post_comment: "💬",
-  post_repost: "🔁",
-  post_like: "❤️",
+type NotificationIconProps = { className?: string };
+const TYPE_ICON: Record<string, (p: NotificationIconProps) => React.ReactElement> = {
+  deployment_success: (p) => <CheckCircle2 {...p} />,
+  deployment_failed:  (p) => <XCircle {...p} />,
+  credit_warning:     (p) => <Zap {...p} />,
+  system_update:      (p) => <Radio {...p} />,
+  admin_message:      (p) => <Crown {...p} />,
+  follow:             (p) => <User {...p} />,
+  post_comment:       (p) => <MessageCircle {...p} />,
+  post_repost:        (p) => <Repeat2 {...p} />,
+  post_like:          (p) => <Heart {...p} />,
 };
 
 export default function NotificationBell() {
@@ -126,8 +127,12 @@ export default function NotificationBell() {
                       isUnread(n) && "bg-blue-500/5"
                     )}
                   >
-                    <span className="text-lg leading-none mt-0.5 shrink-0">
-                      {TYPE_ICON[n.type] ?? "🔔"}
+                    <span className="w-6 h-6 mt-0.5 shrink-0 text-white/40 flex items-center justify-center">
+                      {(() => {
+                        const render = TYPE_ICON[n.type];
+                        if (render) return render({ className: "w-4 h-4" });
+                        return <Bell className="w-4 h-4" />;
+                      })()}
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-0.5">

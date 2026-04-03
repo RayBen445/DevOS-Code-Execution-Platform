@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -23,6 +23,10 @@ import {
   Trash2,
   BadgeCheck,
   Building2,
+  RefreshCcw,
+  Save,
+  Rocket,
+  Flame,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -271,16 +275,39 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       <main className="flex-1 pb-16 md:pb-0">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10">
           {/* Page heading */}
-          <div className="mb-6 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-blue-400" />
+          <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h1 className="text-xl font-extrabold text-white leading-none">
+                  {settings?.displayName ? `Hey, ${settings.displayName.split(" ")[0]}` : "Your Feed"}
+                </h1>
+                <p className="text-xs text-white/40 mt-0.5">What's happening in the community</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-extrabold text-white leading-none">
-                {settings?.displayName ? `Hey, ${settings.displayName.split(" ")[0]} 👋` : "Your Feed"}
-              </h1>
-              <p className="text-xs text-white/40 mt-0.5">What's happening in the community</p>
-            </div>
+            {/* Streak badges */}
+            {((settings?.dailyStreak ?? 0) > 0 || (settings?.monthlyStreak ?? 0) > 0) && (
+              <div className="flex items-center gap-2">
+                {(settings?.dailyStreak ?? 0) > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20">
+                    <Flame className="w-3.5 h-3.5 text-orange-400" />
+                    <span className="text-xs font-bold text-orange-300">
+                      {settings!.dailyStreak} day{settings!.dailyStreak !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                )}
+                {(settings?.monthlyStreak ?? 0) > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                    <Zap className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-xs font-bold text-blue-300">
+                      {settings!.monthlyStreak} mo
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}
@@ -473,11 +500,11 @@ interface PostComposerModalProps {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
 }
 
-const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; emoji: string; desc: string; color: string }[] = [
-  { value: "update", label: "Update", emoji: "🔄", desc: "Share what you're working on", color: "yellow" },
-  { value: "snippet", label: "Snippet", emoji: "💾", desc: "Share a code snippet", color: "orange" },
-  { value: "feature", label: "Feature", emoji: "✨", desc: "Announce a new feature", color: "purple" },
-  { value: "deployment", label: "Deployment", emoji: "🚀", desc: "You shipped something live", color: "green" },
+const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; icon: React.ElementType; desc: string; color: string }[] = [
+  { value: "update", label: "Update", icon: RefreshCcw, desc: "Share what you're working on", color: "yellow" },
+  { value: "snippet", label: "Snippet", icon: Code2, desc: "Share a code snippet", color: "orange" },
+  { value: "feature", label: "Feature", icon: Sparkles, desc: "Announce a new feature", color: "purple" },
+  { value: "deployment", label: "Deployment", icon: Rocket, desc: "You shipped something live", color: "green" },
 ];
 
 function PostComposerModal({
@@ -568,7 +595,7 @@ function PostComposerModal({
                           : "bg-white/[0.03] border-white/[0.08] hover:border-white/15 hover:bg-white/[0.06]"
                       )}
                     >
-                      <span className="text-lg leading-none mt-0.5">{opt.emoji}</span>
+                      <opt.icon className="w-4 h-4 mt-0.5 text-white/50 shrink-0" />
                       <div>
                         <p className={cn(
                           "text-xs font-bold leading-none mb-1",
@@ -682,12 +709,12 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const TYPE_LABEL: Record<string, string> = {
-  deployment: "🚀 Deployment",
-  announcement: "📢 Announcement",
-  feature: "✨ Feature",
-  update: "🔄 Update",
-  snippet: "💾 Snippet",
-  repost: "🔁 Repost",
+  deployment: "Deployment",
+  announcement: "Announcement",
+  feature: "Feature",
+  update: "Update",
+  snippet: "Snippet",
+  repost: "Repost",
 };
 
 function FeedItem({
@@ -1043,7 +1070,7 @@ function FeedItem({
                   disabled={isReposting}
                   className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-all disabled:opacity-50"
                 >
-                  {isReposting ? "Reposting…" : "🔁 Repost"}
+                  {isReposting ? "Reposting…" : "Repost"}
                 </button>
               </div>
             </motion.div>

@@ -1473,7 +1473,7 @@ export default function AdminDashboard() {
                                     : "bg-white/5 border-white/10 text-white/50 hover:border-white/20"
                                 )}
                               >
-                                {t === "announcement" ? "📣 Announcement" : t === "update" ? "🔄 Update" : "✨ Feature"}
+                                {t === "announcement" ? "Announcement" : t === "update" ? "Update" : "Feature"}
                               </button>
                             ))}
                           </div>

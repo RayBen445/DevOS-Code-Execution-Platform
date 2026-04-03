@@ -151,8 +151,8 @@ export async function notifyDeployment(params: {
     userId: params.uid,
     type: params.success ? "deployment_success" : "deployment_failed",
     title: params.success
-      ? `✅ Deployment successful`
-      : `❌ Deployment failed`,
+      ? `Deployment successful`
+      : `Deployment failed`,
     message: params.success
       ? `"${params.projectName}" was deployed successfully.`
       : `"${params.projectName}" deployment failed. Check your code and try again.`,
@@ -169,7 +169,7 @@ export async function notifyCreditWarning(
   await sendNotification({
     userId: uid,
     type: "credit_warning",
-    title: "⚡ Credits running low",
+    title: "Credits running low",
     message: `You have only ${remaining} daily credits remaining. Credits reset every 24 hours.`,
     createdBy: "system",
   });

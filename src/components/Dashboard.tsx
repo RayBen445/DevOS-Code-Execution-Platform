@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown } from "lucide-react";
+import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime } from "../lib/utils";
@@ -206,7 +206,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
 
     try {
       const docRef = await addDoc(collection(db, "projects"), {
-        name: "✨ Demo Project",
+        name: "Demo Project",
         description: "A sample project to explore DevOS features.",
         ownerId: user.uid,
         createdAt: serverTimestamp(),
@@ -811,8 +811,8 @@ p {
             {/* Portfolio badge */}
             {project.systemType === 'portfolio' && (
               <div className="px-4 pt-3 pb-0">
-                <span className="text-[10px] font-bold text-yellow-400/80 uppercase tracking-widest">
-                  ⭐ Your Public Profile
+                <span className="text-[10px] font-bold text-yellow-400/80 uppercase tracking-widest flex items-center gap-1">
+                  <Star className="w-3 h-3" /> Your Public Profile
                 </span>
               </div>
             )}

@@ -222,9 +222,9 @@ function PostItem({ post, currentUserId, isAdmin, onDeleted }: PostItemProps) {
       <ConfirmModal
         open={confirmDelete}
         title="Delete Post"
-        message="Are you sure you want to delete this post? This cannot be undone."
+        description="Are you sure you want to delete this post? This cannot be undone."
         confirmLabel="Delete"
-        destructive
+        danger
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}

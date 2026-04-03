@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
 import RedeemCodeModal from "./RedeemCodeModal";
+import FeedbackModal from "./FeedbackModal";
 import { UserSettings, Credits } from "../types";
 import { getCredits, DAILY_CREDITS_AMOUNT, MONTHLY_CREDITS_AMOUNT } from "../lib/creditsService";
 import { resolveAvatar } from "../lib/avatars";
@@ -20,6 +21,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
   const [isRedeemOpen, setIsRedeemOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCreditsPanelOpen, setIsCreditsPanelOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -236,6 +238,17 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               <Search className="w-5 h-5" />
             </Link>
             <NotificationBell />
+
+            {/* Feedback button — desktop only */}
+            {user && (
+              <button
+                onClick={() => setIsFeedbackOpen(true)}
+                title="Send Feedback"
+                className="hidden md:flex p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+              >
+                <MessageSquarePlus className="w-5 h-5" />
+              </button>
+            )}
 
             {/* Profile dropdown — hidden on mobile, shown via hamburger */}
             <div className="hidden md:block relative" ref={profileDropdownRef}>
@@ -473,6 +486,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   <Gift className="w-4 h-4" />
                   Redeem Code
                 </button>
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); setIsFeedbackOpen(true); }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"
+                >
+                  <MessageSquarePlus className="w-4 h-4" />
+                  Send Feedback
+                </button>
               </nav>
 
               <div className="px-4 pb-6">
@@ -490,6 +510,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
       </AnimatePresence>
 
       <RedeemCodeModal isOpen={isRedeemOpen} onClose={() => setIsRedeemOpen(false)} />
+      <FeedbackModal open={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </nav>
   );
 }

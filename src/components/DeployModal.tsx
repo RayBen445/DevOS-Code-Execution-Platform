@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, Globe, Zap, Check, ExternalLink, Copy, CheckCircle2 } from "lucide-react";
+import { X, Globe, Zap, Check, ExternalLink, Copy, CheckCircle2, Rocket } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../lib/utils";
 import { db, auth } from "../lib/firebase";
@@ -142,7 +142,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
 
       setDeployedUrl(url);
       setStep("success");
-      toast.success("🚀 Your project is live!");
+      toast.success("Your project is live!");
     } catch (error: any) {
       console.error("Deployment error:", error);
       toast.error(error.message || "Deployment failed");
@@ -328,7 +328,10 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                     />
                   </motion.div>
                   
-                  <h3 className="text-3xl font-bold mb-3 tracking-tight">🚀 Your project is live!</h3>
+                  <h3 className="text-3xl font-bold mb-3 tracking-tight flex items-center gap-3 justify-center">
+                    <Rocket className="w-8 h-8 text-green-400" />
+                    Your project is live!
+                  </h3>
                   <p className="text-white/40 text-sm mb-10 max-w-[300px]">
                     Deployment successful. Your application is now accessible worldwide.
                   </p>
