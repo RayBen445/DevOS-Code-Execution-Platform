@@ -24,6 +24,8 @@ import SearchPage from "./pages/SearchPage";
 import ExplorePage from "./pages/ExplorePage";
 import ScrollToTop from "./components/ScrollToTop";
 import ConfigGuard from "./components/ConfigGuard";
+import CommunitiesPage from "./pages/CommunitiesPage";
+import CommunityPage from "./pages/CommunityPage";
 import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
@@ -168,6 +170,8 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/explore" element={<ExplorePage />} />
+            <Route path="/communities" element={<CommunitiesPage />} />
+            <Route path="/c/:slug" element={<CommunityPage />} />
             <Route path="/u/:username" element={<Portfolio />} />
             <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
             {/* /projects — full dashboard & project management */}

@@ -363,5 +363,52 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // ── Communities ────────────────────────────────────────────────────────────
+    match /communities/{communityId} {
+      allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
+      // Any authenticated user can create a community
+      allow create: if isAuthenticated() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 100 &&
+        request.resource.data.slug is string &&
+        request.resource.data.slug.size() > 0 &&
+        request.resource.data.description is string;
+      // Only admins or community admins can update community details
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.role == 'admin'
+      );
+      allow delete: if isAdmin();
+
+      // Member subcollection
+      match /members/{userId} {
+        // Members can read the member list
+        allow read: if isAuthenticated();
+        // A user can join (create their own member doc) or an admin/moderator can add
+        allow create: if isAuthenticated() && (
+          request.auth.uid == userId ||
+          isAdmin()
+        );
+        // Role updates by community admin/moderator
+        allow update: if isAdmin() || (
+          isAuthenticated() &&
+          exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.role in ['admin', 'moderator']
+        );
+        // User can leave (delete their own), or admin/moderator can remove
+        allow delete: if isAuthenticated() && (
+          request.auth.uid == userId ||
+          isAdmin() ||
+          (
+            exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)) &&
+            get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.role in ['admin', 'moderator']
+          )
+        );
+      }
+    }
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -105,6 +105,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             >
               <Compass className="w-4 h-4" />
               Explore
+            </Link>
+            <Link
+              to="/communities"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <Users className="w-4 h-4" />
+              Communities
             </Link>
             <Link
               to="/templates"
@@ -403,6 +410,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 >
                   <Compass className="w-4 h-4" />
                   Explore
+                </Link>
+                <Link
+                  to="/communities"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <Users className="w-4 h-4" />
+                  Communities
                 </Link>
                 <Link
                   to="/templates"

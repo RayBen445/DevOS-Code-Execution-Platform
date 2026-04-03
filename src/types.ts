@@ -221,6 +221,7 @@ export interface FeedPost {
   viewsCount?: number;
   isPublic: boolean;
   isOfficial?: boolean;
+  communityId?: string;
   // Repost fields
   originalPostId?: string;
   originalPost?: Omit<FeedPost, 'originalPost'>; // embedded snapshot for display
@@ -262,4 +263,28 @@ export interface ReferralStats {
   code: string;
   totalReferrals: number;
   referrals: Referral[];
+}
+
+// ── Community System ────────────────────────────────────────────────────────
+
+export type CommunityMemberRole = "member" | "moderator" | "admin";
+
+export interface Community {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  avatar?: string;
+  banner?: string;
+  createdBy: string;
+  memberCount: number;
+  isPublic: boolean;
+  category?: string;
+  createdAt: any;
+}
+
+export interface CommunityMember {
+  userId: string;
+  role: CommunityMemberRole;
+  joinedAt: any;
 }
