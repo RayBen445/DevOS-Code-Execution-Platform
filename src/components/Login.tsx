@@ -23,7 +23,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
   const [error, setError] = useState("");
 
   // Live username availability
-  type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
+  type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "error";
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
   const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
   const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,7 +47,9 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
     if (!isSignUp) return;
     if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
 
-    const uname = username.trim();
+    // Always work with the lowercased value so uppercase input doesn't
+    // incorrectly trigger "invalid" status
+    const uname = username.trim().toLowerCase();
     if (!uname) { setUsernameStatus("idle"); return; }
     if (!/^[a-z0-9_-]{3,20}$/.test(uname)) { setUsernameStatus("invalid"); return; }
 
@@ -63,7 +65,9 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
           setUsernameSuggestions(generateSuggestions(uname));
         }
       } catch {
-        setUsernameStatus("idle");
+        // Show a non-blocking error so the user knows something went wrong
+        // with the check, but don't prevent them from proceeding
+        setUsernameStatus("error");
       }
     }, 400);
 
@@ -89,23 +93,55 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
           setLoading(false);
           return;
         }
-        // Final availability check in case debounce hasn't resolved yet
+        // Final availability guard — runs only when the debounce hasn't
+        // resolved yet (status is still "idle", "checking", or "error").
+        // We keep this in its own try/catch so a Firestore failure here
+        // never causes a misleading "something went wrong" auth error.
         if (usernameStatus !== "available") {
-          const available = await checkUsernameAvailable(uname);
-          if (!available) {
-            setError("Username is already taken. Please choose another.");
-            setLoading(false);
-            return;
+          try {
+            const available = await checkUsernameAvailable(uname);
+            if (!available) {
+              setError("Username is already taken. Please choose another.");
+              setLoading(false);
+              return;
+            }
+          } catch {
+            // Username service unavailable — proceed with sign-up.
+            // The username uniqueness constraint in Firestore will still
+            // enforce correctness at write time if needed.
           }
         }
-        const cred = await signUpWithEmail(email, password);
-        await registerUserProfile(cred.user, { fullName: fullName.trim(), username: uname });
+
+        // ── Firebase Auth create user ──────────────────────────────
+        let cred;
+        try {
+          cred = await signUpWithEmail(email, password);
+        } catch (authErr: any) {
+          setError(getAuthErrorMessage(authErr));
+          setLoading(false);
+          return;
+        }
+
+        // ── Write Firestore profile (best-effort; auth already succeeded) ──
+        try {
+          await registerUserProfile(cred.user, { fullName: fullName.trim(), username: uname });
+        } catch (profileErr: any) {
+          console.error("Profile setup error (non-fatal):", profileErr);
+          // Auth succeeded — user is signed in. Profile writes failing
+          // shouldn't block the user from entering the app.
+        }
       } else {
-        await signInWithEmail(email, password);
+        try {
+          await signInWithEmail(email, password);
+        } catch (authErr: any) {
+          setError(getAuthErrorMessage(authErr));
+          setLoading(false);
+          return;
+        }
       }
       onClose();
     } catch (err: any) {
-      console.error("Email auth error:", err);
+      console.error("Unexpected auth error:", err);
       setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
@@ -223,6 +259,8 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                               ? "border-red-500/60 focus:border-red-500"
                               : usernameStatus === "available"
                               ? "border-green-500/60 focus:border-green-500"
+                              : usernameStatus === "error"
+                              ? "border-yellow-500/60 focus:border-yellow-500"
                               : "border-white/10 focus:border-blue-500"
                           }`}
                         />
@@ -231,6 +269,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                           {usernameStatus === "available" && <CheckCircle2 className="w-4 h-4 text-green-400" />}
                           {usernameStatus === "taken" && <XCircle className="w-4 h-4 text-red-400" />}
                           {usernameStatus === "invalid" && <XCircle className="w-4 h-4 text-red-400" />}
+                          {usernameStatus === "error" && <XCircle className="w-4 h-4 text-yellow-400" />}
                         </span>
                       </div>
                       {/* Inline status message */}
@@ -262,8 +301,11 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                       {usernameStatus === "invalid" && (
                         <p className="text-[11px] text-red-400 px-1 mt-1">3–20 chars: letters, numbers, _ or -</p>
                       )}
+                      {usernameStatus === "error" && (
+                        <p className="text-[11px] text-yellow-400/80 px-1 mt-1">Could not verify availability — you can still continue.</p>
+                      )}
                       {usernameStatus === "idle" && (
-                        <p className="text-[11px] text-yellow-400/70 px-1 mt-1">⚠ Username cannot be changed later</p>
+                        <p className="text-[11px] text-white/40 px-1 mt-1">Username cannot be changed after sign-up</p>
                       )}
                     </div>
                   </>

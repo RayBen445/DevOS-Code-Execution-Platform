@@ -168,12 +168,19 @@ export const initializeUser = async (user: any) => {
  * collection. Used for real-time availability feedback during sign-up.
  */
 export const checkUsernameAvailable = async (username: string): Promise<boolean> => {
-  // Check the reserved list first (fast single-doc lookup)
-  const reservedSnap = await getDoc(doc(db, "reservedUsernames", username.toLowerCase()));
-  if (reservedSnap.exists()) return false;
+  const lower = username.toLowerCase();
 
-  // Then check actual users
-  const q = query(collection(db, "users"), where("username", "==", username));
+  // Check the reserved list first. Silently skip if the collection is
+  // unreachable (e.g. rules not yet deployed in this environment).
+  try {
+    const reservedSnap = await getDoc(doc(db, "reservedUsernames", lower));
+    if (reservedSnap.exists()) return false;
+  } catch {
+    // reserved-names check unavailable – fall through to user check
+  }
+
+  // Check actual registered users (case-insensitive: usernames are stored lowercase)
+  const q = query(collection(db, "users"), where("username", "==", lower));
   const snap = await getDocs(q);
   return snap.empty;
 };
