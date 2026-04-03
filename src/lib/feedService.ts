@@ -111,6 +111,16 @@ export async function toggleLike(postId: string, uid: string, liked: boolean): P
   }
 }
 
+export async function likePost(postId: string, uid: string): Promise<void> {
+  const postRef = doc(db, "feed", postId);
+  await updateDoc(postRef, { likes: increment(1), likedBy: arrayUnion(uid) });
+}
+
+export async function unlikePost(postId: string, uid: string): Promise<void> {
+  const postRef = doc(db, "feed", postId);
+  await updateDoc(postRef, { likes: increment(-1), likedBy: arrayRemove(uid) });
+}
+
 /**
  * Create an official DevOS post in the public feed.
  * Always public and marked as official.
