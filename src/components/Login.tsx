@@ -25,7 +25,14 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
   // Live username availability
   type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
+  const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
   const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const generateSuggestions = (base: string): string[] => [
+    `${base}_dev`,
+    `${base}01`,
+    `the${base}`,
+  ];
 
   // Autofocus first field when email mode activates
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -48,7 +55,13 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
     usernameDebounceRef.current = setTimeout(async () => {
       try {
         const available = await checkUsernameAvailable(uname);
-        setUsernameStatus(available ? "available" : "taken");
+        if (available) {
+          setUsernameStatus("available");
+          setUsernameSuggestions([]);
+        } else {
+          setUsernameStatus("taken");
+          setUsernameSuggestions(generateSuggestions(uname));
+        }
       } catch {
         setUsernameStatus("idle");
       }
@@ -225,7 +238,26 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                         <p className="text-[11px] text-green-400 px-1 mt-1">✓ Username available</p>
                       )}
                       {usernameStatus === "taken" && (
-                        <p className="text-[11px] text-red-400 px-1 mt-1">✗ Username already taken</p>
+                        <div className="px-1 mt-1 space-y-1.5">
+                          <p className="text-[11px] text-red-400">✗ Username already taken</p>
+                          {usernameSuggestions.length > 0 && (
+                            <div>
+                              <p className="text-[10px] text-white/40 mb-1">Try:</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {usernameSuggestions.map((s) => (
+                                  <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => { setUsername(s); setUsernameStatus("idle"); setUsernameSuggestions([]); }}
+                                    className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-600/15 text-blue-400 border border-blue-500/20 hover:bg-blue-600/25 transition-all font-mono"
+                                  >
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                       {usernameStatus === "invalid" && (
                         <p className="text-[11px] text-red-400 px-1 mt-1">3–20 chars: letters, numbers, _ or -</p>

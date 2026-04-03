@@ -20,6 +20,9 @@ import {
   Eye,
   ImageDown,
   Layers,
+  Trash2,
+  BadgeCheck,
+  Building2,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -31,6 +34,7 @@ import {
   addComment,
   subscribeComments,
   repostPost,
+  deletePost,
 } from "../lib/feedService";
 import { notifyComment, notifyRepost } from "../lib/notificationService";
 import { resolveAvatar } from "../lib/avatars";
@@ -40,6 +44,7 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import MobileBottomNav from "./MobileBottomNav";
 import Avatar from "./Avatar";
+import ConfirmModal from "./ConfirmModal";
 import { useSEO } from "../hooks/useSEO";
 import { toast } from "sonner";
 import { FeedPostShareCard, useShareAsImage } from "./ShareAsImageCard";
@@ -63,6 +68,8 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [isPosting, setIsPosting] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
+  const [deleteConfirmPost, setDeleteConfirmPost] = useState<FeedPost | null>(null);
+  const [isDeletingPost, setIsDeletingPost] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useSEO({ title: "Home — DevOS" });
@@ -208,6 +215,28 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     }
   };
 
+  const handleDeletePost = async (post: FeedPost) => {
+    if (!user || user.uid !== post.userId) {
+      toast.error("You do not have permission to delete this post.");
+      return;
+    }
+    setIsDeletingPost(true);
+    try {
+      await deletePost(post.id);
+      setFeed((prev) => prev.filter((p) => p.id !== post.id));
+      toast.success("Post deleted.");
+    } catch (err: any) {
+      toast.error(
+        isPermissionError(err)
+          ? "Permission denied. Firebase rules may need updating."
+          : "Failed to delete post."
+      );
+    } finally {
+      setIsDeletingPost(false);
+      setDeleteConfirmPost(null);
+    }
+  };
+
   const handleSubmitPost = async () => {
     if (!user) return;
     setIsPosting(true);
@@ -329,6 +358,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                     onLike={handleLike}
                     onRepost={handleRepost}
                     onComment={handleAddComment}
+                    onDelete={(p) => setDeleteConfirmPost(p)}
                     index={i}
                   />
                 ))
@@ -406,6 +436,17 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
           textareaRef={textareaRef}
         />
       )}
+
+      <ConfirmModal
+        open={!!deleteConfirmPost}
+        title="Delete Post"
+        description="Are you sure you want to delete this post? This cannot be undone."
+        confirmLabel="Delete"
+        danger={true}
+        loading={isDeletingPost}
+        onConfirm={() => deleteConfirmPost && handleDeletePost(deleteConfirmPost)}
+        onCancel={() => setDeleteConfirmPost(null)}
+      />
 
       <Footer />
       <MobileBottomNav />
@@ -655,6 +696,7 @@ function FeedItem({
   onLike,
   onRepost,
   onComment,
+  onDelete,
   index,
 }: {
   post: FeedPost;
@@ -662,6 +704,7 @@ function FeedItem({
   onLike: (post: FeedPost) => void;
   onRepost: (post: FeedPost, commentary: string) => void;
   onComment: (post: FeedPost, content: string) => void;
+  onDelete: (post: FeedPost) => void;
   index: number;
 }) {
   const liked = userId ? (post.likedBy?.includes(userId) ?? false) : false;
@@ -740,12 +783,20 @@ function FeedItem({
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">
+            <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5 flex-wrap">
               {post.displayName || post.username}
               {post.isOfficial && (
-                <span className="ml-1.5 text-[10px] bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded-full border border-blue-500/20 font-bold">
+                <span className="text-[10px] bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded-full border border-blue-500/20 font-bold">
                   Official
                 </span>
+              )}
+              {post.authorRole === "company" && (
+                <span className="flex items-center gap-0.5 text-[10px] bg-purple-600/20 text-purple-300 px-1.5 py-0.5 rounded-full border border-purple-500/20 font-bold">
+                  <Building2 className="w-2.5 h-2.5" /> Company
+                </span>
+              )}
+              {(post.authorRole === "company" || post.isOfficial) && (
+                <BadgeCheck className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
               )}
             </p>
             <p className="text-[11px] text-white/40 truncate">
@@ -755,17 +806,29 @@ function FeedItem({
           </div>
         </div>
 
-        {/* Type badge */}
-        {post.type !== "repost" && (
-          <span
-            className={cn(
-              "flex-shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full border",
-              TYPE_COLORS[post.type] ?? "bg-white/5 text-white/40 border-white/10"
-            )}
-          >
-            {TYPE_LABEL[post.type] ?? post.type}
-          </span>
-        )}
+        {/* Right side: type badge + owner delete */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {post.type !== "repost" && (
+            <span
+              className={cn(
+                "text-[10px] font-bold px-2.5 py-1 rounded-full border",
+                TYPE_COLORS[post.type] ?? "bg-white/5 text-white/40 border-white/10"
+              )}
+            >
+              {TYPE_LABEL[post.type] ?? post.type}
+            </span>
+          )}
+          {userId === post.userId && (
+            <button
+              onClick={() => onDelete(post)}
+              className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
+              aria-label="Delete post"
+              title="Delete post"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content (only show if not a silent repost) */}

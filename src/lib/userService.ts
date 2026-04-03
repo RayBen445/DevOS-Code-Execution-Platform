@@ -168,10 +168,17 @@ export const initializeUser = async (user: any) => {
  * collection. Used for real-time availability feedback during sign-up.
  */
 export const checkUsernameAvailable = async (username: string): Promise<boolean> => {
+  // Check the reserved list first (fast single-doc lookup)
+  const reservedSnap = await getDoc(doc(db, "reservedUsernames", username.toLowerCase()));
+  if (reservedSnap.exists()) return false;
+
+  // Then check actual users
   const q = query(collection(db, "users"), where("username", "==", username));
   const snap = await getDocs(q);
   return snap.empty;
 };
+
+const createPortfolioProject = async (uid: string, username: string): Promise<string> => {
   const portfolioConfig = {
     bio: "I am a developer building awesome things with DevOS.",
     featuredProjects: [],
@@ -200,7 +207,7 @@ export const checkUsernameAvailable = async (username: string): Promise<boolean>
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     collaborators: [],
-    isPublic: false, // Initially private as requested
+    isPublic: false,
     isTemplate: false,
     forksCount: 0,
     views: 0,
@@ -224,9 +231,8 @@ export const checkUsernameAvailable = async (username: string): Promise<boolean>
 
   const docRef = await addDoc(collection(db, "projects"), projectData);
 
-  // Initialize files
   const filesRef = collection(db, "projects", docRef.id, "files");
-  
+
   await Promise.all([
     addDoc(filesRef, {
       projectId: docRef.id,

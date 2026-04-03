@@ -7,6 +7,8 @@ import {
   getDocs,
   doc,
   getDoc,
+  setDoc,
+  deleteDoc,
   updateDoc,
   query,
   limit,
@@ -52,13 +54,14 @@ import {
   Activity,
   Wifi,
   WifiOff,
+  AtSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -147,6 +150,12 @@ export default function AdminDashboard() {
   const [postType, setPostType] = useState<"announcement" | "update" | "feature">("announcement");
   const [publishingPost, setPublishingPost] = useState(false);
 
+  // Reserved usernames state
+  const [reservedNames, setReservedNames] = useState<string[]>([]);
+  const [loadingReserved, setLoadingReserved] = useState(false);
+  const [newReservedName, setNewReservedName] = useState("");
+  const [savingReserved, setSavingReserved] = useState(false);
+
   // Credit config state
   const [creditConfig, setCreditConfig] = useState<CreditConfig>({ creditsEnabled: true, chargePerAction: 0 });
   const [loadingConfig, setLoadingConfig] = useState(false);
@@ -180,6 +189,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === "redeem" && isAdmin && redeemCodes.length === 0) {
       loadRedeemCodes();
+    }
+    if (activeTab === "reserved" && isAdmin && reservedNames.length === 0) {
+      loadReservedNames();
     }
   }, [activeTab, isAdmin]);
 
@@ -394,6 +406,48 @@ export default function AdminDashboard() {
       toast.error("Failed to send notification.");
     } finally {
       setSendingNotif(false);
+    }
+  };
+
+  const loadReservedNames = async () => {
+    setLoadingReserved(true);
+    try {
+      const snap = await getDocs(collection(db, "reservedUsernames"));
+      setReservedNames(snap.docs.map((d) => d.id));
+    } catch {
+      toast.error("Failed to load reserved names.");
+    } finally {
+      setLoadingReserved(false);
+    }
+  };
+
+  const handleReserveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newReservedName.trim().toLowerCase();
+    if (!name || !/^[a-z0-9_-]{1,30}$/.test(name)) {
+      toast.error("Invalid username format.");
+      return;
+    }
+    setSavingReserved(true);
+    try {
+      await setDoc(doc(db, "reservedUsernames", name), { reservedAt: new Date().toISOString(), reservedBy: user?.uid });
+      setReservedNames((prev) => [...prev, name].sort());
+      setNewReservedName("");
+      toast.success(`"${name}" reserved.`);
+    } catch {
+      toast.error("Failed to reserve name.");
+    } finally {
+      setSavingReserved(false);
+    }
+  };
+
+  const handleUnreserveName = async (name: string) => {
+    try {
+      await deleteDoc(doc(db, "reservedUsernames", name));
+      setReservedNames((prev) => prev.filter((n) => n !== name));
+      toast.success(`"${name}" removed from reserved list.`);
+    } catch {
+      toast.error("Failed to remove reserved name.");
     }
   };
 
@@ -637,6 +691,7 @@ export default function AdminDashboard() {
     { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
     { id: "redeem", label: "Redeem Codes", icon: <Gift className="w-4 h-4" /> },
     { id: "posts", label: "Posts", icon: <Newspaper className="w-4 h-4" /> },
+    { id: "reserved", label: "Reserved Names", icon: <AtSign className="w-4 h-4" /> },
   ];
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -772,6 +827,7 @@ export default function AdminDashboard() {
                 {activeTab === "notifications" && "Send targeted or global notifications"}
                 {activeTab === "redeem" && "Create and manage promotional codes"}
                 {activeTab === "posts" && "Publish official announcements to the feed"}
+                {activeTab === "reserved" && "Manage reserved and protected usernames"}
               </p>
             </div>
 
@@ -1405,6 +1461,71 @@ export default function AdminDashboard() {
                           <p className="text-xs text-white/30">Appears as <span className="text-yellow-400">DevOS Official</span></p>
                         </div>
                       </form>
+                    </div>
+                  </div>
+                )}
+                {activeTab === "reserved" && (
+                  <div className="space-y-6 max-w-xl">
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <AtSign className="w-4 h-4 text-blue-400" />
+                        Reserve a Username
+                      </h2>
+                      <p className="text-white/40 text-sm mb-5">
+                        Reserved usernames cannot be registered by anyone. Use this to protect brand names.
+                      </p>
+                      <form onSubmit={handleReserveName} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newReservedName}
+                          onChange={(e) => setNewReservedName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                          placeholder="e.g. devos, admin, support"
+                          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500 font-mono"
+                        />
+                        <button
+                          type="submit"
+                          disabled={savingReserved || !newReservedName.trim()}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all"
+                        >
+                          {savingReserved ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                          Reserve
+                        </button>
+                      </form>
+                    </div>
+
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest">Reserved List</h2>
+                        <button
+                          onClick={loadReservedNames}
+                          className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white transition-all"
+                          title="Refresh"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {loadingReserved ? (
+                        <div className="flex items-center gap-2 text-white/30 text-sm py-4">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+                        </div>
+                      ) : reservedNames.length === 0 ? (
+                        <p className="text-white/30 text-sm py-4 text-center">No reserved names yet.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {reservedNames.map((name) => (
+                            <div key={name} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-white/5">
+                              <span className="text-sm font-mono text-white/80">@{name}</span>
+                              <button
+                                onClick={() => handleUnreserveName(name)}
+                                className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                title="Remove"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

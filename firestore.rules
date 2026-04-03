@@ -357,5 +357,11 @@ service cloud.firestore {
         request.resource.data.createdAt is timestamp;
       allow update, delete: if isAdmin();
     }
+
+    // Reserved usernames — public read for sign-up validation; admin write only
+    match /reservedUsernames/{username} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }
