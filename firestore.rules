@@ -282,7 +282,12 @@ service cloud.firestore {
 
     match /feed/{postId} {
       allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        // Community posts may only be created by community members
+        !('communityId' in request.resource.data) ||
+        request.resource.data.communityId == null ||
+        exists(/databases/$(database)/documents/communities/$(request.resource.data.communityId)/members/$(request.auth.uid))
+      );
       allow update: if isAuthenticated() && (
         // Post owner and admins may update any field
         resource.data.get('userId', '') == request.auth.uid ||
@@ -368,6 +373,11 @@ service cloud.firestore {
     match /reservedUsernames/{username} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // Test collection — used by firebase.ts connection probe (test/connection)
+    match /test/{docId} {
+      allow read: if true;
     }
 
     // ── Communities ────────────────────────────────────────────────────────────
