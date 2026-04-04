@@ -179,7 +179,7 @@ function SectionContent({ id }: { id: string }) {
             When you register for an account (directly or via a third-party OAuth provider such as
             Google), we collect:
           </Body>
-          <BulletList={[
+          <BulletList items={[
             "Email address",
             "Display name and username",
             "Profile photo URL (from your OAuth provider, if applicable)",

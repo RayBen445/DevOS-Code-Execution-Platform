@@ -74,6 +74,9 @@ export default function Footer() {
             </a>
             <FooterLink to="/privacy">Privacy Policy</FooterLink>
             <FooterLink to="/terms">Terms of Service</FooterLink>
+            <FooterLink to="/cookies">Cookie Policy</FooterLink>
+            <FooterLink to="/acceptable-use">Acceptable Use</FooterLink>
+            <FooterLink to="/copyright">Copyright &amp; DMCA</FooterLink>
           </div>
         </div>
 
@@ -81,8 +84,21 @@ export default function Footer() {
           <p className="text-[11px] text-white/20">
             © {year} DevOS. All rights reserved.
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            {[
+              { to: "/privacy",        label: "Privacy" },
+              { to: "/terms",          label: "Terms" },
+              { to: "/cookies",        label: "Cookies" },
+              { to: "/acceptable-use", label: "Acceptable Use" },
+              { to: "/copyright",      label: "Copyright" },
+            ].map(({ to, label }) => (
+              <Link key={to} to={to} className="text-[11px] text-white/20 hover:text-white/50 transition-colors">
+                {label}
+              </Link>
+            ))}
+          </div>
           <p className="text-[11px] text-white/20">
-            Built by Cool Shot Systems · Tech Visionaries Network
+            Built by Cool Shot Systems · TVN
           </p>
         </div>
       </div>

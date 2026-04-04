@@ -10,7 +10,11 @@ import Home from "./components/Home";
 import Footer from "./components/Footer";
 import FeedHome from "./components/FeedHome";
 import MobileBottomNav from "./components/MobileBottomNav";
-import PrivacyTerms from "./pages/PrivacyTerms";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import CookiePolicyPage from "./pages/CookiePolicyPage";
+import AcceptableUsePage from "./pages/AcceptableUsePage";
+import CopyrightPage from "./pages/CopyrightPage";
 import Portfolio from "./pages/Portfolio";
 import ProjectPreview from "./pages/ProjectPreview";
 import ProjectView from "./pages/ProjectView";
@@ -34,7 +38,7 @@ import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
 
 /* ─── Paths excluded from tracking (privacy-sensitive or utility) ─── */
-const EXCLUDED_ROUTES = ["/admin", "/settings", "/privacy", "/terms", "/docs", "/status"];
+const EXCLUDED_ROUTES = ["/admin", "/settings", "/privacy", "/terms", "/cookies", "/acceptable-use", "/copyright", "/docs", "/status"];
 const STORAGE_KEY = "devos_lastRoute";
 
 /** Saves every meaningful navigation to localStorage and auto-restores on first load. */
@@ -160,8 +164,11 @@ export default function App() {
         <RouteTracker user={user} />
         <AnimatePresence mode="wait">
           <Routes>
-            <Route path="/privacy" element={<PrivacyTerms />} />
-            <Route path="/terms" element={<PrivacyTerms />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/cookies" element={<CookiePolicyPage />} />
+            <Route path="/acceptable-use" element={<AcceptableUsePage />} />
+            <Route path="/copyright" element={<CopyrightPage />} />
             <Route path="/templates" element={<TemplatePage />} />
             <Route path="/templates/:templateId" element={<TemplatePreviewPage />} />
             <Route path="/project/:projectId" element={<ProjectView />} />
