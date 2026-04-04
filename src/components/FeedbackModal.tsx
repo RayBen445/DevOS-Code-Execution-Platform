@@ -79,13 +79,13 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200]"
             onClick={onClose}
           />
-          <div className="fixed inset-0 z-[201] flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
+          <div className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none">
             <motion.div
-              initial={{ opacity: 0, y: "100%", scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: "100%", scale: 0.98 }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="w-full sm:max-w-md bg-[#0f0f0f] border border-white/10 sm:rounded-2xl rounded-t-2xl overflow-hidden shadow-2xl pointer-events-auto"
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="w-full max-w-md bg-[#0f0f0f] border border-white/10 rounded-2xl overflow-hidden shadow-2xl pointer-events-auto"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
