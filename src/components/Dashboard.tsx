@@ -535,7 +535,7 @@ p {
             <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Welcome, {displayName}</h1>
+            <h1 className="text-4xl font-bold text-white mb-2">{displayName}</h1>
             <div className="flex items-center gap-3">
               <p className="text-white/40">Manage your cloud-based development environments.</p>
               {settings?.username && (
