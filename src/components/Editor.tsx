@@ -10,9 +10,10 @@ interface EditorProps {
   onChange: (content: string) => void;
   projectId: string;
   readOnly?: boolean;
+  onCursorChange?: (line: number, col: number) => void;
 }
 
-export default function Editor({ file, onChange, projectId, readOnly }: EditorProps) {
+export default function Editor({ file, onChange, projectId, readOnly, onCursorChange }: EditorProps) {
   const [user] = useAuthState(auth);
   const editorRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,6 +38,7 @@ export default function Editor({ file, onChange, projectId, readOnly }: EditorPr
 
     // Cursor movement tracking
     editor.onDidChangeCursorPosition((e) => {
+      onCursorChange?.(e.position.lineNumber, e.position.column);
       socket.emit("cursor-move", {
         projectId,
         userId: user?.uid,

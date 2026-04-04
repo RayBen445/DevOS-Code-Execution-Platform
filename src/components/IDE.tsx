@@ -1148,6 +1148,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       onChange={handleCodeChange}
                       projectId={projectId}
                       readOnly={isReadOnly}
+                      onCursorChange={(line, col) => { setCursorLine(line); setCursorCol(col); }}
                     />
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center bg-[#0D1117] p-8 md:p-12 text-center">
