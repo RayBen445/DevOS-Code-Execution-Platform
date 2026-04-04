@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "./lib/firebase";
 import { initializeUser, updateStreak } from "./lib/userService";
+import { getMaintenanceConfig, MaintenanceConfig } from "./lib/creditsService";
+import { useUITheme } from "./hooks/useUITheme";
 import Navbar from "./components/Navbar";
 import Dashboard from "./components/Dashboard";
 import IDE from "./components/IDE";
@@ -28,12 +30,16 @@ import SearchPage from "./pages/SearchPage";
 import ExplorePage from "./pages/ExplorePage";
 import ScrollToTop from "./components/ScrollToTop";
 import ConfigGuard from "./components/ConfigGuard";
+import MaintenancePage from "./components/MaintenancePage";
 import CommunitiesPage from "./pages/CommunitiesPage";
 import CommunityPage from "./pages/CommunityPage";
 import OrgPage from "./pages/OrgPage";
-import { Zap } from "lucide-react";
-import { AnimatePresence } from "framer-motion";
+import { Zap, ShieldAlert } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { db } from "./lib/firebase";
+import { signOut } from "firebase/auth";
 
 import { Toaster } from "sonner";
 

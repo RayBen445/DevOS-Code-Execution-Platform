@@ -22,6 +22,11 @@ export interface CreditConfig {
   actionCosts?: Partial<Record<CreditAction, number>>;
 }
 
+export interface MaintenanceConfig {
+  maintenanceMode: boolean;
+  maintenanceBanner?: string; // Optional message shown to users
+}
+
 /** Read the global credit config from system_config/global */
 export const getCreditConfig = async (): Promise<CreditConfig> => {
   const snap = await getDoc(doc(db, "system_config", "global"));
@@ -247,5 +252,28 @@ export const giftUnlimitedCredits = async (uid: string, untilDate: Date): Promis
 
   await updateDoc(creditsRef, {
     creditsUnlimitedUntil: Timestamp.fromDate(untilDate),
+  });
+};
+
+// ── Maintenance mode ────────────────────────────────────────────────────────
+
+const MAINTENANCE_DOC = "maintenance";
+
+/** Read current maintenance state from system_config/maintenance */
+export const getMaintenanceConfig = async (): Promise<MaintenanceConfig> => {
+  const snap = await getDoc(doc(db, "system_config", MAINTENANCE_DOC));
+  if (!snap.exists()) return { maintenanceMode: false, maintenanceBanner: "" };
+  const d = snap.data();
+  return {
+    maintenanceMode: d.maintenanceMode ?? false,
+    maintenanceBanner: d.maintenanceBanner ?? "",
+  };
+};
+
+/** Toggle maintenance mode on or off (admin only — Firestore rule enforces this) */
+export const saveMaintenanceConfig = async (config: MaintenanceConfig): Promise<void> => {
+  await setDoc(doc(db, "system_config", MAINTENANCE_DOC), {
+    maintenanceMode: config.maintenanceMode,
+    maintenanceBanner: config.maintenanceBanner ?? "",
   });
 };

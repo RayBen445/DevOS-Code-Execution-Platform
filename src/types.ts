@@ -111,6 +111,7 @@ export interface UserSettings {
   preferences?: {
     fontSize?: number;
     tabSize?: number;
+    uiTheme?: 'dark' | 'midnight' | 'ocean' | 'light';
   };
   notifications?: {
     deployments?: boolean;
