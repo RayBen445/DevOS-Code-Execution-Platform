@@ -17,7 +17,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
-import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits } from "../lib/creditsService";
+import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits, getMaintenanceConfig, saveMaintenanceConfig, MaintenanceConfig } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
@@ -198,8 +198,15 @@ export default function AdminDashboard() {
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [pollAllowText, setPollAllowText] = useState(false);
   const [pollExpiry, setPollExpiry] = useState("");
+  const [pollMaxSelections, setPollMaxSelections] = useState(1);
   const [creatingPoll, setCreatingPoll] = useState(false);
   const [deletePollConfirm, setDeletePollConfirm] = useState<string | null>(null);
+
+  // Maintenance mode state
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceBanner, setMaintenanceBanner] = useState("");
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
+  const [loadingMaintenance, setLoadingMaintenance] = useState(false);
 
   // System health state
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
@@ -232,6 +239,9 @@ export default function AdminDashboard() {
     }
     if (activeTab === "polls" && isAdmin) {
       loadPolls();
+    }
+    if (activeTab === "overview" && isAdmin) {
+      loadMaintenanceConfig();
     }
   }, [activeTab, isAdmin]);
 
@@ -702,6 +712,28 @@ export default function AdminDashboard() {
       toast.error("Failed to load polls.");
     } finally {
       setLoadingPolls(false);
+    }
+  };
+
+  const loadMaintenanceConfig = async () => {
+    setLoadingMaintenance(true);
+    try {
+      const cfg = await getMaintenanceConfig();
+      setMaintenanceMode(cfg.maintenanceMode);
+      setMaintenanceBanner(cfg.maintenanceBanner ?? "");
+    } catch { /* silently skip */ }
+    finally { setLoadingMaintenance(false); }
+  };
+
+  const handleSaveMaintenance = async () => {
+    setSavingMaintenance(true);
+    try {
+      await saveMaintenanceConfig({ maintenanceMode, maintenanceBanner });
+      toast.success(maintenanceMode ? "Maintenance mode enabled." : "Maintenance mode disabled.");
+    } catch {
+      toast.error("Failed to update maintenance mode.");
+    } finally {
+      setSavingMaintenance(false);
     }
   };
 

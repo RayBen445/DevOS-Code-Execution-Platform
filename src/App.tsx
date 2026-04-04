@@ -82,13 +82,19 @@ function RouteTracker({ user }: { user: any }) {
 
 export default function App() {
   const [user, loading] = useAuthState(auth);
+  const { } = useUITheme(); // bootstraps theme on mount
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
-    // Restore last-opened project for authenticated sessions.
-    // Cleared when the user explicitly closes the project (onBack).
     try { return sessionStorage.getItem("devos_active_project") ?? null; } catch { return null; }
   });
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
+
+  // Maintenance mode state (real-time listener — public read so even guests see it)
+  const [maintenance, setMaintenance] = useState<{ enabled: boolean; banner: string } | null>(null);
+
+  // User account status (banned / suspended / deactivated)
+  const [userStatus, setUserStatus] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const closeAuth = () => { setShowLogin(false); setShowSignup(false); };
 
@@ -103,18 +109,47 @@ export default function App() {
     } catch { /* noop */ }
   }, [selectedProjectId]);
 
+  // Bootstrap user on login, clean up on logout
   useEffect(() => {
     if (user) {
       initializeUser(user);
-      updateStreak(user.uid).catch(() => {}); // fire-and-forget
+      updateStreak(user.uid).catch(() => {});
     } else {
-      // Clear the project session when the user logs out
       try { sessionStorage.removeItem("devos_active_project"); } catch { /* noop */ }
       setSelectedProjectId(null);
+      setUserStatus(null);
+      setUserRole(null);
     }
   }, [user]);
 
-  // Capture ?ref= query param on first visit and persist to sessionStorage
+  // Real-time listener on user's own doc to detect status changes
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
+      if (snap.exists()) {
+        setUserStatus(snap.data()?.status ?? null);
+        setUserRole(snap.data()?.role ?? null);
+      }
+    });
+    return () => unsub();
+  }, [user?.uid]);
+
+  // Real-time listener on maintenance config (public read)
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "system_config", "maintenance"), (snap) => {
+      if (snap.exists()) {
+        setMaintenance({
+          enabled: snap.data()?.maintenanceMode ?? false,
+          banner: snap.data()?.maintenanceBanner ?? "",
+        });
+      } else {
+        setMaintenance({ enabled: false, banner: "" });
+      }
+    }, () => setMaintenance({ enabled: false, banner: "" }));
+    return () => unsub();
+  }, []);
+
+  // Capture ?ref= query param on first visit
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
@@ -128,8 +163,6 @@ export default function App() {
     const hostname = window.location.hostname;
     if (hostname.includes("devos.zone.id")) {
       const parts = hostname.split(".");
-      // Format: projectSlug.username.devos.zone.id (5 parts)
-      // Format: username.devos.zone.id (4 parts)
       if (parts.length === 5) {
         const [projectSlug, username] = parts;
         window.location.href = `${window.location.origin}/u/${username}/${projectSlug}`;
@@ -140,10 +173,99 @@ export default function App() {
     }
   }, []);
 
-  if (loading) {
+  if (loading || maintenance === null) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#0a0a0a]">
         <Zap className="w-8 h-8 text-blue-500 animate-pulse" />
+      </div>
+    );
+  }
+
+  // Maintenance mode — block everyone except admins
+  if (maintenance.enabled && userRole !== "admin") {
+    return <MaintenancePage banner={maintenance.banner} />;
+  }
+
+  // Banned user — hard block, force sign-out
+  if (user && userStatus === "banned") {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-[#0B0F17] flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 280 }}
+          className="max-w-md w-full text-center"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-red-500/15 border border-red-500/20 flex items-center justify-center mx-auto mb-6">
+            <ShieldAlert className="w-9 h-9 text-red-400" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-white mb-3">Account Banned</h1>
+          <p className="text-white/50 text-sm leading-relaxed mb-6">
+            Your account has been permanently banned for violating our terms of service. If you believe this is a mistake, contact support.
+          </p>
+          <button
+            onClick={() => signOut(auth)}
+            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm transition-all"
+          >
+            Sign Out
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Suspended user — timed notice, force sign-out
+  if (user && userStatus === "suspended") {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-[#0B0F17] flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 280 }}
+          className="max-w-md w-full text-center"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-yellow-500/15 border border-yellow-500/20 flex items-center justify-center mx-auto mb-6">
+            <ShieldAlert className="w-9 h-9 text-yellow-400" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-white mb-3">Account Suspended</h1>
+          <p className="text-white/50 text-sm leading-relaxed mb-6">
+            Your account has been temporarily suspended. Please contact support for more information or to appeal this decision.
+          </p>
+          <button
+            onClick={() => signOut(auth)}
+            className="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 text-black rounded-xl font-bold text-sm transition-all"
+          >
+            Sign Out
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Deactivated user — inform and sign out
+  if (user && userStatus === "deactivated") {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-[#0B0F17] flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 280 }}
+          className="max-w-md w-full text-center"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center mx-auto mb-6">
+            <ShieldAlert className="w-9 h-9 text-white/40" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-white mb-3">Account Deactivated</h1>
+          <p className="text-white/50 text-sm leading-relaxed mb-6">
+            Your account has been deactivated. Contact support to reactivate it.
+          </p>
+          <button
+            onClick={() => signOut(auth)}
+            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-sm transition-all"
+          >
+            Sign Out
+          </button>
+        </motion.div>
       </div>
     );
   }

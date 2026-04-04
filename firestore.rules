@@ -339,7 +339,9 @@ service cloud.firestore {
     }
 
     match /system_config/{configId} {
-      allow read: if isAuthenticated();
+      // Maintenance doc must be readable by unauthenticated users so the app
+      // can show the maintenance screen before login.
+      allow read: if configId == "maintenance" || isAuthenticated();
       allow write: if isAdmin();
     }
 
@@ -458,7 +460,8 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
-    // ── Polls ──────────────────────────────────────────────────────────────────    match /polls/{pollId} {
+    // ── Polls ──────────────────────────────────────────────────────────────────
+    match /polls/{pollId} {
       // Any authenticated user (or public) can read polls
       allow read: if true;
       // Only admins may create or modify polls
@@ -476,7 +479,9 @@ service cloud.firestore {
     }
 
     // ── Organizations ──────────────────────────────────────────────────────────
-    match /organizations/{orgId} {      // Public orgs are readable by everyone; private orgs require membership
+    // ── Organizations ──────────────────────────────────────────────────────────
+    match /organizations/{orgId} {
+      // Public orgs are readable by everyone; private orgs require membership
       allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
 
       // Any authenticated user can create an organization
