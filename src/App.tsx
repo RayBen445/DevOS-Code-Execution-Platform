@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "./lib/firebase";
 import { initializeUser, updateStreak } from "./lib/userService";
@@ -31,6 +31,7 @@ import ExplorePage from "./pages/ExplorePage";
 import ScrollToTop from "./components/ScrollToTop";
 import ConfigGuard from "./components/ConfigGuard";
 import MaintenancePage from "./components/MaintenancePage";
+import PageMaintenanceBanner from "./components/PageMaintenanceBanner";
 import CommunitiesPage from "./pages/CommunitiesPage";
 import CommunityPage from "./pages/CommunityPage";
 import OrgPage from "./pages/OrgPage";
@@ -90,7 +91,7 @@ export default function App() {
   const [showSignup, setShowSignup] = useState(false);
 
   // Maintenance mode state (real-time listener — public read so even guests see it)
-  const [maintenance, setMaintenance] = useState<{ enabled: boolean; banner: string } | null>(null);
+  const [maintenance, setMaintenance] = useState<{ enabled: boolean; banner: string; pages: string[] } | null>(null);
 
   // User account status (banned / suspended / deactivated)
   const [userStatus, setUserStatus] = useState<string | null>(null);
@@ -141,11 +142,12 @@ export default function App() {
         setMaintenance({
           enabled: snap.data()?.maintenanceMode ?? false,
           banner: snap.data()?.maintenanceBanner ?? "",
+          pages: snap.data()?.maintenancePages ?? [],
         });
       } else {
-        setMaintenance({ enabled: false, banner: "" });
+        setMaintenance({ enabled: false, banner: "", pages: [] });
       }
-    }, () => setMaintenance({ enabled: false, banner: "" }));
+    }, () => setMaintenance({ enabled: false, banner: "", pages: [] }));
     return () => unsub();
   }, []);
 
@@ -284,6 +286,20 @@ export default function App() {
     </div>
   );
 
+  // Helper: returns true if the given path prefix is under per-page maintenance
+  const isPageMaintenance = (pathPrefix: string): boolean => {
+    if (!maintenance || userRole === "admin") return false;
+    return (maintenance.pages ?? []).some((p) => pathPrefix.startsWith(p));
+  };
+
+  // Wrap a page element with a per-page maintenance screen if needed
+  const withPageMaintenance = (pathPrefix: string, element: React.ReactNode): React.ReactNode => {
+    if (isPageMaintenance(pathPrefix)) {
+      return <PageMaintenanceBanner banner={maintenance?.banner} />;
+    }
+    return element;
+  };
+
   return (
     <>
       <Toaster position="top-right" richColors theme="dark" />
@@ -297,20 +313,20 @@ export default function App() {
             <Route path="/cookies" element={<CookiePolicyPage />} />
             <Route path="/acceptable-use" element={<AcceptableUsePage />} />
             <Route path="/copyright" element={<CopyrightPage />} />
-            <Route path="/templates" element={<TemplatePage />} />
-            <Route path="/templates/:templateId" element={<TemplatePreviewPage />} />
-            <Route path="/project/:projectId" element={<ProjectView />} />
+            <Route path="/templates" element={withPageMaintenance("/templates", <TemplatePage />)} />
+            <Route path="/templates/:templateId" element={withPageMaintenance("/templates", <TemplatePreviewPage />)} />
+            <Route path="/project/:projectId" element={withPageMaintenance("/project", <ProjectView />)} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/status" element={<StatusPage />} />
-            <Route path="/docs" element={<DocsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/explore" element={<ExplorePage />} />
-            <Route path="/communities" element={<CommunitiesPage />} />
-            <Route path="/c/:slug" element={<CommunityPage />} />
-            <Route path="/org/:slug" element={<OrgPage />} />
-            <Route path="/u/:username" element={<Portfolio />} />
-            <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
+            <Route path="/docs" element={withPageMaintenance("/docs", <DocsPage />)} />
+            <Route path="/settings" element={withPageMaintenance("/settings", <SettingsPage />)} />
+            <Route path="/search" element={withPageMaintenance("/search", <SearchPage />)} />
+            <Route path="/explore" element={withPageMaintenance("/explore", <ExplorePage />)} />
+            <Route path="/communities" element={withPageMaintenance("/communities", <CommunitiesPage />)} />
+            <Route path="/c/:slug" element={withPageMaintenance("/communities", <CommunityPage />)} />
+            <Route path="/org/:slug" element={withPageMaintenance("/org", <OrgPage />)} />
+            <Route path="/u/:username" element={withPageMaintenance("/u", <Portfolio />)} />
+            <Route path="/u/:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
             {/* /projects — full dashboard & project management */}
             <Route
               path="/projects"

@@ -25,6 +25,7 @@ export interface CreditConfig {
 export interface MaintenanceConfig {
   maintenanceMode: boolean;
   maintenanceBanner?: string; // Optional message shown to users
+  maintenancePages?: string[]; // List of route prefixes under per-page maintenance
 }
 
 /** Read the global credit config from system_config/global */
@@ -262,11 +263,12 @@ const MAINTENANCE_DOC = "maintenance";
 /** Read current maintenance state from system_config/maintenance */
 export const getMaintenanceConfig = async (): Promise<MaintenanceConfig> => {
   const snap = await getDoc(doc(db, "system_config", MAINTENANCE_DOC));
-  if (!snap.exists()) return { maintenanceMode: false, maintenanceBanner: "" };
+  if (!snap.exists()) return { maintenanceMode: false, maintenanceBanner: "", maintenancePages: [] };
   const d = snap.data();
   return {
     maintenanceMode: d.maintenanceMode ?? false,
     maintenanceBanner: d.maintenanceBanner ?? "",
+    maintenancePages: d.maintenancePages ?? [],
   };
 };
 
@@ -275,5 +277,6 @@ export const saveMaintenanceConfig = async (config: MaintenanceConfig): Promise<
   await setDoc(doc(db, "system_config", MAINTENANCE_DOC), {
     maintenanceMode: config.maintenanceMode,
     maintenanceBanner: config.maintenanceBanner ?? "",
+    maintenancePages: config.maintenancePages ?? [],
   });
 };

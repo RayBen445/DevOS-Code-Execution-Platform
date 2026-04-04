@@ -206,6 +206,7 @@ export default function AdminDashboard() {
   // Maintenance mode state
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceBanner, setMaintenanceBanner] = useState("");
+  const [maintenancePages, setMaintenancePages] = useState<string[]>([]);
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [loadingMaintenance, setLoadingMaintenance] = useState(false);
 
@@ -725,6 +726,7 @@ export default function AdminDashboard() {
       const cfg = await getMaintenanceConfig();
       setMaintenanceMode(cfg.maintenanceMode);
       setMaintenanceBanner(cfg.maintenanceBanner ?? "");
+      setMaintenancePages(cfg.maintenancePages ?? []);
     } catch { /* silently skip */ }
     finally { setLoadingMaintenance(false); }
   };
@@ -732,7 +734,7 @@ export default function AdminDashboard() {
   const handleSaveMaintenance = async () => {
     setSavingMaintenance(true);
     try {
-      await saveMaintenanceConfig({ maintenanceMode, maintenanceBanner });
+      await saveMaintenanceConfig({ maintenanceMode, maintenanceBanner, maintenancePages });
       toast.success(maintenanceMode ? "Maintenance mode enabled." : "Maintenance mode disabled.");
     } catch {
       toast.error("Failed to update maintenance mode.");
@@ -1203,7 +1205,7 @@ export default function AdminDashboard() {
                             <Wrench className="w-4 h-4 text-orange-400" />
                             Maintenance Mode
                           </h2>
-                          <p className="text-white/40 text-sm">Blocks all non-admin users from the platform.</p>
+                          <p className="text-white/40 text-sm">Blocks all non-admin users from the platform. Or put individual pages under maintenance.</p>
                         </div>
                         {loadingMaintenance ? (
                           <Loader2 className="w-6 h-6 text-white/30 animate-spin flex-shrink-0 mt-1" />
@@ -2092,16 +2094,16 @@ export default function AdminDashboard() {
                       </div>
                     ) : (
                       <>
-                        {/* Toggle card */}
+                        {/* Global toggle card */}
                         <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                                 <Wrench className="w-4 h-4 text-orange-400" />
-                                Maintenance Mode
+                                Global Maintenance Mode
                               </h2>
                               <p className="text-white/40 text-sm">
-                                When enabled, all non-admin users see the maintenance page and cannot access the platform.
+                                When enabled, all non-admin users see a full-screen maintenance page and cannot access the platform.
                               </p>
                             </div>
                             <button
@@ -2121,18 +2123,68 @@ export default function AdminDashboard() {
                               : "bg-white/5 text-white/40 border border-white/10"
                           }`}>
                             {maintenanceMode
-                              ? <><WifiOff className="w-4 h-4" /> Maintenance mode is currently <strong>ON</strong></>
-                              : <><Wifi className="w-4 h-4" /> Maintenance mode is currently <strong>OFF</strong></>}
+                              ? <><WifiOff className="w-4 h-4" /> Global maintenance is currently <strong>ON</strong></>
+                              : <><Wifi className="w-4 h-4" /> Global maintenance is currently <strong>OFF</strong></>}
                           </div>
+                        </div>
+
+                        {/* Per-page maintenance */}
+                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">
+                            Per-Page Maintenance
+                          </h2>
+                          <p className="text-white/40 text-xs mb-4">
+                            Select individual pages to put under maintenance. Navigation still works — only the selected pages are blocked.
+                          </p>
+                          <div className="space-y-2">
+                            {[
+                              { label: "Explore", path: "/explore" },
+                              { label: "Templates", path: "/templates" },
+                              { label: "Communities", path: "/communities" },
+                              { label: "Search", path: "/search" },
+                              { label: "Docs", path: "/docs" },
+                              { label: "Settings", path: "/settings" },
+                              { label: "Projects / IDE", path: "/projects" },
+                              { label: "User Profiles (/u/...)", path: "/u" },
+                              { label: "Project Pages (/project/...)", path: "/project" },
+                              { label: "Orgs (/org/...)", path: "/org" },
+                            ].map(({ label, path }) => {
+                              const isOn = maintenancePages.includes(path);
+                              return (
+                                <button
+                                  key={path}
+                                  onClick={() => setMaintenancePages(prev =>
+                                    prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+                                  )}
+                                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                                    isOn
+                                      ? "bg-orange-500/10 border-orange-500/30 text-orange-300"
+                                      : "bg-black/20 border-white/10 text-white/50 hover:text-white hover:border-white/20"
+                                  }`}
+                                >
+                                  <span className="font-mono text-xs text-white/40 mr-3">{path}</span>
+                                  <span>{label}</span>
+                                  {isOn
+                                    ? <ToggleRight className="w-6 h-6 text-orange-400 ml-auto flex-shrink-0" />
+                                    : <ToggleLeft className="w-6 h-6 text-white/20 ml-auto flex-shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {maintenancePages.length > 0 && (
+                            <p className="text-xs text-orange-400/70 mt-3">
+                              {maintenancePages.length} page{maintenancePages.length !== 1 ? "s" : ""} under maintenance. Users can still navigate to other pages.
+                            </p>
+                          )}
                         </div>
 
                         {/* Banner message */}
                         <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
                           <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">
-                            Banner Message
+                            Maintenance Banner Message
                           </h2>
                           <p className="text-white/40 text-xs mb-4">
-                            Optional message shown to users on the maintenance page.
+                            Optional message shown to users on both global and per-page maintenance screens.
                           </p>
                           <textarea
                             value={maintenanceBanner}

@@ -488,6 +488,16 @@ export default function Portfolio() {
                         {project.description}
                       </p>
                     )}
+                    {/* Tech stack chips derived from file extensions if available */}
+                    {project.tags && project.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {project.tags.slice(0, 4).map((tag: string) => (
+                          <span key={tag} className="px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[10px] font-semibold text-white/40 uppercase">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-4 text-[11px] text-white/25 font-semibold">
                       {project.views !== undefined && (
                         <span className="flex items-center gap-1">
@@ -600,6 +610,34 @@ export default function Portfolio() {
               </div>
             )}
 
+            {/* Skills */}
+            {userSettings.skills && userSettings.skills.length > 0 && (
+              <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">Skills</p>
+                <div className="flex flex-wrap gap-2">
+                  {userSettings.skills.map((skill) => (
+                    <span key={skill} className="px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Projects", value: projects.length },
+                { label: "Followers", value: followerCount ?? "—" },
+                { label: "Following", value: followingCount ?? "—" },
+              ].map(({ label, value }) => (
+                <div key={label} className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-center">
+                  <div className="text-2xl font-extrabold text-white mb-1">{value}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-white/30">{label}</div>
+                </div>
+              ))}
+            </div>
+
             {portfolioConfig?.links && portfolioConfig.links.some((l: any) => l.url) && (
               <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
                 <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">Links</p>
@@ -652,10 +690,32 @@ export default function Portfolio() {
               </div>
             )}
 
-            {!portfolioConfig?.bio && !userSettings.bio && !portfolioConfig?.links?.some((l: any) => l.url) && !userSettings.links && (
+            {/* Hire Me / Contact card */}
+            {!isOwner && (
+              <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-blue-500/20">
+                <p className="text-xs font-bold uppercase tracking-widest text-blue-400/70 mb-2">Available for Work</p>
+                <h3 className="text-lg font-bold text-white mb-2">
+                  Interested in working with {userSettings.fullName || userSettings.username}?
+                </h3>
+                <p className="text-sm text-white/50 mb-5 leading-relaxed">
+                  Reach out via their social links or send them a message on DevOS.
+                </p>
+                <a
+                  href={`mailto:?subject=Hiring%20inquiry%20for%20%40${userSettings.username}`}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95"
+                >
+                  Get in Touch
+                </a>
+              </div>
+            )}
+
+            {!portfolioConfig?.bio && !userSettings.bio && !portfolioConfig?.links?.some((l: any) => l.url) && !userSettings.links && isOwner && (
               <div className="py-16 text-center rounded-2xl border border-dashed border-white/10">
                 <UserIcon className="w-10 h-10 text-white/10 mx-auto mb-3" />
                 <p className="text-white/30 text-sm">No about info yet</p>
+                <Link to="/settings" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors font-semibold">
+                  Add your bio and links in Settings
+                </Link>
               </div>
             )}
           </div>
