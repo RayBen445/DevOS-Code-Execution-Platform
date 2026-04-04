@@ -14,7 +14,7 @@ import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu, Save, Check } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu, Save, Check, RefreshCw, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -39,9 +39,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [user] = useAuthState(auth);
   const [project, setProject] = useState<Project | null>(null);
   const [files, setFiles] = useState<FileData[]>([]);
-  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [activeFileId, setActiveFileId] = useState<string | null>(() => {
+    // Restore last active file for this specific project on mount
+    try { return localStorage.getItem(`ide_file_${projectId}`) ?? null; } catch { return null; }
+  });
   const [loading, setLoading] = useState(true);
-  const [activePanel, setActivePanel] = useState<PanelType>("explorer");
+  const [activePanel, setActivePanel] = useState<PanelType>(() => {
+    try { return (localStorage.getItem(`ide_panel_${projectId}`) as PanelType) ?? "explorer"; } catch { return "explorer"; }
+  });
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -64,6 +69,25 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [openFileIds, setOpenFileIds] = useState<string[]>([]);
   const [previewSaveKey, setPreviewSaveKey] = useState(0);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [terminalHeight, setTerminalHeight] = useState(240);
+  const terminalResizeRef = useRef<boolean>(false);
+  const terminalDragStartY = useRef<number>(0);
+  const terminalDragStartH = useRef<number>(0);
+  const [cursorLine, setCursorLine] = useState(1);
+  const [cursorCol, setCursorCol] = useState(1);
+
+  // Persist active file and panel to localStorage (per-project key)
+  useEffect(() => {
+    if (activeFileId) {
+      try { localStorage.setItem(`ide_file_${projectId}`, activeFileId); } catch { /* storage full or private mode */ }
+    }
+  }, [activeFileId, projectId]);
+
+  useEffect(() => {
+    if (activePanel) {
+      try { localStorage.setItem(`ide_panel_${projectId}`, activePanel); } catch { /* noop */ }
+    }
+  }, [activePanel, projectId]);
 
   const scrollToBottom = () => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -96,6 +120,25 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       const last = prev[prev.length - 1];
       return [...prev.slice(0, -1), { ...last, type, message }];
     });
+  };
+
+  const handleTerminalResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    terminalResizeRef.current = true;
+    terminalDragStartY.current = e.clientY;
+    terminalDragStartH.current = terminalHeight;
+    const onMove = (ev: MouseEvent) => {
+      if (!terminalResizeRef.current) return;
+      const delta = terminalDragStartY.current - ev.clientY;
+      setTerminalHeight(Math.max(120, Math.min(600, terminalDragStartH.current + delta)));
+    };
+    const onUp = () => {
+      terminalResizeRef.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   const animateStep = async (text: string) => {
@@ -349,11 +392,17 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         ...doc.data()
       })) as FileData[];
       setFiles(fileList);
-      
-      if (!activeFileId && fileList.length > 0) {
-        setActiveFileId(fileList[0].id);
-        setOpenFileIds(prev => prev.length === 0 ? [fileList[0].id] : prev);
-      }
+
+      // Restore persisted active file if it still exists; otherwise fall back to first file.
+      setActiveFileId(prev => {
+        if (prev && fileList.some(f => f.id === prev)) return prev; // valid restore
+        if (fileList.length > 0) return fileList[0].id;
+        return null;
+      });
+      setOpenFileIds(prev => {
+        if (prev.length > 0) return prev;
+        return fileList.length > 0 ? [fileList[0].id] : [];
+      });
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, `projects/${projectId}/files`);
@@ -436,6 +485,35 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       setIsSaved(true);
       setPreviewSaveKey(k => k + 1);
       if (!silent) toast.success("Project saved");
+
+      // Create a version snapshot on every manual save (not auto-save).
+      // Best-effort: a version failure must never block the normal save flow.
+      if (!silent && files.length > 0) {
+        try {
+          const MAX_FILE_BYTES = 32_000;
+          const filesSnapshot = files.map(f => {
+            const truncated = f.content.length > MAX_FILE_BYTES;
+            return {
+              name: f.name,
+              path: f.path,
+              content: truncated ? f.content.slice(0, MAX_FILE_BYTES) : f.content,
+              language: f.language,
+              truncated,
+            };
+          });
+          // Include a descriptive message with the list of files in this snapshot.
+          const fileNames = files.map(f => f.name).join(", ");
+          const versionMessage = `Manual save — ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (${files.length} file${files.length !== 1 ? "s" : ""}: ${fileNames.slice(0, 120)}${fileNames.length > 120 ? "…" : ""})`;
+          await addDoc(collection(db, "projects", projectId, "versions"), {
+            filesSnapshot,
+            createdAt: serverTimestamp(),
+            message: versionMessage,
+          });
+        } catch (versionErr) {
+          // Version creation is best-effort; log for debugging but do not surface to user.
+          console.warn("Version snapshot failed:", versionErr);
+        }
+      }
     } catch (error) {
       console.error("Error saving project:", error);
       if (!silent) toast.error("Failed to save project");
@@ -451,8 +529,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     setActivePanel("terminal");
     addLog("system", `devos ▶ ${project?.name || "project"} $ run`);
 
-    // Block unsupported file types
-    const blockedExtensions = [".ts", ".tsx", ".jsx"];
+    // Block unsupported file types — .tsx/.jsx are React components; use Preview instead
+    const blockedExtensions = [".tsx", ".jsx"];
     const fileExt = activeFile.name.includes(".") ? `.${activeFile.name.split(".").pop()?.toLowerCase()}` : "";
     if (blockedExtensions.includes(fileExt)) {
       addLog("error", "✖ Execution failed");
@@ -475,9 +553,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
 
     try {
+      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch("/api/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body: JSON.stringify({ language: activeFile.language, content: activeFile.content })
       });
 
@@ -689,37 +771,97 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0D1117]">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      <div className="h-screen flex flex-col items-center justify-center bg-[#0D1117] gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-blue-600/20 flex items-center justify-center">
+          <Code2 className="w-6 h-6 text-blue-400" />
+        </div>
+        <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+        <p className="text-[11px] text-white/30 font-mono">Loading project…</p>
       </div>
     );
   }
+
+  // Breadcrumb data
+  const breadcrumbUsername = project?.ownerUsername || user?.email?.split("@")[0] || "";
+  const breadcrumbFilePath = activeFile?.path ?? activeFile?.name ?? "";
+  const breadcrumbSegments = breadcrumbFilePath ? breadcrumbFilePath.split("/") : [];
+  const breadcrumbFileName = breadcrumbSegments[breadcrumbSegments.length - 1] ?? "";
+  const breadcrumbFolders = breadcrumbSegments.length > 1 ? breadcrumbSegments.slice(0, -1) : [];
+  const breadcrumbProjectHref =
+    project?.projectSlug && breadcrumbUsername
+      ? `/u/${breadcrumbUsername}/${project.projectSlug}`
+      : `/project/${projectId}`;
 
   return (
     <div
       className="h-screen flex flex-col bg-[#0D1117] overflow-hidden"
       onClick={() => contextMenu && setContextMenu(null)}
     >
-      <header className="h-12 border-b border-[#30363D] flex items-center justify-between px-4 bg-[#161B22] flex-shrink-0">
+      <header className="h-11 border-b border-[#21262D] flex items-center justify-between px-3 bg-[#161B22] flex-shrink-0">
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
           <button
             onClick={onBack}
-            className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors flex-shrink-0"
+            className="p-1.5 rounded-lg hover:bg-white/8 text-white/40 hover:text-white/80 transition-colors flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2 min-w-0">
+            {/* ── GitHub-style breadcrumb ── */}
             {project?.systemType !== 'portfolio' && (
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-sm font-bold text-white truncate max-w-[100px] md:max-w-none">{project?.name}</span>
-                {activeFile?.path && (
+              <nav
+                aria-label="breadcrumb"
+                className="flex items-center gap-1 min-w-0 text-xs"
+              >
+                {/* @username — desktop only */}
+                {breadcrumbUsername && (
                   <>
-                    <span className="text-xs text-white/20 flex-shrink-0">/</span>
-                    <span className="text-xs text-white/40 truncate max-w-[80px] md:max-w-none">{activeFile?.path}</span>
+                    <a
+                      href={`/u/${breadcrumbUsername}`}
+                      className="hidden md:inline text-[#9CA3AF] hover:text-white font-medium transition-colors flex-shrink-0"
+                      title={`@${breadcrumbUsername}'s profile`}
+                    >
+                      @{breadcrumbUsername}
+                    </a>
+                    <span className="hidden md:inline text-white/20 flex-shrink-0 select-none">/</span>
                   </>
                 )}
-              </div>
+
+                {/* Project name */}
+                <a
+                  href={breadcrumbProjectHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#E5E7EB] hover:text-white font-semibold transition-colors truncate max-w-[90px] sm:max-w-[130px] md:max-w-none flex-shrink-0"
+                  title={project?.name}
+                >
+                  {project?.name}
+                </a>
+
+                {/* File path */}
+                {breadcrumbFilePath && (
+                  <>
+                    <span className="text-white/20 flex-shrink-0 select-none">/</span>
+
+                    {/* Folder segments — desktop only */}
+                    {breadcrumbFolders.map((seg, i) => (
+                      <span key={i} className="hidden md:contents">
+                        <span className="text-[#9CA3AF] font-medium">{seg}</span>
+                        <span className="text-white/20 select-none">/</span>
+                      </span>
+                    ))}
+
+                    {/* Filename — always visible, accent blue */}
+                    <span
+                      className="text-[#3B82F6] font-semibold truncate max-w-[90px] md:max-w-[180px]"
+                      title={breadcrumbFilePath}
+                    >
+                      {breadcrumbFileName}
+                    </span>
+                  </>
+                )}
+              </nav>
             )}
+
             {project?.systemType === 'portfolio' && (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-white">Portfolio Editor</span>
@@ -757,7 +899,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               </button>
               {!isReadOnly && (
                 <button
-                  onClick={handleSave}
+                  onClick={() => handleSave()}
                   disabled={isSaving}
                   title={isSaved ? "Project saved" : "Save project"}
                   className={cn(
@@ -825,47 +967,28 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
         {/* Sidebar icon tabs — hidden on mobile (controlled via hamburger), hidden in focus mode */}
         {project?.systemType !== 'portfolio' && !isFocusMode && (
-          <div className="hidden md:flex w-12 border-r border-[#30363D] bg-[#0D1117] flex-col items-center py-4 gap-4 flex-shrink-0">
-            <button
-              onClick={() => togglePanel("explorer")}
-              className={cn(
-                "p-2 rounded-lg transition-all",
-                activePanel === "explorer" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
-              )}
-              title="Explorer"
-            >
-              <Files className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => togglePanel("git")}
-              className={cn(
-                "p-2 rounded-lg transition-all",
-                activePanel === "git" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
-              )}
-              title="Source Control"
-            >
-              <GitBranch className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => togglePanel("terminal")}
-              className={cn(
-                "p-2 rounded-lg transition-all",
-                activePanel === "terminal" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
-              )}
-              title="Terminal"
-            >
-              <Code2 className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => togglePanel("settings")}
-              className={cn(
-                "p-2 rounded-lg transition-all",
-                activePanel === "settings" ? "bg-blue-600/10 text-blue-500" : "text-white/20 hover:text-white/60"
-              )}
-              title="Settings"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+          <div className="hidden md:flex w-12 border-r border-[#21262D] bg-[#0D1117] flex-col items-center py-3 gap-1 flex-shrink-0">
+            {[
+              { id: "explorer" as PanelType, icon: Files, label: "Explorer" },
+              { id: "git" as PanelType, icon: GitBranch, label: "Source Control" },
+              { id: "terminal" as PanelType, icon: Terminal, label: "Terminal" },
+              { id: "preview" as PanelType, icon: Eye, label: "Preview" },
+              { id: "settings" as PanelType, icon: Settings, label: "Settings" },
+            ].map(({ id, icon: Icon, label }) => (
+              <button
+                key={id}
+                onClick={() => togglePanel(id)}
+                title={label}
+                className={cn(
+                  "w-full flex items-center justify-center p-2.5 transition-all relative group",
+                  activePanel === id
+                    ? "text-blue-400 bg-blue-600/10 before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-0.5 before:bg-blue-500 before:rounded-r"
+                    : "text-white/25 hover:text-white/70 hover:bg-white/[0.06]"
+                )}
+              >
+                <Icon className="w-5 h-5" />
+              </button>
+            ))}
           </div>
         )}
 
@@ -877,9 +1000,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-0 left-0 h-full w-72 bg-[#161B22] border-r border-[#30363D] z-40 flex flex-col md:hidden shadow-2xl"
+              className="fixed top-0 left-0 h-full w-72 bg-[#161B22] border-r border-[#21262D] z-40 flex flex-col md:hidden shadow-2xl"
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[#30363D]">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#21262D]">
                 <span className="text-xs font-bold uppercase tracking-widest text-white/40">Files & Tools</span>
                 <button
                   onClick={() => setIsMobileSidebarOpen(false)}
@@ -934,7 +1057,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         {/* Main Content Area: Split Screen */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Pane: Explorer + Editor + Terminal */}
-          <div className="flex-1 flex flex-col border-r border-[#30363D] overflow-hidden">
+          <div className="flex-1 flex flex-col border-r border-[#21262D] overflow-hidden">
             <div className="flex-1 flex overflow-hidden">
               {/* Explorer Panel — hidden on mobile (use drawer), hidden in focus mode */}
               {project?.systemType !== 'portfolio' && activePanel === "explorer" && !isFocusMode && (
@@ -975,7 +1098,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               >
                 {/* File tabs */}
                 {project?.systemType !== 'portfolio' && openFileIds.filter(id => files.some(f => f.id === id)).length > 0 && (
-                  <div className="flex items-center overflow-x-auto border-b border-[#30363D] bg-[#161B22] flex-shrink-0 custom-scrollbar">
+                  <div className="flex items-center overflow-x-auto border-b border-[#21262D] bg-[#161B22] flex-shrink-0 custom-scrollbar">
                     {openFileIds.filter(id => files.some(f => f.id === id)).map(fileId => {
                       const file = files.find(f => f.id === fileId);
                       if (!file) return null;
@@ -984,22 +1107,27 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                         <div
                           key={fileId}
                           className={cn(
-                            "flex items-center gap-1.5 px-3 py-2 text-xs cursor-pointer border-r border-[#30363D] flex-shrink-0 group select-none min-w-0",
+                            "flex items-center gap-1.5 px-3 py-2 text-xs cursor-pointer border-r border-[#21262D] flex-shrink-0 group select-none min-w-0 transition-colors",
                             isActive
-                              ? "bg-[#0D1117] text-white border-t-2 border-t-[#2F81F7] pt-[6px]"
-                              : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                              ? "bg-[#0D1117] text-white border-b-2 border-b-blue-500"
+                              : "text-white/35 hover:text-white/70 hover:bg-white/[0.04]"
                           )}
                           onClick={() => setActiveFileId(fileId)}
                         >
                           <span className="truncate max-w-[120px]">{file.name}</span>
                           {!isReadOnly && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); closeFileTab(fileId); }}
-                              className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all flex-shrink-0 ml-0.5"
-                              title="Close tab"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
+                            <>
+                              {!isSaved && fileId === activeFileId && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" title="Unsaved changes" />
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); closeFileTab(fileId); }}
+                                className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all flex-shrink-0 ml-0.5"
+                                title="Close tab"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </>
                           )}
                         </div>
                       );
@@ -1020,28 +1148,36 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       onChange={handleCodeChange}
                       projectId={projectId}
                       readOnly={isReadOnly}
+                      onCursorChange={(line, col) => { setCursorLine(line); setCursorCol(col); }}
                     />
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center bg-[#0D1117] p-8 md:p-12 text-center">
-                      <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-8">
-                        <Files className="w-10 h-10 text-white/20" />
+                      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-600/20 to-blue-600/5 border border-blue-500/20 flex items-center justify-center mb-6">
+                        <Code2 className="w-10 h-10 text-blue-400/50" />
                       </div>
-                      <h2 className="text-2xl font-bold text-white mb-2">No file selected</h2>
-                      <p className="text-white/40 max-w-sm mb-8">
-                        Select a file from the explorer or create a new one to start building your project.
+                      <h2 className="text-xl font-bold text-white mb-2">No file open</h2>
+                      <p className="text-white/30 max-w-sm mb-6 text-sm leading-relaxed">
+                        Select a file from the Explorer panel or create a new one to start coding.
                       </p>
-                      
                       {!isReadOnly && (
-                        <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex flex-col sm:flex-row gap-3">
                           <button
                             onClick={() => handleCreateFile("index.html")}
-                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 text-sm"
                           >
-                            <Plus className="w-5 h-5" />
-                            Create index.html
+                            <Plus className="w-4 h-4" />
+                            New index.html
+                          </button>
+                          <button
+                            onClick={() => togglePanel("explorer")}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/60 rounded-xl font-semibold hover:bg-white/10 transition-all text-sm"
+                          >
+                            <Files className="w-4 h-4" />
+                            Open Explorer
                           </button>
                         </div>
                       )}
+                      <p className="text-[11px] text-white/15 mt-8 font-mono">Tip: use Ctrl+P to quickly open files</p>
                     </div>
                   )}
                 </div>
@@ -1055,7 +1191,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.1 }}
                       style={{ top: contextMenu.y, left: contextMenu.x }}
-                      className="fixed z-50 bg-[#161B22] border border-[#30363D] rounded-lg shadow-2xl overflow-hidden min-w-[140px]"
+                      className="fixed z-50 bg-[#161B22] border border-[#21262D] rounded-lg shadow-2xl overflow-hidden min-w-[140px]"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
@@ -1086,10 +1222,16 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 initial={{ y: 256 }}
                 animate={{ y: 0 }}
                 exit={{ y: 256 }}
-                className="h-64 md:h-72 border-t border-[#30363D] bg-[#0D1117] flex flex-col relative z-10 shadow-2xl"
+                className="border-t border-[#21262D] bg-[#0D1117] flex flex-col relative z-10 shadow-2xl"
+                style={{ height: terminalHeight }}
               >
+                {/* Resize handle */}
+                <div
+                  className="h-1 cursor-row-resize bg-transparent hover:bg-blue-500/30 active:bg-blue-500/50 transition-colors flex-shrink-0"
+                  onMouseDown={handleTerminalResizeStart}
+                />
                 {/* Terminal title bar */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-[#30363D] bg-[#161B22] flex-shrink-0">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[#21262D] bg-[#161B22] flex-shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 text-white/40">
                       <Terminal className="w-3.5 h-3.5" />
@@ -1162,7 +1304,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {/* Command input */}
                 <form
                   onSubmit={handleTerminalSubmit}
-                  className="flex items-center gap-2 px-4 py-2 border-t border-[#30363D] bg-[#161B22] flex-shrink-0"
+                  className="flex items-center gap-2 px-4 py-2 border-t border-[#21262D] bg-[#0D1117] flex-shrink-0"
                 >
                   <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0 whitespace-nowrap">
                     devos ▶ {project?.name || "project"} $
@@ -1189,11 +1331,32 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
           {/* Right Pane: Live Preview — hidden on mobile, hidden in focus mode */}
           {project?.systemType !== 'portfolio' && !isFocusMode && (
-            <div className="w-1/2 bg-[#0D1117] hidden md:flex flex-col border-l border-[#30363D]">
-              <div className="h-10 border-b border-[#30363D] flex items-center justify-between px-4 bg-[#161B22]">
-                <div className="flex items-center gap-2 text-white/40">
-                  <Globe className="w-3.5 h-3.5" />
+            <div className="w-1/2 bg-[#0D1117] hidden md:flex flex-col border-l border-[#21262D]">
+              <div className="h-10 border-b border-[#21262D] flex items-center justify-between px-3 bg-[#161B22] flex-shrink-0">
+                <div className="flex items-center gap-2 text-white/40 min-w-0">
+                  <Globe className="w-3.5 h-3.5 flex-shrink-0 text-green-400/60" />
                   <span className="text-[10px] font-bold uppercase tracking-widest">Live Preview</span>
+                  {project?.entryFile && (
+                    <span className="text-[10px] text-white/20 font-mono truncate hidden lg:inline">— {project.entryFile}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => setPreviewSaveKey(k => k + 1)}
+                    title="Refresh preview"
+                    className="p-1.5 rounded-lg text-white/25 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
+                  {(project?.liveUrl || project?.deployUrl) && (
+                    <button
+                      onClick={() => window.open(project.liveUrl || project.deployUrl, "_blank")}
+                      title="Open in new tab"
+                      className="p-1.5 rounded-lg text-white/25 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="flex-1">
@@ -1203,6 +1366,32 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           )}
         </div>
       </div>
+
+      {/* Status bar */}
+      <footer className="h-6 flex items-center justify-between px-3 bg-[#161B22] border-t border-[#21262D] flex-shrink-0 select-none z-10">
+        <div className="flex items-center gap-4 text-[10px] text-white/25 font-mono">
+          <span className="flex items-center gap-1.5">
+            <GitBranch className="w-3 h-3" />
+            main
+          </span>
+          {activeFile && (
+            <span className="text-white/20">{activeFile.language ?? "text"}</span>
+          )}
+          {!isSaved && (
+            <span className="text-orange-400/70 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
+              Unsaved changes
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4 text-[10px] text-white/25 font-mono">
+          {activeFile && (
+            <span>Ln {cursorLine}, Col {cursorCol}</span>
+          )}
+          <span>UTF-8</span>
+          <span>LF</span>
+        </div>
+      </footer>
 
       <DeployModal 
         isOpen={isDeployModalOpen} 

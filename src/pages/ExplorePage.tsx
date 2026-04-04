@@ -269,11 +269,11 @@ function LatestActivityTab() {
 function ActivityCard({ post }: { post: FeedPost }) {
   const avatar = resolveAvatar(post.avatarUrl);
   const TYPE_BADGE: Record<string, string> = {
-    deployment: "🚀",
-    snippet: "💻",
-    announcement: "📢",
-    update: "🔄",
-    feature: "✨",
+    deployment: "Deploy",
+    snippet: "Code",
+    announcement: "News",
+    update: "Update",
+    feature: "Feature",
   };
   return (
     <div className="flex gap-4 p-4 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all">

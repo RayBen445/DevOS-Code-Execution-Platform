@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import admin from "firebase-admin";
 import crypto from "crypto";
 import fs from "fs";
+import os from "os";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -244,6 +245,14 @@ async function startServer() {
       const installationToken = await getInstallationToken(installationId);
       let currentRepoFullName = repoFullName;
 
+      // Validate the caller-supplied repo name before using it in any URL.
+      // GitHub repo names follow the pattern: owner/repo where each segment is
+      // alphanumeric plus ., -, and _.
+      const REPO_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
+      if (currentRepoFullName && !REPO_NAME_RE.test(currentRepoFullName)) {
+        return res.status(400).json({ error: "Invalid repository name format." });
+      }
+
       // 1. Create repo if it doesn't exist
       if (!currentRepoFullName) {
         const projectDoc = await db.collection("projects").doc(projectId).get();
@@ -272,6 +281,10 @@ async function startServer() {
 
         const repoData = await createRepoResponse.json();
         currentRepoFullName = repoData.full_name;
+        // Validate the API-returned name before using it in URLs
+        if (!REPO_NAME_RE.test(currentRepoFullName)) {
+          throw new Error("GitHub returned an unexpected repository name.");
+        }
 
         // Save repo info to project
         await db.collection("projects").doc(projectId).update({
@@ -280,46 +293,97 @@ async function startServer() {
         });
       }
 
-      // 2. Push files one by one (as requested)
-      // Note: In a production app, we'd use the Git Data API for a single commit
-      for (const file of files) {
-        const { path: filePath, content } = file;
-        const base64Content = Buffer.from(content).toString("base64");
+      // 2. Push all files as a single atomic commit using the Git Data API
+      const ghHeaders = {
+        Authorization: `token ${installationToken}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      };
+      // Encode each path segment separately so no special characters can escape the path.
+      const [repoOwner, repoRepo] = currentRepoFullName.split("/");
+      const repoApiBase = `https://api.github.com/repos/${encodeURIComponent(repoOwner)}/${encodeURIComponent(repoRepo)}`;
 
-        // Try to get existing file SHA
-        const getFileResponse = await fetch(`https://api.github.com/repos/${currentRepoFullName}/contents/${filePath}`, {
-          headers: {
-            Authorization: `token ${installationToken}`,
-            Accept: "application/vnd.github.v3+json",
-          },
-        });
-
-        let sha;
-        if (getFileResponse.ok) {
-          const fileData = await getFileResponse.json();
-          sha = fileData.sha;
+      // a. Resolve current HEAD ref (may not exist for a brand-new empty repo)
+      let parentCommitSha: string | null = null;
+      let baseTreeSha: string | null = null;
+      const headRefRes = await fetch(`${repoApiBase}/git/ref/heads/main`, { headers: ghHeaders });
+      if (headRefRes.ok) {
+        const headRefData = await headRefRes.json();
+        parentCommitSha = headRefData.object.sha as string;
+        const parentCommitRes = await fetch(`${repoApiBase}/git/commits/${parentCommitSha}`, { headers: ghHeaders });
+        if (parentCommitRes.ok) {
+          const parentCommitData = await parentCommitRes.json();
+          baseTreeSha = parentCommitData.tree.sha as string;
         }
+      }
 
-        const putFileResponse = await fetch(`https://api.github.com/repos/${currentRepoFullName}/contents/${filePath}`, {
-          method: "PUT",
-          headers: {
-            Authorization: `token ${installationToken}`,
-            Accept: "application/vnd.github.v3+json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: commitMessage,
-            content: base64Content,
-            sha: sha, // Include SHA if updating
-            branch: "main",
-          }),
+      // b. Create a blob for every file
+      const treeItems: { path: string; mode: string; type: string; sha: string }[] = [];
+      for (const file of files) {
+        const blobRes = await fetch(`${repoApiBase}/git/blobs`, {
+          method: "POST",
+          headers: ghHeaders,
+          body: JSON.stringify({ content: file.content, encoding: "utf-8" }),
         });
+        if (!blobRes.ok) {
+          const err = await blobRes.json();
+          throw new Error(`Failed to create blob for ${file.path}: ${err.message}`);
+        }
+        const blobData = await blobRes.json();
+        treeItems.push({ path: file.path, mode: "100644", type: "blob", sha: blobData.sha });
+      }
 
-        if (!putFileResponse.ok) {
-          const err = await putFileResponse.json();
-          console.error(`Error pushing file ${filePath}:`, err);
-          // Continue with other files or throw? Let's throw for now to be safe
-          throw new Error(`Failed to push file ${filePath}: ${err.message}`);
+      // c. Create a new tree (optionally rooted at the existing base tree)
+      const newTreeBody: Record<string, unknown> = { tree: treeItems };
+      if (baseTreeSha) newTreeBody.base_tree = baseTreeSha;
+      const newTreeRes = await fetch(`${repoApiBase}/git/trees`, {
+        method: "POST",
+        headers: ghHeaders,
+        body: JSON.stringify(newTreeBody),
+      });
+      if (!newTreeRes.ok) {
+        const err = await newTreeRes.json();
+        throw new Error(`Failed to create tree: ${err.message}`);
+      }
+      const newTreeData = await newTreeRes.json();
+
+      // d. Create the commit
+      const newCommitBody: Record<string, unknown> = {
+        message: commitMessage,
+        tree: newTreeData.sha,
+        ...(parentCommitSha ? { parents: [parentCommitSha] } : {}),
+      };
+      const newCommitRes = await fetch(`${repoApiBase}/git/commits`, {
+        method: "POST",
+        headers: ghHeaders,
+        body: JSON.stringify(newCommitBody),
+      });
+      if (!newCommitRes.ok) {
+        const err = await newCommitRes.json();
+        throw new Error(`Failed to create commit: ${err.message}`);
+      }
+      const newCommitData = await newCommitRes.json();
+
+      // e. Advance (or create) the branch ref to the new commit
+      if (parentCommitSha) {
+        const updateRefRes = await fetch(`${repoApiBase}/git/refs/heads/main`, {
+          method: "PATCH",
+          headers: ghHeaders,
+          body: JSON.stringify({ sha: newCommitData.sha, force: false }),
+        });
+        if (!updateRefRes.ok) {
+          const err = await updateRefRes.json();
+          throw new Error(`Failed to update branch ref: ${err.message}`);
+        }
+      } else {
+        const createRefRes = await fetch(`${repoApiBase}/git/refs`, {
+          method: "POST",
+          headers: ghHeaders,
+          body: JSON.stringify({ ref: "refs/heads/main", sha: newCommitData.sha }),
+        });
+        if (!createRefRes.ok) {
+          const err = await createRefRes.json();
+          throw new Error(`Failed to create branch ref: ${err.message}`);
         }
       }
 
@@ -422,41 +486,80 @@ async function startServer() {
     });
   });
 
-  // Run Code API
+  // Run Code API — executes JavaScript or TypeScript in a sandboxed temp directory.
+  // Requires a valid Firebase ID token; rate-limited alongside /api/terminal.
   app.post("/api/run", async (req, res) => {
+    // Auth check
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const idToken = authHeader.split("Bearer ")[1];
+    let uid: string;
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      uid = decoded.uid;
+    } catch {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    // Rate limiting — share the same bucket as /api/terminal
+    const now = Date.now();
+    const entry = terminalRateLimit.get(uid);
+    if (entry && now < entry.resetAt) {
+      if (entry.count >= TERMINAL_RATE_MAX) {
+        return res.status(429).json({ error: "Rate limit exceeded. Try again in a moment." });
+      }
+      entry.count++;
+    } else {
+      terminalRateLimit.set(uid, { count: 1, resetAt: now + TERMINAL_RATE_WINDOW_MS });
+    }
+
     const { language, content } = req.body;
-    if (!content) return res.status(400).json({ error: "No content provided" });
+    if (!content || typeof content !== "string") {
+      return res.status(400).json({ error: "No content provided" });
+    }
+
+    const supportedLanguages = ["javascript", "typescript"];
+    if (!supportedLanguages.includes(language)) {
+      return res.status(400).json({ error: `Language '${language}' is not supported for execution.` });
+    }
+
+    // Write content to an isolated temp directory so the script cannot resolve
+    // relative paths outside of it. Include a uid-scoped random suffix for isolation.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `devos-run-${uid.slice(0, 8)}-`));
+    const ext = language === "typescript" ? ".ts" : ".js";
+    const tmpFile = path.join(tmpDir, `script${ext}`);
 
     try {
-      if (language === "javascript" || language === "typescript") {
-        // In a real production environment, we would use a secure sandbox like isolated-vm or a lambda function.
-        // For this platform, we'll simulate a backend execution that returns logs.
-        const logs: string[] = [];
-        logs.push(`[Backend] Initializing ${language} runtime...`);
-        logs.push(`[Backend] Executing script...`);
-        
-        // Simple simulation of execution
-        if (content.includes("console.log")) {
-          const matches = content.match(/console\.log\(['"](.*?)['"]\)/g);
-          if (matches) {
-            matches.forEach((m: string) => {
-              const val = m.match(/['"](.*?)['"]/)?.[1];
-              logs.push(`> ${val}`);
-            });
-          } else {
-            logs.push("> [Output captured]");
+      fs.writeFileSync(tmpFile, content, "utf-8");
+
+      const executable = language === "typescript" ? "tsx" : "node";
+      const { execFile } = await import("child_process");
+
+      await new Promise<void>((resolve, reject) => {
+        execFile(executable, [tmpFile], { timeout: 10_000, cwd: tmpDir }, (error, stdout, stderr) => {
+          try {
+            const logs: string[] = [];
+            if (stdout) stdout.split("\n").filter(Boolean).forEach((line) => logs.push(line));
+            if (stderr) stderr.split("\n").filter(Boolean).forEach((line) => logs.push(`[stderr] ${line}`));
+            // Surface a clear message when the process was killed by the timeout
+            if (error?.killed || (error as any)?.code === "ETIMEDOUT") {
+              logs.push("[stderr] Script execution timed out after 10 seconds.");
+            }
+            res.json({ logs, exitCode: error?.code ?? (error ? 1 : 0) });
+            resolve();
+          } catch (sendErr) {
+            reject(sendErr);
           }
-        } else {
-          logs.push("> Script executed with no output.");
-        }
-        
-        logs.push(`[Backend] Execution completed successfully.`);
-        res.json({ logs });
-      } else {
-        res.status(400).json({ error: `Language ${language} is not supported for backend execution yet.` });
-      }
+        });
+      });
     } catch (error: any) {
-      res.status(500).json({ error: error.message || "Execution failed" });
+      if (!res.headersSent) {
+        res.status(500).json({ error: error.message || "Execution failed" });
+      }
+    } finally {
+      try { fs.rmSync(tmpDir, { recursive: true }); } catch { /* ignore cleanup errors */ }
     }
   });
 

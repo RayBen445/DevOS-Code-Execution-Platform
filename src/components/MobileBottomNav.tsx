@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, FolderCode, Compass, User } from "lucide-react";
+import { Home, FolderCode, Users, User } from "lucide-react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
@@ -27,7 +27,7 @@ export default function MobileBottomNav() {
   const tabs = [
     { href: "/", icon: Home, label: "Home" },
     { href: "/projects", icon: FolderCode, label: "Projects" },
-    { href: "/explore", icon: Compass, label: "Explore" },
+    { href: "/communities", icon: Users, label: "Communities" },
     { href: username ? `/u/${username}` : "/settings", icon: User, label: "Profile" },
   ];
 

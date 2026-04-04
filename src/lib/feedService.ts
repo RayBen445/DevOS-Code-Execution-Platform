@@ -9,6 +9,7 @@ import {
   limit,
   updateDoc,
   doc,
+  deleteDoc,
   arrayUnion,
   arrayRemove,
   increment,
@@ -59,6 +60,7 @@ export async function createFeedPost(params: {
   projectId?: string;
   projectName?: string;
   isPublic: boolean;
+  communityId?: string;
 }): Promise<string> {
   const docRef = await addDoc(collection(db, "feed"), {
     userId: params.userId,
@@ -69,6 +71,7 @@ export async function createFeedPost(params: {
     type: params.type,
     ...(params.projectId ? { projectId: params.projectId } : {}),
     ...(params.projectName ? { projectName: params.projectName } : {}),
+    ...(params.communityId ? { communityId: params.communityId } : {}),
     createdAt: serverTimestamp(),
     likes: 0,
     likedBy: [],
@@ -93,7 +96,7 @@ export async function autoPostDeployment(params: {
   if (!params.isPublic) return; // private projects excluded
   await createFeedPost({
     ...params,
-    content: `🚀 Just deployed "${params.projectName}"!`,
+    content: `Just deployed "${params.projectName}"!`,
     type: "deployment",
   });
 }
@@ -106,6 +109,16 @@ export async function toggleLike(postId: string, uid: string, liked: boolean): P
   } else {
     await updateDoc(postRef, { likes: increment(1), likedBy: arrayUnion(uid) });
   }
+}
+
+export async function likePost(postId: string, uid: string): Promise<void> {
+  const postRef = doc(db, "feed", postId);
+  await updateDoc(postRef, { likes: increment(1), likedBy: arrayUnion(uid) });
+}
+
+export async function unlikePost(postId: string, uid: string): Promise<void> {
+  const postRef = doc(db, "feed", postId);
+  await updateDoc(postRef, { likes: increment(-1), likedBy: arrayRemove(uid) });
 }
 
 /**
@@ -232,4 +245,9 @@ export async function repostPost(params: {
   await updateDoc(doc(db, "feed", params.originalPost.id), { repostCount: increment(1) });
 
   return docRef.id;
+}
+
+/** Delete a post by its ID. Only the owner should call this. */
+export async function deletePost(postId: string): Promise<void> {
+  await deleteDoc(doc(db, "feed", postId));
 }

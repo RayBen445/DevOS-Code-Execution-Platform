@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, Globe, Zap, Check, ExternalLink, Copy, CheckCircle2 } from "lucide-react";
+import { X, Globe, Zap, Check, ExternalLink, Copy, CheckCircle2, Rocket } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../lib/utils";
 import { db, auth } from "../lib/firebase";
@@ -61,8 +61,26 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
   const startDeployFlow = async (deployMethod: "internal") => {
     setMethod(deployMethod);
     
+    // Apply .devignore filtering
+    const devignoreFile = files.find(f => f.name === ".devignore");
+    let deployableFiles = files;
+    if (devignoreFile) {
+      const patterns = devignoreFile.content
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith("#"));
+      deployableFiles = files.filter(f => {
+        return !patterns.some(pat => {
+          if (pat.startsWith("*.")) {
+            return f.name.endsWith(pat.slice(1));
+          }
+          return f.path === pat || f.path.startsWith(pat + "/") || f.name === pat;
+        });
+      });
+    }
+
     // Scan for index.html files
-    const htmlFiles = files.filter(f => f.name.toLowerCase() === "index.html").map(f => f.path);
+    const htmlFiles = deployableFiles.filter(f => f.name.toLowerCase() === "index.html").map(f => f.path);
     
     if (htmlFiles.length === 0) {
       toast.error("No index.html found. Please create an index.html file to deploy.");
@@ -142,7 +160,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
 
       setDeployedUrl(url);
       setStep("success");
-      toast.success("🚀 Your project is live!");
+      toast.success("Your project is live!");
     } catch (error: any) {
       console.error("Deployment error:", error);
       toast.error(error.message || "Deployment failed");
@@ -328,7 +346,10 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                     />
                   </motion.div>
                   
-                  <h3 className="text-3xl font-bold mb-3 tracking-tight">🚀 Your project is live!</h3>
+                  <h3 className="text-3xl font-bold mb-3 tracking-tight flex items-center gap-3 justify-center">
+                    <Rocket className="w-8 h-8 text-green-400" />
+                    Your project is live!
+                  </h3>
                   <p className="text-white/40 text-sm mb-10 max-w-[300px]">
                     Deployment successful. Your application is now accessible worldwide.
                   </p>

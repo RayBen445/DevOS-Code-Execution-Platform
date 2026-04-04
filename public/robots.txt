@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Admin area — no indexing
+Disallow: /admin
+
+# Auth state redirects / internal paths
+Disallow: /projects
+
+Sitemap: https://devos.zone.id/sitemap.xml

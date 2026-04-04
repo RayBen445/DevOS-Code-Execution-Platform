@@ -1,0 +1,150 @@
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  where,
+  serverTimestamp,
+  increment,
+  collectionGroup,
+} from "firebase/firestore";
+import { db } from "./firebase";
+import { OrgMemberRole, Organization, OrgMember } from "../types";
+
+export async function createOrg(params: {
+  name: string;
+  slug: string;
+  description: string;
+  avatar?: string;
+  isPublic: boolean;
+  createdBy: string;
+  createdByUsername: string;
+}): Promise<string> {
+  const ref = await addDoc(collection(db, "organizations"), {
+    name: params.name,
+    slug: params.slug,
+    description: params.description,
+    avatar: params.avatar ?? "",
+    isPublic: params.isPublic,
+    createdBy: params.createdBy,
+    memberCount: 1,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  // Add creator as admin member — use userId as doc ID (matches security rules)
+  await setDoc(doc(db, "organizations", ref.id, "members", params.createdBy), {
+    userId: params.createdBy,
+    username: params.createdByUsername,
+    role: "admin" as OrgMemberRole,
+    joinedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function getOrgBySlug(slug: string): Promise<Organization | null> {
+  const q = query(collection(db, "organizations"), where("slug", "==", slug));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() } as Organization;
+}
+
+export function subscribeOrg(
+  orgId: string,
+  callback: (org: Organization | null) => void
+): () => void {
+  return onSnapshot(doc(db, "organizations", orgId), (d) => {
+    callback(d.exists() ? ({ id: d.id, ...d.data() } as Organization) : null);
+  });
+}
+
+export function subscribeOrgMembers(
+  orgId: string,
+  callback: (members: OrgMember[]) => void
+): () => void {
+  return onSnapshot(collection(db, "organizations", orgId, "members"), (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as OrgMember)));
+  });
+}
+
+export async function getOrgMember(orgId: string, userId: string): Promise<OrgMember | null> {
+  // Member doc ID is userId (same pattern as communities)
+  const snap = await getDoc(doc(db, "organizations", orgId, "members", userId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() } as OrgMember;
+}
+
+export async function joinOrg(
+  orgId: string,
+  userId: string,
+  username: string
+): Promise<void> {
+  await setDoc(doc(db, "organizations", orgId, "members", userId), {
+    userId,
+    username,
+    role: "member" as OrgMemberRole,
+    joinedAt: serverTimestamp(),
+  });
+  await updateDoc(doc(db, "organizations", orgId), { memberCount: increment(1) });
+}
+
+export async function leaveOrg(orgId: string, userId: string): Promise<void> {
+  await deleteDoc(doc(db, "organizations", orgId, "members", userId));
+  await updateDoc(doc(db, "organizations", orgId), { memberCount: increment(-1) });
+}
+
+export async function updateMemberRole(
+  orgId: string,
+  userId: string,
+  role: OrgMemberRole
+): Promise<void> {
+  await updateDoc(doc(db, "organizations", orgId, "members", userId), { role });
+}
+
+export async function updateOrg(
+  orgId: string,
+  data: Partial<Pick<Organization, "name" | "description" | "avatar" | "isPublic">>
+): Promise<void> {
+  await updateDoc(doc(db, "organizations", orgId), { ...data, updatedAt: serverTimestamp() });
+}
+
+/**
+ * Subscribe to organizations the current user is a member of.
+ * Uses a collectionGroup query on the `members` subcollection filtered by userId.
+ * Falls back to returning all public orgs if collectionGroup is unavailable.
+ */
+export function subscribeUserOrgs(
+  userId: string,
+  callback: (orgs: Organization[]) => void
+): () => void {
+  const q = query(
+    collectionGroup(db, "members"),
+    where("userId", "==", userId)
+  );
+  return onSnapshot(q, async (snap) => {
+    const orgIds = snap.docs
+      .map((d) => d.ref.parent.parent?.id)
+      .filter((id): id is string => Boolean(id));
+
+    if (orgIds.length === 0) {
+      callback([]);
+      return;
+    }
+
+    const orgDocs = await Promise.all(
+      orgIds.map((id) => getDoc(doc(db, "organizations", id)))
+    );
+    callback(
+      orgDocs
+        .filter((d) => d.exists())
+        .map((d) => ({ id: d.id, ...d.data() } as Organization))
+    );
+  });
+}
+

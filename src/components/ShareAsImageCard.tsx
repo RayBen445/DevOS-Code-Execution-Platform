@@ -164,12 +164,12 @@ const POST_TYPE_COLOR: Record<string, string> = {
 };
 
 const POST_TYPE_LABEL: Record<string, string> = {
-  deployment: "🚀 Deployment",
-  announcement: "📢 Announcement",
-  feature: "✨ Feature",
-  update: "🔄 Update",
-  snippet: "💾 Snippet",
-  repost: "🔁 Repost",
+  deployment: "Deployment",
+  announcement: "Announcement",
+  feature: "Feature",
+  update: "Update",
+  snippet: "Snippet",
+  repost: "Repost",
 };
 
 export function FeedPostShareCard({ post, cardRef }: FeedPostShareCardProps) {
@@ -278,7 +278,7 @@ export function FeedPostShareCard({ post, cardRef }: FeedPostShareCardProps) {
             color: "#93c5fd",
             marginBottom: 16,
           }}>
-            📁 {post.projectName}
+            {post.projectName}
           </div>
         )}
 
@@ -291,10 +291,10 @@ export function FeedPostShareCard({ post, cardRef }: FeedPostShareCardProps) {
           fontSize: 13,
           color: "rgba(255,255,255,0.35)",
         }}>
-          <span>❤️ {post.likes ?? 0}</span>
-          <span>💬 {post.commentsCount ?? 0}</span>
-          <span>🔁 {post.repostCount ?? 0}</span>
-          {(post.viewsCount ?? 0) > 0 && <span>👁 {post.viewsCount}</span>}
+          <span>{post.likes ?? 0} likes</span>
+          <span>{post.commentsCount ?? 0} comments</span>
+          <span>{post.repostCount ?? 0} reposts</span>
+          {(post.viewsCount ?? 0) > 0 && <span>{post.viewsCount} views</span>}
         </div>
       </div>
 
@@ -372,9 +372,12 @@ export function ProjectShareCard({ project, username, avatarUrl, cardRef }: Proj
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-            fontSize: 24,
+            fontSize: 13,
+            fontWeight: 800,
+            color: "#60a5fa",
+            letterSpacing: 1,
           }}>
-            📁
+            IDE
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 800, fontSize: 20, color: "#fff", marginBottom: 4 }}>

@@ -113,6 +113,20 @@ export const initializeUser = async (user: any) => {
 
     // Create initial portfolio project
     await createPortfolioProject(user.uid, username);
+
+    // Generate referral code for this new user
+    await getOrCreateReferralCode(user.uid).catch(() => {});
+
+    // Process any pending referral stored when the user visited via a ?ref= link
+    const pendingRef = sessionStorage.getItem("devos_pending_ref");
+    if (pendingRef) {
+      try {
+        await processReferral(pendingRef, user.uid);
+      } catch (_) {
+        // best-effort
+      }
+      sessionStorage.removeItem("devos_pending_ref");
+    }
   } else {
     // Ensure public profile exists
     const userSnap = await getDoc(userRef);
@@ -163,7 +177,29 @@ export const initializeUser = async (user: any) => {
   getOrCreateReferralCode(user.uid).catch(() => {});
 };
 
-const createPortfolioProject = async (uid: string, username: string) => {
+/**
+ * Returns true when the given username is not yet taken in the `users`
+ * collection. Used for real-time availability feedback during sign-up.
+ */
+export const checkUsernameAvailable = async (username: string): Promise<boolean> => {
+  const lower = username.toLowerCase();
+
+  // Check the reserved list first. Silently skip if the collection is
+  // unreachable (e.g. rules not yet deployed in this environment).
+  try {
+    const reservedSnap = await getDoc(doc(db, "reservedUsernames", lower));
+    if (reservedSnap.exists()) return false;
+  } catch {
+    // reserved-names check unavailable – fall through to user check
+  }
+
+  // Check actual registered users (case-insensitive: usernames are stored lowercase)
+  const q = query(collection(db, "users"), where("username", "==", lower));
+  const snap = await getDocs(q);
+  return snap.empty;
+};
+
+const createPortfolioProject = async (uid: string, username: string): Promise<string> => {
   const portfolioConfig = {
     bio: "I am a developer building awesome things with DevOS.",
     featuredProjects: [],
@@ -192,7 +228,7 @@ const createPortfolioProject = async (uid: string, username: string) => {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     collaborators: [],
-    isPublic: false, // Initially private as requested
+    isPublic: false,
     isTemplate: false,
     forksCount: 0,
     views: 0,
@@ -216,9 +252,8 @@ const createPortfolioProject = async (uid: string, username: string) => {
 
   const docRef = await addDoc(collection(db, "projects"), projectData);
 
-  // Initialize files
   const filesRef = collection(db, "projects", docRef.id, "files");
-  
+
   await Promise.all([
     addDoc(filesRef, {
       projectId: docRef.id,
@@ -247,4 +282,95 @@ const createPortfolioProject = async (uid: string, username: string) => {
   ]);
 
   return docRef.id;
+};
+
+/**
+ * Call once per user session / page-load to keep streak counters current.
+ * - dailyStreak  increments when the user is active on a new calendar day;
+ *                resets to 1 if they skipped a day.
+ * - monthlyStreak increments when the user has been active on ≥20 distinct
+ *                  days during the current calendar month.
+ * Stores lastActiveDate as "YYYY-MM-DD" in the users doc.
+ */
+export const updateStreak = async (uid: string): Promise<void> => {
+  const userRef = doc(db, "users", uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+  const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const lastActive: string | undefined = data.lastActiveDate;
+
+  if (lastActive === todayStr) return; // already counted today
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+  const prevDaily: number = data.dailyStreak ?? 0;
+  const newDaily = lastActive === yesterdayStr ? prevDaily + 1 : 1;
+
+  // Monthly: count unique active days this month stored in activeDaysThisMonth[]
+  const currentMonth = todayStr.slice(0, 7); // "YYYY-MM"
+  const lastMonth: string | undefined = data.lastActiveMonth;
+  let activeDays: string[] = data.activeDaysThisMonth ?? [];
+  if (lastMonth !== currentMonth) activeDays = []; // new month → reset
+  if (!activeDays.includes(todayStr)) activeDays = [...activeDays, todayStr];
+
+  const newMonthly = activeDays.length >= 20
+    ? (data.monthlyStreak ?? 0) + 1
+    : data.monthlyStreak ?? 0;
+
+  await updateDoc(userRef, {
+    dailyStreak: newDaily,
+    monthlyStreak: newMonthly,
+    lastActiveDate: todayStr,
+    lastActiveMonth: currentMonth,
+    activeDaysThisMonth: activeDays,
+  });
+};
+
+/** Fetch user settings doc (user_settings/{uid}). Returns null if not found. */
+export const getUserSettings = async (uid: string) => {
+  const snap = await getDoc(doc(db, "user_settings", uid));
+  return snap.exists() ? (snap.data() as import("../types").UserSettings) : null;
+};
+
+/** Ban a user — they will be blocked from using the platform. */
+export const banUser = async (uid: string): Promise<void> => {
+  await updateDoc(doc(db, "users", uid), { status: "banned" });
+};
+
+/** Suspend a user — temporarily blocked; can be reinstated. */
+export const suspendUser = async (uid: string): Promise<void> => {
+  await updateDoc(doc(db, "users", uid), { status: "suspended" });
+};
+
+/** Reinstate a user — removes ban/suspension. */
+export const reinstateUser = async (uid: string): Promise<void> => {
+  await updateDoc(doc(db, "users", uid), { status: "active" });
+};
+
+/** Deactivate the caller's own account — they are signed out and cannot log back in. */
+export const deactivateAccount = async (uid: string): Promise<void> => {
+  await updateDoc(doc(db, "users", uid), { status: "deactivated" });
+};
+
+/**
+ * Submit an account deletion request.
+ * The actual deletion is handled manually by the admin via email.
+ * Creates a doc in `deletion_requests/{uid}` that admins can review.
+ */
+export const requestAccountDeletion = async (
+  uid: string,
+  email: string,
+  reason?: string
+): Promise<void> => {
+  await setDoc(doc(db, "deletion_requests", uid), {
+    userId: uid,
+    email,
+    reason: reason?.trim() || "",
+    requestedAt: serverTimestamp(),
+    status: "pending",
+  });
 };

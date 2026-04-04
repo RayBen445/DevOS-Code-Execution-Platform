@@ -100,6 +100,9 @@ export interface UserSettings {
   avatar?: string;
   githubToken?: string;
   githubInstallationId?: string;
+  skills?: string[];
+  dailyStreak?: number;
+  monthlyStreak?: number;
   links?: {
     github?: string;
     twitter?: string;
@@ -108,7 +111,9 @@ export interface UserSettings {
   preferences?: {
     fontSize?: number;
     tabSize?: number;
+    uiTheme?: 'dark' | 'midnight' | 'ocean' | 'light';
   };
+  birthday?: string;  // ISO date YYYY-MM-DD
   notifications?: {
     deployments?: boolean;
     adminAnnouncements?: boolean;
@@ -144,11 +149,20 @@ export interface Template {
   previewImageUrl?: string;
 }
 
+export interface GiftedCredit {
+  id: string;           // uuid so we can prune individual entries
+  amount: number;
+  expiresAt: any | null; // Firestore Timestamp or null = never expires
+  grantedAt: any;
+}
+
 export interface Credits {
   daily: number;
   monthly: number;
   lastDailyReset: any;
   lastMonthlyReset: any;
+  gifted?: GiftedCredit[];              // admin-gifted credits with optional expiry
+  creditsUnlimitedUntil?: any | null;   // Firestore Timestamp — user has ∞ credits until this date
 }
 
 export interface UserProfile {
@@ -158,7 +172,15 @@ export interface UserProfile {
   displayName: string;
   avatarUrl: string;
   bio: string;
-  role?: 'user' | 'admin';
+  birthday?: string;        // ISO date string YYYY-MM-DD
+  role?: 'user' | 'admin' | 'company';
+  status?: 'active' | 'suspended' | 'banned' | 'deactivated';
+  companyName?: string;
+  verified?: boolean;
+  skills?: string[];
+  dailyStreak?: number;
+  monthlyStreak?: number;
+  lastActiveDate?: string; // ISO date string "YYYY-MM-DD"
   credits?: Credits;
   links?: {
     github?: string;
@@ -199,6 +221,7 @@ export interface FeedPost {
   username: string;
   displayName?: string;
   avatarUrl?: string;
+  authorRole?: 'user' | 'admin' | 'company';
   content: string;
   type: 'update' | 'deployment' | 'snippet' | 'announcement' | 'feature' | 'repost';
   projectId?: string;
@@ -211,6 +234,7 @@ export interface FeedPost {
   viewsCount?: number;
   isPublic: boolean;
   isOfficial?: boolean;
+  communityId?: string;
   // Repost fields
   originalPostId?: string;
   originalPost?: Omit<FeedPost, 'originalPost'>; // embedded snapshot for display
@@ -252,4 +276,81 @@ export interface ReferralStats {
   code: string;
   totalReferrals: number;
   referrals: Referral[];
+}
+
+// ── Organization System ─────────────────────────────────────────────────────
+
+export type OrgMemberRole = "member" | "moderator" | "admin";
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  avatar?: string;
+  isPublic: boolean;
+  createdBy: string;
+  memberCount: number;
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface OrgMember {
+  id: string;
+  userId: string;
+  username: string;
+  role: OrgMemberRole;
+  joinedAt: any;
+}
+
+// ── Community System ────────────────────────────────────────────────────────
+
+export type CommunityMemberRole = "member" | "moderator" | "admin";
+
+export interface Community {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  avatar?: string;
+  banner?: string;
+  createdBy: string;
+  memberCount: number;
+  isPublic: boolean;
+  category?: string;
+  createdAt: any;
+}
+
+export interface CommunityMember {
+  userId: string;
+  role: CommunityMemberRole;
+  joinedAt: any;
+}
+
+// ── Polls ───────────────────────────────────────────────────────────────────
+
+export interface PollOption {
+  id: string;    // stable identifier
+  text: string;  // option label
+  votes: number; // vote count (denormalised for fast display)
+}
+
+export interface Poll {
+  id: string;
+  question: string;
+  options: PollOption[];
+  allowTextInput: boolean;   // when true, voters may also type a free-text response
+  maxSelections: number;     // 1 = single choice; >1 = multi-select (up to N options)
+  createdBy: string;         // admin uid
+  createdAt: any;
+  expiresAt?: any | null;    // Firestore Timestamp – null / absent = no expiry
+  isOpen: boolean;           // admin can close a poll early
+  totalVotes: number;        // denormalised sum for display
+}
+
+export interface PollVote {
+  userId: string;
+  optionIds: string[];        // one or more selected option IDs
+  textResponse?: string;      // free-text answer (if allowTextInput and user supplied one)
+  votedAt: any;
 }

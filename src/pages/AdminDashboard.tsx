@@ -7,14 +7,23 @@ import {
   getDocs,
   doc,
   getDoc,
+  setDoc,
+  deleteDoc,
   updateDoc,
+  query,
+  limit,
+  where,
+  orderBy,
+  onSnapshot,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
-import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig } from "../lib/creditsService";
+import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits, getMaintenanceConfig, saveMaintenanceConfig, MaintenanceConfig } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
-import { Template, UserProfile, Credits, RedeemCode, NotificationType } from "../types";
+import { banUser, suspendUser, reinstateUser } from "../lib/userService";
+import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
+import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -45,13 +54,27 @@ import {
   ChevronDown,
   ChevronUp,
   Settings2,
+  AlertTriangle,
+  Activity,
+  Wifi,
+  WifiOff,
+  AtSign,
+  MessageSquare,
+  Bug,
+  Lightbulb,
+  Ban,
+  Clock,
+  Infinity,
+  BarChart2,
+  Vote,
+  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "maintenance";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -65,6 +88,14 @@ const detectLanguage = (filename: string): string => {
 interface UserWithCredits extends UserProfile {
   credits?: Credits;
   projectCount?: number;
+}
+
+interface SystemHealth {
+  firestoreOk: boolean;
+  feedReadable: boolean;
+  templatesReadable: boolean;
+  checkedAt: string | null;
+  errors: string[];
 }
 
 export default function AdminDashboard() {
@@ -132,13 +163,56 @@ export default function AdminDashboard() {
   const [postType, setPostType] = useState<"announcement" | "update" | "feature">("announcement");
   const [publishingPost, setPublishingPost] = useState(false);
 
+  // Reserved usernames state
+  const [reservedNames, setReservedNames] = useState<string[]>([]);
+  const [loadingReserved, setLoadingReserved] = useState(false);
+  const [newReservedName, setNewReservedName] = useState("");
+  const [savingReserved, setSavingReserved] = useState(false);
+
   // Credit config state
-  const [creditConfig, setCreditConfig] = useState<CreditConfig>({ creditsEnabled: true, chargePerAction: 0 });
+  const [creditConfig, setCreditConfig] = useState<CreditConfig>({ creditsEnabled: true, chargePerAction: 0, actionCosts: {} });
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
 
   // Role update state
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
+
+  // Ban/Suspend state
+  const [moderatingUser, setModeratingUser] = useState<string | null>(null);
+  const [userActionConfirm, setUserActionConfirm] = useState<{ uid: string; action: "ban" | "suspend" | "reinstate" } | null>(null);
+
+  // Gift Credits state
+  const [giftTarget, setGiftTarget] = useState("");
+  const [giftAmount, setGiftAmount] = useState("50");
+  const [giftExpiry, setGiftExpiry] = useState("");
+  const [gifting, setGifting] = useState(false);
+
+  // Unlimited pass state
+  const [unlimitedTarget, setUnlimitedTarget] = useState("");
+  const [unlimitedUntil, setUnlimitedUntil] = useState("");
+  const [grantingUnlimited, setGrantingUnlimited] = useState(false);
+
+  // Polls state
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [loadingPolls, setLoadingPolls] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const [pollAllowText, setPollAllowText] = useState(false);
+  const [pollExpiry, setPollExpiry] = useState("");
+  const [pollMaxSelections, setPollMaxSelections] = useState(1);
+  const [creatingPoll, setCreatingPoll] = useState(false);
+  const [deletePollConfirm, setDeletePollConfirm] = useState<string | null>(null);
+
+  // Maintenance mode state
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceBanner, setMaintenanceBanner] = useState("");
+  const [maintenancePages, setMaintenancePages] = useState<string[]>([]);
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
+  const [loadingMaintenance, setLoadingMaintenance] = useState(false);
+
+  // System health state
+  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [runningHealthCheck, setRunningHealthCheck] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -161,6 +235,18 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === "redeem" && isAdmin && redeemCodes.length === 0) {
       loadRedeemCodes();
+    }
+    if (activeTab === "reserved" && isAdmin && reservedNames.length === 0) {
+      loadReservedNames();
+    }
+    if (activeTab === "polls" && isAdmin) {
+      loadPolls();
+    }
+    if (activeTab === "overview" && isAdmin) {
+      loadMaintenanceConfig();
+    }
+    if (activeTab === "maintenance" && isAdmin) {
+      loadMaintenanceConfig();
     }
   }, [activeTab, isAdmin]);
 
@@ -378,6 +464,48 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadReservedNames = async () => {
+    setLoadingReserved(true);
+    try {
+      const snap = await getDocs(collection(db, "reservedUsernames"));
+      setReservedNames(snap.docs.map((d) => d.id));
+    } catch {
+      toast.error("Failed to load reserved names.");
+    } finally {
+      setLoadingReserved(false);
+    }
+  };
+
+  const handleReserveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newReservedName.trim().toLowerCase();
+    if (!name || !/^[a-z0-9_-]{1,30}$/.test(name)) {
+      toast.error("Invalid username format.");
+      return;
+    }
+    setSavingReserved(true);
+    try {
+      await setDoc(doc(db, "reservedUsernames", name), { reservedAt: new Date().toISOString(), reservedBy: user?.uid });
+      setReservedNames((prev) => [...prev, name].sort());
+      setNewReservedName("");
+      toast.success(`"${name}" reserved.`);
+    } catch {
+      toast.error("Failed to reserve name.");
+    } finally {
+      setSavingReserved(false);
+    }
+  };
+
+  const handleUnreserveName = async (name: string) => {
+    try {
+      await deleteDoc(doc(db, "reservedUsernames", name));
+      setReservedNames((prev) => prev.filter((n) => n !== name));
+      toast.success(`"${name}" removed from reserved list.`);
+    } catch {
+      toast.error("Failed to remove reserved name.");
+    }
+  };
+
   const loadRedeemCodes = async () => {
     setLoadingCodes(true);
     try {
@@ -514,6 +642,205 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUserAction = async () => {
+    if (!userActionConfirm) return;
+    const { uid, action } = userActionConfirm;
+    setModeratingUser(uid);
+    try {
+      if (action === "ban") {
+        await banUser(uid);
+        setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, status: "banned" } : u)));
+        toast.success("User banned.");
+      } else if (action === "suspend") {
+        await suspendUser(uid);
+        setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, status: "suspended" } : u)));
+        toast.success("User suspended.");
+      } else {
+        await reinstateUser(uid);
+        setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, status: "active" } : u)));
+        toast.success("User reinstated.");
+      }
+    } catch {
+      toast.error("Failed to update user status.");
+    } finally {
+      setModeratingUser(null);
+      setUserActionConfirm(null);
+    }
+  };
+
+  const handleGiftCredits = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetUser = users.find(
+      (u) => u.username === giftTarget.trim() || u.email === giftTarget.trim() || u.uid === giftTarget.trim()
+    );
+    if (!targetUser) { toast.error("User not found."); return; }
+    const amount = parseInt(giftAmount, 10);
+    if (isNaN(amount) || amount <= 0) { toast.error("Invalid amount."); return; }
+    setGifting(true);
+    try {
+      const expiry = giftExpiry ? new Date(giftExpiry) : null;
+      await giftCredits(targetUser.uid, amount, expiry);
+      toast.success(`Gifted ${amount} credits to @${targetUser.username}${expiry ? ` (expires ${expiry.toLocaleDateString()})` : ""}.`);
+      setGiftTarget(""); setGiftAmount("50"); setGiftExpiry("");
+    } catch {
+      toast.error("Failed to gift credits.");
+    } finally {
+      setGifting(false);
+    }
+  };
+
+  const handleGrantUnlimited = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetUser = users.find(
+      (u) => u.username === unlimitedTarget.trim() || u.email === unlimitedTarget.trim() || u.uid === unlimitedTarget.trim()
+    );
+    if (!targetUser) { toast.error("User not found."); return; }
+    if (!unlimitedUntil) { toast.error("Select an end date."); return; }
+    setGrantingUnlimited(true);
+    try {
+      await giftUnlimitedCredits(targetUser.uid, new Date(unlimitedUntil));
+      toast.success(`Unlimited credits granted to @${targetUser.username} until ${new Date(unlimitedUntil).toLocaleDateString()}.`);
+      setUnlimitedTarget(""); setUnlimitedUntil("");
+    } catch {
+      toast.error("Failed to grant unlimited credits.");
+    } finally {
+      setGrantingUnlimited(false);
+    }
+  };
+
+  const loadPolls = async () => {
+    setLoadingPolls(true);
+    try {
+      const all = await getAllPolls();
+      setPolls(all);
+    } catch {
+      toast.error("Failed to load polls.");
+    } finally {
+      setLoadingPolls(false);
+    }
+  };
+
+  const loadMaintenanceConfig = async () => {
+    setLoadingMaintenance(true);
+    try {
+      const cfg = await getMaintenanceConfig();
+      setMaintenanceMode(cfg.maintenanceMode);
+      setMaintenanceBanner(cfg.maintenanceBanner ?? "");
+      setMaintenancePages(cfg.maintenancePages ?? []);
+    } catch { /* silently skip */ }
+    finally { setLoadingMaintenance(false); }
+  };
+
+  const handleSaveMaintenance = async () => {
+    setSavingMaintenance(true);
+    try {
+      await saveMaintenanceConfig({ maintenanceMode, maintenanceBanner, maintenancePages });
+      toast.success(maintenanceMode ? "Maintenance mode enabled." : "Maintenance mode disabled.");
+    } catch {
+      toast.error("Failed to update maintenance mode.");
+    } finally {
+      setSavingMaintenance(false);
+    }
+  };
+
+  const handleCreatePoll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const opts = pollOptions.map((o) => o.trim()).filter(Boolean);
+    if (opts.length < 2) { toast.error("Add at least 2 options."); return; }
+    setCreatingPoll(true);
+    try {
+      await createPoll({
+        createdBy: user.uid,
+        question: pollQuestion,
+        options: opts,
+        allowTextInput: pollAllowText,
+        expiresAt: pollExpiry ? new Date(pollExpiry) : null,
+      });
+      toast.success("Poll created!");
+      setPollQuestion(""); setPollOptions(["", ""]); setPollAllowText(false); setPollExpiry("");
+      await loadPolls();
+    } catch {
+      toast.error("Failed to create poll.");
+    } finally {
+      setCreatingPoll(false);
+    }
+  };
+
+  const handleClosePoll = async (pollId: string) => {
+    try {
+      await closePoll(pollId);
+      setPolls((prev) => prev.map((p) => (p.id === pollId ? { ...p, isOpen: false } : p)));
+      toast.success("Poll closed.");
+    } catch {
+      toast.error("Failed to close poll.");
+    }
+  };
+
+  const confirmDeletePoll = async () => {
+    if (!deletePollConfirm) return;
+    try {
+      await deletePoll(deletePollConfirm);
+      setPolls((prev) => prev.filter((p) => p.id !== deletePollConfirm));
+      toast.success("Poll deleted.");
+      setDeletePollConfirm(null);
+    } catch {
+      toast.error("Failed to delete poll.");
+    }
+  };
+
+  const runHealthCheck = async () => {
+    setRunningHealthCheck(true);
+    const errors: string[] = [];
+    let firestoreOk = false;
+    let feedReadable = false;
+    let templatesReadable = false;
+
+    // Check 1: Firestore connectivity + templates public read.
+    // `templates` must be publicly readable (allow read: if true).
+    // A permission-denied here means the rule is misconfigured.
+    try {
+      await getDocs(query(collection(db, "templates"), limit(1)));
+      templatesReadable = true;
+      firestoreOk = true;
+    } catch (err: any) {
+      const code = err?.code ?? "";
+      if (code === "permission-denied") {
+        // Templates are expected to be public — permission-denied is a misconfiguration.
+        firestoreOk = true; // Firestore itself is reachable
+        errors.push(
+          "Templates: permission-denied — the templates collection should allow public read (allow read: if true;)"
+        );
+      } else {
+        errors.push(`Firestore/templates: ${code || err?.message || "unknown"}`);
+      }
+    }
+
+    // Check 2: Feed public read (unauthenticated query for public posts).
+    try {
+      await getDocs(query(collection(db, "feed"), where("isPublic", "==", true), limit(1)));
+      feedReadable = true;
+    } catch (err: any) {
+      const code = err?.code ?? "";
+      if (code === "permission-denied") {
+        errors.push(
+          "Feed: permission-denied on public read — the feed rule should allow read for isPublic posts"
+        );
+      } else {
+        errors.push(`Feed: ${code || err?.message || "unknown"}`);
+      }
+    }
+
+    setSystemHealth({
+      firestoreOk,
+      feedReadable,
+      templatesReadable,
+      checkedAt: new Date().toLocaleTimeString(),
+      errors,
+    });
+    setRunningHealthCheck(false);
+  };
+
   const handleSaveCreditConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingConfig(true);
@@ -563,9 +890,12 @@ export default function AdminDashboard() {
     },
     { id: "users", label: "Users", icon: <Users className="w-4 h-4" /> },
     { id: "credits", label: "Credits", icon: <Zap className="w-4 h-4" /> },
+    { id: "polls", label: "Polls", icon: <Vote className="w-4 h-4" /> },
     { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
     { id: "redeem", label: "Redeem Codes", icon: <Gift className="w-4 h-4" /> },
     { id: "posts", label: "Posts", icon: <Newspaper className="w-4 h-4" /> },
+    { id: "reserved", label: "Reserved Names", icon: <AtSign className="w-4 h-4" /> },
+    { id: "maintenance", label: "Maintenance", icon: <Wrench className="w-4 h-4" /> },
   ];
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -701,6 +1031,9 @@ export default function AdminDashboard() {
                 {activeTab === "notifications" && "Send targeted or global notifications"}
                 {activeTab === "redeem" && "Create and manage promotional codes"}
                 {activeTab === "posts" && "Publish official announcements to the feed"}
+                {activeTab === "polls" && "Create and manage community polls"}
+                {activeTab === "reserved" && "Manage reserved and protected usernames"}
+                {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
               </p>
             </div>
 
@@ -748,6 +1081,157 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     )}
+
+                    {/* System Health */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                      <div className="flex items-center justify-between mb-5">
+                        <h2 className="text-base font-bold text-white flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-green-400" />
+                          System Health
+                        </h2>
+                        <button
+                          onClick={runHealthCheck}
+                          disabled={runningHealthCheck}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-bold transition-all disabled:opacity-50"
+                        >
+                          {runningHealthCheck
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <RefreshCw className="w-3.5 h-3.5" />}
+                          {runningHealthCheck ? "Checking…" : "Run Check"}
+                        </button>
+                      </div>
+
+                      {!systemHealth && !runningHealthCheck && (
+                        <p className="text-sm text-white/30 text-center py-4">
+                          Click "Run Check" to validate backend configuration.
+                        </p>
+                      )}
+
+                      {runningHealthCheck && (
+                        <div className="flex items-center justify-center py-6 gap-2 text-white/40 text-sm">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Running health checks…
+                        </div>
+                      )}
+
+                      {systemHealth && !runningHealthCheck && (
+                        <div className="space-y-3">
+                          {/* Checked at */}
+                          <p className="text-[11px] text-white/30 mb-4">
+                            Last checked at {systemHealth.checkedAt}
+                          </p>
+
+                          {[
+                            {
+                              label: "Firestore Connectivity",
+                              ok: systemHealth.firestoreOk,
+                              desc: systemHealth.firestoreOk
+                                ? "Firestore is reachable"
+                                : "Cannot connect to Firestore — check Firebase config",
+                            },
+                            {
+                              label: "Templates (public read)",
+                              ok: systemHealth.templatesReadable,
+                              desc: systemHealth.templatesReadable
+                                ? "Public template reads work correctly"
+                                : "Templates collection is unreadable",
+                            },
+                            {
+                              label: "Feed (public read)",
+                              ok: systemHealth.feedReadable,
+                              desc: systemHealth.feedReadable
+                                ? "Public feed reads work correctly"
+                                : "Feed collection unreadable — check Firestore rules",
+                            },
+                          ].map(({ label, ok, desc }) => (
+                            <div
+                              key={label}
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-xl border",
+                                ok
+                                  ? "bg-green-500/5 border-green-500/20"
+                                  : "bg-red-500/5 border-red-500/20"
+                              )}
+                            >
+                              {ok ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <p className={cn("text-sm font-semibold", ok ? "text-green-300" : "text-red-300")}>
+                                  {label}
+                                </p>
+                                <p className="text-xs text-white/40 truncate">{desc}</p>
+                              </div>
+                              <span className={cn(
+                                "ml-auto flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                                ok ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
+                              )}>
+                                {ok ? "OK" : "Fail"}
+                              </span>
+                            </div>
+                          ))}
+
+                          {systemHealth.errors.length > 0 && (
+                            <div className="mt-4 p-4 rounded-xl bg-red-500/5 border border-red-500/15">
+                              <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                Detected Issues
+                              </p>
+                              <ul className="space-y-1">
+                                {systemHealth.errors.map((e, i) => (
+                                  <li key={i} className="text-xs text-red-300/70 font-mono">{e}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {systemHealth.errors.length === 0 && (
+                            <div className="flex items-center gap-2 mt-2 text-xs text-green-400/60">
+                              <Wifi className="w-3.5 h-3.5" />
+                              All systems operational
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Maintenance Mode Quick Toggle */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h2 className="text-base font-bold text-white mb-1 flex items-center gap-2">
+                            <Wrench className="w-4 h-4 text-orange-400" />
+                            Maintenance Mode
+                          </h2>
+                          <p className="text-white/40 text-sm">Blocks all non-admin users from the platform. Or put individual pages under maintenance.</p>
+                        </div>
+                        {loadingMaintenance ? (
+                          <Loader2 className="w-6 h-6 text-white/30 animate-spin flex-shrink-0 mt-1" />
+                        ) : (
+                          <button
+                            onClick={() => { setMaintenanceMode((v) => !v); }}
+                            className="flex-shrink-0 mt-1"
+                            aria-label="Toggle maintenance mode"
+                          >
+                            {maintenanceMode
+                              ? <ToggleRight className="w-10 h-10 text-orange-400" />
+                              : <ToggleLeft className="w-10 h-10 text-white/30" />}
+                          </button>
+                        )}
+                      </div>
+                      <div className={`mt-4 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border ${maintenanceMode ? "bg-orange-500/10 text-orange-300 border-orange-500/20" : "bg-white/5 text-white/40 border-white/10"}`}>
+                        {maintenanceMode ? <><WifiOff className="w-4 h-4" /> Maintenance is <strong>ON</strong></> : <><Wifi className="w-4 h-4" /> Maintenance is <strong>OFF</strong></>}
+                      </div>
+                      <button
+                        onClick={handleSaveMaintenance}
+                        disabled={savingMaintenance || loadingMaintenance}
+                        className="mt-4 flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all"
+                      >
+                        {savingMaintenance ? <><Loader2 className="w-4 h-4 animate-spin" />Saving…</> : "Save"}
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -913,6 +1397,42 @@ export default function AdminDashboard() {
                               </button>
                             )}
                           </div>
+
+                          {/* Moderation controls */}
+                          <div className="shrink-0 flex items-center gap-1 ml-1">
+                            {u.status === "banned" || u.status === "suspended" ? (
+                              <button
+                                onClick={() => setUserActionConfirm({ uid: u.uid, action: "reinstate" })}
+                                disabled={moderatingUser === u.uid}
+                                title="Reinstate user"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                              >
+                                {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">Reinstate</span>
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => setUserActionConfirm({ uid: u.uid, action: "suspend" })}
+                                  disabled={moderatingUser === u.uid || u.uid === user?.uid}
+                                  title="Suspend user"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                >
+                                  {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Suspend</span>
+                                </button>
+                                <button
+                                  onClick={() => setUserActionConfirm({ uid: u.uid, action: "ban" })}
+                                  disabled={moderatingUser === u.uid || u.uid === user?.uid}
+                                  title="Ban user"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                >
+                                  {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Ban</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       ))}
                       {users.length === 0 && (
@@ -957,7 +1477,7 @@ export default function AdminDashboard() {
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
-                              Charge Per Action (0 = use defaults)
+                              Charge Per Action (0 = use per-action defaults)
                             </label>
                             <input
                               type="number"
@@ -967,7 +1487,36 @@ export default function AdminDashboard() {
                               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all"
                               placeholder="0"
                             />
-                            <p className="text-[11px] text-white/30">Set a flat cost per action. Leave 0 to use per-action defaults (createProject: 5, deploy: 10, sync: 3).</p>
+                            <p className="text-[11px] text-white/30">Set a flat cost per action. Leave 0 to use individual action costs below.</p>
+                          </div>
+
+                          {/* Per-action cost overrides */}
+                          <div className="space-y-3">
+                            <p className="text-xs font-bold text-white/40 uppercase tracking-widest">Per-Action Cost Overrides</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              {(["createProject", "deploy", "sync", "save", "post", "aiRequest"] as const).map((action) => (
+                                <div key={action} className="space-y-1">
+                                  <label className="text-[11px] text-white/40 capitalize">{action === "aiRequest" ? "AI Request" : action.replace(/([A-Z])/g, " $1")}</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder={String({ createProject: 5, deploy: 10, sync: 3, save: 1, post: 2, aiRequest: 5 }[action])}
+                                    value={creditConfig.actionCosts?.[action] ?? ""}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10);
+                                      setCreditConfig((c) => ({
+                                        ...c,
+                                        actionCosts: {
+                                          ...c.actionCosts,
+                                          [action]: isNaN(val) ? undefined : val,
+                                        },
+                                      }));
+                                    }}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition-all"
+                                  />
+                                </div>
+                              ))}
+                            </div>
                           </div>
                           <button
                             type="submit"
@@ -1010,6 +1559,96 @@ export default function AdminDashboard() {
                       </form>
                     </div>
 
+                    {/* Gift Credits */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Gift className="w-4 h-4 text-green-400" />
+                        Gift Credits
+                      </h2>
+                      <p className="text-white/40 text-sm mb-5">Give a user bonus credits with an optional expiry date.</p>
+                      <form onSubmit={handleGiftCredits} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Target User</label>
+                          <input
+                            type="text"
+                            value={giftTarget}
+                            onChange={(e) => setGiftTarget(e.target.value)}
+                            placeholder="username, email, or UID"
+                            required
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Amount</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={giftAmount}
+                              onChange={(e) => setGiftAmount(e.target.value)}
+                              required
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Expires (optional)</label>
+                            <input
+                              type="date"
+                              value={giftExpiry}
+                              onChange={(e) => setGiftExpiry(e.target.value)}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={gifting}
+                          className="w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {gifting ? <><Loader2 className="w-4 h-4 animate-spin" />Gifting…</> : <><Gift className="w-4 h-4" />Gift Credits</>}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Unlimited Credits Pass */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Infinity className="w-4 h-4 text-yellow-400" />
+                        Grant Unlimited Pass
+                      </h2>
+                      <p className="text-white/40 text-sm mb-5">Give a user unlimited credits until a specified date.</p>
+                      <form onSubmit={handleGrantUnlimited} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Target User</label>
+                          <input
+                            type="text"
+                            value={unlimitedTarget}
+                            onChange={(e) => setUnlimitedTarget(e.target.value)}
+                            placeholder="username, email, or UID"
+                            required
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Valid Until</label>
+                          <input
+                            type="date"
+                            value={unlimitedUntil}
+                            onChange={(e) => setUnlimitedUntil(e.target.value)}
+                            required
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-all"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={grantingUnlimited}
+                          className="w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {grantingUnlimited ? <><Loader2 className="w-4 h-4 animate-spin" />Granting…</> : <><Infinity className="w-4 h-4" />Grant Unlimited Pass</>}
+                        </button>
+                      </form>
+                    </div>
+
                     <div>
                       <h2 className="text-lg font-bold text-white mb-4">User Credits Overview</h2>
                       <div className="space-y-2">
@@ -1031,6 +1670,164 @@ export default function AdminDashboard() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Polls Tab */}
+                {activeTab === "polls" && (
+                  <div className="space-y-8 max-w-2xl">
+                    {/* Create Poll */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Vote className="w-4 h-4 text-blue-400" />
+                        Create Poll
+                      </h2>
+                      <p className="text-white/40 text-sm mb-5">Published polls appear on the community feed for all users to vote on.</p>
+                      <form onSubmit={handleCreatePoll} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Question</label>
+                          <input
+                            type="text"
+                            value={pollQuestion}
+                            onChange={(e) => setPollQuestion(e.target.value)}
+                            placeholder="e.g. What feature should we build next?"
+                            required
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Options</label>
+                          {pollOptions.map((opt, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={opt}
+                                onChange={(e) => { const next = [...pollOptions]; next[i] = e.target.value; setPollOptions(next); }}
+                                placeholder={`Option ${i + 1}`}
+                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
+                              />
+                              {pollOptions.length > 2 && (
+                                <button type="button" onClick={() => setPollOptions(pollOptions.filter((_, j) => j !== i))} className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          {pollOptions.length < 6 && (
+                            <button type="button" onClick={() => setPollOptions([...pollOptions, ""])} className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1">
+                              <Plus className="w-3.5 h-3.5" /> Add option
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Max Selections</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max={pollOptions.filter(Boolean).length || 1}
+                              value={pollMaxSelections}
+                              onChange={(e) => setPollMaxSelections(parseInt(e.target.value, 10) || 1)}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Expires (optional)</label>
+                            <input
+                              type="datetime-local"
+                              value={pollExpiry}
+                              onChange={(e) => setPollExpiry(e.target.value)}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                          <input
+                            id="pollAllowText"
+                            type="checkbox"
+                            checked={pollAllowText}
+                            onChange={(e) => setPollAllowText(e.target.checked)}
+                            className="w-4 h-4 accent-blue-500"
+                          />
+                          <label htmlFor="pollAllowText" className="text-sm text-white/70 cursor-pointer">Allow free-text answer</label>
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={creatingPoll}
+                          className="w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {creatingPoll ? <><Loader2 className="w-4 h-4 animate-spin" />Creating…</> : <><Vote className="w-4 h-4" />Create Poll</>}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Poll list */}
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest">All Polls</h2>
+                        <button onClick={loadPolls} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white transition-all" title="Refresh">
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {loadingPolls ? (
+                        <div className="flex items-center gap-2 text-white/30 text-sm py-6"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
+                      ) : polls.length === 0 ? (
+                        <p className="text-white/30 text-sm text-center py-8">No polls yet.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {polls.map((p) => (
+                            <div key={p.id} className="bg-[#111827] border border-white/10 rounded-2xl p-5">
+                              <div className="flex items-start justify-between gap-3 mb-3">
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-white text-sm">{p.question}</p>
+                                  <p className="text-xs text-white/30 mt-0.5">
+                                    {p.options?.length ?? 0} options · {Object.values(p.votes ?? {}).flat().length} votes
+                                    {p.expiresAt && <> · expires {new Date(p.expiresAt instanceof Object && "toDate" in p.expiresAt ? (p.expiresAt as any).toDate() : p.expiresAt).toLocaleDateString()}</>}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${p.isOpen ? "bg-green-500/15 text-green-400" : "bg-white/10 text-white/30"}`}>
+                                    {p.isOpen ? "Open" : "Closed"}
+                                  </span>
+                                  {p.isOpen && (
+                                    <button
+                                      onClick={() => handleClosePoll(p.id)}
+                                      title="Close poll"
+                                      className="p-1.5 rounded-lg text-white/30 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => setDeletePollConfirm(p.id)}
+                                    title="Delete poll"
+                                    className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-1.5">
+                                {p.options?.map((opt) => {
+                                  const totalVotes = Object.values(p.votes ?? {}).flat().length;
+                                  const optVotes = Object.values(p.votes ?? {}).filter((v) => v === opt || (Array.isArray(v) && v.includes(opt))).length;
+                                  const pct = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
+                                  return (
+                                    <div key={opt} className="flex items-center gap-2 text-xs">
+                                      <span className="text-white/60 w-32 truncate">{opt}</span>
+                                      <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                        <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                      </div>
+                                      <span className="text-white/40 w-8 text-right">{pct}%</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1202,7 +1999,7 @@ export default function AdminDashboard() {
                                     : "bg-white/5 border-white/10 text-white/50 hover:border-white/20"
                                 )}
                               >
-                                {t === "announcement" ? "📣 Announcement" : t === "update" ? "🔄 Update" : "✨ Feature"}
+                                {t === "announcement" ? "Announcement" : t === "update" ? "Update" : "Feature"}
                               </button>
                             ))}
                           </div>
@@ -1220,6 +2017,196 @@ export default function AdminDashboard() {
                         </div>
                       </form>
                     </div>
+                  </div>
+                )}
+                {activeTab === "reserved" && (
+                  <div className="space-y-6 max-w-xl">
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <AtSign className="w-4 h-4 text-blue-400" />
+                        Reserve a Username
+                      </h2>
+                      <p className="text-white/40 text-sm mb-5">
+                        Reserved usernames cannot be registered by anyone. Use this to protect brand names.
+                      </p>
+                      <form onSubmit={handleReserveName} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newReservedName}
+                          onChange={(e) => setNewReservedName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                          placeholder="e.g. devos, admin, support"
+                          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500 font-mono"
+                        />
+                        <button
+                          type="submit"
+                          disabled={savingReserved || !newReservedName.trim()}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all"
+                        >
+                          {savingReserved ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                          Reserve
+                        </button>
+                      </form>
+                    </div>
+
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest">Reserved List</h2>
+                        <button
+                          onClick={loadReservedNames}
+                          className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white transition-all"
+                          title="Refresh"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {loadingReserved ? (
+                        <div className="flex items-center gap-2 text-white/30 text-sm py-4">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+                        </div>
+                      ) : reservedNames.length === 0 ? (
+                        <p className="text-white/30 text-sm py-4 text-center">No reserved names yet.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {reservedNames.map((name) => (
+                            <div key={name} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-white/5">
+                              <span className="text-sm font-mono text-white/80">@{name}</span>
+                              <button
+                                onClick={() => handleUnreserveName(name)}
+                                className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                title="Remove"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Maintenance Mode Tab */}
+                {activeTab === "maintenance" && (
+                  <div className="space-y-6 max-w-xl">
+                    {loadingMaintenance ? (
+                      <div className="flex items-center gap-2 text-white/30 text-sm py-8">
+                        <Loader2 className="w-5 h-5 animate-spin" /> Loading…
+                      </div>
+                    ) : (
+                      <>
+                        {/* Global toggle card */}
+                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                                <Wrench className="w-4 h-4 text-orange-400" />
+                                Global Maintenance Mode
+                              </h2>
+                              <p className="text-white/40 text-sm">
+                                When enabled, all non-admin users see a full-screen maintenance page and cannot access the platform.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setMaintenanceMode((v) => !v)}
+                              className="flex-shrink-0 mt-1"
+                              aria-label="Toggle maintenance mode"
+                            >
+                              {maintenanceMode
+                                ? <ToggleRight className="w-10 h-10 text-orange-400" />
+                                : <ToggleLeft className="w-10 h-10 text-white/30" />}
+                            </button>
+                          </div>
+
+                          <div className={`mt-4 px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${
+                            maintenanceMode
+                              ? "bg-orange-500/10 text-orange-300 border border-orange-500/20"
+                              : "bg-white/5 text-white/40 border border-white/10"
+                          }`}>
+                            {maintenanceMode
+                              ? <><WifiOff className="w-4 h-4" /> Global maintenance is currently <strong>ON</strong></>
+                              : <><Wifi className="w-4 h-4" /> Global maintenance is currently <strong>OFF</strong></>}
+                          </div>
+                        </div>
+
+                        {/* Per-page maintenance */}
+                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">
+                            Per-Page Maintenance
+                          </h2>
+                          <p className="text-white/40 text-xs mb-4">
+                            Select individual pages to put under maintenance. Navigation still works — only the selected pages are blocked.
+                          </p>
+                          <div className="space-y-2">
+                            {[
+                              { label: "Explore", path: "/explore" },
+                              { label: "Templates", path: "/templates" },
+                              { label: "Communities", path: "/communities" },
+                              { label: "Search", path: "/search" },
+                              { label: "Docs", path: "/docs" },
+                              { label: "Settings", path: "/settings" },
+                              { label: "Projects / IDE", path: "/projects" },
+                              { label: "User Profiles (/u/...)", path: "/u" },
+                              { label: "Project Pages (/project/...)", path: "/project" },
+                              { label: "Orgs (/org/...)", path: "/org" },
+                            ].map(({ label, path }) => {
+                              const isOn = maintenancePages.includes(path);
+                              return (
+                                <button
+                                  key={path}
+                                  onClick={() => setMaintenancePages(prev =>
+                                    prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+                                  )}
+                                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                                    isOn
+                                      ? "bg-orange-500/10 border-orange-500/30 text-orange-300"
+                                      : "bg-black/20 border-white/10 text-white/50 hover:text-white hover:border-white/20"
+                                  }`}
+                                >
+                                  <span className="font-mono text-xs text-white/40 mr-3">{path}</span>
+                                  <span>{label}</span>
+                                  {isOn
+                                    ? <ToggleRight className="w-6 h-6 text-orange-400 ml-auto flex-shrink-0" />
+                                    : <ToggleLeft className="w-6 h-6 text-white/20 ml-auto flex-shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {maintenancePages.length > 0 && (
+                            <p className="text-xs text-orange-400/70 mt-3">
+                              {maintenancePages.length} page{maintenancePages.length !== 1 ? "s" : ""} under maintenance. Users can still navigate to other pages.
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Banner message */}
+                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">
+                            Maintenance Banner Message
+                          </h2>
+                          <p className="text-white/40 text-xs mb-4">
+                            Optional message shown to users on both global and per-page maintenance screens.
+                          </p>
+                          <textarea
+                            value={maintenanceBanner}
+                            onChange={(e) => setMaintenanceBanner(e.target.value)}
+                            placeholder="e.g. We'll be back in 30 minutes. Thanks for your patience!"
+                            rows={3}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                          />
+                        </div>
+
+                        {/* Save */}
+                        <button
+                          onClick={handleSaveMaintenance}
+                          disabled={savingMaintenance}
+                          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all"
+                        >
+                          {savingMaintenance
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                            : <><Wrench className="w-4 h-4" /> Save Changes</>}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </>
@@ -1248,6 +2235,39 @@ export default function AdminDashboard() {
       confirmLabel="Delete Code"
       onConfirm={confirmDeleteCode}
       onCancel={() => setDeleteCodeConfirm(null)}
+    />
+
+    <ConfirmModal
+      open={!!deletePollConfirm}
+      title="Delete Poll"
+      description="This poll will be permanently removed."
+      warning="This action cannot be undone."
+      confirmLabel="Delete Poll"
+      onConfirm={confirmDeletePoll}
+      onCancel={() => setDeletePollConfirm(null)}
+    />
+
+    <ConfirmModal
+      open={!!userActionConfirm}
+      title={
+        userActionConfirm?.action === "ban" ? "Ban User" :
+        userActionConfirm?.action === "suspend" ? "Suspend User" : "Reinstate User"
+      }
+      description={
+        userActionConfirm?.action === "ban"
+          ? "This user will be permanently banned from the platform."
+          : userActionConfirm?.action === "suspend"
+          ? "This user will be temporarily suspended."
+          : "This user will regain full access to the platform."
+      }
+      warning={userActionConfirm?.action !== "reinstate" ? "The user will be notified." : undefined}
+      confirmLabel={
+        userActionConfirm?.action === "ban" ? "Ban User" :
+        userActionConfirm?.action === "suspend" ? "Suspend User" : "Reinstate User"
+      }
+      loading={!!moderatingUser}
+      onConfirm={handleUserAction}
+      onCancel={() => setUserActionConfirm(null)}
     />
 
     {/* Template File Editor Modal */}

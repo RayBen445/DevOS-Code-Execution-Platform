@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -20,6 +20,13 @@ import {
   Eye,
   ImageDown,
   Layers,
+  Trash2,
+  BadgeCheck,
+  Building2,
+  RefreshCcw,
+  Save,
+  Rocket,
+  Flame,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -31,6 +38,7 @@ import {
   addComment,
   subscribeComments,
   repostPost,
+  deletePost,
 } from "../lib/feedService";
 import { notifyComment, notifyRepost } from "../lib/notificationService";
 import { resolveAvatar } from "../lib/avatars";
@@ -40,6 +48,7 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import MobileBottomNav from "./MobileBottomNav";
 import Avatar from "./Avatar";
+import ConfirmModal from "./ConfirmModal";
 import { useSEO } from "../hooks/useSEO";
 import { toast } from "sonner";
 import { FeedPostShareCard, useShareAsImage } from "./ShareAsImageCard";
@@ -63,6 +72,8 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [isPosting, setIsPosting] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
+  const [deleteConfirmPost, setDeleteConfirmPost] = useState<FeedPost | null>(null);
+  const [isDeletingPost, setIsDeletingPost] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useSEO({ title: "Home — DevOS" });
@@ -130,14 +141,33 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       : []),
   ];
 
+  /** Returns true when an error is a Firestore permission-denied error. */
+  const isPermissionError = (err: any): boolean =>
+    err?.code === "permission-denied" ||
+    (err?.message ?? "").includes("PERMISSION_DENIED");
+
   const handleLike = async (post: FeedPost) => {
-    if (!user) return;
-    const liked = post.likedBy?.includes(user.uid) ?? false;
-    await toggleLike(post.id, user.uid, liked);
+    if (!user) {
+      toast.error("Sign in to like posts.");
+      return;
+    }
+    try {
+      const liked = post.likedBy?.includes(user.uid) ?? false;
+      await toggleLike(post.id, user.uid, liked);
+    } catch (err: any) {
+      toast.error(
+        isPermissionError(err)
+          ? "Permission denied. Firebase rules may need updating."
+          : "Failed to update like. Please try again."
+      );
+    }
   };
 
   const handleRepost = async (originalPost: FeedPost, commentary: string) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("Sign in to repost.");
+      return;
+    }
     try {
       await repostPost({
         originalPost,
@@ -154,8 +184,12 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         postId: originalPost.id,
       });
       toast.success("Reposted!");
-    } catch {
-      toast.error("Failed to repost.");
+    } catch (err: any) {
+      toast.error(
+        isPermissionError(err)
+          ? "Permission denied. Firebase rules may need updating."
+          : "Failed to repost."
+      );
     }
   };
 
@@ -176,8 +210,34 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         commenterId: user.uid,
         postId: post.id,
       });
-    } catch {
-      toast.error("Failed to post comment.");
+    } catch (err: any) {
+      toast.error(
+        isPermissionError(err)
+          ? "Permission denied. Firebase rules may need updating."
+          : "Failed to post comment."
+      );
+    }
+  };
+
+  const handleDeletePost = async (post: FeedPost) => {
+    if (!user || user.uid !== post.userId) {
+      toast.error("You do not have permission to delete this post.");
+      return;
+    }
+    setIsDeletingPost(true);
+    try {
+      await deletePost(post.id);
+      setFeed((prev) => prev.filter((p) => p.id !== post.id));
+      toast.success("Post deleted.");
+    } catch (err: any) {
+      toast.error(
+        isPermissionError(err)
+          ? "Permission denied. Firebase rules may need updating."
+          : "Failed to delete post."
+      );
+    } finally {
+      setIsDeletingPost(false);
+      setDeleteConfirmPost(null);
     }
   };
 
@@ -215,16 +275,45 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       <main className="flex-1 pb-16 md:pb-0">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10">
           {/* Page heading */}
-          <div className="mb-6 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-blue-400" />
+          <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h1 className="text-xl font-extrabold text-white leading-none">
+                  {settings?.displayName
+                    ? (() => {
+                        const h = new Date().getHours();
+                        const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+                        return `${g}, ${settings.displayName.split(" ")[0]}`;
+                      })()
+                    : "Your Feed"}
+                </h1>
+                <p className="text-xs text-white/40 mt-0.5">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-extrabold text-white leading-none">
-                {settings?.displayName ? `Hey, ${settings.displayName.split(" ")[0]} 👋` : "Your Feed"}
-              </h1>
-              <p className="text-xs text-white/40 mt-0.5">What's happening in the community</p>
-            </div>
+            {/* Streak badges */}
+            {((settings?.dailyStreak ?? 0) > 0 || (settings?.monthlyStreak ?? 0) > 0) && (
+              <div className="flex items-center gap-2">
+                {(settings?.dailyStreak ?? 0) > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20">
+                    <Flame className="w-3.5 h-3.5 text-orange-400" />
+                    <span className="text-xs font-bold text-orange-300">
+                      {settings!.dailyStreak} day{settings!.dailyStreak !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                )}
+                {(settings?.monthlyStreak ?? 0) > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                    <Zap className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-xs font-bold text-blue-300">
+                      {settings!.monthlyStreak} mo
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}
@@ -276,15 +365,16 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               {feedLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, i) => (
-                    <div key={i} className="rounded-2xl bg-white/5 border border-white/5 p-5 animate-pulse">
+                    <div key={i} className="rounded-2xl glass border border-white/[0.05] p-5 overflow-hidden">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-9 h-9 rounded-full bg-white/10" />
-                        <div className="space-y-1.5">
-                          <div className="h-3 w-28 rounded bg-white/10" />
-                          <div className="h-2 w-16 rounded bg-white/5" />
+                        <div className="w-9 h-9 rounded-full shimmer" />
+                        <div className="space-y-1.5 flex-1">
+                          <div className="h-3 w-28 rounded shimmer" />
+                          <div className="h-2 w-16 rounded shimmer" />
                         </div>
                       </div>
-                      <div className="h-4 w-full rounded bg-white/5" />
+                      <div className="h-3 w-full rounded shimmer mb-2" />
+                      <div className="h-3 w-3/4 rounded shimmer" />
                     </div>
                   ))}
                 </div>
@@ -302,6 +392,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                     onLike={handleLike}
                     onRepost={handleRepost}
                     onComment={handleAddComment}
+                    onDelete={(p) => setDeleteConfirmPost(p)}
                     index={i}
                   />
                 ))
@@ -380,6 +471,17 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         />
       )}
 
+      <ConfirmModal
+        open={!!deleteConfirmPost}
+        title="Delete Post"
+        description="Are you sure you want to delete this post? This cannot be undone."
+        confirmLabel="Delete"
+        danger={true}
+        loading={isDeletingPost}
+        onConfirm={() => deleteConfirmPost && handleDeletePost(deleteConfirmPost)}
+        onCancel={() => setDeleteConfirmPost(null)}
+      />
+
       <Footer />
       <MobileBottomNav />
     </div>
@@ -405,11 +507,11 @@ interface PostComposerModalProps {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
 }
 
-const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; emoji: string; desc: string; color: string }[] = [
-  { value: "update", label: "Update", emoji: "🔄", desc: "Share what you're working on", color: "yellow" },
-  { value: "snippet", label: "Snippet", emoji: "💾", desc: "Share a code snippet", color: "orange" },
-  { value: "feature", label: "Feature", emoji: "✨", desc: "Announce a new feature", color: "purple" },
-  { value: "deployment", label: "Deployment", emoji: "🚀", desc: "You shipped something live", color: "green" },
+const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; icon: React.ElementType; desc: string; color: string }[] = [
+  { value: "update", label: "Update", icon: RefreshCcw, desc: "Share what you're working on", color: "yellow" },
+  { value: "snippet", label: "Snippet", icon: Code2, desc: "Share a code snippet", color: "orange" },
+  { value: "feature", label: "Feature", icon: Sparkles, desc: "Announce a new feature", color: "purple" },
+  { value: "deployment", label: "Deployment", icon: Rocket, desc: "You shipped something live", color: "green" },
 ];
 
 function PostComposerModal({
@@ -500,7 +602,7 @@ function PostComposerModal({
                           : "bg-white/[0.03] border-white/[0.08] hover:border-white/15 hover:bg-white/[0.06]"
                       )}
                     >
-                      <span className="text-lg leading-none mt-0.5">{opt.emoji}</span>
+                      <opt.icon className="w-4 h-4 mt-0.5 text-white/50 shrink-0" />
                       <div>
                         <p className={cn(
                           "text-xs font-bold leading-none mb-1",
@@ -614,12 +716,12 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const TYPE_LABEL: Record<string, string> = {
-  deployment: "🚀 Deployment",
-  announcement: "📢 Announcement",
-  feature: "✨ Feature",
-  update: "🔄 Update",
-  snippet: "💾 Snippet",
-  repost: "🔁 Repost",
+  deployment: "Deployment",
+  announcement: "Announcement",
+  feature: "Feature",
+  update: "Update",
+  snippet: "Snippet",
+  repost: "Repost",
 };
 
 function FeedItem({
@@ -628,6 +730,7 @@ function FeedItem({
   onLike,
   onRepost,
   onComment,
+  onDelete,
   index,
 }: {
   post: FeedPost;
@@ -635,6 +738,7 @@ function FeedItem({
   onLike: (post: FeedPost) => void;
   onRepost: (post: FeedPost, commentary: string) => void;
   onComment: (post: FeedPost, content: string) => void;
+  onDelete: (post: FeedPost) => void;
   index: number;
 }) {
   const liked = userId ? (post.likedBy?.includes(userId) ?? false) : false;
@@ -684,10 +788,10 @@ function FeedItem({
 
       <motion.div
         ref={cardRef}
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.04, duration: 0.3 }}
-        className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/10 transition-all p-5"
+        transition={{ delay: index * 0.045, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="rounded-2xl glass border border-white/[0.06] hover:border-white/12 card-glow p-5"
       >
       {/* Repost header */}
       {post.type === "repost" && (
@@ -713,12 +817,20 @@ function FeedItem({
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">
+            <p className="text-sm font-semibold text-white truncate flex items-center gap-1.5 flex-wrap">
               {post.displayName || post.username}
               {post.isOfficial && (
-                <span className="ml-1.5 text-[10px] bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded-full border border-blue-500/20 font-bold">
+                <span className="text-[10px] bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded-full border border-blue-500/20 font-bold">
                   Official
                 </span>
+              )}
+              {post.authorRole === "company" && (
+                <span className="flex items-center gap-0.5 text-[10px] bg-purple-600/20 text-purple-300 px-1.5 py-0.5 rounded-full border border-purple-500/20 font-bold">
+                  <Building2 className="w-2.5 h-2.5" /> Company
+                </span>
+              )}
+              {(post.authorRole === "company" || post.isOfficial) && (
+                <BadgeCheck className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
               )}
             </p>
             <p className="text-[11px] text-white/40 truncate">
@@ -728,17 +840,29 @@ function FeedItem({
           </div>
         </div>
 
-        {/* Type badge */}
-        {post.type !== "repost" && (
-          <span
-            className={cn(
-              "flex-shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full border",
-              TYPE_COLORS[post.type] ?? "bg-white/5 text-white/40 border-white/10"
-            )}
-          >
-            {TYPE_LABEL[post.type] ?? post.type}
-          </span>
-        )}
+        {/* Right side: type badge + owner delete */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {post.type !== "repost" && (
+            <span
+              className={cn(
+                "text-[10px] font-bold px-2.5 py-1 rounded-full border",
+                TYPE_COLORS[post.type] ?? "bg-white/5 text-white/40 border-white/10"
+              )}
+            >
+              {TYPE_LABEL[post.type] ?? post.type}
+            </span>
+          )}
+          {userId === post.userId && (
+            <button
+              onClick={() => onDelete(post)}
+              className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
+              aria-label="Delete post"
+              title="Delete post"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content (only show if not a silent repost) */}
@@ -953,7 +1077,7 @@ function FeedItem({
                   disabled={isReposting}
                   className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-all disabled:opacity-50"
                 >
-                  {isReposting ? "Reposting…" : "🔁 Repost"}
+                  {isReposting ? "Reposting…" : "Repost"}
                 </button>
               </div>
             </motion.div>

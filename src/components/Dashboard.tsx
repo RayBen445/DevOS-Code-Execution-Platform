@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown } from "lucide-react";
+import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime } from "../lib/utils";
@@ -31,8 +31,11 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [isImporting, setIsImporting] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
+  const [projectNameTaken, setProjectNameTaken] = useState(false);
+  const [checkingProjectName, setCheckingProjectName] = useState(false);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("blank");
+  const [selectedLicense, setSelectedLicense] = useState<string>("none");
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [publicProjects, setPublicProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<"my-projects" | "public-projects">("my-projects");
@@ -44,6 +47,28 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<{ projectId: string } | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
   const [resetPortfolioConfirm, setResetPortfolioConfirm] = useState<Project | null>(null);
+
+  // Debounced project name uniqueness check
+  useEffect(() => {
+    if (!user || !isCreating) return;
+    const name = newProjectName.trim();
+    if (!name) { setProjectNameTaken(false); return; }
+
+    setCheckingProjectName(true);
+    const t = setTimeout(async () => {
+      try {
+        const snap = await getDocs(
+          query(collection(db, "projects"), where("ownerId", "==", user.uid), where("name", "==", name))
+        );
+        setProjectNameTaken(!snap.empty);
+      } catch {
+        setProjectNameTaken(false);
+      } finally {
+        setCheckingProjectName(false);
+      }
+    }, 400);
+    return () => { clearTimeout(t); setCheckingProjectName(false); };
+  }, [newProjectName, user, isCreating]);
 
   useEffect(() => {
     if (!user) return;
@@ -119,6 +144,15 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
 
       const projectSlug = newProjectName.toLowerCase().replace(/[^a-z0-9]/g, "-");
       const template = TEMPLATES.find(t => t.id === selectedTemplateId) || TEMPLATES[0];
+
+      // Check if user already has a project with this exact name
+      const nameCheckSnap = await getDocs(
+        query(collection(db, "projects"), where("ownerId", "==", user.uid), where("name", "==", newProjectName.trim()))
+      );
+      if (!nameCheckSnap.empty) {
+        toast.error("You already have a project with this name. Please choose a different name.", { id: toastId });
+        return;
+      }
       
       const docRef = await addDoc(collection(db, "projects"), {
         name: newProjectName,
@@ -153,10 +187,40 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
 
       await Promise.all(filePromises);
 
+      // Auto-add README.md
+      await addDoc(filesRef, {
+        projectId: docRef.id,
+        name: "README.md",
+        path: "/README.md",
+        content: `# ${newProjectName.trim()}\n\n${newProjectDescription.trim() || "A project built on DevOS."}\n\n## Getting Started\n\nOpen this project in the DevOS IDE and start building!\n`,
+        language: "markdown",
+        updatedAt: serverTimestamp(),
+      });
+
+      // Add LICENSE file if a license was selected
+      if (selectedLicense !== "none") {
+        const year = new Date().getFullYear();
+        const ownerName = settings?.displayName || settings?.username || "Author";
+        const licenseTexts: Record<string, string> = {
+          MIT: `MIT License\n\nCopyright (c) ${year} ${ownerName}\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`,
+          Apache2: `Apache License\nVersion 2.0, January 2004\n\nCopyright ${year} ${ownerName}\n\nLicensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.`,
+          GPL3: `GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007\n\nCopyright (C) ${year} ${ownerName}\n\nThis program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.`,
+        };
+        await addDoc(filesRef, {
+          projectId: docRef.id,
+          name: "LICENSE",
+          path: "/LICENSE",
+          content: licenseTexts[selectedLicense] ?? "",
+          language: "plaintext",
+          updatedAt: serverTimestamp(),
+        });
+      }
+
       setNewProjectName("");
       setNewProjectDescription("");
       setVisibility("public");
       setSelectedTemplateId("blank");
+      setSelectedLicense("none");
       setIsCreating(false);
       
       toast.success("Project created successfully", { id: toastId });
@@ -173,7 +237,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
 
     try {
       const docRef = await addDoc(collection(db, "projects"), {
-        name: "✨ Demo Project",
+        name: "Demo Project",
         description: "A sample project to explore DevOS features.",
         ownerId: user.uid,
         createdAt: serverTimestamp(),
@@ -476,21 +540,13 @@ p {
     <div className="max-w-6xl mx-auto p-8">
       {/* Header / Profile Section */}
       <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 overflow-hidden flex-shrink-0">
-            <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-          </div>
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Welcome, {displayName}</h1>
-            <div className="flex items-center gap-3">
-              <p className="text-white/40">Manage your cloud-based development environments.</p>
-              {settings?.username && (
-                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
-                  @{settings.username}
-                </span>
-              )}
-            </div>
-          </div>
+        <div>
+          <p className="text-white/40">Manage your cloud-based development environments.</p>
+          {settings?.username && (
+            <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+              @{settings.username}
+            </span>
+          )}
         </div>
         
         <div className="flex flex-wrap gap-3">
@@ -607,10 +663,21 @@ p {
                       type="text"
                       placeholder="My Awesome App"
                       value={newProjectName}
-                      onChange={(e) => setNewProjectName(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                      onChange={(e) => { setNewProjectName(e.target.value); setProjectNameTaken(false); }}
+                      className={cn(
+                        "w-full bg-white/5 border rounded-xl px-4 py-3 text-white focus:outline-none transition-all",
+                        projectNameTaken ? "border-red-500/60 focus:border-red-500" : "border-white/10 focus:border-blue-500"
+                      )}
                       required
                     />
+                    {projectNameTaken && (
+                      <p className="text-xs text-red-400 flex items-center gap-1">
+                        ✗ You already have a project with this name
+                      </p>
+                    )}
+                    {checkingProjectName && !projectNameTaken && (
+                      <p className="text-xs text-white/30">Checking availability…</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -676,6 +743,23 @@ p {
                       })}
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">License</label>
+                    <select
+                      value={selectedLicense}
+                      onChange={(e) => setSelectedLicense(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                    >
+                      <option value="none">No License</option>
+                      <option value="MIT">MIT License</option>
+                      <option value="Apache2">Apache License 2.0</option>
+                      <option value="GPL3">GNU GPL v3</option>
+                    </select>
+                    {selectedLicense !== "none" && (
+                      <p className="text-xs text-white/30">A LICENSE file will be added to your project.</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-4 pt-8 border-t border-white/5">
@@ -688,7 +772,8 @@ p {
                   </button>
                   <button
                     type="submit"
-                    className="px-10 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
+                    disabled={projectNameTaken || checkingProjectName}
+                    className="px-10 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20 disabled:opacity-50"
                   >
                     Create Project
                   </button>
@@ -698,6 +783,31 @@ p {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ─── Continue Working banner ─── */}
+      {activeTab === "my-projects" && (() => {
+        const last = projects.find((p) => p.systemType !== "portfolio" && p.ownerId === user?.uid);
+        if (!last) return null;
+        return (
+          <div className="mb-8 rounded-2xl bg-gradient-to-r from-blue-600/10 to-blue-500/5 border border-blue-500/20 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] text-blue-400/70 font-bold uppercase tracking-widest mb-1">Continue Working</p>
+              <h3 className="text-white font-bold text-base truncate">{last.name}</h3>
+              <p className="text-xs text-white/40 mt-0.5">
+                Last updated {formatRelativeTime(last.updatedAt)}
+                {last.description && <> · {last.description}</>}
+              </p>
+            </div>
+            <button
+              onClick={() => onSelectProject(last.id)}
+              className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all active:scale-[0.97]"
+            >
+              <ChevronRight className="w-4 h-4" />
+              Resume
+            </button>
+          </div>
+        );
+      })()}
 
       <div className="flex gap-8 mb-8 border-b border-white/5">
         <button
@@ -726,23 +836,25 @@ p {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(activeTab === "my-projects" ? projects : publicProjects).map((project) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {(activeTab === "my-projects" ? projects : publicProjects).map((project, idx) => (
           <motion.div
             key={project.id}
-            whileHover={{ y: -2 }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-              "group rounded-2xl border transition-all relative flex flex-col",
+              "group rounded-2xl border transition-all relative flex flex-col card-glow",
               project.systemType === 'portfolio'
                 ? "bg-gradient-to-br from-yellow-500/5 to-yellow-600/5 border-yellow-500/20 hover:border-yellow-500/40"
-                : "bg-[#111] border-white/5 hover:border-white/20"
+                : "glass border-white/[0.07] hover:border-white/15"
             )}
           >
             {/* Portfolio badge */}
             {project.systemType === 'portfolio' && (
               <div className="px-4 pt-3 pb-0">
-                <span className="text-[10px] font-bold text-yellow-400/80 uppercase tracking-widest">
-                  ⭐ Your Public Profile
+                <span className="text-[10px] font-bold text-yellow-400/80 uppercase tracking-widest flex items-center gap-1">
+                  <Star className="w-3 h-3" /> Your Public Profile
                 </span>
               </div>
             )}
@@ -843,6 +955,15 @@ p {
                       title="Publish as Template"
                     >
                       <Upload className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {!['portfolio' as string].includes(project.systemType ?? '') && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
+                      title="Deploy project (open IDE → Deploy tab)"
+                    >
+                      <Rocket className="w-3.5 h-3.5" />
                     </button>
                   )}
                   <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />

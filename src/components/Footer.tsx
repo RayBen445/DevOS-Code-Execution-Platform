@@ -1,63 +1,104 @@
 import { Link } from "react-router-dom";
-import { Code2, Mail } from "lucide-react";
+import { Code2, Mail, Github, Twitter, Globe } from "lucide-react";
+
+const SOCIALS = [
+  { icon: Github, href: "https://github.com/devos", label: "GitHub" },
+  { icon: Twitter, href: "https://twitter.com/devos", label: "Twitter" },
+  { icon: Globe, href: "https://devos.app", label: "Website" },
+];
 
 export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-white/5 bg-[#0a0a0a] mt-auto">
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
-          {/* Left — branding */}
-          <div className="flex flex-col gap-3">
+    <footer className="relative border-t border-white/[0.06] bg-[#0a0a0a] mt-auto overflow-hidden">
+      {/* Subtle gradient glow */}
+      <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[200px] bg-blue-600/5 rounded-full blur-[80px]" />
+
+      <div className="relative max-w-7xl mx-auto px-6 py-14">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+          {/* Branding */}
+          <div className="md:col-span-1 flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/25">
                 <Code2 className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white text-base tracking-tight">DevOS</span>
+              <span className="font-black text-white text-lg tracking-tight">DevOS</span>
             </div>
             <p className="text-xs text-white/30 leading-relaxed max-w-[200px]">
-              Code in the Cloud
+              The cloud IDE built for builders who want to ship faster.
             </p>
-            <p className="text-[11px] text-white/20 leading-relaxed max-w-[220px] pt-1">
-              Built by Cool Shot Systems&nbsp;•&nbsp;Tech Visionaries Network
-            </p>
+            {/* Social links */}
+            <div className="flex items-center gap-2 pt-1">
+              {SOCIALS.map(({ icon: Icon, href, label }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all"
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </a>
+              ))}
+            </div>
           </div>
 
-          {/* Center — navigation */}
+          {/* Platform */}
           <div className="flex flex-col gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">
-              Platform
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Platform</p>
             <FooterLink to="/">Explore</FooterLink>
             <FooterLink to="/templates">Templates</FooterLink>
+            <FooterLink to="/communities">Communities</FooterLink>
             <FooterLink to="/docs">Docs</FooterLink>
+          </div>
+
+          {/* Developers */}
+          <div className="flex flex-col gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Developers</p>
+            <FooterLink to="/projects">Dashboard</FooterLink>
+            <FooterLink to="/explore">Explore Projects</FooterLink>
             <FooterLink to="/status">Status</FooterLink>
           </div>
 
-          {/* Right — contact + legal */}
+          {/* Contact & Legal */}
           <div className="flex flex-col gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">
-              Contact &amp; Legal
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Contact &amp; Legal</p>
             <a
               href="mailto:info@devos.zone.id"
-              className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors"
+              className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors w-fit"
             >
               <Mail className="w-3.5 h-3.5 flex-shrink-0" />
               info@devos.zone.id
             </a>
             <FooterLink to="/privacy">Privacy Policy</FooterLink>
             <FooterLink to="/terms">Terms of Service</FooterLink>
+            <FooterLink to="/cookies">Cookie Policy</FooterLink>
+            <FooterLink to="/acceptable-use">Acceptable Use</FooterLink>
+            <FooterLink to="/copyright">Copyright &amp; DMCA</FooterLink>
           </div>
         </div>
 
-        <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="border-t border-white/[0.05] pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-[11px] text-white/20">
             © {year} DevOS. All rights reserved.
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            {[
+              { to: "/privacy",        label: "Privacy" },
+              { to: "/terms",          label: "Terms" },
+              { to: "/cookies",        label: "Cookies" },
+              { to: "/acceptable-use", label: "Acceptable Use" },
+              { to: "/copyright",      label: "Copyright" },
+            ].map(({ to, label }) => (
+              <Link key={to} to={to} className="text-[11px] text-white/20 hover:text-white/50 transition-colors">
+                {label}
+              </Link>
+            ))}
+          </div>
           <p className="text-[11px] text-white/20">
-            Cool Shot Systems • Tech Visionaries Network
+            Built by Cool Shot Systems · TVN
           </p>
         </div>
       </div>
@@ -75,3 +116,4 @@ function FooterLink({ to, children }: { to: string; children: React.ReactNode })
     </Link>
   );
 }
+
