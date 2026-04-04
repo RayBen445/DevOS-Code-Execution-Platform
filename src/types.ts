@@ -147,11 +147,20 @@ export interface Template {
   previewImageUrl?: string;
 }
 
+export interface GiftedCredit {
+  id: string;           // uuid so we can prune individual entries
+  amount: number;
+  expiresAt: any | null; // Firestore Timestamp or null = never expires
+  grantedAt: any;
+}
+
 export interface Credits {
   daily: number;
   monthly: number;
   lastDailyReset: any;
   lastMonthlyReset: any;
+  gifted?: GiftedCredit[];              // admin-gifted credits with optional expiry
+  creditsUnlimitedUntil?: any | null;   // Firestore Timestamp — user has ∞ credits until this date
 }
 
 export interface UserProfile {
@@ -162,6 +171,7 @@ export interface UserProfile {
   avatarUrl: string;
   bio: string;
   role?: 'user' | 'admin' | 'company';
+  status?: 'active' | 'suspended' | 'banned';
   companyName?: string;
   verified?: boolean;
   skills?: string[];
@@ -312,4 +322,31 @@ export interface CommunityMember {
   userId: string;
   role: CommunityMemberRole;
   joinedAt: any;
+}
+
+// ── Polls ───────────────────────────────────────────────────────────────────
+
+export interface PollOption {
+  id: string;    // stable identifier
+  text: string;  // option label
+  votes: number; // vote count (denormalised for fast display)
+}
+
+export interface Poll {
+  id: string;
+  question: string;
+  options: PollOption[];
+  allowTextInput: boolean;   // when true, voters may also type a free-text response
+  createdBy: string;         // admin uid
+  createdAt: any;
+  expiresAt?: any | null;    // Firestore Timestamp – null / absent = no expiry
+  isOpen: boolean;           // admin can close a poll early
+  totalVotes: number;        // denormalised sum for display
+}
+
+export interface PollVote {
+  userId: string;
+  optionId: string;           // which option was chosen
+  textResponse?: string;      // free-text answer (if allowTextInput and user supplied one)
+  votedAt: any;
 }

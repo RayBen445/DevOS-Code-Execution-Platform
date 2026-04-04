@@ -1,6 +1,6 @@
 import { db, auth } from "./firebase";
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
-import { Credits } from "../types";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp, arrayUnion } from "firebase/firestore";
+import { Credits, GiftedCredit } from "../types";
 
 export const DAILY_CREDITS_AMOUNT = 50;
 export const MONTHLY_CREDITS_AMOUNT = 200;
@@ -123,23 +123,66 @@ export const deductCredits = async (uid: string, action: CreditAction): Promise<
     return true;
   }
 
+  const credits = await getCredits(uid);
+
+  // Check unlimited pass
+  if (credits.creditsUnlimitedUntil) {
+    const unlimitedUntilMs = credits.creditsUnlimitedUntil?.toMillis?.() ?? 0;
+    if (unlimitedUntilMs > Date.now()) {
+      return true;
+    }
+  }
+
   const cost = config.chargePerAction > 0
     ? config.chargePerAction
     : (config.actionCosts?.[action] ?? CREDIT_COSTS[action]);
-  const credits = await getCredits(uid);
 
-  if (credits.daily + credits.monthly < cost) {
+  // Prune expired gifted credits, compute available gifted amount
+  const now = Date.now();
+  const activeGifted = (credits.gifted ?? []).filter(
+    (g) => g.expiresAt === null || !g.expiresAt || (g.expiresAt?.toMillis?.() ?? Infinity) > now
+  );
+  const expiredIds = (credits.gifted ?? [])
+    .filter((g) => g.expiresAt && (g.expiresAt?.toMillis?.() ?? 0) <= now)
+    .map((g) => g.id);
+
+  const totalGifted = activeGifted.reduce((sum, g) => sum + g.amount, 0);
+
+  if (totalGifted + credits.daily + credits.monthly < cost) {
     return false;
   }
 
-  // Drain daily first, then monthly for the remainder
-  const dailyUsed = Math.min(credits.daily, cost);
-  const remaining = cost - dailyUsed;
-  const newDaily = credits.daily - dailyUsed;
+  const creditsRef = doc(db, "user_credits", uid);
+  const updates: Record<string, any> = {};
+
+  // Remove expired gifted entries if any
+  if (expiredIds.length > 0) {
+    updates.gifted = activeGifted;
+  }
+
+  // Drain gifted first, then daily, then monthly
+  let remaining = cost;
+
+  let newGifted = [...activeGifted];
+  if (remaining > 0 && totalGifted > 0) {
+    // Drain from each gifted entry in order
+    for (let i = newGifted.length - 1; i >= 0 && remaining > 0; i--) {
+      const used = Math.min(newGifted[i].amount, remaining);
+      newGifted[i] = { ...newGifted[i], amount: newGifted[i].amount - used };
+      remaining -= used;
+    }
+    newGifted = newGifted.filter((g) => g.amount > 0);
+    updates.gifted = newGifted;
+  }
+
+  const dailyUsed = Math.min(credits.daily, remaining);
+  remaining -= dailyUsed;
   const newMonthly = credits.monthly - remaining;
 
-  const creditsRef = doc(db, "user_credits", uid);
-  await updateDoc(creditsRef, { daily: newDaily, monthly: newMonthly });
+  updates.daily = credits.daily - dailyUsed;
+  updates.monthly = newMonthly;
+
+  await updateDoc(creditsRef, updates);
   return true;
 };
 
@@ -165,4 +208,44 @@ export const adjustCredits = async (
   }
 
   await updateDoc(creditsRef, updates);
+};
+
+/**
+ * Gift a fixed number of credits to a user, with an optional expiry date.
+ * The gifted block is appended to the `gifted` array on their credits doc.
+ * Pass `expiresAt = null` for credits that never expire.
+ */
+export const giftCredits = async (uid: string, amount: number, expiresAt: Date | null): Promise<void> => {
+  const creditsRef = doc(db, "user_credits", uid);
+  const snap = await getDoc(creditsRef);
+  if (!snap.exists()) {
+    await initializeCredits(uid);
+  }
+
+  const giftEntry: GiftedCredit = {
+    id: `gift_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    amount,
+    expiresAt: expiresAt ? Timestamp.fromDate(expiresAt) : null,
+    grantedAt: serverTimestamp(),
+  };
+
+  await updateDoc(creditsRef, {
+    gifted: arrayUnion(giftEntry),
+  });
+};
+
+/**
+ * Grant a user an unlimited-credits pass valid until `untilDate`.
+ * Sets (or overwrites) `creditsUnlimitedUntil` on their credits doc.
+ */
+export const giftUnlimitedCredits = async (uid: string, untilDate: Date): Promise<void> => {
+  const creditsRef = doc(db, "user_credits", uid);
+  const snap = await getDoc(creditsRef);
+  if (!snap.exists()) {
+    await initializeCredits(uid);
+  }
+
+  await updateDoc(creditsRef, {
+    creditsUnlimitedUntil: Timestamp.fromDate(untilDate),
+  });
 };

@@ -81,7 +81,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role', 'links', 'skills', 'dailyStreak', 'monthlyStreak', 'lastActiveDate', 'lastActiveMonth', 'activeDaysThisMonth', 'companyName', 'verified', 'logo', 'description'];
+      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role', 'status', 'links', 'skills', 'dailyStreak', 'monthlyStreak', 'lastActiveDate', 'lastActiveMonth', 'activeDaysThisMonth', 'companyName', 'verified', 'logo', 'description'];
       return data.keys().hasOnly(allowedFields) &&
              data.uid is string && data.uid == request.auth.uid &&
              data.email is string &&
@@ -443,9 +443,26 @@ service cloud.firestore {
       }
     }
 
+    // ── Polls ──────────────────────────────────────────────────────────────────
+    match /polls/{pollId} {
+      // Any authenticated user (or public) can read polls
+      allow read: if true;
+      // Only admins may create or modify polls
+      allow create, update, delete: if isAdmin();
+
+      // Votes subcollection — document ID is the voter's uid
+      match /votes/{userId} {
+        // Poll voters can read their own vote; admins can read all
+        allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+        // Each user can write exactly one vote doc (their own uid as doc ID)
+        allow create: if isAuthenticated() && request.auth.uid == userId;
+        // No updates or deletes by regular users
+        allow update, delete: if isAdmin();
+      }
+    }
+
     // ── Organizations ──────────────────────────────────────────────────────────
-    match /organizations/{orgId} {
-      // Public orgs are readable by everyone; private orgs require membership
+    match /organizations/{orgId} {      // Public orgs are readable by everyone; private orgs require membership
       allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
 
       // Any authenticated user can create an organization

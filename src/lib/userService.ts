@@ -321,3 +321,18 @@ export const getUserSettings = async (uid: string) => {
   const snap = await getDoc(doc(db, "user_settings", uid));
   return snap.exists() ? (snap.data() as import("../types").UserSettings) : null;
 };
+
+/** Ban a user — they will be blocked from using the platform. */
+export const banUser = async (uid: string): Promise<void> => {
+  await updateDoc(doc(db, "users", uid), { status: "banned" });
+};
+
+/** Suspend a user — temporarily blocked; can be reinstated. */
+export const suspendUser = async (uid: string): Promise<void> => {
+  await updateDoc(doc(db, "users", uid), { status: "suspended" });
+};
+
+/** Reinstate a user — removes ban/suspension. */
+export const reinstateUser = async (uid: string): Promise<void> => {
+  await updateDoc(doc(db, "users", uid), { status: "active" });
+};

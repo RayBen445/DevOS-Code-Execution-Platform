@@ -17,11 +17,13 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
-import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig } from "../lib/creditsService";
+import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
-import { Template, UserProfile, Credits, RedeemCode, NotificationType } from "../types";
+import { banUser, suspendUser, reinstateUser } from "../lib/userService";
+import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
+import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -60,13 +62,18 @@ import {
   MessageSquare,
   Bug,
   Lightbulb,
+  Ban,
+  Clock,
+  Infinity,
+  BarChart2,
+  Vote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "feedback";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -169,6 +176,31 @@ export default function AdminDashboard() {
   // Role update state
   const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
+  // Ban/Suspend state
+  const [moderatingUser, setModeratingUser] = useState<string | null>(null);
+  const [userActionConfirm, setUserActionConfirm] = useState<{ uid: string; action: "ban" | "suspend" | "reinstate" } | null>(null);
+
+  // Gift Credits state
+  const [giftTarget, setGiftTarget] = useState("");
+  const [giftAmount, setGiftAmount] = useState("50");
+  const [giftExpiry, setGiftExpiry] = useState("");
+  const [gifting, setGifting] = useState(false);
+
+  // Unlimited pass state
+  const [unlimitedTarget, setUnlimitedTarget] = useState("");
+  const [unlimitedUntil, setUnlimitedUntil] = useState("");
+  const [grantingUnlimited, setGrantingUnlimited] = useState(false);
+
+  // Polls state
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [loadingPolls, setLoadingPolls] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const [pollAllowText, setPollAllowText] = useState(false);
+  const [pollExpiry, setPollExpiry] = useState("");
+  const [creatingPoll, setCreatingPoll] = useState(false);
+  const [deletePollConfirm, setDeletePollConfirm] = useState<string | null>(null);
+
   // System health state
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [runningHealthCheck, setRunningHealthCheck] = useState(false);
@@ -197,6 +229,9 @@ export default function AdminDashboard() {
     }
     if (activeTab === "reserved" && isAdmin && reservedNames.length === 0) {
       loadReservedNames();
+    }
+    if (activeTab === "polls" && isAdmin) {
+      loadPolls();
     }
   }, [activeTab, isAdmin]);
 
@@ -592,6 +627,130 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUserAction = async () => {
+    if (!userActionConfirm) return;
+    const { uid, action } = userActionConfirm;
+    setModeratingUser(uid);
+    try {
+      if (action === "ban") {
+        await banUser(uid);
+        setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, status: "banned" } : u)));
+        toast.success("User banned.");
+      } else if (action === "suspend") {
+        await suspendUser(uid);
+        setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, status: "suspended" } : u)));
+        toast.success("User suspended.");
+      } else {
+        await reinstateUser(uid);
+        setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, status: "active" } : u)));
+        toast.success("User reinstated.");
+      }
+    } catch {
+      toast.error("Failed to update user status.");
+    } finally {
+      setModeratingUser(null);
+      setUserActionConfirm(null);
+    }
+  };
+
+  const handleGiftCredits = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetUser = users.find(
+      (u) => u.username === giftTarget.trim() || u.email === giftTarget.trim() || u.uid === giftTarget.trim()
+    );
+    if (!targetUser) { toast.error("User not found."); return; }
+    const amount = parseInt(giftAmount, 10);
+    if (isNaN(amount) || amount <= 0) { toast.error("Invalid amount."); return; }
+    setGifting(true);
+    try {
+      const expiry = giftExpiry ? new Date(giftExpiry) : null;
+      await giftCredits(targetUser.uid, amount, expiry);
+      toast.success(`Gifted ${amount} credits to @${targetUser.username}${expiry ? ` (expires ${expiry.toLocaleDateString()})` : ""}.`);
+      setGiftTarget(""); setGiftAmount("50"); setGiftExpiry("");
+    } catch {
+      toast.error("Failed to gift credits.");
+    } finally {
+      setGifting(false);
+    }
+  };
+
+  const handleGrantUnlimited = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetUser = users.find(
+      (u) => u.username === unlimitedTarget.trim() || u.email === unlimitedTarget.trim() || u.uid === unlimitedTarget.trim()
+    );
+    if (!targetUser) { toast.error("User not found."); return; }
+    if (!unlimitedUntil) { toast.error("Select an end date."); return; }
+    setGrantingUnlimited(true);
+    try {
+      await giftUnlimitedCredits(targetUser.uid, new Date(unlimitedUntil));
+      toast.success(`Unlimited credits granted to @${targetUser.username} until ${new Date(unlimitedUntil).toLocaleDateString()}.`);
+      setUnlimitedTarget(""); setUnlimitedUntil("");
+    } catch {
+      toast.error("Failed to grant unlimited credits.");
+    } finally {
+      setGrantingUnlimited(false);
+    }
+  };
+
+  const loadPolls = async () => {
+    setLoadingPolls(true);
+    try {
+      const all = await getAllPolls();
+      setPolls(all);
+    } catch {
+      toast.error("Failed to load polls.");
+    } finally {
+      setLoadingPolls(false);
+    }
+  };
+
+  const handleCreatePoll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const opts = pollOptions.map((o) => o.trim()).filter(Boolean);
+    if (opts.length < 2) { toast.error("Add at least 2 options."); return; }
+    setCreatingPoll(true);
+    try {
+      await createPoll({
+        createdBy: user.uid,
+        question: pollQuestion,
+        options: opts,
+        allowTextInput: pollAllowText,
+        expiresAt: pollExpiry ? new Date(pollExpiry) : null,
+      });
+      toast.success("Poll created!");
+      setPollQuestion(""); setPollOptions(["", ""]); setPollAllowText(false); setPollExpiry("");
+      await loadPolls();
+    } catch {
+      toast.error("Failed to create poll.");
+    } finally {
+      setCreatingPoll(false);
+    }
+  };
+
+  const handleClosePoll = async (pollId: string) => {
+    try {
+      await closePoll(pollId);
+      setPolls((prev) => prev.map((p) => (p.id === pollId ? { ...p, isOpen: false } : p)));
+      toast.success("Poll closed.");
+    } catch {
+      toast.error("Failed to close poll.");
+    }
+  };
+
+  const confirmDeletePoll = async () => {
+    if (!deletePollConfirm) return;
+    try {
+      await deletePoll(deletePollConfirm);
+      setPolls((prev) => prev.filter((p) => p.id !== deletePollConfirm));
+      toast.success("Poll deleted.");
+      setDeletePollConfirm(null);
+    } catch {
+      toast.error("Failed to delete poll.");
+    }
+  };
+
   const runHealthCheck = async () => {
     setRunningHealthCheck(true);
     const errors: string[] = [];
@@ -693,6 +852,7 @@ export default function AdminDashboard() {
     },
     { id: "users", label: "Users", icon: <Users className="w-4 h-4" /> },
     { id: "credits", label: "Credits", icon: <Zap className="w-4 h-4" /> },
+    { id: "polls", label: "Polls", icon: <Vote className="w-4 h-4" /> },
     { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
     { id: "redeem", label: "Redeem Codes", icon: <Gift className="w-4 h-4" /> },
     { id: "posts", label: "Posts", icon: <Newspaper className="w-4 h-4" /> },
