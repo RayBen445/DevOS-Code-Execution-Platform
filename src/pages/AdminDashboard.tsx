@@ -67,13 +67,14 @@ import {
   Infinity,
   BarChart2,
   Vote,
+  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "maintenance";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -241,6 +242,9 @@ export default function AdminDashboard() {
       loadPolls();
     }
     if (activeTab === "overview" && isAdmin) {
+      loadMaintenanceConfig();
+    }
+    if (activeTab === "maintenance" && isAdmin) {
       loadMaintenanceConfig();
     }
   }, [activeTab, isAdmin]);
@@ -889,6 +893,7 @@ export default function AdminDashboard() {
     { id: "redeem", label: "Redeem Codes", icon: <Gift className="w-4 h-4" /> },
     { id: "posts", label: "Posts", icon: <Newspaper className="w-4 h-4" /> },
     { id: "reserved", label: "Reserved Names", icon: <AtSign className="w-4 h-4" /> },
+    { id: "maintenance", label: "Maintenance", icon: <Wrench className="w-4 h-4" /> },
   ];
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1025,6 +1030,7 @@ export default function AdminDashboard() {
                 {activeTab === "redeem" && "Create and manage promotional codes"}
                 {activeTab === "posts" && "Publish official announcements to the feed"}
                 {activeTab === "reserved" && "Manage reserved and protected usernames"}
+                {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
               </p>
             </div>
 
@@ -1753,6 +1759,81 @@ export default function AdminDashboard() {
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* Maintenance Mode Tab */}
+                {activeTab === "maintenance" && (
+                  <div className="space-y-6 max-w-xl">
+                    {loadingMaintenance ? (
+                      <div className="flex items-center gap-2 text-white/30 text-sm py-8">
+                        <Loader2 className="w-5 h-5 animate-spin" /> Loading…
+                      </div>
+                    ) : (
+                      <>
+                        {/* Toggle card */}
+                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                                <Wrench className="w-4 h-4 text-orange-400" />
+                                Maintenance Mode
+                              </h2>
+                              <p className="text-white/40 text-sm">
+                                When enabled, all non-admin users see the maintenance page and cannot access the platform.
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setMaintenanceMode((v) => !v)}
+                              className="flex-shrink-0 mt-1"
+                              aria-label="Toggle maintenance mode"
+                            >
+                              {maintenanceMode
+                                ? <ToggleRight className="w-10 h-10 text-orange-400" />
+                                : <ToggleLeft className="w-10 h-10 text-white/30" />}
+                            </button>
+                          </div>
+
+                          <div className={`mt-4 px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${
+                            maintenanceMode
+                              ? "bg-orange-500/10 text-orange-300 border border-orange-500/20"
+                              : "bg-white/5 text-white/40 border border-white/10"
+                          }`}>
+                            {maintenanceMode
+                              ? <><WifiOff className="w-4 h-4" /> Maintenance mode is currently <strong>ON</strong></>
+                              : <><Wifi className="w-4 h-4" /> Maintenance mode is currently <strong>OFF</strong></>}
+                          </div>
+                        </div>
+
+                        {/* Banner message */}
+                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">
+                            Banner Message
+                          </h2>
+                          <p className="text-white/40 text-xs mb-4">
+                            Optional message shown to users on the maintenance page.
+                          </p>
+                          <textarea
+                            value={maintenanceBanner}
+                            onChange={(e) => setMaintenanceBanner(e.target.value)}
+                            placeholder="e.g. We'll be back in 30 minutes. Thanks for your patience!"
+                            rows={3}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                          />
+                        </div>
+
+                        {/* Save */}
+                        <button
+                          onClick={handleSaveMaintenance}
+                          disabled={savingMaintenance}
+                          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all"
+                        >
+                          {savingMaintenance
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                            : <><Wrench className="w-4 h-4" /> Save Changes</>}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </>
