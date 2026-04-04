@@ -161,33 +161,38 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
     : "Sign in to continue building on DevOS.";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
         onClick={onClose}
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/75 backdrop-blur-md"
       />
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.93, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-3xl p-8 shadow-2xl"
+        exit={{ opacity: 0, scale: 0.93, y: 24 }}
+        transition={{ type: "spring", damping: 28, stiffness: 320 }}
+        className="relative w-full max-w-md glass-dark border border-white/10 rounded-3xl p-8 shadow-2xl overflow-hidden"
       >
+        {/* Ambient glow */}
+        <div className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-600/12 rounded-full blur-[60px]" />
+
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 p-2 hover:bg-white/5 rounded-full transition-colors"
+          className="absolute top-5 right-5 p-2 hover:bg-white/5 rounded-xl transition-colors"
         >
           <X className="w-5 h-5 text-white/40" />
         </button>
 
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-600/20">
+        <div className="flex flex-col items-center mb-8 relative">
+          <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-600/30 pulse-glow">
             <Zap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-1">{heading}</h1>
+          <h1 className="text-2xl font-black text-white mb-1 tracking-tight">{heading}</h1>
           <p className="text-white/40 text-center text-sm">{subheading}</p>
         </div>
 

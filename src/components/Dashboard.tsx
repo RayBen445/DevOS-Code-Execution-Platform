@@ -834,16 +834,18 @@ p {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(activeTab === "my-projects" ? projects : publicProjects).map((project) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {(activeTab === "my-projects" ? projects : publicProjects).map((project, idx) => (
           <motion.div
             key={project.id}
-            whileHover={{ y: -2 }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-              "group rounded-2xl border transition-all relative flex flex-col",
+              "group rounded-2xl border transition-all relative flex flex-col card-glow",
               project.systemType === 'portfolio'
                 ? "bg-gradient-to-br from-yellow-500/5 to-yellow-600/5 border-yellow-500/20 hover:border-yellow-500/40"
-                : "bg-[#111] border-white/5 hover:border-white/20"
+                : "glass border-white/[0.07] hover:border-white/15"
             )}
           >
             {/* Portfolio badge */}

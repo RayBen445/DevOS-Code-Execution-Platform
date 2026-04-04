@@ -359,15 +359,16 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               {feedLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, i) => (
-                    <div key={i} className="rounded-2xl bg-white/5 border border-white/5 p-5 animate-pulse">
+                    <div key={i} className="rounded-2xl glass border border-white/[0.05] p-5 overflow-hidden">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-9 h-9 rounded-full bg-white/10" />
-                        <div className="space-y-1.5">
-                          <div className="h-3 w-28 rounded bg-white/10" />
-                          <div className="h-2 w-16 rounded bg-white/5" />
+                        <div className="w-9 h-9 rounded-full shimmer" />
+                        <div className="space-y-1.5 flex-1">
+                          <div className="h-3 w-28 rounded shimmer" />
+                          <div className="h-2 w-16 rounded shimmer" />
                         </div>
                       </div>
-                      <div className="h-4 w-full rounded bg-white/5" />
+                      <div className="h-3 w-full rounded shimmer mb-2" />
+                      <div className="h-3 w-3/4 rounded shimmer" />
                     </div>
                   ))}
                 </div>
@@ -781,10 +782,10 @@ function FeedItem({
 
       <motion.div
         ref={cardRef}
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.04, duration: 0.3 }}
-        className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/10 transition-all p-5"
+        transition={{ delay: index * 0.045, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="rounded-2xl glass border border-white/[0.06] hover:border-white/12 card-glow p-5"
       >
       {/* Repost header */}
       {post.type === "repost" && (
