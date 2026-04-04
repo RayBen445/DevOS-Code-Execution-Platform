@@ -375,6 +375,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Feedback submissions — anyone (including guests) can create; only admins can read/manage
+    match /feedback/{docId} {
+      allow create: if
+        request.resource.data.type in ['bug', 'feature', 'feedback'] &&
+        request.resource.data.message is string &&
+        request.resource.data.message.size() > 0 &&
+        request.resource.data.message.size() <= 5000;
+      allow read, update, delete: if isAdmin();
+    }
+
     // Test collection — used by firebase.ts connection probe (test/connection)
     match /test/{docId} {
       allow read: if true;
