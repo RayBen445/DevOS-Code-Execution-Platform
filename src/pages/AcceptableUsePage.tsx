@@ -416,6 +416,7 @@ export default function AcceptableUsePage() {
           ))}
         </aside>
 
+        <div className="flex-1 min-w-0 flex flex-col">
         <div className="lg:hidden w-full flex gap-2 overflow-x-auto no-scrollbar pb-4 -mx-5 px-5 mb-2 flex-shrink-0">
           {SECTIONS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => scrollTo(id)}
@@ -446,6 +447,7 @@ export default function AcceptableUsePage() {
             </div>
           </div>
         </main>
+        </div>
       </div>
 
       <Footer />

@@ -282,9 +282,15 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               </div>
               <div>
                 <h1 className="text-xl font-extrabold text-white leading-none">
-                  {settings?.displayName ? `Hey, ${settings.displayName.split(" ")[0]}` : "Your Feed"}
+                  {settings?.displayName
+                    ? (() => {
+                        const h = new Date().getHours();
+                        const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+                        return `${g}, ${settings.displayName.split(" ")[0]}`;
+                      })()
+                    : "Your Feed"}
                 </h1>
-                <p className="text-xs text-white/40 mt-0.5">What's happening in the community</p>
+                <p className="text-xs text-white/40 mt-0.5">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
               </div>
             </div>
             {/* Streak badges */}

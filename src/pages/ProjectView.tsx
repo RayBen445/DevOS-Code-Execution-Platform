@@ -22,6 +22,7 @@ import {
   Rocket,
   GitCommit,
   Tag,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Project, FileData } from "../types";
@@ -33,6 +34,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import PreviewPanel from "../components/PreviewPanel";
+import FeedbackModal from "../components/FeedbackModal";
 
 export default function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -56,6 +58,7 @@ export default function ProjectView() {
     ts: any;
   }
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   useSEO({
     title: project ? `${project.name} — DevOS` : "Project — DevOS",
@@ -251,6 +254,13 @@ export default function ProjectView() {
               </a>
             )}
             <button
+              onClick={() => setIsFeedbackOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-white/70 hover:text-white rounded-xl text-sm font-semibold transition-all"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Feedback
+            </button>
+            <button
               onClick={handleFork}
               disabled={isForking}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition-all active:scale-95"
@@ -405,6 +415,7 @@ export default function ProjectView() {
       </main>
 
       <Footer />
+      <FeedbackModal open={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <MobileBottomNav />
     </div>
   );

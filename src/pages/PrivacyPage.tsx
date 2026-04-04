@@ -747,6 +747,7 @@ export default function PrivacyPage() {
           </div>
         </aside>
 
+        <div className="flex-1 min-w-0 flex flex-col">
         {/* Mobile horizontal chip nav */}
         <div className="lg:hidden w-full flex gap-2 overflow-x-auto no-scrollbar pb-4 -mx-5 px-5 mb-2 flex-shrink-0">
           {SECTIONS.map(({ id, label, icon: Icon }) => (
@@ -800,6 +801,7 @@ export default function PrivacyPage() {
             </div>
           </div>
         </main>
+        </div>
       </div>
 
       <Footer />

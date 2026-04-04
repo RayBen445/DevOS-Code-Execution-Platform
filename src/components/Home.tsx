@@ -88,6 +88,13 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
   const openSignup = () => (setShowSignup ?? setShowLogin)(true);
   const [isQuickStarting, setIsQuickStarting] = useState(false);
 
+  const greeting = (() => {
+    const h = new Date().getHours();
+    const day = new Date().toLocaleDateString("en-US", { weekday: "long" });
+    const time = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+    return `${time} · Happy ${day}`;
+  })();
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30 overflow-x-hidden">
       <Navbar onSignIn={() => setShowLogin(true)} />
@@ -109,7 +116,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
             >
               <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest mb-6">
                 <Zap className="w-3 h-3" />
-                Next-Gen Cloud IDE
+                {greeting}
               </motion.div>
               <motion.h1 variants={fadeUp} className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-6 md:mb-8">
                 Build, Run, and{" "}

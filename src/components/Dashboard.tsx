@@ -530,21 +530,13 @@ p {
     <div className="max-w-6xl mx-auto p-8">
       {/* Header / Profile Section */}
       <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 overflow-hidden flex-shrink-0">
-            <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-          </div>
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">{displayName}</h1>
-            <div className="flex items-center gap-3">
-              <p className="text-white/40">Manage your cloud-based development environments.</p>
-              {settings?.username && (
-                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
-                  @{settings.username}
-                </span>
-              )}
-            </div>
-          </div>
+        <div>
+          <p className="text-white/40">Manage your cloud-based development environments.</p>
+          {settings?.username && (
+            <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+              @{settings.username}
+            </span>
+          )}
         </div>
         
         <div className="flex flex-wrap gap-3">
