@@ -315,3 +315,9 @@ export const updateStreak = async (uid: string): Promise<void> => {
     activeDaysThisMonth: activeDays,
   });
 };
+
+/** Fetch user settings doc (user_settings/{uid}). Returns null if not found. */
+export const getUserSettings = async (uid: string) => {
+  const snap = await getDoc(doc(db, "user_settings", uid));
+  return snap.exists() ? (snap.data() as import("../types").UserSettings) : null;
+};

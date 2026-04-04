@@ -35,6 +35,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [checkingProjectName, setCheckingProjectName] = useState(false);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("blank");
+  const [selectedLicense, setSelectedLicense] = useState<string>("none");
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [publicProjects, setPublicProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<"my-projects" | "public-projects">("my-projects");
@@ -186,10 +187,30 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
 
       await Promise.all(filePromises);
 
+      // Add LICENSE file if a license was selected
+      if (selectedLicense !== "none") {
+        const year = new Date().getFullYear();
+        const ownerName = settings?.displayName || settings?.username || "Author";
+        const licenseTexts: Record<string, string> = {
+          MIT: `MIT License\n\nCopyright (c) ${year} ${ownerName}\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`,
+          Apache2: `Apache License\nVersion 2.0, January 2004\n\nCopyright ${year} ${ownerName}\n\nLicensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.`,
+          GPL3: `GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007\n\nCopyright (C) ${year} ${ownerName}\n\nThis program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.`,
+        };
+        await addDoc(filesRef, {
+          projectId: docRef.id,
+          name: "LICENSE",
+          path: "/LICENSE",
+          content: licenseTexts[selectedLicense] ?? "",
+          language: "plaintext",
+          updatedAt: serverTimestamp(),
+        });
+      }
+
       setNewProjectName("");
       setNewProjectDescription("");
       setVisibility("public");
       setSelectedTemplateId("blank");
+      setSelectedLicense("none");
       setIsCreating(false);
       
       toast.success("Project created successfully", { id: toastId });
@@ -719,6 +740,23 @@ p {
                         );
                       })}
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">License</label>
+                    <select
+                      value={selectedLicense}
+                      onChange={(e) => setSelectedLicense(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                    >
+                      <option value="none">No License</option>
+                      <option value="MIT">MIT License</option>
+                      <option value="Apache2">Apache License 2.0</option>
+                      <option value="GPL3">GNU GPL v3</option>
+                    </select>
+                    {selectedLicense !== "none" && (
+                      <p className="text-xs text-white/30">A LICENSE file will be added to your project.</p>
+                    )}
                   </div>
                 </div>
 

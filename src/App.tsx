@@ -26,6 +26,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import ConfigGuard from "./components/ConfigGuard";
 import CommunitiesPage from "./pages/CommunitiesPage";
 import CommunityPage from "./pages/CommunityPage";
+import OrgPage from "./pages/OrgPage";
 import { Zap } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
@@ -172,6 +173,7 @@ export default function App() {
             <Route path="/explore" element={<ExplorePage />} />
             <Route path="/communities" element={<CommunitiesPage />} />
             <Route path="/c/:slug" element={<CommunityPage />} />
+            <Route path="/org/:slug" element={<OrgPage />} />
             <Route path="/u/:username" element={<Portfolio />} />
             <Route path="/u/:username/:projectSlug" element={<ProjectPreview />} />
             {/* /projects — full dashboard & project management */}

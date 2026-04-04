@@ -265,6 +265,31 @@ export interface ReferralStats {
   referrals: Referral[];
 }
 
+// ── Organization System ─────────────────────────────────────────────────────
+
+export type OrgMemberRole = "member" | "moderator" | "admin";
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  avatar?: string;
+  isPublic: boolean;
+  createdBy: string;
+  memberCount: number;
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface OrgMember {
+  id: string;
+  userId: string;
+  username: string;
+  role: OrgMemberRole;
+  joinedAt: any;
+}
+
 // ── Community System ────────────────────────────────────────────────────────
 
 export type CommunityMemberRole = "member" | "moderator" | "admin";

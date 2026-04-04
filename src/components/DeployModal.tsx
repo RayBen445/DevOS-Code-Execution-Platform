@@ -61,8 +61,26 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
   const startDeployFlow = async (deployMethod: "internal") => {
     setMethod(deployMethod);
     
+    // Apply .devignore filtering
+    const devignoreFile = files.find(f => f.name === ".devignore");
+    let deployableFiles = files;
+    if (devignoreFile) {
+      const patterns = devignoreFile.content
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith("#"));
+      deployableFiles = files.filter(f => {
+        return !patterns.some(pat => {
+          if (pat.startsWith("*.")) {
+            return f.name.endsWith(pat.slice(1));
+          }
+          return f.path === pat || f.path.startsWith(pat + "/") || f.name === pat;
+        });
+      });
+    }
+
     // Scan for index.html files
-    const htmlFiles = files.filter(f => f.name.toLowerCase() === "index.html").map(f => f.path);
+    const htmlFiles = deployableFiles.filter(f => f.name.toLowerCase() === "index.html").map(f => f.path);
     
     if (htmlFiles.length === 0) {
       toast.error("No index.html found. Please create an index.html file to deploy.");

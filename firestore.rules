@@ -432,5 +432,64 @@ service cloud.firestore {
         );
       }
     }
+
+    // ── Organizations ──────────────────────────────────────────────────────────
+    match /organizations/{orgId} {
+      // Public orgs are readable by everyone; private orgs require membership
+      allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
+
+      // Any authenticated user can create an organization
+      allow create: if isAuthenticated() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 100 &&
+        request.resource.data.slug is string &&
+        request.resource.data.slug.size() > 0 &&
+        request.resource.data.description is string;
+
+      // Org admins or platform admins can update metadata.
+      // Any authenticated member may update memberCount only (join/leave).
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
+      ) || (
+        isAuthenticated() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount']) &&
+        request.resource.data.memberCount is int
+      );
+
+      allow delete: if isAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
+      );
+
+      // Member subcollection
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        // A user can join (create their own member doc) or an org/platform admin can add
+        allow create: if isAuthenticated() && (
+          request.resource.data.userId == request.auth.uid ||
+          isAdmin()
+        );
+        // Role updates by org admin or platform admin
+        allow update: if isAdmin() || (
+          isAuthenticated() &&
+          exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
+        );
+        // User can leave (delete own) or org/platform admin can remove
+        allow delete: if isAuthenticated() && (
+          resource.data.userId == request.auth.uid ||
+          isAdmin() ||
+          (
+            exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
+            get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
+          )
+        );
+      }
+    }
   }
 }
