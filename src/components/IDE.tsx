@@ -1151,34 +1151,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       onCursorChange={(line, col) => { setCursorLine(line); setCursorCol(col); }}
                     />
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center bg-[#0D1117] p-8 md:p-12 text-center">
-                      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-600/20 to-blue-600/5 border border-blue-500/20 flex items-center justify-center mb-6">
-                        <Code2 className="w-10 h-10 text-blue-400/50" />
-                      </div>
-                      <h2 className="text-xl font-bold text-white mb-2">No file open</h2>
-                      <p className="text-white/30 max-w-sm mb-6 text-sm leading-relaxed">
-                        Select a file from the Explorer panel or create a new one to start coding.
-                      </p>
-                      {!isReadOnly && (
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <button
-                            onClick={() => handleCreateFile("index.html")}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 text-sm"
-                          >
-                            <Plus className="w-4 h-4" />
-                            New index.html
-                          </button>
-                          <button
-                            onClick={() => togglePanel("explorer")}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/60 rounded-xl font-semibold hover:bg-white/10 transition-all text-sm"
-                          >
-                            <Files className="w-4 h-4" />
-                            Open Explorer
-                          </button>
-                        </div>
-                      )}
-                      <p className="text-[11px] text-white/15 mt-8 font-mono">Tip: use Ctrl+P to quickly open files</p>
-                    </div>
+                    /* ── GitHub-style project homepage shown when no file is open ── */
+                    <ProjectHomepage
+                      project={project}
+                      files={files}
+                      isReadOnly={isReadOnly}
+                      onOpenFile={openFileInTab}
+                      onCreateFile={handleCreateFile}
+                      onOpenExplorer={() => togglePanel("explorer")}
+                    />
                   )}
                 </div>
 
@@ -1402,4 +1383,238 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       />
     </div>
   );
+}
+
+// ── GitHub-style project homepage ────────────────────────────────────────────
+
+function getFileIcon(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    html: "🌐", css: "🎨", js: "⚡", ts: "⚡", jsx: "⚛", tsx: "⚛",
+    json: "📋", md: "📝", txt: "📄", svg: "🖼", png: "🖼", jpg: "🖼",
+    jpeg: "🖼", gif: "🖼", webp: "🖼", py: "🐍", sh: "🐚", env: "🔑",
+  };
+  return map[ext] ?? "📄";
+}
+
+interface ProjectHomepageProps {
+  project: Project;
+  files: FileData[];
+  isReadOnly: boolean;
+  onOpenFile: (id: string) => void;
+  onCreateFile: (name: string) => void;
+  onOpenExplorer: () => void;
+}
+
+function ProjectHomepage({ project, files, isReadOnly, onOpenFile, onCreateFile, onOpenExplorer }: ProjectHomepageProps) {
+  const readmeFile = files.find(f => f.name.toLowerCase() === "readme.md");
+  const sortedFiles = [...files].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Derive tech-stack badges from file extensions
+  const extSet = new Set(
+    files.map(f => f.name.split(".").pop()?.toLowerCase() ?? "").filter(Boolean)
+  );
+  const techStack = Array.from(extSet).slice(0, 8);
+
+  return (
+    <div className="h-full overflow-y-auto bg-[#0D1117] text-white">
+      <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+
+        {/* ── Project header ── */}
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600/30 to-purple-600/20 border border-white/10 flex items-center justify-center text-2xl font-black text-white/60 flex-shrink-0">
+            {project.name.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h1 className="text-xl font-extrabold text-white truncate">{project.name}</h1>
+              {project.isPublic
+                ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20">Public</span>
+                : <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white/40 border border-white/10">Private</span>
+              }
+              {project.forkedFrom && (
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/20 flex items-center gap-1">
+                  <GitFork className="w-3 h-3" /> Forked
+                </span>
+              )}
+            </div>
+            {project.description && (
+              <p className="text-white/50 text-sm leading-relaxed">{project.description}</p>
+            )}
+            {techStack.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {techStack.map(ext => (
+                  <span key={ext} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[11px] font-mono text-white/40 uppercase">
+                    {ext}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Quick actions ── */}
+        {!isReadOnly && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => onCreateFile("index.html")}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all active:scale-95 text-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New file
+            </button>
+            <button
+              onClick={onOpenExplorer}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 text-white/60 rounded-lg font-semibold hover:bg-white/10 transition-all text-xs"
+            >
+              <Files className="w-3.5 h-3.5" />
+              Open Explorer
+            </button>
+          </div>
+        )}
+
+        {/* ── File browser ── */}
+        <div className="border border-[#21262D] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-[#161B22] border-b border-[#21262D]">
+            <div className="flex items-center gap-2 text-xs font-semibold text-white/50">
+              <Files className="w-3.5 h-3.5" />
+              {files.length} file{files.length !== 1 ? "s" : ""}
+            </div>
+            {project.updatedAt && (
+              <span className="text-[11px] text-white/25">
+                Updated {formatTimestamp(project.updatedAt)}
+              </span>
+            )}
+          </div>
+
+          {sortedFiles.length === 0 ? (
+            <div className="px-4 py-8 text-center text-white/30 text-sm">
+              No files yet. Create your first file to get started.
+            </div>
+          ) : (
+            <div className="divide-y divide-[#21262D]">
+              {sortedFiles.map((file) => (
+                <button
+                  key={file.id}
+                  onClick={() => onOpenFile(file.id)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors text-left group"
+                >
+                  <span className="text-base flex-shrink-0 w-5 text-center">{getFileIcon(file.name)}</span>
+                  <span className="flex-1 text-sm text-[#E5E7EB] group-hover:text-white font-mono truncate">
+                    {file.name}
+                  </span>
+                  <span className="text-[11px] text-white/20 flex-shrink-0">
+                    {formatTimestamp(file.updatedAt)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── README preview ── */}
+        {readmeFile && (
+          <div className="border border-[#21262D] rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-[#161B22] border-b border-[#21262D]">
+              <span className="text-base">📝</span>
+              <span className="text-xs font-semibold text-white/50">README.md</span>
+            </div>
+            <div className="px-5 py-5">
+              <ReadmeRenderer content={readmeFile.content} />
+            </div>
+          </div>
+        )}
+
+        <p className="text-[11px] text-white/15 font-mono text-center pb-4">
+          Click any file above to open it in the editor · Tip: Ctrl+P for quick-open
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Format a Firestore Timestamp or ISO string as a relative time label */
+function formatTimestamp(ts: any): string {
+  if (!ts) return "";
+  const ms = ts?.toMillis?.() ?? (ts?.seconds ? ts.seconds * 1000 : typeof ts === "string" ? Date.parse(ts) : 0);
+  if (!ms) return "";
+  const diff = Date.now() - ms;
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
+/** Minimal README renderer — handles headings, bold, inline-code, code blocks, and lists */
+function ReadmeRenderer({ content }: { content: string }) {
+  if (!content?.trim()) {
+    return <p className="text-white/30 text-sm italic">No content.</p>;
+  }
+
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let inCodeBlock = false;
+  let codeLines: string[] = [];
+  let codeLang = "";
+
+  const renderInline = (text: string, key: string): React.ReactNode => {
+    // bold **text** and inline `code`
+    const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+    return (
+      <span key={key}>
+        {parts.map((p, i) => {
+          if (p.startsWith("`") && p.endsWith("`"))
+            return <code key={i} className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-[12px] font-mono">{p.slice(1, -1)}</code>;
+          if (p.startsWith("**") && p.endsWith("**"))
+            return <strong key={i} className="text-white font-bold">{p.slice(2, -2)}</strong>;
+          return p;
+        })}
+      </span>
+    );
+  };
+
+  lines.forEach((line, i) => {
+    if (line.startsWith("```")) {
+      if (!inCodeBlock) {
+        inCodeBlock = true;
+        codeLang = line.slice(3).trim();
+        codeLines = [];
+      } else {
+        inCodeBlock = false;
+        elements.push(
+          <pre key={`code-${i}`} className="bg-white/5 border border-white/10 rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-green-300 leading-relaxed my-3">
+            <code>{codeLines.join("\n")}</code>
+          </pre>
+        );
+        codeLines = [];
+        codeLang = "";
+      }
+      return;
+    }
+    if (inCodeBlock) { codeLines.push(line); return; }
+
+    if (line.startsWith("### ")) {
+      elements.push(<h3 key={i} className="text-base font-bold text-white mt-4 mb-1">{line.slice(4)}</h3>);
+    } else if (line.startsWith("## ")) {
+      elements.push(<h2 key={i} className="text-lg font-extrabold text-white mt-5 mb-2 border-b border-white/10 pb-1">{line.slice(3)}</h2>);
+    } else if (line.startsWith("# ")) {
+      elements.push(<h1 key={i} className="text-xl font-black text-white mt-5 mb-2">{line.slice(2)}</h1>);
+    } else if (/^[-*] /.test(line)) {
+      elements.push(
+        <li key={i} className="text-sm text-white/60 leading-relaxed ml-4 list-disc">
+          {renderInline(line.slice(2), `li-${i}`)}
+        </li>
+      );
+    } else if (line.trim() === "") {
+      elements.push(<div key={i} className="h-2" />);
+    } else {
+      elements.push(
+        <p key={i} className="text-sm text-white/60 leading-relaxed">
+          {renderInline(line, `p-${i}`)}
+        </p>
+      );
+    }
+  });
+
+  return <div className="space-y-1 leading-relaxed">{elements}</div>;
 }

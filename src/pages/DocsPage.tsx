@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight } from "lucide-react";
+import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, ShieldCheck, Activity } from "lucide-react";
 import { cn } from "../lib/utils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -26,19 +26,19 @@ const sections: DocSection[] = [
           Welcome to DevOS — your cloud-based development environment. Get up and running in minutes.
         </p>
         <Step number={1} title="Create an account">
-          Sign up with your email or Google account. Once logged in, you'll be taken to your personal dashboard.
+          Sign up with your email or Google account. Once logged in you'll land on your personal dashboard.
         </Step>
         <Step number={2} title="Create a project">
-          Click <strong>New Project</strong> on the dashboard. Choose a blank project or pick from one of the
-          community templates to get a head start.
+          Click <strong>New Project</strong> on the dashboard. Choose a blank project or pick from a
+          community template to get a head start.
         </Step>
         <Step number={3} title="Write your code">
-          The built-in editor supports syntax highlighting for all major languages with real-time preview
-          on the right panel.
+          The built-in Monaco editor supports syntax highlighting for all major languages. When no
+          file is open the IDE shows a <strong>project homepage</strong> — a GitHub-style overview
+          with a file browser, tech-stack badges, and a live README preview.
         </Step>
         <Step number={4} title="Deploy">
-          Hit the <strong>Deploy</strong> button. DevOS generates a live, shareable URL for your project
-          in seconds.
+          Hit <strong>Deploy</strong>. DevOS generates a live, shareable URL for your project in seconds.
         </Step>
         <InfoBox>
           No installation required. Everything runs in your browser — no local setup, no config files.
@@ -56,21 +56,33 @@ const sections: DocSection[] = [
         <p className="text-white/60 leading-relaxed">
           Projects are the core unit of DevOS. Each project has its own file system, environment, and URL.
         </p>
-        <Section title="Creating a project">
-          From your dashboard, click <strong>New Project</strong>. Give it a name and optionally choose
-          a template. Each project gets a unique slug used in its live URL.
+        <Section title="Project homepage">
+          When you open a project without selecting a file the IDE shows a rich project homepage —
+          similar to a GitHub repository main page. It displays the project description, tech-stack
+          badges derived from your file extensions, a clickable file browser (click any file to open
+          it instantly), and a rendered preview of your <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">README.md</code> if one exists.
+        </Section>
+        <Section title="Breadcrumb navigation">
+          Once a file is open the IDE header shows{" "}
+          <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">@username / project / filename</code>.
+          Clicking the username navigates to your profile; clicking the project name opens the project
+          view page.
         </Section>
         <Section title="Visibility">
           Projects can be <strong>Public</strong> (visible to anyone) or <strong>Private</strong> (only
-          visible to you and collaborators). Toggle visibility in Project Settings.
+          visible to you). Toggle visibility in Project Settings.
         </Section>
         <Section title="Forking">
           Any public project can be forked. This creates a copy under your account that you can modify
-          freely.
+          freely without affecting the original.
+        </Section>
+        <Section title="Versions">
+          Every manual save writes a version snapshot to Firestore. Snapshots include the content
+          of all files and a timestamp so you can trace changes over time.
         </Section>
         <Section title="Deleting">
           Projects can be deleted from Project Settings. This action is irreversible — all files and
-          history will be removed permanently.
+          snapshots are removed permanently.
         </Section>
       </div>
     ),
@@ -86,19 +98,25 @@ const sections: DocSection[] = [
           Deploy your project to a live URL with a single click. No configuration needed.
         </p>
         <Section title="How it works">
-          DevOS runs your project in a secure, sandboxed environment. Static assets are served over
-          HTTPS from our global CDN, giving your visitors fast load times worldwide.
+          Clicking <strong>Deploy</strong> (or running <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">deploy</code> in the terminal)
+          publishes your project and generates a URL in the format{" "}
+          <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">devos.zone.id/u/&lt;username&gt;/&lt;project-slug&gt;</code>.
         </Section>
         <Section title="Live preview">
-          The right panel in the editor shows a live preview that updates as you save. Use this to
-          iterate quickly before deploying.
+          The right panel shows a live preview that re-renders on every save. Use this to iterate
+          quickly before publishing.
         </Section>
-        <Section title="Custom domains">
-          Projects deployed on DevOS receive a URL in the format{" "}
-          <code className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-sm">
-            projectslug.username.devos.zone.id
-          </code>
-          . Custom domain support is coming soon.
+        <Section title="Git Sync">
+          The <strong>Git panel</strong> (source-control icon in the sidebar) lets you push your
+          project files directly to a GitHub repository. File paths are normalized automatically
+          so no leading slashes ever reach the GitHub API.
+        </Section>
+        <Section title="Terminal commands">
+          Run <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">deploy</code> to publish,{" "}
+          <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">save</code> to persist changes,{" "}
+          <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">run</code> to execute JavaScript
+          or TypeScript files server-side, and{" "}
+          <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">help</code> for the full command list.
         </Section>
         <InfoBox>
           Each deploy consumes credits from your daily allowance. You receive free credits every day.
@@ -131,6 +149,15 @@ const sections: DocSection[] = [
         <Section title="Featured projects">
           Select up to 6 projects to feature at the top of your portfolio. Featured projects appear
           sorted before other public projects.
+        </Section>
+        <Section title="Share as Image">
+          Use the <strong>Share as Image</strong> button to export your portfolio card as a PNG —
+          perfect for sharing on social media.
+        </Section>
+        <Section title="Activity streaks">
+          Your portfolio shows your <strong>daily coding streak</strong> and <strong>monthly streak</strong>.
+          The daily streak increments each consecutive day you are active. The monthly streak increments
+          once per calendar month when you have been active on 20 or more days that month.
         </Section>
       </div>
     ),
@@ -172,18 +199,190 @@ const sections: DocSection[] = [
           Credits are the currency used to run code, deploy projects, and access AI features in DevOS.
         </p>
         <Section title="Free daily credits">
-          Every account receives a free daily credit allowance that resets at midnight UTC. These can
+          Every account receives a free daily credit allowance that resets every 24 hours. These can
           be used for deployments and code executions.
         </Section>
         <Section title="Monthly credits">
-          Monthly credits are a larger pool that accumulates and resets each calendar month. They are
-          consumed after your daily credits are exhausted.
+          Monthly credits are a larger pool that resets each calendar month. They are consumed after
+          your daily credits are exhausted.
+        </Section>
+        <Section title="Gifted credits">
+          Admins can gift you bonus credits with an optional expiry date. Gifted credits are drained
+          first (oldest first) before your daily and monthly pools.
+        </Section>
+        <Section title="Unlimited Pass">
+          An admin can grant you a time-limited <strong>Unlimited Pass</strong>. While active, all
+          credit costs are bypassed and you see an <strong>∞ Unlimited</strong> badge in the navbar.
+        </Section>
+        <Section title="Admin bypass">
+          Admin accounts always bypass credit deductions. The credits panel shows{" "}
+          <strong>∞ Unlimited</strong> for admins on both desktop and mobile.
         </Section>
         <Section title="Redeem codes">
-          DevOS occasionally distributes promo codes that can be redeemed for bonus credits. Use the
+          DevOS occasionally distributes promo codes that can be redeemed for bonus credits. Use the{" "}
           <strong>Redeem Code</strong> option in your profile menu.
         </Section>
         <InfoBox>Credits are non-transferable and have no monetary value.</InfoBox>
+      </div>
+    ),
+  },
+  {
+    id: "organizations",
+    label: "Organizations",
+    icon: Building2,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Organizations</h2>
+        <p className="text-white/60 leading-relaxed">
+          Organizations let teams collaborate under a shared identity. Every org has a public page
+          at{" "}
+          <code className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-sm">
+            devos.zone.id/org/&lt;slug&gt;
+          </code>
+          .
+        </p>
+        <Section title="Creating an organization">
+          From your dashboard open the <strong>Organizations</strong> section and click{" "}
+          <strong>Create Organization</strong>. Choose a unique slug — this becomes the org URL.
+        </Section>
+        <Section title="Joining an organization">
+          Visit an org's public page and click <strong>Join</strong>. The org owner can also invite
+          members directly by username.
+        </Section>
+        <Section title="Roles">
+          Each member has one of three roles: <strong>Owner</strong>, <strong>Admin</strong>, or{" "}
+          <strong>Member</strong>. Owners can promote/demote members and transfer ownership.
+        </Section>
+        <Section title="Guest visibility">
+          Org pages are publicly visible. Member lists are only shown to authenticated users.
+        </Section>
+      </div>
+    ),
+  },
+  {
+    id: "community",
+    label: "Community & Feed",
+    icon: MessageSquare,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Community &amp; Feed</h2>
+        <p className="text-white/60 leading-relaxed">
+          Connect with other developers, share your work, and discover projects through the DevOS
+          social layer.
+        </p>
+        <Section title="Feed">
+          The home feed shows posts from people you follow and trending projects. Post updates,
+          share links, and get feedback from the community.
+        </Section>
+        <Section title="Liking and commenting">
+          Like any post with the heart button. Add comments to start a conversation. Post authors
+          and admins can delete comments.
+        </Section>
+        <Section title="Following">
+          Follow other users to see their posts in your feed. Unfollow at any time from their
+          profile page.
+        </Section>
+        <Section title="Communities">
+          Join topic-based communities for focused discussion. Each community has its own feed
+          and member list.
+        </Section>
+        <Section title="Explore &amp; Search">
+          Use the <strong>Explore</strong> page to discover public projects and trending developers.
+          The <strong>Search</strong> page lets you search users by username or display name.
+        </Section>
+      </div>
+    ),
+  },
+  {
+    id: "git-sync",
+    label: "Git Sync",
+    icon: GitBranch,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Git Sync</h2>
+        <p className="text-white/60 leading-relaxed">
+          Push your DevOS project files directly to a GitHub repository without leaving the browser.
+        </p>
+        <Step number={1} title="Connect GitHub">
+          Open the <strong>Git panel</strong> (source-control icon in the sidebar) and click{" "}
+          <strong>Connect GitHub</strong>. You'll be redirected to authorize the DevOS GitHub App.
+        </Step>
+        <Step number={2} title="Select a repository">
+          Choose an existing repository or create a new one from the panel.
+        </Step>
+        <Step number={3} title="Push changes">
+          Enter a commit message and click <strong>Push</strong>. DevOS creates blobs, builds a
+          Git tree, and commits — all via the GitHub API.
+        </Step>
+        <InfoBox>
+          File paths are normalized automatically. Leading slashes are stripped before the push so
+          Git tree objects are always valid.
+        </InfoBox>
+      </div>
+    ),
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    icon: ShieldCheck,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Admin Dashboard</h2>
+        <p className="text-white/60 leading-relaxed">
+          The Admin Dashboard is accessible at <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">/admin</code> to
+          accounts whose email matches <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">VITE_ADMIN_EMAIL</code>.
+        </p>
+        <Section title="Users tab">
+          Search all registered users. Ban, Suspend, or Reinstate any account — each action requires
+          confirmation via the ConfirmModal to prevent accidental changes.
+        </Section>
+        <Section title="Credits tab">
+          Gift a specific number of credits to any user with an optional expiry date. Grant an
+          Unlimited Pass valid until a chosen date. Both actions are reflected instantly.
+        </Section>
+        <Section title="Polls tab">
+          Create platform polls with a custom option builder. View live vote-bar results. Close polls
+          to prevent further voting, or delete them entirely.
+        </Section>
+        <Section title="Overview tab">
+          Toggle <strong>maintenance mode</strong> on or off with a single click and set a custom
+          banner message. Enable <strong>per-page maintenance</strong> to disable specific routes
+          (e.g. <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">/explore</code>) without
+          a full platform shutdown.
+        </Section>
+        <InfoBox>
+          Admin accounts display <strong>∞ Unlimited</strong> in the credits panel and bypass all
+          credit deductions automatically.
+        </InfoBox>
+      </div>
+    ),
+  },
+  {
+    id: "activity",
+    label: "Activity & Streaks",
+    icon: Activity,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Activity &amp; Streaks</h2>
+        <p className="text-white/60 leading-relaxed">
+          DevOS tracks your coding consistency with daily and monthly activity streaks.
+        </p>
+        <Section title="Daily streak">
+          Your daily streak increments each consecutive day you are active on DevOS. Missing a day
+          resets it to 1 the next time you log in.
+        </Section>
+        <Section title="Monthly streak">
+          Your monthly streak tracks how many months you have been highly active. It increments
+          once per calendar month when you have logged at least 20 active days in that month.
+          It can only increase once per month — no double-counting.
+        </Section>
+        <Section title="Active days this month">
+          The <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">activeDaysThisMonth</code> list
+          resets at the start of each new month and accumulates unique dates as you visit the platform.
+        </Section>
+        <Section title="Viewing your streaks">
+          Your current streaks are visible on your public portfolio page and in your profile settings.
+        </Section>
       </div>
     ),
   },
@@ -202,11 +401,11 @@ const sections: DocSection[] = [
           to grant them access to your project.
         </Section>
         <Section title="Real-time editing">
-          Multiple collaborators can edit the same project simultaneously. Changes are synced live
-          across all active sessions.
+          Multiple collaborators can edit the same project simultaneously via Socket.IO. Changes are
+          synced live across all active sessions.
         </Section>
         <Section title="Forking community projects">
-          Can't collaborate on a project? Fork it! Forking creates an independent copy you own
+          Can't collaborate on a project? Fork it. Forking creates an independent copy you own
           completely.
         </Section>
       </div>
@@ -221,11 +420,11 @@ const sections: DocSection[] = [
         <h2 className="text-2xl font-bold text-white">Frequently Asked Questions</h2>
         <FAQItem question="Is DevOS free to use?">
           Yes. DevOS is free with a generous daily credit allowance. Additional credits can be
-          unlocked via promo codes or future paid plans.
+          unlocked via promo codes or a gifted Unlimited Pass from an admin.
         </FAQItem>
         <FAQItem question="What languages are supported?">
-          DevOS supports HTML, CSS, JavaScript, TypeScript, React, and many more. Language support
-          is continually expanding.
+          DevOS supports HTML, CSS, JavaScript, TypeScript, React, JSON, Markdown, and more.
+          JavaScript and TypeScript files can be executed server-side via the terminal.
         </FAQItem>
         <FAQItem question="Can I use my own domain?">
           Custom domains are on the roadmap. Currently all projects are served under devos.zone.id.
@@ -233,6 +432,15 @@ const sections: DocSection[] = [
         <FAQItem question="Is my code private by default?">
           New projects are private by default. You must explicitly set a project to Public to make
           it visible to others.
+        </FAQItem>
+        <FAQItem question="What is the project homepage inside the IDE?">
+          When you open a project without selecting a file, the IDE shows a GitHub-style project
+          homepage — file browser, tech-stack badges, and a live README.md preview. Click any file
+          to open it immediately in the editor.
+        </FAQItem>
+        <FAQItem question="Why does my monthly streak not increment every day after reaching 20?">
+          The monthly streak milestone is awarded only once per calendar month — on the first day
+          you reach 20 active days that month. This prevents it from over-counting.
         </FAQItem>
         <FAQItem question="How do I delete my account?">
           Contact us at{" "}
@@ -242,7 +450,8 @@ const sections: DocSection[] = [
           to request account deletion.
         </FAQItem>
         <FAQItem question="Where can I report a bug?">
-          Use the same email address: info@devos.zone.id. We respond within 48 hours.
+          Use the same email address: info@devos.zone.id or use the feedback button in the navbar.
+          We respond within 48 hours.
         </FAQItem>
       </div>
     ),

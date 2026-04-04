@@ -330,7 +330,9 @@ async function startServer() {
           throw new Error(`Failed to create blob for ${file.path}: ${err.message}`);
         }
         const blobData = await blobRes.json();
-        treeItems.push({ path: file.path, mode: "100644", type: "blob", sha: blobData.sha });
+        // Git tree paths must be relative (no leading slashes).
+        const normalizedPath = file.path.replace(/^\/+/, "");
+        treeItems.push({ path: normalizedPath, mode: "100644", type: "blob", sha: blobData.sha });
       }
 
       // c. Create a new tree (optionally rooted at the existing base tree)
@@ -525,8 +527,11 @@ async function startServer() {
       return res.status(400).json({ error: `Language '${language}' is not supported for execution.` });
     }
 
-    // Write content to an isolated temp directory so the script cannot resolve
-    // relative paths outside of it. Include a uid-scoped random suffix for isolation.
+    // SECURITY NOTE: This endpoint executes user-provided code on the host process.
+    // Isolation is limited to a temporary directory and a 10-second timeout.
+    // A future hardening step should replace this with a container/VM/worker sandbox
+    // (e.g. gVisor, Firecracker, or a dedicated execution microservice) with network,
+    // filesystem, and syscall restrictions before exposing to untrusted users at scale.
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `devos-run-${uid.slice(0, 8)}-`));
     const ext = language === "typescript" ? ".ts" : ".js";
     const tmpFile = path.join(tmpDir, `script${ext}`);

@@ -69,13 +69,15 @@ export default function OrgPage() {
     });
   }, [slug, navigate]);
 
-  // Subscribe to live org data + members once we have the id
+  // Subscribe to live org data + members once we have the id.
+  // Members subscription requires authentication (Firestore rules deny unauthenticated reads).
   useEffect(() => {
     if (!org?.id) return;
     const unsub1 = subscribeOrg(org.id, (o) => { if (o) setOrg(o); });
+    if (!user) return () => { unsub1(); };
     const unsub2 = subscribeOrgMembers(org.id, setMembers);
     return () => { unsub1(); unsub2(); };
-  }, [org?.id]);
+  }, [org?.id, user]);
 
   // Check if current user is a member
   useEffect(() => {
