@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { db, auth } from "../lib/firebase";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion } from "framer-motion";
 import {
@@ -18,6 +18,10 @@ import {
   User as UserIcon,
   ChevronDown,
   ChevronRight,
+  Activity,
+  Rocket,
+  GitCommit,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Project, FileData } from "../types";
@@ -41,6 +45,17 @@ export default function ProjectView() {
   const [isForking, setIsForking] = useState(false);
   const [activeFile, setActiveFile] = useState<FileData | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"files" | "activity">("files");
+
+  // Activity timeline events (derived from files + project metadata)
+  interface ActivityEvent {
+    id: string;
+    type: "file_updated" | "created" | "deployed" | "forked";
+    label: string;
+    detail?: string;
+    ts: any;
+  }
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
 
   useSEO({
     title: project ? `${project.name} — DevOS` : "Project — DevOS",
@@ -69,6 +84,37 @@ export default function ProjectView() {
         const fileList = filesSnap.docs.map((d) => ({ id: d.id, ...d.data() } as FileData));
         setFiles(fileList);
         if (fileList.length > 0) setActiveFile(fileList[0]);
+
+        // Build activity timeline from files + project metadata
+        const events: ActivityEvent[] = [];
+        if (data.createdAt) {
+          events.push({ id: "created", type: "created", label: "Project created", ts: data.createdAt });
+        }
+        if (data.lastDeployedAt) {
+          events.push({ id: "deployed", type: "deployed", label: "Deployed", detail: data.deployUrl, ts: data.lastDeployedAt });
+        }
+        if (data.forkedFrom) {
+          events.push({ id: "forked", type: "forked", label: `Forked from @${data.forkedFromOwner ?? "unknown"}`, ts: data.createdAt });
+        }
+        // Add recent file-update events (deduplicated by filename)
+        const seen = new Set<string>();
+        for (const f of fileList.sort((a, b) => {
+          const aT = (a.updatedAt as any)?.seconds ?? 0;
+          const bT = (b.updatedAt as any)?.seconds ?? 0;
+          return bT - aT;
+        }).slice(0, 6)) {
+          if (!seen.has(f.name)) {
+            seen.add(f.name);
+            events.push({
+              id: `file_${f.id}`,
+              type: "file_updated",
+              label: `Updated ${f.name}`,
+              ts: f.updatedAt,
+            });
+          }
+        }
+        events.sort((a, b) => (b.ts?.seconds ?? 0) - (a.ts?.seconds ?? 0));
+        setActivityEvents(events);
       } catch (e) {
         setError("Failed to load project");
         console.error(e);
@@ -237,8 +283,71 @@ export default function ProjectView() {
           </div>
         )}
 
+        {/* Tabs: Files / Activity */}
+        <div className="flex gap-1 mb-4 border-b border-white/10">
+          {(["files", "activity"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors",
+                activeTab === tab
+                  ? "border-blue-500 text-blue-400"
+                  : "border-transparent text-white/40 hover:text-white/70"
+              )}
+            >
+              {tab === "files" ? `Files (${files.length})` : "Activity"}
+            </button>
+          ))}
+        </div>
+
+        {/* Activity Timeline */}
+        {activeTab === "activity" && (
+          <div className="relative">
+            {activityEvents.length === 0 ? (
+              <p className="text-center text-white/30 py-10 text-sm">No activity yet.</p>
+            ) : (
+              <div className="space-y-0">
+                {activityEvents.map((ev, i) => {
+                  const Icon = ev.type === "deployed" ? Rocket
+                    : ev.type === "forked" ? GitFork
+                    : ev.type === "created" ? Tag
+                    : GitCommit;
+                  const iconColor = ev.type === "deployed" ? "text-green-400"
+                    : ev.type === "forked" ? "text-purple-400"
+                    : ev.type === "created" ? "text-blue-400"
+                    : "text-white/40";
+                  return (
+                    <div key={ev.id} className="flex gap-4 group">
+                      {/* Timeline line */}
+                      <div className="flex flex-col items-center">
+                        <div className={cn("w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 mt-1", iconColor)}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        {i < activityEvents.length - 1 && (
+                          <div className="w-px flex-1 bg-white/5 mt-1 mb-1" />
+                        )}
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 pb-5">
+                        <p className="text-sm text-white font-medium">{ev.label}</p>
+                        {ev.detail && (
+                          <p className="text-xs text-white/40 mt-0.5 truncate max-w-sm">{ev.detail}</p>
+                        )}
+                        <p className="text-xs text-white/30 mt-1">
+                          {ev.ts?.seconds ? formatRelativeTime({ seconds: ev.ts.seconds, nanoseconds: 0 } as any) : "—"}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Two-column: file list + file viewer */}
-        {files.length > 0 && (
+        {activeTab === "files" && files.length > 0 && (
           <div className="grid md:grid-cols-[220px_1fr] gap-4">
             {/* File list */}
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
@@ -287,7 +396,7 @@ export default function ProjectView() {
           </div>
         )}
 
-        {files.length === 0 && (
+        {activeTab === "files" && files.length === 0 && (
           <div className="py-16 text-center rounded-2xl border border-dashed border-white/10">
             <FileIcon className="w-10 h-10 text-white/10 mx-auto mb-3" />
             <p className="text-white/30 text-sm">No files in this project</p>

@@ -99,9 +99,9 @@ export default function OrgPage() {
   };
 
   const handleLeave = async () => {
-    if (!myMember || !org) return;
+    if (!myMember || !org || !user) return;
     try {
-      await leaveOrg(org.id, myMember.id);
+      await leaveOrg(org.id, user.uid);
       toast.success("Left organization");
       setMyMember(null);
     } catch {
@@ -112,7 +112,7 @@ export default function OrgPage() {
   const handleRoleChange = async (member: OrgMember, role: OrgMember["role"]) => {
     if (!org) return;
     try {
-      await updateMemberRole(org.id, member.id, role);
+      await updateMemberRole(org.id, member.userId, role);
       toast.success(`Updated ${member.username}'s role to ${role}`);
     } catch {
       toast.error("Failed to update role");

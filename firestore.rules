@@ -466,12 +466,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
       );
 
-      // Member subcollection
-      match /members/{memberId} {
+      // Member subcollection — document ID is the user's uid
+      match /members/{userId} {
         allow read: if isAuthenticated();
         // A user can join (create their own member doc) or an org/platform admin can add
         allow create: if isAuthenticated() && (
-          request.resource.data.userId == request.auth.uid ||
+          request.auth.uid == userId ||
           isAdmin()
         );
         // Role updates by org admin or platform admin
@@ -482,7 +482,7 @@ service cloud.firestore {
         );
         // User can leave (delete own) or org/platform admin can remove
         allow delete: if isAuthenticated() && (
-          resource.data.userId == request.auth.uid ||
+          request.auth.uid == userId ||
           isAdmin() ||
           (
             exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
