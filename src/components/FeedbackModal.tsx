@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Bug, Lightbulb, MessageSquare, Send, Loader2 } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
@@ -68,7 +69,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -76,10 +77,10 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200]"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9998]"
             onClick={onClose}
           />
-          <div className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -172,6 +173,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

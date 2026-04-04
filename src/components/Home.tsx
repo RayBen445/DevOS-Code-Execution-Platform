@@ -1,10 +1,8 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Code2, Terminal, Shield, Zap, Globe, ChevronRight, Rocket, Sparkles, X, Plus, Code, Share2, Smartphone, Users, BookOpen, CloudLightning } from "lucide-react";
-import { Link } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
-import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
 
 interface HomeProps {
@@ -73,6 +71,82 @@ const FEATURES = [
     ring: "bg-rose-600/15",
   },
 ];
+
+// ── Live Log animation ─────────────────────────────────────────────────────
+type LogLine = { prompt?: boolean; text: string; color?: string; delay: number };
+
+const LOG_SEQUENCE: LogLine[] = [
+  { prompt: true,  text: "devos login",                              color: "text-white",    delay: 400 },
+  {                text: "✓ Authenticated as @you",                  color: "text-green-400", delay: 700 },
+  { prompt: true,  text: "devos new --template react",               color: "text-white",    delay: 900 },
+  {                text: "Creating project my-app...",               color: "text-white/40", delay: 600 },
+  {                text: "✓ Scaffolded 14 files",                    color: "text-white/40", delay: 500 },
+  { prompt: true,  text: "devos run",                                color: "text-white",    delay: 700 },
+  {                text: "[vite] Server listening on :5173",         color: "text-cyan-400", delay: 600 },
+  {                text: "[hmr] Ready in 212ms",                     color: "text-cyan-400", delay: 400 },
+  { prompt: true,  text: "devos deploy --prod",                      color: "text-white",    delay: 900 },
+  {                text: "Building for production...",               color: "text-white/40", delay: 700 },
+  {                text: "Uploading to edge network (3 regions)...", color: "text-white/40", delay: 800 },
+  {                text: "✓ Deploy successful!",                     color: "text-green-400", delay: 500 },
+  {                text: "→ https://my-app.devos.app",              color: "text-blue-400",  delay: 300 },
+];
+
+function LiveLog() {
+  const [visible, setVisible] = useState<number>(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let idx = 0;
+    function showNext() {
+      if (idx >= LOG_SEQUENCE.length) {
+        timerRef.current = setTimeout(() => { idx = 0; setVisible(0); showNext(); }, 3000);
+        return;
+      }
+      timerRef.current = setTimeout(() => {
+        idx++;
+        setVisible(idx);
+        showNext();
+      }, LOG_SEQUENCE[idx].delay);
+    }
+    showNext();
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  return (
+    <div className="p-6 md:p-8 font-mono text-sm space-y-2 min-h-[220px]">
+      {LOG_SEQUENCE.slice(0, visible).map((line, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, x: -6 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.18 }}
+          className="flex gap-2 leading-snug"
+        >
+          {line.prompt ? (
+            <>
+              <span className="text-green-400 select-none">➜</span>
+              <span className="text-blue-400 select-none">~</span>
+              <span className={line.color ?? "text-white"}>{line.text}</span>
+            </>
+          ) : (
+            <span className={`pl-6 ${line.color ?? "text-white/40"}`}>{line.text}</span>
+          )}
+        </motion.div>
+      ))}
+      {visible < LOG_SEQUENCE.length && (
+        <div className="pl-6 flex items-center">
+          <motion.span
+            animate={{ opacity: [1, 0, 1] }}
+            transition={{ repeat: Infinity, duration: 0.9 }}
+            className="inline-block w-2 h-4 bg-blue-400 rounded-sm"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 const stagger = {
   hidden: {},
@@ -162,35 +236,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                   </div>
                   <div className="text-[10px] font-mono text-white/20 uppercase tracking-widest ml-2">Terminal — devos-cli</div>
                 </div>
-                <div className="p-6 md:p-8 font-mono text-sm space-y-2.5">
-                  <div className="flex gap-2">
-                    <span className="text-green-400">➜</span>
-                    <span className="text-blue-400">~</span>
-                    <span className="text-white">devos login</span>
-                  </div>
-                  <div className="text-white/40 pl-4">✓ Authenticated with GitHub</div>
-                  <div className="flex gap-2">
-                    <span className="text-green-400">➜</span>
-                    <span className="text-blue-400">~</span>
-                    <span className="text-white">devos deploy --prod</span>
-                  </div>
-                  <div className="text-white/40 pl-4">Building "my-app"...</div>
-                  <div className="text-white/40 pl-4">Pushing to edge network...</div>
-                  <div className="flex gap-2 items-center pl-4">
-                    <div className="w-2 h-3.5 bg-blue-500 animate-pulse rounded-sm" />
-                    <span className="text-white/60 italic text-xs">Deploying to production...</span>
-                  </div>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1.4, duration: 0.6 }}
-                    className="pt-3 text-green-400"
-                  >
-                    ✓ Deploy successful!
-                    <br />
-                    <span className="text-white/40 text-xs">→ https://my-app.devos.app</span>
-                  </motion.div>
-                </div>
+                <LiveLog />
               </div>
 
               {/* Floating badges */}
