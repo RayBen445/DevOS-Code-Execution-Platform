@@ -113,6 +113,20 @@ export const initializeUser = async (user: any) => {
 
     // Create initial portfolio project
     await createPortfolioProject(user.uid, username);
+
+    // Generate referral code for this new user
+    await getOrCreateReferralCode(user.uid).catch(() => {});
+
+    // Process any pending referral stored when the user visited via a ?ref= link
+    const pendingRef = sessionStorage.getItem("devos_pending_ref");
+    if (pendingRef) {
+      try {
+        await processReferral(pendingRef, user.uid);
+      } catch (_) {
+        // best-effort
+      }
+      sessionStorage.removeItem("devos_pending_ref");
+    }
   } else {
     // Ensure public profile exists
     const userSnap = await getDoc(userRef);
