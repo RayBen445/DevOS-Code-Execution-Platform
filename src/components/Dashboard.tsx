@@ -187,6 +187,16 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
 
       await Promise.all(filePromises);
 
+      // Auto-add README.md
+      await addDoc(filesRef, {
+        projectId: docRef.id,
+        name: "README.md",
+        path: "/README.md",
+        content: `# ${newProjectName.trim()}\n\n${newProjectDescription.trim() || "A project built on DevOS."}\n\n## Getting Started\n\nOpen this project in the DevOS IDE and start building!\n`,
+        language: "markdown",
+        updatedAt: serverTimestamp(),
+      });
+
       // Add LICENSE file if a license was selected
       if (selectedLicense !== "none") {
         const year = new Date().getFullYear();

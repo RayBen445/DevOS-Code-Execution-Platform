@@ -21,9 +21,10 @@ export const createPoll = async (params: {
   question: string;
   options: string[];          // option texts (2–6 items)
   allowTextInput: boolean;
+  maxSelections?: number;     // 1 = single-choice (default), >1 = multi-select
   expiresAt?: Date | null;
 }): Promise<string> => {
-  const { createdBy, question, options, allowTextInput, expiresAt } = params;
+  const { createdBy, question, options, allowTextInput, expiresAt, maxSelections = 1 } = params;
 
   const pollOptions: PollOption[] = options.map((text, i) => ({
     id: `opt_${i}`,
@@ -35,6 +36,7 @@ export const createPoll = async (params: {
     question: question.trim(),
     options: pollOptions,
     allowTextInput,
+    maxSelections: Math.max(1, Math.min(maxSelections, pollOptions.length)),
     createdBy,
     createdAt: serverTimestamp(),
     expiresAt: expiresAt ? Timestamp.fromDate(expiresAt) : null,
@@ -50,7 +52,7 @@ export const createPoll = async (params: {
 export const voteOnPoll = async (
   pollId: string,
   userId: string,
-  optionId: string,
+  optionIds: string[],   // array supports both single and multi-select
   textResponse?: string
 ): Promise<void> => {
   const pollRef = doc(db, "polls", pollId);
@@ -69,9 +71,19 @@ export const voteOnPoll = async (
       throw new Error("Poll has expired");
     }
 
-    // Update option vote count
+    const maxSel = poll.maxSelections ?? 1;
+    if (optionIds.length === 0) throw new Error("Select at least one option");
+    if (optionIds.length > maxSel) throw new Error(`You can select at most ${maxSel} option(s)`);
+
+    // Validate all IDs exist
+    const validIds = new Set(poll.options.map((o) => o.id));
+    for (const id of optionIds) {
+      if (!validIds.has(id)) throw new Error(`Unknown option: ${id}`);
+    }
+
+    // Update option vote counts
     const updatedOptions = poll.options.map((opt) =>
-      opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
+      optionIds.includes(opt.id) ? { ...opt, votes: opt.votes + 1 } : opt
     );
 
     tx.update(pollRef, {
@@ -81,7 +93,7 @@ export const voteOnPoll = async (
 
     const voteData: PollVote = {
       userId,
-      optionId,
+      optionIds,
       votedAt: serverTimestamp(),
     };
     if (textResponse?.trim()) {

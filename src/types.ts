@@ -113,6 +113,7 @@ export interface UserSettings {
     tabSize?: number;
     uiTheme?: 'dark' | 'midnight' | 'ocean' | 'light';
   };
+  birthday?: string;  // ISO date YYYY-MM-DD
   notifications?: {
     deployments?: boolean;
     adminAnnouncements?: boolean;
@@ -171,8 +172,9 @@ export interface UserProfile {
   displayName: string;
   avatarUrl: string;
   bio: string;
+  birthday?: string;        // ISO date string YYYY-MM-DD
   role?: 'user' | 'admin' | 'company';
-  status?: 'active' | 'suspended' | 'banned';
+  status?: 'active' | 'suspended' | 'banned' | 'deactivated';
   companyName?: string;
   verified?: boolean;
   skills?: string[];
@@ -338,6 +340,7 @@ export interface Poll {
   question: string;
   options: PollOption[];
   allowTextInput: boolean;   // when true, voters may also type a free-text response
+  maxSelections: number;     // 1 = single choice; >1 = multi-select (up to N options)
   createdBy: string;         // admin uid
   createdAt: any;
   expiresAt?: any | null;    // Firestore Timestamp – null / absent = no expiry
@@ -347,7 +350,7 @@ export interface Poll {
 
 export interface PollVote {
   userId: string;
-  optionId: string;           // which option was chosen
+  optionIds: string[];        // one or more selected option IDs
   textResponse?: string;      // free-text answer (if allowTextInput and user supplied one)
   votedAt: any;
 }

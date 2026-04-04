@@ -336,3 +336,27 @@ export const suspendUser = async (uid: string): Promise<void> => {
 export const reinstateUser = async (uid: string): Promise<void> => {
   await updateDoc(doc(db, "users", uid), { status: "active" });
 };
+
+/** Deactivate the caller's own account — they are signed out and cannot log back in. */
+export const deactivateAccount = async (uid: string): Promise<void> => {
+  await updateDoc(doc(db, "users", uid), { status: "deactivated" });
+};
+
+/**
+ * Submit an account deletion request.
+ * The actual deletion is handled manually by the admin via email.
+ * Creates a doc in `deletion_requests/{uid}` that admins can review.
+ */
+export const requestAccountDeletion = async (
+  uid: string,
+  email: string,
+  reason?: string
+): Promise<void> => {
+  await setDoc(doc(db, "deletion_requests", uid), {
+    userId: uid,
+    email,
+    reason: reason?.trim() || "",
+    requestedAt: serverTimestamp(),
+    status: "pending",
+  });
+};

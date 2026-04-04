@@ -81,7 +81,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role', 'status', 'links', 'skills', 'dailyStreak', 'monthlyStreak', 'lastActiveDate', 'lastActiveMonth', 'activeDaysThisMonth', 'companyName', 'verified', 'logo', 'description'];
+      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role', 'status', 'birthday', 'links', 'skills', 'dailyStreak', 'monthlyStreak', 'lastActiveDate', 'lastActiveMonth', 'activeDaysThisMonth', 'companyName', 'verified', 'logo', 'description'];
       return data.keys().hasOnly(allowedFields) &&
              data.uid is string && data.uid == request.auth.uid &&
              data.email is string &&
@@ -93,8 +93,11 @@ service cloud.firestore {
              (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 1000)) &&
              (!('logo' in data) || (data.logo is string && data.logo.size() <= 1000)) &&
              (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+             (!('birthday' in data) || data.birthday is string) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp) &&
              (!('role' in data) || data.role in ['user', 'admin', 'company']) &&
+             // Owners may only self-deactivate or restore to active; admin sets ban/suspend via a separate rule
+             (!('status' in data) || data.status in ['active', 'deactivated']) &&
              (!('links' in data) || data.links is map) &&
              (!('skills' in data) || data.skills is list);
     }
@@ -170,7 +173,7 @@ service cloud.firestore {
     }
 
     function isValidUserSettings(data) {
-      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId', 'links', 'preferences', 'notifications', 'skills'];
+      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId', 'links', 'preferences', 'notifications', 'skills', 'birthday'];
       return data.keys().hasOnly(allowedFields) &&
              (!('githubToken' in data) || data.githubToken is string) &&
              (!('vercelToken' in data) || data.vercelToken is string) &&
@@ -180,6 +183,7 @@ service cloud.firestore {
              (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
              (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 1000)) &&
              (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 1000)) &&
+             (!('birthday' in data) || data.birthday is string) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp) &&
              (!('links' in data) || data.links is map) &&
              (!('skills' in data) || data.skills is list) &&
@@ -190,8 +194,12 @@ service cloud.firestore {
     // Rules
     match /users/{uid} {
       allow read: if true;
-      allow create, update: if isOwner(uid) && isValidUser(request.resource.data);
-      allow delete: if isOwner(uid);
+      // Owner can create / update their own profile (isValidUser enforces status only in ['active','deactivated'])
+      allow create: if isOwner(uid) && isValidUser(request.resource.data);
+      allow update: if (isOwner(uid) && isValidUser(request.resource.data)) ||
+                       // Admin can update any field — needed for ban, suspend, reinstate
+                       isAdmin();
+      allow delete: if isOwner(uid) || isAdmin();
     }
 
     match /user_settings/{uid} {
@@ -443,8 +451,14 @@ service cloud.firestore {
       }
     }
 
-    // ── Polls ──────────────────────────────────────────────────────────────────
-    match /polls/{pollId} {
+    // ── Account deletion requests ──────────────────────────────────────────────
+    match /deletion_requests/{docId} {
+      // Owner can create their own deletion request; admin can read/delete
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ── Polls ──────────────────────────────────────────────────────────────────    match /polls/{pollId} {
       // Any authenticated user (or public) can read polls
       allow read: if true;
       // Only admins may create or modify polls

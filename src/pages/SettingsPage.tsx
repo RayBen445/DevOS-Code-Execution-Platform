@@ -46,6 +46,10 @@ import {
   Menu,
   Tag,
   Plus,
+  Palette,
+  Cake,
+  PowerOff,
+  Mail,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -58,6 +62,8 @@ import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 import { getReferralStats, REFERRER_BONUS, REFERRED_BONUS } from "../lib/referralService";
 import { redeemCode } from "../lib/redeemCodeService";
+import { deactivateAccount, requestAccountDeletion } from "../lib/userService";
+import UIThemeSwitcher from "../components/UIThemeSwitcher";
 import { ReferralStats } from "../types";
 
 type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
@@ -328,6 +334,7 @@ function ProfileTab() {
   const [website, setWebsite] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
+  const [birthday, setBirthday] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -339,6 +346,7 @@ function ProfileTab() {
         setBio(d.bio || "");
         setAvatarUrl(d.avatarUrl || user.photoURL || "");
         setSkills(Array.isArray(d.skills) ? d.skills : []);
+        setBirthday(d.birthday || "");
         const links = d.links || {};
         setGithub(links.github || "");
         setTwitter(links.twitter || "");
@@ -369,6 +377,7 @@ function ProfileTab() {
         avatarUrl,
         avatar: avatarUrl,
         updatedAt: serverTimestamp(),
+        ...(birthday ? { birthday } : {}),
         ...(Object.keys(links).length ? { links } : {}),
       };
       const privateData = {
@@ -380,6 +389,7 @@ function ProfileTab() {
         avatarUrl,
         avatar: avatarUrl,
         updatedAt: serverTimestamp(),
+        ...(birthday ? { birthday } : {}),
         ...(Object.keys(links).length ? { links } : {}),
       };
       await Promise.all([
@@ -484,6 +494,10 @@ function ProfileTab() {
       <Field label="Bio" icon={<FileText className="w-3.5 h-3.5" />}>
         <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell the world about yourself…" rows={3} maxLength={500} className={`${inputCls} resize-none`} />
         <p className="text-[11px] text-white/25 mt-1 text-right">{bio.length}/500</p>
+      </Field>
+
+      <Field label="Birthday" icon={<Cake className="w-3.5 h-3.5" />} hint="Used for birthday greetings; not shown publicly">
+        <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className={inputCls} max={new Date().toISOString().split("T")[0]} />
       </Field>
 
       {/* Skills */}
@@ -761,7 +775,7 @@ function PreferencesTab() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-white">Preferences</h1>
-        <p className="text-white/40 text-sm mt-1">Customize your editor experience.</p>
+        <p className="text-white/40 text-sm mt-1">Customize your editor and visual experience.</p>
       </div>
 
       <div className="space-y-6 max-w-sm">
@@ -783,6 +797,10 @@ function PreferencesTab() {
             </Field>
           </div>
         </div>
+
+        {/* UI Theme Switcher */}
+        <UIThemeSwitcher />
+
         <SaveButton loading={saving} onClick={handleSave} />
       </div>
     </div>
@@ -860,30 +878,44 @@ function NotificationsTab() {
 function DangerZoneTab() {
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
-  const [showModal, setShowModal] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const [deleting, setDeleting] = useState(false);
 
-  const canDelete = confirmText === "DELETE";
+  // Deactivate
+  const [showDeactivate, setShowDeactivate] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
 
-  const handleDelete = async () => {
-    if (!user || !canDelete) return;
-    setDeleting(true);
+  // Request deletion
+  const [showDeleteRequest, setShowDeleteRequest] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [requestingSent, setRequestingSent] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+
+  const handleDeactivate = async () => {
+    if (!user) return;
+    setDeactivating(true);
     try {
-      // Delete Firestore documents
-      await Promise.allSettled([
-        deleteDoc(doc(db, "users", user.uid)),
-        deleteDoc(doc(db, "user_settings", user.uid)),
-      ]);
-      // Delete Firebase Auth account
-      await deleteUser(user);
-      toast.success("Account deleted. Goodbye.");
+      await deactivateAccount(user.uid);
+      await auth.signOut();
+      toast.success("Your account has been deactivated.");
       navigate("/");
     } catch (err: any) {
       toast.error(getAuthErrorMessage(err));
     } finally {
-      setDeleting(false);
-      setShowModal(false);
+      setDeactivating(false);
+      setShowDeactivate(false);
+    }
+  };
+
+  const handleRequestDeletion = async () => {
+    if (!user) return;
+    setRequesting(true);
+    try {
+      await requestAccountDeletion(user.uid, user.email ?? "", deleteReason);
+      setRequestingSent(true);
+      toast.success("Deletion request submitted. Our team will contact you via email.");
+    } catch {
+      toast.error("Failed to submit request. Please try again.");
+    } finally {
+      setRequesting(false);
     }
   };
 
@@ -894,73 +926,137 @@ function DangerZoneTab() {
         <p className="text-white/40 text-sm mt-1">Irreversible actions. Proceed with caution.</p>
       </div>
 
-      <div className="p-6 rounded-2xl border border-red-500/20 bg-red-500/5 space-y-4">
-        <div>
-          <p className="text-white font-bold">Delete Account</p>
-          <p className="text-white/50 text-sm mt-1">
-            Permanently delete your DevOS account and all associated data. This cannot be undone.
-          </p>
+      {/* Deactivate account */}
+      <div className="p-6 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <PowerOff className="w-4 h-4 text-yellow-400" />
+          </div>
+          <div>
+            <p className="text-white font-bold">Deactivate Account</p>
+            <p className="text-white/50 text-sm mt-1">
+              Temporarily disable your account. You will be signed out and won't be able to log in until reactivated by support.
+            </p>
+          </div>
         </div>
         <button
-          onClick={() => { setConfirmText(""); setShowModal(true); }}
-          className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm transition-all"
+          onClick={() => setShowDeactivate(true)}
+          className="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-500 text-black rounded-xl font-bold text-sm transition-all"
         >
-          Delete My Account
+          Deactivate My Account
         </button>
       </div>
 
-      {/* Custom delete modal with typed confirmation */}
+      {/* Request account deletion */}
+      <div className="p-6 rounded-2xl border border-red-500/20 bg-red-500/5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <Mail className="w-4 h-4 text-red-400" />
+          </div>
+          <div>
+            <p className="text-white font-bold">Request Account Deletion</p>
+            <p className="text-white/50 text-sm mt-1">
+              Account deletion is processed manually by our team. Submit a request and we'll contact you at <span className="text-white/70 font-mono">{user?.email}</span> to complete the process.
+            </p>
+          </div>
+        </div>
+        {requestingSent ? (
+          <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
+            <Check className="w-4 h-4" />
+            Request submitted. Check your email for next steps.
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowDeleteRequest(true)}
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm transition-all"
+          >
+            Request Account Deletion
+          </button>
+        )}
+      </div>
+
+      {/* Deactivate confirm modal */}
       <AnimatePresence>
-        {showModal && (
+        {showDeactivate && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !deactivating && setShowDeactivate(false)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => !deleting && setShowModal(false)}
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
               className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-3xl p-8 shadow-2xl"
             >
-              <button onClick={() => !deleting && setShowModal(false)} disabled={deleting} className="absolute top-5 right-5 p-2 hover:bg-white/5 rounded-full transition-colors disabled:opacity-40">
+              <button onClick={() => !deactivating && setShowDeactivate(false)} disabled={deactivating}
+                className="absolute top-5 right-5 p-2 hover:bg-white/5 rounded-full transition-colors disabled:opacity-40">
                 <X className="w-4 h-4 text-white/40" />
               </button>
+              <div className="w-12 h-12 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center justify-center mb-5">
+                <PowerOff className="w-6 h-6 text-yellow-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white mb-2">Deactivate Account?</h2>
+              <p className="text-white/50 text-sm leading-relaxed mb-6">
+                You will be signed out immediately and your account will be disabled. Contact support to reactivate.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowDeactivate(false)} disabled={deactivating}
+                  className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 font-medium text-sm hover:bg-white/5 transition-all disabled:opacity-40">
+                  Cancel
+                </button>
+                <button onClick={handleDeactivate} disabled={deactivating}
+                  className="flex-1 py-3 rounded-xl bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-black font-bold text-sm flex items-center justify-center gap-2 transition-all">
+                  {deactivating ? <><Loader2 className="w-4 h-4 animate-spin" />Deactivating…</> : "Deactivate"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
+      {/* Request deletion modal */}
+      <AnimatePresence>
+        {showDeleteRequest && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => !requesting && setShowDeleteRequest(false)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-3xl p-8 shadow-2xl"
+            >
+              <button onClick={() => !requesting && setShowDeleteRequest(false)} disabled={requesting}
+                className="absolute top-5 right-5 p-2 hover:bg-white/5 rounded-full transition-colors disabled:opacity-40">
+                <X className="w-4 h-4 text-white/40" />
+              </button>
               <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mb-5">
                 <ShieldAlert className="w-6 h-6 text-red-400" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">Delete Account</h2>
+              <h2 className="text-xl font-bold text-white mb-2">Request Account Deletion</h2>
               <p className="text-white/50 text-sm leading-relaxed mb-5">
-                This will permanently delete your account, profile, and all data. This action <span className="text-red-400 font-semibold">cannot be undone</span>.
+                Our team will process your request manually and email you at <span className="font-mono text-white/70">{user?.email}</span>.
               </p>
-
-              <div className="mb-6 space-y-2">
-                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type <span className="text-red-400 font-mono">DELETE</span> to confirm</label>
-                <input
-                  type="text"
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder="DELETE"
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono focus:outline-none focus:border-red-500 transition-colors"
-                  autoComplete="off"
+              <div className="mb-5 space-y-2">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Reason (optional)</label>
+                <textarea
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Tell us why you'd like to delete your account…"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-red-500 transition-colors"
                 />
               </div>
-
               <div className="flex gap-3">
-                <button onClick={() => setShowModal(false)} disabled={deleting} className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 font-medium text-sm hover:bg-white/5 transition-all disabled:opacity-40">
+                <button onClick={() => setShowDeleteRequest(false)} disabled={requesting}
+                  className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 font-medium text-sm hover:bg-white/5 transition-all disabled:opacity-40">
                   Cancel
                 </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={!canDelete || deleting}
-                  className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-red-600/30 disabled:cursor-not-allowed text-white font-bold text-sm flex items-center justify-center gap-2 transition-all"
-                >
-                  {deleting ? <><Loader2 className="w-4 h-4 animate-spin" />Deleting…</> : "Delete Account"}
+                <button onClick={handleRequestDeletion} disabled={requesting}
+                  className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all">
+                  {requesting ? <><Loader2 className="w-4 h-4 animate-spin" />Submitting…</> : "Submit Request"}
                 </button>
               </div>
             </motion.div>
