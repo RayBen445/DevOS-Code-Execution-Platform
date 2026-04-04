@@ -317,9 +317,15 @@ export const updateStreak = async (uid: string): Promise<void> => {
   if (lastMonth !== currentMonth) activeDays = []; // new month → reset
   if (!activeDays.includes(todayStr)) activeDays = [...activeDays, todayStr];
 
-  const newMonthly = activeDays.length >= 20
+  // Only increment monthlyStreak once per month when the 20-day threshold is first reached.
+  // Track the month in which the award was last given to prevent repeated increments.
+  const lastAwardMonth: string | undefined = data.lastMonthlyStreakAwardMonth;
+  const thresholdReached = activeDays.length >= 20;
+  const alreadyAwardedThisMonth = lastAwardMonth === currentMonth;
+  const newMonthly = thresholdReached && !alreadyAwardedThisMonth
     ? (data.monthlyStreak ?? 0) + 1
     : data.monthlyStreak ?? 0;
+  const newLastAwardMonth = thresholdReached ? currentMonth : lastAwardMonth;
 
   await updateDoc(userRef, {
     dailyStreak: newDaily,
@@ -327,6 +333,7 @@ export const updateStreak = async (uid: string): Promise<void> => {
     lastActiveDate: todayStr,
     lastActiveMonth: currentMonth,
     activeDaysThisMonth: activeDays,
+    ...(newLastAwardMonth !== undefined ? { lastMonthlyStreakAwardMonth: newLastAwardMonth } : {}),
   });
 };
 
