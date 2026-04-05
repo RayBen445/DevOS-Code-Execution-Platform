@@ -373,7 +373,7 @@ function ProfileTab() {
   useEffect(() => {
     if (!requestedUsername.trim()) { setRequestUsernameStatus("idle"); return; }
     const uname = requestedUsername.toLowerCase().trim();
-    if (!/^[a-z0-9_-]{3,20}$/.test(uname)) { setRequestUsernameStatus("invalid"); return; }
+    if (!/^[a-z0-9_]{3,20}$/.test(uname)) { setRequestUsernameStatus("invalid"); return; }
     setRequestUsernameStatus("checking");
     const t = setTimeout(async () => {
       try {
@@ -386,7 +386,7 @@ function ProfileTab() {
 
   const handleRequestUsernameChange = async () => {
     const uname = requestedUsername.toLowerCase().trim();
-    if (!uname || !/^[a-z0-9_-]{3,20}$/.test(uname)) return;
+    if (!uname || !/^[a-z0-9_]{3,20}$/.test(uname)) return;
     if (requestUsernameStatus !== "available") return;
     if (!user) return;
     setRequestingUsername(true);
@@ -568,7 +568,7 @@ function ProfileTab() {
                 <input
                   type="text"
                   value={requestedUsername}
-                  onChange={(e) => setRequestedUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                  onChange={(e) => setRequestedUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
                   placeholder="Desired username"
                   maxLength={20}
                   className={`${inputCls} pr-8 ${
@@ -582,7 +582,7 @@ function ProfileTab() {
               </div>
               {requestUsernameStatus === "available" && <p className="text-[11px] text-green-400">✓ Available</p>}
               {requestUsernameStatus === "taken" && <p className="text-[11px] text-red-400">✗ Already taken</p>}
-              {requestUsernameStatus === "invalid" && <p className="text-[11px] text-red-400">3–20 chars: letters, numbers, _ or -</p>}
+              {requestUsernameStatus === "invalid" && <p className="text-[11px] text-red-400">3–20 chars: letters, numbers, underscores only</p>}
               <textarea
                 value={requestReason}
                 onChange={(e) => setRequestReason(e.target.value)}
