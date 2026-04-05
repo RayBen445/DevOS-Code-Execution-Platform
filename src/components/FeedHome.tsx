@@ -806,7 +806,7 @@ function FeedItem({
           <span>
             {post.communityName ? (
               <a
-                href={`/communities`}
+                href={post.communitySlug ? `/c/${post.communitySlug}` : `/communities`}
                 className="hover:text-purple-300 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >

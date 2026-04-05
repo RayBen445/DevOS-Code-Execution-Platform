@@ -65,8 +65,12 @@ export default function Navbar({ onSignIn }: NavbarProps) {
 
   // Load saved accounts from localStorage
   useEffect(() => {
-    const raw = localStorage.getItem("devos_saved_accounts");
-    setSavedAccounts(raw ? JSON.parse(raw) : []);
+    try {
+      const raw = localStorage.getItem("devos_saved_accounts");
+      setSavedAccounts(raw ? JSON.parse(raw) : []);
+    } catch {
+      setSavedAccounts([]);
+    }
   }, [user]);
 
   // Persist current user to saved accounts list whenever settings are loaded
@@ -80,7 +84,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
       email: user.email || "",
     };
     const raw = localStorage.getItem("devos_saved_accounts");
-    const existing: typeof savedAccounts = raw ? JSON.parse(raw) : [];
+    const existing: typeof savedAccounts = (() => { try { return raw ? JSON.parse(raw) : []; } catch { return []; } })();
     const updated = [account, ...existing.filter((a) => a.uid !== user.uid)];
     localStorage.setItem("devos_saved_accounts", JSON.stringify(updated));
     setSavedAccounts(updated);
@@ -369,6 +373,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                                   await logout();
                                   navigate("/");
                                 }}
+                                title={`Sign out and sign in as ${acc.displayName}`}
                                 className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors text-left"
                               >
                                 <img
@@ -379,7 +384,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                                 />
                                 <div className="min-w-0 flex-1">
                                   <p className="text-xs font-semibold text-white/80 truncate">{acc.displayName}</p>
-                                  <p className="text-[10px] text-white/40 truncate">@{acc.username}</p>
+                                  <p className="text-[10px] text-white/40 truncate">@{acc.username} · sign in</p>
                                 </div>
                               </button>
                             ))}
