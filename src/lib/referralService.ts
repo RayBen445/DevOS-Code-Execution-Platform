@@ -70,6 +70,13 @@ export async function processReferral(
   const existingSnap = await getDocs(existingQ);
   if (!existingSnap.empty) return false;
 
+  // Award new user's credits first (they own this doc — always succeeds)
+  await setDoc(
+    doc(db, "user_credits", newUserId),
+    { daily: increment(REFERRED_BONUS) },
+    { merge: true }
+  );
+
   // Record referral event
   await addDoc(collection(db, "referrals"), {
     referrerId,
@@ -78,17 +85,11 @@ export async function processReferral(
     createdAt: serverTimestamp(),
   });
 
-  // Add credits to referrer
+  // Award referrer's credits (Firestore rule allows a +REFERRER_BONUS increment
+  // from any authenticated user to support client-side referral processing)
   await setDoc(
     doc(db, "user_credits", referrerId),
     { daily: increment(REFERRER_BONUS) },
-    { merge: true }
-  );
-
-  // Add credits to new user
-  await setDoc(
-    doc(db, "user_credits", newUserId),
-    { daily: increment(REFERRED_BONUS) },
     { merge: true }
   );
 

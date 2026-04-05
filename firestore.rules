@@ -247,9 +247,16 @@ service cloud.firestore {
       allow read: if isOwner(uid) || isAdmin();
       // Owner can create their own credits doc (initialisation on first deploy/load)
       allow create: if isOwner(uid) || isAdmin();
-      // Owner can update their own credits (deduct on deploy/sync, reset daily/monthly)
-      // Admin can also adjust credits (top-up via dashboard)
-      allow update: if isOwner(uid) || isAdmin();
+      // Owner can update their own credits (deduct on deploy/sync, reset daily/monthly).
+      // Admin can also adjust credits (top-up via dashboard).
+      // Any authenticated user may increment daily credits by exactly REFERRER_BONUS (25)
+      // to support client-side referral processing where the referred user awards the referrer.
+      allow update: if isOwner(uid) || isAdmin() ||
+        (
+          isAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['daily']) &&
+          request.resource.data.daily == resource.data.daily + 25
+        );
       allow delete: if isAdmin();
     }
 

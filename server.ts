@@ -15,12 +15,36 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize Firebase Admin
+// Resolve project ID: prefer the config file (local dev), fall back to env var (Vercel/CI)
+let firebaseProjectId: string | undefined = process.env.FIREBASE_PROJECT_ID;
 const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
-const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
+if (!firebaseProjectId) {
+  try {
+    const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
+    firebaseProjectId = firebaseConfig.projectId;
+  } catch {
+    // Config file absent in production; FIREBASE_PROJECT_ID must be set
+  }
+}
+
+// Resolve credentials: prefer explicit service-account JSON env var (Vercel/CI),
+// fall back to Application Default Credentials (local dev / AI Studio)
+let adminCredential: admin.credential.Credential;
+if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    adminCredential = admin.credential.cert(serviceAccount);
+  } catch {
+    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON; falling back to applicationDefault");
+    adminCredential = admin.credential.applicationDefault();
+  }
+} else {
+  adminCredential = admin.credential.applicationDefault();
+}
 
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(), // This works in AI Studio
-  projectId: firebaseConfig.projectId,
+  credential: adminCredential,
+  projectId: firebaseProjectId,
 });
 
 const db = admin.firestore();

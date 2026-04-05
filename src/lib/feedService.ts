@@ -259,3 +259,9 @@ export async function repostPost(params: {
 export async function deletePost(postId: string): Promise<void> {
   await deleteDoc(doc(db, "feed", postId));
 }
+
+/** Delete a comment by its ID. Decrements commentsCount on the parent post. */
+export async function deleteComment(commentId: string, postId: string): Promise<void> {
+  await deleteDoc(doc(db, "comments", commentId));
+  await updateDoc(doc(db, "feed", postId), { commentsCount: increment(-1) });
+}

@@ -40,6 +40,7 @@ import {
   subscribeComments,
   repostPost,
   deletePost,
+  deleteComment,
 } from "../lib/feedService";
 import { notifyComment, notifyRepost } from "../lib/notificationService";
 import { resolveAvatar } from "../lib/avatars";
@@ -824,6 +825,15 @@ function FeedItem({
     setIsSubmittingComment(false);
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await deleteComment(commentId, post.id);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+    } catch {
+      toast.error("Failed to delete comment.");
+    }
+  };
+
   const handleRepost = async () => {
     setIsReposting(true);
     await onRepost(post, repostText);
@@ -1057,7 +1067,7 @@ function FeedItem({
                 <p className="text-xs text-white/25 text-center py-2">No comments yet</p>
               ) : (
                 comments.map((c) => (
-                  <div key={c.id} className="flex gap-2.5">
+                  <div key={c.id} className="flex gap-2.5 group">
                     <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
                       {c.avatarUrl ? (
                         <img src={resolveAvatar(c.avatarUrl)} alt={c.username} className="w-7 h-7 rounded-full object-cover" referrerPolicy="no-referrer" />
@@ -1072,6 +1082,15 @@ function FeedItem({
                       </div>
                       <p className="text-xs text-white/60 leading-relaxed">{c.content}</p>
                     </div>
+                    {userId === c.userId && (
+                      <button
+                        onClick={() => handleDeleteComment(c.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 text-red-400/60 hover:text-red-400 transition-all shrink-0 self-start mt-0.5"
+                        title="Delete comment"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 ))
               )}
