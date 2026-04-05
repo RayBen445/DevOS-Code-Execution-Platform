@@ -285,6 +285,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         projectName: selectedProject?.name,
         isPublic: true,
         mentions,
+        isOfficial: settings?.isOfficial ?? false,
       });
       // Notify mentioned users
       if (mentions.length) {

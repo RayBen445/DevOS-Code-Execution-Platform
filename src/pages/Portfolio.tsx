@@ -4,7 +4,7 @@ import { db, auth } from "../lib/firebase";
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { UserSettings, Project, FeedPost } from "../types";
-import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil, Flame } from "lucide-react";
+import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil, Flame, BadgeCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn, formatRelativeTime } from "../lib/utils";
@@ -291,9 +291,14 @@ export default function Portfolio() {
             </div>
           </div>
           
-          <h1 className="text-5xl font-black mb-3 tracking-tighter bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
-            {userSettings.fullName || userSettings.displayName || userSettings.username}
-          </h1>
+          <div className="flex items-center gap-3 mb-3">
+            <h1 className="text-5xl font-black tracking-tighter bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
+              {userSettings.fullName || userSettings.displayName || userSettings.username}
+            </h1>
+            {(userSettings as any)?.isOfficial && (
+              <BadgeCheck className="w-8 h-8 text-blue-400 flex-shrink-0" title="Official" />
+            )}
+          </div>
           <div className="flex items-center gap-3 mb-8">
             <span className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-mono text-xs font-bold">
               @{userSettings.username}

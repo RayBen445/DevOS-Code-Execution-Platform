@@ -462,3 +462,10 @@ export const resolveUsernameChangeRequest = async (
     ...(rejectionReason ? { rejectionReason } : {}),
   });
 };
+
+/** Admin: toggle the official/verified status of a user. */
+export const setUserOfficial = async (uid: string, isOfficial: boolean): Promise<void> => {
+  await updateDoc(doc(db, "users", uid), { isOfficial });
+  // Also keep user_settings in sync so posts stamped at creation reflect the change
+  await updateDoc(doc(db, "user_settings", uid), { isOfficial }).catch(() => {});
+};

@@ -21,7 +21,7 @@ import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCre
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
-import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable } from "../lib/userService";
+import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable, setUserOfficial, getUsernameChangeRequests, resolveUsernameChangeRequest } from "../lib/userService";
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
 import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -69,6 +69,8 @@ import {
   Vote,
   Wrench,
   Pencil,
+  BadgeCheck,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -89,6 +91,7 @@ const detectLanguage = (filename: string): string => {
 interface UserWithCredits extends UserProfile {
   credits?: Credits;
   projectCount?: number;
+  isOfficial?: boolean;
 }
 
 interface SystemHealth {
@@ -187,6 +190,33 @@ export default function AdminDashboard() {
   const [usernameEditValue, setUsernameEditValue] = useState("");
   const [savingUsername, setSavingUsername] = useState(false);
 
+  // Official toggle state
+  const [togglingOfficial, setTogglingOfficial] = useState<string | null>(null);
+
+  // Feedback state
+  const [feedbackItems, setFeedbackItems] = useState<Array<{
+    id: string;
+    type: 'bug' | 'feature' | 'feedback';
+    message: string;
+    userId?: string;
+    userEmail?: string;
+    createdAt: any;
+    status: string;
+  }>>([]);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [openFeedbackCount, setOpenFeedbackCount] = useState(0);
+  const [resolvingFeedback, setResolvingFeedback] = useState<string | null>(null);
+
+  // Username change requests state
+  const [usernameRequests, setUsernameRequests] = useState<Array<{
+    id: string; uid: string; currentUsername: string; requestedUsername: string;
+    reason?: string; status: string; createdAt: any; rejectionReason?: string;
+  }>>([]);
+  const [loadingUsernameRequests, setLoadingUsernameRequests] = useState(false);
+  const [resolvingRequest, setResolvingRequest] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectInput, setShowRejectInput] = useState<string | null>(null);
+
   // Gift Credits state
   const [giftTarget, setGiftTarget] = useState("");
   const [giftAmount, setGiftAmount] = useState("50");
@@ -261,6 +291,28 @@ export default function AdminDashboard() {
       setLoadingConfig(true);
       getCreditConfig().then((cfg) => { setCreditConfig(cfg); setLoadingConfig(false); }).catch(() => setLoadingConfig(false));
     }
+  }, [activeTab, isAdmin]);
+
+  useEffect(() => {
+    if (activeTab !== "feedback" || !isAdmin) return;
+    setLoadingFeedback(true);
+    getDocs(query(collection(db, "feedback"), orderBy("createdAt", "desc"), limit(100)))
+      .then((snap) => {
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
+        setFeedbackItems(items);
+        setOpenFeedbackCount(items.filter((i: any) => i.status === "open").length);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingFeedback(false));
+  }, [activeTab, isAdmin]);
+
+  useEffect(() => {
+    if (activeTab !== "users" || !isAdmin) return;
+    setLoadingUsernameRequests(true);
+    getUsernameChangeRequests("pending")
+      .then(setUsernameRequests)
+      .catch(() => {})
+      .finally(() => setLoadingUsernameRequests(false));
   }, [activeTab, isAdmin]);
 
   const loadData = async () => {
@@ -703,6 +755,62 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleOfficial = async (uid: string, currentIsOfficial: boolean) => {
+    setTogglingOfficial(uid);
+    try {
+      await setUserOfficial(uid, !currentIsOfficial);
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, isOfficial: !currentIsOfficial } : u)));
+      toast.success(!currentIsOfficial ? "User marked as official ✓" : "Official status removed.");
+    } catch {
+      toast.error("Failed to update official status.");
+    } finally {
+      setTogglingOfficial(null);
+    }
+  };
+
+  const handleResolveFeedback = async (id: string, status: "resolved" | "dismissed") => {
+    setResolvingFeedback(id);
+    try {
+      await updateDoc(doc(db, "feedback", id), { status });
+      setFeedbackItems((prev) => prev.map((f) => (f.id === id ? { ...f, status } : f)));
+      setOpenFeedbackCount((c) => Math.max(0, c - 1));
+      toast.success(status === "resolved" ? "Marked as resolved." : "Dismissed.");
+    } catch {
+      toast.error("Failed to update feedback.");
+    } finally {
+      setResolvingFeedback(null);
+    }
+  };
+
+  const handleApproveUsernameRequest = async (req: typeof usernameRequests[0]) => {
+    setResolvingRequest(req.id);
+    try {
+      await adminChangeUsername(req.uid, req.requestedUsername);
+      await resolveUsernameChangeRequest(req.id, "approved", user!.uid);
+      setUsernameRequests((prev) => prev.filter((r) => r.id !== req.id));
+      toast.success(`Username changed to @${req.requestedUsername}`);
+    } catch {
+      toast.error("Failed to approve request.");
+    } finally {
+      setResolvingRequest(null);
+    }
+  };
+
+  const handleRejectUsernameRequest = async (req: typeof usernameRequests[0]) => {
+    setResolvingRequest(req.id);
+    try {
+      await resolveUsernameChangeRequest(req.id, "rejected", user!.uid, rejectReason || undefined);
+      setUsernameRequests((prev) => prev.filter((r) => r.id !== req.id));
+      setShowRejectInput(null);
+      setRejectReason("");
+      toast.success("Request rejected.");
+    } catch {
+      toast.error("Failed to reject request.");
+    } finally {
+      setResolvingRequest(null);
+    }
+  };
+
   const handleGiftCredits = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetUser = users.find(
@@ -929,6 +1037,7 @@ export default function AdminDashboard() {
     { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
     { id: "redeem", label: "Redeem Codes", icon: <Gift className="w-4 h-4" /> },
     { id: "posts", label: "Posts", icon: <Newspaper className="w-4 h-4" /> },
+    { id: "feedback", label: "Feedback", icon: <MessageSquare className="w-4 h-4" />, badge: openFeedbackCount || undefined },
     { id: "reserved", label: "Reserved Names", icon: <AtSign className="w-4 h-4" /> },
     { id: "maintenance", label: "Maintenance", icon: <Wrench className="w-4 h-4" /> },
   ];
@@ -1387,6 +1496,75 @@ export default function AdminDashboard() {
                 {activeTab === "users" && (
                   <div>
                     <p className="text-white/40 text-sm mb-6">{users.length} registered users</p>
+                    {/* Pending Username Change Requests */}
+                    {usernameRequests.length > 0 && (
+                      <div className="mb-6 bg-[#111827] border border-yellow-500/20 rounded-2xl p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <AtSign className="w-4 h-4 text-yellow-400" />
+                          <h3 className="text-sm font-bold text-white">Pending Username Requests</h3>
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-[10px] font-bold border border-yellow-500/20">
+                            {usernameRequests.length}
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          {usernameRequests.map((req) => (
+                            <div key={req.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/3 border border-white/5">
+                              <div className="min-w-0">
+                                <p className="text-sm text-white">
+                                  <span className="font-mono text-white/60">@{req.currentUsername}</span>
+                                  <span className="text-white/30 mx-2">→</span>
+                                  <span className="font-mono font-bold text-yellow-400">@{req.requestedUsername}</span>
+                                </p>
+                                {req.reason && <p className="text-xs text-white/40 mt-0.5 truncate">{req.reason}</p>}
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                {showRejectInput === req.id ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="text"
+                                      value={rejectReason}
+                                      onChange={(e) => setRejectReason(e.target.value)}
+                                      placeholder="Reason (optional)"
+                                      className="text-xs px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-red-500/40 w-32"
+                                    />
+                                    <button
+                                      onClick={() => handleRejectUsernameRequest(req)}
+                                      disabled={resolvingRequest === req.id}
+                                      className="px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                    >
+                                      {resolvingRequest === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Reject"}
+                                    </button>
+                                    <button
+                                      onClick={() => { setShowRejectInput(null); setRejectReason(""); }}
+                                      className="px-2.5 py-1.5 rounded-xl bg-white/5 text-white/40 hover:text-white text-xs font-bold transition-all"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => handleApproveUsernameRequest(req)}
+                                      disabled={resolvingRequest === req.id}
+                                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                    >
+                                      {resolvingRequest === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => setShowRejectInput(req.id)}
+                                      className="px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all"
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {/* Desktop: table-like rows; Mobile: cards */}
                     <div className="space-y-2">
                       {users.map((u) => (
@@ -1482,6 +1660,24 @@ export default function AdminDashboard() {
                             >
                               <Pencil className="w-3.5 h-3.5" />
                               <span className="hidden sm:inline">Rename</span>
+                            </button>
+                          </div>
+                          {/* Official toggle */}
+                          <div className="shrink-0 ml-1">
+                            <button
+                              onClick={() => handleToggleOfficial(u.uid, !!u.isOfficial)}
+                              disabled={togglingOfficial === u.uid}
+                              title={u.isOfficial ? "Remove official status" : "Mark as official"}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all text-xs font-bold disabled:opacity-50 ${
+                                u.isOfficial
+                                  ? "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30"
+                                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                              }`}
+                            >
+                              {togglingOfficial === u.uid
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <BadgeCheck className="w-3.5 h-3.5" />}
+                              <span className="hidden sm:inline">{u.isOfficial ? "Official ✓" : "Official"}</span>
                             </button>
                           </div>
                           </div>
@@ -2163,6 +2359,95 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   </div>
+                )}
+
+                {/* Feedback Tab */}
+                {activeTab === "feedback" && (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h2 className="text-lg font-bold text-white">User Feedback</h2>
+                        <p className="text-white/40 text-sm mt-1">Bug reports, feature requests, and general feedback.</p>
+                      </div>
+                      {openFeedbackCount > 0 && (
+                        <span className="px-3 py-1 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-bold border border-yellow-500/20">
+                          {openFeedbackCount} open
+                        </span>
+                      )}
+                    </div>
+
+                    {loadingFeedback ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 text-white/30 animate-spin" />
+                      </div>
+                    ) : feedbackItems.length === 0 ? (
+                      <div className="text-center py-12">
+                        <MessageSquare className="w-10 h-10 text-white/15 mx-auto mb-3" />
+                        <p className="text-white/30 text-sm">No feedback yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {feedbackItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`bg-[#111827] border rounded-2xl p-5 transition-all ${
+                              item.status === "open" ? "border-white/10" : "border-white/5 opacity-60"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  item.type === "bug"
+                                    ? "bg-red-500/15 text-red-400 border-red-500/20"
+                                    : item.type === "feature"
+                                    ? "bg-purple-500/15 text-purple-400 border-purple-500/20"
+                                    : "bg-blue-500/15 text-blue-400 border-blue-500/20"
+                                }`}>
+                                  {item.type === "bug" ? "🐛 Bug" : item.type === "feature" ? "✨ Feature" : "💬 Feedback"}
+                                </span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  item.status === "open"
+                                    ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                    : item.status === "resolved"
+                                    ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                    : "bg-white/5 text-white/30 border-white/10"
+                                }`}>
+                                  {item.status}
+                                </span>
+                              </div>
+                              {item.status === "open" && (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    onClick={() => handleResolveFeedback(item.id, "resolved")}
+                                    disabled={resolvingFeedback === item.id}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                  >
+                                    {resolvingFeedback === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                    Resolve
+                                  </button>
+                                  <button
+                                    onClick={() => handleResolveFeedback(item.id, "dismissed")}
+                                    disabled={resolvingFeedback === item.id}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/5 text-white/30 hover:bg-white/10 hover:text-white text-xs font-bold transition-all disabled:opacity-50"
+                                  >
+                                    <X className="w-3 h-3" />
+                                    Dismiss
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-sm text-white/80 mt-3 leading-relaxed">{item.message}</p>
+                            <div className="flex items-center gap-3 mt-3 text-[11px] text-white/30">
+                              {item.userEmail && <span>From: {item.userEmail}</span>}
+                              {item.createdAt && (
+                                <span>{new Date(item.createdAt.toDate?.() ?? item.createdAt).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Maintenance Mode Tab */}
