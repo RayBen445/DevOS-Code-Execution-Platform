@@ -26,7 +26,7 @@ const sections: DocSection[] = [
           Welcome to DevOS — your cloud-based development environment. Get up and running in minutes.
         </p>
         <Step number={1} title="Create an account">
-          Sign up with your email or Google account. Once logged in you'll land on your personal dashboard.
+          Sign up with your email or Google account. Once logged in, you'll land on your personal dashboard.
         </Step>
         <Step number={2} title="Create a project">
           Click <strong>New Project</strong> on the dashboard. Choose a blank project or pick from a
@@ -57,7 +57,7 @@ const sections: DocSection[] = [
           Projects are the core unit of DevOS. Each project has its own file system, environment, and URL.
         </p>
         <Section title="Project homepage">
-          When you open a project without selecting a file the IDE shows a rich project homepage —
+          When you open a project without selecting a file, the IDE shows a rich project homepage —
           similar to a GitHub repository main page. It displays the project description, tech-stack
           badges derived from your file extensions, a clickable file browser (click any file to open
           it instantly), and a rendered preview of your <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">README.md</code> if one exists.

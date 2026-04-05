@@ -1782,7 +1782,7 @@ export default function AdminDashboard() {
                                 <div className="min-w-0">
                                   <p className="font-semibold text-white text-sm">{p.question}</p>
                                   <p className="text-xs text-white/30 mt-0.5">
-                                    {p.options?.length ?? 0} options · {Object.values(p.votes ?? {}).flat().length} votes
+                                    {p.options?.length ?? 0} options · {p.totalVotes ?? 0} votes
                                     {p.expiresAt && <> · expires {new Date(p.expiresAt instanceof Object && "toDate" in p.expiresAt ? (p.expiresAt as any).toDate() : p.expiresAt).toLocaleDateString()}</>}
                                   </p>
                                 </div>
@@ -1810,12 +1810,12 @@ export default function AdminDashboard() {
                               </div>
                               <div className="space-y-1.5">
                                 {p.options?.map((opt) => {
-                                  const totalVotes = Object.values(p.votes ?? {}).flat().length;
-                                  const optVotes = Object.values(p.votes ?? {}).filter((v) => v === opt || (Array.isArray(v) && v.includes(opt))).length;
+                                  const totalVotes = p.totalVotes ?? 0;
+                                  const optVotes = opt.votes ?? 0;
                                   const pct = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
                                   return (
-                                    <div key={opt} className="flex items-center gap-2 text-xs">
-                                      <span className="text-white/60 w-32 truncate">{opt}</span>
+                                    <div key={opt.id} className="flex items-center gap-2 text-xs">
+                                      <span className="text-white/60 w-32 truncate">{opt.text}</span>
                                       <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
                                         <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                                       </div>
