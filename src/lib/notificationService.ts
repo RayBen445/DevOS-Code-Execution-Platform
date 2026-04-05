@@ -239,3 +239,26 @@ export async function notifyRepost(params: {
     createdBy: params.reposterId,
   });
 }
+
+/** Notify a user that they were @mentioned in a post or comment */
+export async function notifyMention(params: {
+  mentionedUserId: string;
+  mentionedUsername: string;
+  mentionerUserId: string;
+  mentionerUsername: string;
+  contextType: 'post' | 'comment';
+  postId: string;
+}): Promise<void> {
+  if (params.mentionedUserId === params.mentionerUserId) return; // no self-notify
+  await addDoc(collection(db, "notifications"), {
+    userId: params.mentionedUserId,
+    type: "post_mention",
+    title: "You were mentioned",
+    message: `@${params.mentionerUsername} mentioned you in a ${params.contextType}.`,
+    link: `/?post=${params.postId}`,
+    isRead: false,
+    readBy: [],
+    createdAt: serverTimestamp(),
+    createdBy: params.mentionerUserId,
+  });
+}

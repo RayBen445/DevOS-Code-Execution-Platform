@@ -50,6 +50,8 @@ import {
   Cake,
   PowerOff,
   Mail,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -62,7 +64,8 @@ import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 import { getReferralStats, REFERRER_BONUS, REFERRED_BONUS } from "../lib/referralService";
 import { redeemCode } from "../lib/redeemCodeService";
-import { deactivateAccount, requestAccountDeletion } from "../lib/userService";
+import { deactivateAccount, requestAccountDeletion, requestUsernameChange, getUserOwnUsernameRequest, checkUsernameAvailable } from "../lib/userService";
+import { UsernameChangeRequest } from "../types";
 import UIThemeSwitcher from "../components/UIThemeSwitcher";
 import { ReferralStats } from "../types";
 
@@ -336,6 +339,13 @@ function ProfileTab() {
   const [skillInput, setSkillInput] = useState("");
   const [birthday, setBirthday] = useState("");
 
+  const [usernameRequest, setUsernameRequest] = useState<UsernameChangeRequest | null>(null);
+  const [showUsernameRequestForm, setShowUsernameRequestForm] = useState(false);
+  const [requestedUsername, setRequestedUsername] = useState("");
+  const [requestReason, setRequestReason] = useState("");
+  const [requestingUsername, setRequestingUsername] = useState(false);
+  const [requestUsernameStatus, setRequestUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
+
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
@@ -354,8 +364,46 @@ function ProfileTab() {
       }
       setLoading(false);
     });
+    if (user) {
+      getUserOwnUsernameRequest(user.uid).then(setUsernameRequest).catch(() => {});
+    }
     return () => unsub();
   }, [user]);
+
+  useEffect(() => {
+    if (!requestedUsername.trim()) { setRequestUsernameStatus("idle"); return; }
+    const uname = requestedUsername.toLowerCase().trim();
+    if (!/^[a-z0-9_]{3,20}$/.test(uname)) { setRequestUsernameStatus("invalid"); return; }
+    setRequestUsernameStatus("checking");
+    const t = setTimeout(async () => {
+      try {
+        const available = await checkUsernameAvailable(uname);
+        setRequestUsernameStatus(available ? "available" : "taken");
+      } catch { setRequestUsernameStatus("idle"); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [requestedUsername]);
+
+  const handleRequestUsernameChange = async () => {
+    const uname = requestedUsername.toLowerCase().trim();
+    if (!uname || !/^[a-z0-9_]{3,20}$/.test(uname)) return;
+    if (requestUsernameStatus !== "available") return;
+    if (!user) return;
+    setRequestingUsername(true);
+    try {
+      await requestUsernameChange(user.uid, username, uname, requestReason);
+      const req = await getUserOwnUsernameRequest(user.uid);
+      setUsernameRequest(req);
+      setShowUsernameRequestForm(false);
+      setRequestedUsername("");
+      setRequestReason("");
+      toast.success("Username change request submitted!");
+    } catch {
+      toast.error("Failed to submit request.");
+    } finally {
+      setRequestingUsername(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -482,11 +530,85 @@ function ProfileTab() {
         <Field label="Full Name" icon={<User className="w-3.5 h-3.5" />}>
           <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" className={inputCls} />
         </Field>
-        <Field label="Username" icon={<AtSign className="w-3.5 h-3.5" />} hint="Cannot be changed">
+        <Field label="Username" icon={<AtSign className="w-3.5 h-3.5" />}>
           <div className="relative">
             <input type="text" value={username} readOnly className={`${inputCls} cursor-not-allowed opacity-50`} />
             <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
           </div>
+          {/* Username change request status / form */}
+          {usernameRequest?.status === "pending" ? (
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/8 border border-yellow-500/20 text-xs text-yellow-400">
+              <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+              Request pending: @{usernameRequest.requestedUsername}
+            </div>
+          ) : usernameRequest?.status === "approved" ? (
+            <p className="mt-2 text-xs text-green-400 px-1">✓ Previous request approved</p>
+          ) : usernameRequest?.status === "rejected" ? (
+            <div className="mt-2 px-3 py-2 rounded-xl bg-red-500/8 border border-red-500/20">
+              <p className="text-xs text-red-400">✗ Last request rejected{usernameRequest.rejectionReason ? `: ${usernameRequest.rejectionReason}` : ""}</p>
+              {!showUsernameRequestForm && (
+                <button onClick={() => setShowUsernameRequestForm(true)} className="text-xs text-blue-400 hover:text-blue-300 mt-1 transition-colors">
+                  Request again →
+                </button>
+              )}
+            </div>
+          ) : !showUsernameRequestForm ? (
+            <button
+              onClick={() => setShowUsernameRequestForm(true)}
+              className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Request username change →
+            </button>
+          ) : null}
+
+          {showUsernameRequestForm && usernameRequest?.status !== "pending" && (
+            <div className="mt-3 p-4 rounded-xl bg-white/3 border border-white/10 space-y-3">
+              <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Request Username Change</p>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={requestedUsername}
+                  onChange={(e) => setRequestedUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                  placeholder="Desired username"
+                  maxLength={20}
+                  className={`${inputCls} pr-8 ${
+                    requestUsernameStatus === "available" ? "border-green-500/40" :
+                    requestUsernameStatus === "taken" || requestUsernameStatus === "invalid" ? "border-red-500/40" : ""
+                  }`}
+                />
+                {requestUsernameStatus === "checking" && <Loader2Icon className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 animate-spin" />}
+                {requestUsernameStatus === "available" && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-green-400" />}
+                {(requestUsernameStatus === "taken" || requestUsernameStatus === "invalid") && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-red-400" />}
+              </div>
+              {requestUsernameStatus === "available" && <p className="text-[11px] text-green-400">✓ Available</p>}
+              {requestUsernameStatus === "taken" && <p className="text-[11px] text-red-400">✗ Already taken</p>}
+              {requestUsernameStatus === "invalid" && <p className="text-[11px] text-red-400">3–20 chars: letters, numbers, underscores only</p>}
+              <textarea
+                value={requestReason}
+                onChange={(e) => setRequestReason(e.target.value)}
+                placeholder="Reason for change (optional)"
+                rows={2}
+                maxLength={200}
+                className={`${inputCls} resize-none`}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRequestUsernameChange}
+                  disabled={requestingUsername || requestUsernameStatus !== "available"}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold transition-all"
+                >
+                  {requestingUsername ? <Loader2Icon className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Submit Request
+                </button>
+                <button
+                  onClick={() => { setShowUsernameRequestForm(false); setRequestedUsername(""); setRequestReason(""); }}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 text-xs font-bold transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </Field>
       </div>
 

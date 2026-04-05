@@ -30,7 +30,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import ConfirmModal from "../components/ConfirmModal";
-import { Community, CommunityMember, FeedPost } from "../types";
+import { Community, CommunityMember, FeedPost, CommunityChatMessage } from "../types";
 import {
   getCommunityBySlug,
   subscribeCommunity,
@@ -40,6 +40,9 @@ import {
   joinCommunity,
   leaveCommunity,
   removeMember,
+  subscribeChatMessages,
+  sendChatMessage,
+  deleteChatMessage,
 } from "../lib/communityService";
 import {
   createFeedPost,
@@ -49,11 +52,13 @@ import {
 } from "../lib/feedService";
 import { useSEO } from "../hooks/useSEO";
 
-type CommunityTab = "posts" | "members";
+type CommunityTab = "posts" | "members" | "chat";
 
 // ─── Mini post composer ───────────────────────────────────────────────────────
 interface ComposerProps {
   communityId: string;
+  communityName?: string;
+  communitySlug?: string;
   userId: string;
   username: string;
   displayName?: string;
@@ -61,7 +66,7 @@ interface ComposerProps {
   onPosted: () => void;
 }
 
-function PostComposer({ communityId, userId, username, displayName, avatarUrl, onPosted }: ComposerProps) {
+function PostComposer({ communityId, communityName, communitySlug, userId, username, displayName, avatarUrl, onPosted }: ComposerProps) {
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -80,6 +85,8 @@ function PostComposer({ communityId, userId, username, displayName, avatarUrl, o
         type: "update",
         isPublic: true,
         communityId,
+        communityName,
+        communitySlug,
       });
       setText("");
       toast.success("Post shared to community!");
@@ -320,6 +327,10 @@ export default function CommunityPage() {
   const [membership, setMembership] = useState<CommunityMember | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [members, setMembers] = useState<CommunityMember[]>([]);
+  const [chatMessages, setChatMessages] = useState<CommunityChatMessage[]>([]);
+  const [chatText, setChatText] = useState("");
+  const [sendingChat, setSendingChat] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [userSettings, setUserSettings] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
   const [loading, setLoading] = useState(true);
@@ -365,6 +376,17 @@ export default function CommunityPage() {
     return subscribeCommunityMembers(community.id, setMembers);
   }, [community?.id, activeTab]);
 
+  // Subscribe to chat when on chat tab and is a member
+  useEffect(() => {
+    if (!community?.id || activeTab !== "chat" || !isMember) return;
+    return subscribeChatMessages(community.id, setChatMessages);
+  }, [community?.id, activeTab, isMember]);
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
   // Load current user settings
   useEffect(() => {
     if (!user) return;
@@ -400,6 +422,28 @@ export default function CommunityPage() {
     }
   };
 
+  const handleSendChat = async () => {
+    if (!user || !chatText.trim() || !community?.id) return;
+    setSendingChat(true);
+    const text = chatText.trim();
+    setChatText("");
+    try {
+      await sendChatMessage({
+        communityId: community.id,
+        userId: user.uid,
+        username: userSettings?.username || user.email?.split("@")[0] || "user",
+        displayName: userSettings?.displayName || user.displayName || undefined,
+        avatarUrl: userSettings?.avatarUrl || user.photoURL || undefined,
+        text,
+      });
+    } catch {
+      toast.error("Failed to send message.");
+      setChatText(text);
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
   const isMember = !!membership;
   const memberRole = membership?.role ?? null;
 
@@ -418,6 +462,7 @@ export default function CommunityPage() {
 
   const tabs: { id: CommunityTab; label: string; count?: number }[] = [
     { id: "posts", label: "Posts", count: posts.length },
+    { id: "chat", label: "Chat", count: undefined },
     { id: "members", label: "Members", count: community.memberCount },
   ];
 
@@ -532,6 +577,8 @@ export default function CommunityPage() {
               {user && isMember && userSettings?.username && (
                 <PostComposer
                   communityId={community.id}
+                  communityName={community.name}
+                  communitySlug={community.slug}
                   userId={user.uid}
                   username={userSettings.username}
                   displayName={userSettings.displayName}
@@ -596,6 +643,81 @@ export default function CommunityPage() {
                     />
                   ))}
                 </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === "chat" && (
+            <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col h-[520px]">
+              {!isMember ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-white/40 text-sm">Join the community to chat.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Messages */}
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3 min-h-0">
+                    {chatMessages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full py-12">
+                        <MessageCircle className="w-10 h-10 text-white/15 mb-3" />
+                        <p className="text-white/30 text-sm">No messages yet. Say hello! 👋</p>
+                      </div>
+                    ) : (
+                      chatMessages.map((msg) => (
+                        <div key={msg.id} className="flex items-start gap-3 group">
+                          <img
+                            src={resolveAvatar(msg.avatarUrl)}
+                            alt={msg.displayName || msg.username}
+                            className="w-7 h-7 rounded-full object-cover flex-shrink-0 mt-0.5"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                              <span className="text-xs font-bold text-white">{msg.displayName || msg.username}</span>
+                              <span className="text-[10px] text-white/30 font-mono">@{msg.username}</span>
+                              {msg.createdAt && (
+                                <span className="text-[10px] text-white/20">
+                                  {new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-white/80 mt-0.5 leading-relaxed break-words">{msg.text}</p>
+                          </div>
+                          {(user?.uid === msg.userId || memberRole === "admin" || memberRole === "moderator") && (
+                            <button
+                              onClick={() => community?.id && deleteChatMessage(community.id, msg.id)}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 text-red-400/60 hover:text-red-400 transition-all text-xs shrink-0"
+                              title="Delete message"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+
+                  {/* Input */}
+                  <div className="flex items-center gap-2 pt-3 border-t border-white/5">
+                    <input
+                      type="text"
+                      value={chatText}
+                      onChange={(e) => setChatText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
+                      placeholder="Send a message…"
+                      maxLength={2000}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                    />
+                    <button
+                      onClick={handleSendChat}
+                      disabled={sendingChat || !chatText.trim()}
+                      className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
               )}
             </motion.div>
           )}

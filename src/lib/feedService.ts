@@ -61,6 +61,9 @@ export async function createFeedPost(params: {
   projectName?: string;
   isPublic: boolean;
   communityId?: string;
+  communityName?: string;
+  communitySlug?: string;
+  mentions?: string[]; // array of @mentioned usernames
 }): Promise<string> {
   const docRef = await addDoc(collection(db, "feed"), {
     userId: params.userId,
@@ -72,6 +75,9 @@ export async function createFeedPost(params: {
     ...(params.projectId ? { projectId: params.projectId } : {}),
     ...(params.projectName ? { projectName: params.projectName } : {}),
     ...(params.communityId ? { communityId: params.communityId } : {}),
+    ...(params.communityName ? { communityName: params.communityName } : {}),
+    ...(params.communitySlug ? { communitySlug: params.communitySlug } : {}),
+    ...(params.mentions?.length ? { mentions: params.mentions } : {}),
     createdAt: serverTimestamp(),
     likes: 0,
     likedBy: [],
@@ -159,6 +165,7 @@ export async function addComment(params: {
   displayName?: string;
   avatarUrl?: string;
   content: string;
+  mentions?: string[]; // array of @mentioned usernames
 }): Promise<string> {
   const commentRef = await addDoc(collection(db, "comments"), {
     postId: params.postId,
@@ -168,6 +175,7 @@ export async function addComment(params: {
     avatarUrl: params.avatarUrl ?? "",
     content: params.content,
     createdAt: serverTimestamp(),
+    ...(params.mentions?.length ? { mentions: params.mentions } : {}),
   });
   // Increment comment count on the post
   await updateDoc(doc(db, "feed", params.postId), { commentsCount: increment(1) });

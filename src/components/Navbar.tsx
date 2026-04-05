@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -28,6 +28,8 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const [credits, setCredits] = useState<Credits | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [savedAccounts, setSavedAccounts] = useState<Array<{ uid: string; username: string; displayName: string; avatarUrl: string; email: string }>>([]);
+  const [isSwitchAccountOpen, setIsSwitchAccountOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const creditsPanelRef = useRef<HTMLDivElement>(null);
 
@@ -60,6 +62,33 @@ export default function Navbar({ onSignIn }: NavbarProps) {
       unsubscribeUser();
     };
   }, [user]);
+
+  // Load saved accounts from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("devos_saved_accounts");
+      setSavedAccounts(raw ? JSON.parse(raw) : []);
+    } catch {
+      setSavedAccounts([]);
+    }
+  }, [user]);
+
+  // Persist current user to saved accounts list whenever settings are loaded
+  useEffect(() => {
+    if (!user || !settings?.username) return;
+    const account = {
+      uid: user.uid,
+      username: settings.username,
+      displayName: settings.displayName || user.displayName || settings.username,
+      avatarUrl: resolveAvatar(settings.avatarUrl || user.photoURL),
+      email: user.email || "",
+    };
+    const raw = localStorage.getItem("devos_saved_accounts");
+    const existing: typeof savedAccounts = (() => { try { return raw ? JSON.parse(raw) : []; } catch { return []; } })();
+    const updated = [account, ...existing.filter((a) => a.uid !== user.uid)];
+    localStorage.setItem("devos_saved_accounts", JSON.stringify(updated));
+    setSavedAccounts(updated);
+  }, [user, settings]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -320,6 +349,56 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                       <Gift className="w-4 h-4" />
                       Redeem Code
                     </button>
+                    {/* Switch Account */}
+                    {savedAccounts.filter((a) => a.uid !== user?.uid).length > 0 && (
+                      <>
+                        <div className="border-t border-white/5 my-1" />
+                        <button
+                          onClick={() => setIsSwitchAccountOpen((v) => !v)}
+                          className="w-full flex items-center justify-between gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <RefreshCw className="w-4 h-4" />
+                            Switch Account
+                          </span>
+                          <ChevronDown className={cn("w-3.5 h-3.5 text-white/30 transition-transform", isSwitchAccountOpen && "rotate-180")} />
+                        </button>
+                        {isSwitchAccountOpen && (
+                          <div className="pb-1">
+                            {savedAccounts.filter((a) => a.uid !== user?.uid).map((acc) => (
+                              <button
+                                key={acc.uid}
+                                onClick={async () => {
+                                  setIsProfileOpen(false);
+                                  await logout();
+                                  navigate("/");
+                                }}
+                                title={`Sign out and sign in as ${acc.displayName}`}
+                                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors text-left"
+                              >
+                                <img
+                                  src={acc.avatarUrl}
+                                  alt={acc.displayName}
+                                  className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-white/80 truncate">{acc.displayName}</p>
+                                  <p className="text-[10px] text-white/40 truncate">@{acc.username} · sign in</p>
+                                </div>
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => { setIsProfileOpen(false); onSignIn?.(); }}
+                              className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-blue-400/70 hover:text-blue-400 hover:bg-blue-500/5 transition-colors text-left"
+                            >
+                              <UserPlus className="w-4 h-4" />
+                              Add account
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
                     <div className="border-t border-white/5 my-1" />
                     <button
                       onClick={() => { setIsProfileOpen(false); logout(); }}
@@ -514,6 +593,21 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   <Gift className="w-4 h-4" />
                   Redeem Code
                 </button>
+                {/* Switch Account (mobile) */}
+                {savedAccounts.filter((a) => a.uid !== user?.uid).length > 0 && (
+                  <>
+                    {savedAccounts.filter((a) => a.uid !== user?.uid).map((acc) => (
+                      <button
+                        key={acc.uid}
+                        onClick={async () => { setIsMobileMenuOpen(false); await logout(); navigate("/"); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"
+                      >
+                        <img src={acc.avatarUrl} alt={acc.displayName} className="w-5 h-5 rounded-full object-cover" referrerPolicy="no-referrer" />
+                        <span>Switch to @{acc.username}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
                 <button
                   onClick={() => { setIsMobileMenuOpen(false); setIsFeedbackOpen(true); }}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -21,7 +21,7 @@ import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCre
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
-import { banUser, suspendUser, reinstateUser } from "../lib/userService";
+import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable, setUserOfficial, getUsernameChangeRequests, resolveUsernameChangeRequest } from "../lib/userService";
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
 import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -68,13 +68,16 @@ import {
   BarChart2,
   Vote,
   Wrench,
+  Pencil,
+  BadgeCheck,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "maintenance";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -88,6 +91,7 @@ const detectLanguage = (filename: string): string => {
 interface UserWithCredits extends UserProfile {
   credits?: Credits;
   projectCount?: number;
+  isOfficial?: boolean;
 }
 
 interface SystemHealth {
@@ -181,6 +185,55 @@ export default function AdminDashboard() {
   const [moderatingUser, setModeratingUser] = useState<string | null>(null);
   const [userActionConfirm, setUserActionConfirm] = useState<{ uid: string; action: "ban" | "suspend" | "reinstate" } | null>(null);
 
+  // Username change state
+  const [usernameEditUid, setUsernameEditUid] = useState<string | null>(null);
+  const [usernameEditValue, setUsernameEditValue] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
+
+  // Official toggle state
+  const [togglingOfficial, setTogglingOfficial] = useState<string | null>(null);
+
+  // Feedback state
+  const [feedbackItems, setFeedbackItems] = useState<Array<{
+    id: string;
+    type: 'bug' | 'feature' | 'feedback';
+    message: string;
+    userId?: string;
+    userEmail?: string;
+    createdAt: any;
+    status: string;
+  }>>([]);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [openFeedbackCount, setOpenFeedbackCount] = useState(0);
+  const [resolvingFeedback, setResolvingFeedback] = useState<string | null>(null);
+
+  // Deletion requests state
+  const [deletionRequests, setDeletionRequests] = useState<Array<{
+    id: string;
+    userId: string;
+    email: string;
+    reason?: string;
+    requestedAt: any;
+    status: string;
+  }>>([]);
+  const [loadingDeletions, setLoadingDeletions] = useState(false);
+  const [pendingDeletionCount, setPendingDeletionCount] = useState(0);
+  const [processingDeletion, setProcessingDeletion] = useState<string | null>(null);
+
+  // Admin notification bell state
+  const [showAdminNotifPanel, setShowAdminNotifPanel] = useState(false);
+  const [pendingUsernameRequestCount, setPendingUsernameRequestCount] = useState(0);
+
+  // Username change requests state
+  const [usernameRequests, setUsernameRequests] = useState<Array<{
+    id: string; uid: string; currentUsername: string; requestedUsername: string;
+    reason?: string; status: string; createdAt: any; rejectionReason?: string;
+  }>>([]);
+  const [loadingUsernameRequests, setLoadingUsernameRequests] = useState(false);
+  const [resolvingRequest, setResolvingRequest] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectInput, setShowRejectInput] = useState<string | null>(null);
+
   // Gift Credits state
   const [giftTarget, setGiftTarget] = useState("");
   const [giftAmount, setGiftAmount] = useState("50");
@@ -256,6 +309,78 @@ export default function AdminDashboard() {
       getCreditConfig().then((cfg) => { setCreditConfig(cfg); setLoadingConfig(false); }).catch(() => setLoadingConfig(false));
     }
   }, [activeTab, isAdmin]);
+
+  useEffect(() => {
+    if (activeTab !== "feedback" || !isAdmin) return;
+    setLoadingFeedback(true);
+    getDocs(query(collection(db, "feedback"), orderBy("createdAt", "desc"), limit(100)))
+      .then((snap) => {
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
+        setFeedbackItems(items);
+        setOpenFeedbackCount(items.filter((i: any) => i.status === "open").length);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingFeedback(false));
+  }, [activeTab, isAdmin]);
+
+  useEffect(() => {
+    if (activeTab !== "users" || !isAdmin) return;
+    setLoadingUsernameRequests(true);
+    getUsernameChangeRequests("pending")
+      .then(setUsernameRequests)
+      .catch(() => {})
+      .finally(() => setLoadingUsernameRequests(false));
+  }, [activeTab, isAdmin]);
+
+  // Real-time badge counts — run once when admin is confirmed
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const unsubs: (() => void)[] = [];
+
+    // Open feedback count
+    unsubs.push(onSnapshot(
+      query(collection(db, "feedback"), where("status", "==", "open")),
+      (snap) => setOpenFeedbackCount(snap.size)
+    ));
+
+    // Pending username change requests
+    unsubs.push(onSnapshot(
+      query(collection(db, "username_change_requests"), where("status", "==", "pending")),
+      (snap) => setPendingUsernameRequestCount(snap.size)
+    ));
+
+    // Pending deletion requests
+    unsubs.push(onSnapshot(
+      query(collection(db, "deletion_requests"), where("status", "==", "pending")),
+      (snap) => setPendingDeletionCount(snap.size)
+    ));
+
+    return () => unsubs.forEach((u) => u());
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (activeTab !== "deletions" || !isAdmin) return;
+    setLoadingDeletions(true);
+    getDocs(query(collection(db, "deletion_requests"), orderBy("requestedAt", "desc"), limit(100)))
+      .then((snap) => {
+        setDeletionRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() } as any)));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingDeletions(false));
+  }, [activeTab, isAdmin]);
+
+  const adminNotifRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!showAdminNotifPanel) return;
+    const handler = (e: MouseEvent) => {
+      if (adminNotifRef.current && !adminNotifRef.current.contains(e.target as Node)) {
+        setShowAdminNotifPanel(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showAdminNotifPanel]);
 
   const loadData = async () => {
     setLoading(true);
@@ -668,6 +793,105 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAdminChangeUsername = async (uid: string, newUsername: string) => {
+    const trimmed = newUsername.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(trimmed)) {
+      toast.error("Username must be 3–20 chars: letters, numbers, underscores only.");
+      return;
+    }
+    const available = await checkUsernameAvailable(trimmed);
+    if (!available) {
+      // Allow saving if it's the same user's existing username
+      const owner = users.find((u) => u.uid === uid);
+      if (owner?.username !== trimmed) {
+        toast.error("That username is already taken.");
+        return;
+      }
+    }
+    setSavingUsername(true);
+    try {
+      await adminChangeUsername(uid, trimmed);
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, username: trimmed } : u)));
+      toast.success(`Username changed to @${trimmed}.`);
+      setUsernameEditUid(null);
+      setUsernameEditValue("");
+    } catch {
+      toast.error("Failed to change username.");
+    } finally {
+      setSavingUsername(false);
+    }
+  };
+
+  const handleToggleOfficial = async (uid: string, currentIsOfficial: boolean) => {
+    setTogglingOfficial(uid);
+    try {
+      await setUserOfficial(uid, !currentIsOfficial);
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, isOfficial: !currentIsOfficial } : u)));
+      toast.success(!currentIsOfficial ? "User marked as official ✓" : "Official status removed.");
+    } catch {
+      toast.error("Failed to update official status.");
+    } finally {
+      setTogglingOfficial(null);
+    }
+  };
+
+  const handleResolveFeedback = async (id: string, status: "resolved" | "dismissed") => {
+    setResolvingFeedback(id);
+    try {
+      await updateDoc(doc(db, "feedback", id), { status });
+      setFeedbackItems((prev) => prev.map((f) => (f.id === id ? { ...f, status } : f)));
+      setOpenFeedbackCount((c) => Math.max(0, c - 1));
+      toast.success(status === "resolved" ? "Marked as resolved." : "Dismissed.");
+    } catch {
+      toast.error("Failed to update feedback.");
+    } finally {
+      setResolvingFeedback(null);
+    }
+  };
+
+  const handleApproveUsernameRequest = async (req: typeof usernameRequests[0]) => {
+    setResolvingRequest(req.id);
+    try {
+      await adminChangeUsername(req.uid, req.requestedUsername);
+      await resolveUsernameChangeRequest(req.id, "approved", user!.uid);
+      setUsernameRequests((prev) => prev.filter((r) => r.id !== req.id));
+      toast.success(`Username changed to @${req.requestedUsername}`);
+    } catch {
+      toast.error("Failed to approve request.");
+    } finally {
+      setResolvingRequest(null);
+    }
+  };
+
+  const handleRejectUsernameRequest = async (req: typeof usernameRequests[0]) => {
+    setResolvingRequest(req.id);
+    try {
+      await resolveUsernameChangeRequest(req.id, "rejected", user!.uid, rejectReason || undefined);
+      setUsernameRequests((prev) => prev.filter((r) => r.id !== req.id));
+      setShowRejectInput(null);
+      setRejectReason("");
+      toast.success("Request rejected.");
+    } catch {
+      toast.error("Failed to reject request.");
+    } finally {
+      setResolvingRequest(null);
+    }
+  };
+
+  const handleMarkDeletionProcessed = async (docId: string) => {
+    setProcessingDeletion(docId);
+    try {
+      await updateDoc(doc(db, "deletion_requests", docId), { status: "processed" });
+      setDeletionRequests((prev) => prev.map((d) => (d.id === docId ? { ...d, status: "processed" } : d)));
+      setPendingDeletionCount((c) => Math.max(0, c - 1));
+      toast.success("Marked as processed.");
+    } catch {
+      toast.error("Failed to update.");
+    } finally {
+      setProcessingDeletion(null);
+    }
+  };
+
   const handleGiftCredits = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetUser = users.find(
@@ -888,12 +1112,14 @@ export default function AdminDashboard() {
       icon: <Layout className="w-4 h-4" />,
       badge: pendingTemplates.length || undefined,
     },
-    { id: "users", label: "Users", icon: <Users className="w-4 h-4" /> },
+    { id: "users", label: "Users", icon: <Users className="w-4 h-4" />, badge: pendingUsernameRequestCount || undefined },
     { id: "credits", label: "Credits", icon: <Zap className="w-4 h-4" /> },
     { id: "polls", label: "Polls", icon: <Vote className="w-4 h-4" /> },
     { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
     { id: "redeem", label: "Redeem Codes", icon: <Gift className="w-4 h-4" /> },
     { id: "posts", label: "Posts", icon: <Newspaper className="w-4 h-4" /> },
+    { id: "feedback", label: "Feedback", icon: <MessageSquare className="w-4 h-4" />, badge: openFeedbackCount || undefined },
+    { id: "deletions", label: "Deletion Requests", icon: <Trash2 className="w-4 h-4" />, badge: pendingDeletionCount || undefined },
     { id: "reserved", label: "Reserved Names", icon: <AtSign className="w-4 h-4" /> },
     { id: "maintenance", label: "Maintenance", icon: <Wrench className="w-4 h-4" /> },
   ];
@@ -1019,22 +1245,102 @@ export default function AdminDashboard() {
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
             {/* Page title */}
-            <div className="mb-8">
-              <h1 className="text-2xl font-extrabold text-white">
-                {tabs.find((t) => t.id === activeTab)?.label}
-              </h1>
-              <p className="text-sm text-white/40 mt-0.5">
-                {activeTab === "overview" && "Platform health and key metrics"}
-                {activeTab === "templates" && "Review, approve, and manage all templates"}
-                {activeTab === "users" && "View and manage all registered users"}
-                {activeTab === "credits" && "Adjust user credit balances"}
-                {activeTab === "notifications" && "Send targeted or global notifications"}
-                {activeTab === "redeem" && "Create and manage promotional codes"}
-                {activeTab === "posts" && "Publish official announcements to the feed"}
-                {activeTab === "polls" && "Create and manage community polls"}
-                {activeTab === "reserved" && "Manage reserved and protected usernames"}
-                {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
-              </p>
+            <div className="mb-8 flex items-start gap-3">
+              <div className="flex-1">
+                <h1 className="text-2xl font-extrabold text-white">
+                  {tabs.find((t) => t.id === activeTab)?.label}
+                </h1>
+                <p className="text-sm text-white/40 mt-0.5">
+                  {activeTab === "overview" && "Platform health and key metrics"}
+                  {activeTab === "templates" && "Review, approve, and manage all templates"}
+                  {activeTab === "users" && "View and manage all registered users"}
+                  {activeTab === "credits" && "Adjust user credit balances"}
+                  {activeTab === "notifications" && "Send targeted or global notifications"}
+                  {activeTab === "redeem" && "Create and manage promotional codes"}
+                  {activeTab === "posts" && "Publish official announcements to the feed"}
+                  {activeTab === "polls" && "Create and manage community polls"}
+                  {activeTab === "reserved" && "Manage reserved and protected usernames"}
+                  {activeTab === "deletions" && "Users who have requested account deletion"}
+                  {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
+                </p>
+              </div>
+
+              {/* Admin notification bell */}
+              <div className="relative" ref={adminNotifRef}>
+                <button
+                  onClick={() => setShowAdminNotifPanel((v) => !v)}
+                  className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all border border-white/10"
+                  title="Pending items"
+                >
+                  <Bell className="w-5 h-5" />
+                  {(pendingTemplates.length + openFeedbackCount + pendingUsernameRequestCount + pendingDeletionCount) > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[1.1rem] flex items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white px-1 leading-none h-[1.1rem]">
+                      {pendingTemplates.length + openFeedbackCount + pendingUsernameRequestCount + pendingDeletionCount}
+                    </span>
+                  )}
+                </button>
+
+                {showAdminNotifPanel && (
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-[#111827] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-white/5">
+                      <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Pending Items</p>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      {pendingTemplates.length > 0 && (
+                        <button
+                          onClick={() => { setActiveTab("templates"); setShowAdminNotifPanel(false); }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Layout className="w-4 h-4 text-purple-400" />
+                            <span className="text-sm text-white">Template approvals</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold">{pendingTemplates.length}</span>
+                        </button>
+                      )}
+                      {openFeedbackCount > 0 && (
+                        <button
+                          onClick={() => { setActiveTab("feedback"); setShowAdminNotifPanel(false); }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <MessageSquare className="w-4 h-4 text-blue-400" />
+                            <span className="text-sm text-white">Open feedback</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-bold">{openFeedbackCount}</span>
+                        </button>
+                      )}
+                      {pendingUsernameRequestCount > 0 && (
+                        <button
+                          onClick={() => { setActiveTab("users"); setShowAdminNotifPanel(false); }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <AtSign className="w-4 h-4 text-yellow-400" />
+                            <span className="text-sm text-white">Username requests</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 text-[10px] font-bold">{pendingUsernameRequestCount}</span>
+                        </button>
+                      )}
+                      {pendingDeletionCount > 0 && (
+                        <button
+                          onClick={() => { setActiveTab("deletions"); setShowAdminNotifPanel(false); }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                            <span className="text-sm text-white">Deletion requests</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 text-[10px] font-bold">{pendingDeletionCount}</span>
+                        </button>
+                      )}
+                      {(pendingTemplates.length + openFeedbackCount + pendingUsernameRequestCount + pendingDeletionCount) === 0 && (
+                        <p className="text-sm text-white/30 text-center py-4">All clear ✓</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {loading ? (
@@ -1352,10 +1658,80 @@ export default function AdminDashboard() {
                 {activeTab === "users" && (
                   <div>
                     <p className="text-white/40 text-sm mb-6">{users.length} registered users</p>
+                    {/* Pending Username Change Requests */}
+                    {usernameRequests.length > 0 && (
+                      <div className="mb-6 bg-[#111827] border border-yellow-500/20 rounded-2xl p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <AtSign className="w-4 h-4 text-yellow-400" />
+                          <h3 className="text-sm font-bold text-white">Pending Username Requests</h3>
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-[10px] font-bold border border-yellow-500/20">
+                            {usernameRequests.length}
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          {usernameRequests.map((req) => (
+                            <div key={req.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/3 border border-white/5">
+                              <div className="min-w-0">
+                                <p className="text-sm text-white">
+                                  <span className="font-mono text-white/60">@{req.currentUsername}</span>
+                                  <span className="text-white/30 mx-2">→</span>
+                                  <span className="font-mono font-bold text-yellow-400">@{req.requestedUsername}</span>
+                                </p>
+                                {req.reason && <p className="text-xs text-white/40 mt-0.5 truncate">{req.reason}</p>}
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                {showRejectInput === req.id ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="text"
+                                      value={rejectReason}
+                                      onChange={(e) => setRejectReason(e.target.value)}
+                                      placeholder="Reason (optional)"
+                                      className="text-xs px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-red-500/40 w-32"
+                                    />
+                                    <button
+                                      onClick={() => handleRejectUsernameRequest(req)}
+                                      disabled={resolvingRequest === req.id}
+                                      className="px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                    >
+                                      {resolvingRequest === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Reject"}
+                                    </button>
+                                    <button
+                                      onClick={() => { setShowRejectInput(null); setRejectReason(""); }}
+                                      className="px-2.5 py-1.5 rounded-xl bg-white/5 text-white/40 hover:text-white text-xs font-bold transition-all"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => handleApproveUsernameRequest(req)}
+                                      disabled={resolvingRequest === req.id}
+                                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                    >
+                                      {resolvingRequest === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => setShowRejectInput(req.id)}
+                                      className="px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all"
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {/* Desktop: table-like rows; Mobile: cards */}
                     <div className="space-y-2">
                       {users.map((u) => (
-                        <div key={u.uid} className="p-4 rounded-2xl bg-[#111827] border border-white/5 flex items-center gap-3">
+                        <div key={u.uid} className="rounded-2xl bg-[#111827] border border-white/5">
+                          <div className="p-4 flex items-center gap-3">
                           <Avatar src={u.avatarUrl} displayName={u.displayName} size="md" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -1433,6 +1809,68 @@ export default function AdminDashboard() {
                               </>
                             )}
                           </div>
+
+                          {/* Change Username button */}
+                          <div className="shrink-0 ml-1">
+                            <button
+                              onClick={() => {
+                                setUsernameEditUid(u.uid);
+                                setUsernameEditValue(u.username);
+                              }}
+                              title="Change username"
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-xs font-bold"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Rename</span>
+                            </button>
+                          </div>
+                          {/* Official toggle */}
+                          <div className="shrink-0 ml-1">
+                            <button
+                              onClick={() => handleToggleOfficial(u.uid, !!u.isOfficial)}
+                              disabled={togglingOfficial === u.uid}
+                              title={u.isOfficial ? "Remove official status" : "Mark as official"}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all text-xs font-bold disabled:opacity-50 ${
+                                u.isOfficial
+                                  ? "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30"
+                                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                              }`}
+                            >
+                              {togglingOfficial === u.uid
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <BadgeCheck className="w-3.5 h-3.5" />}
+                              <span className="hidden sm:inline">{u.isOfficial ? "Official ✓" : "Official"}</span>
+                            </button>
+                          </div>
+                          </div>
+
+                          {/* Inline username editor */}
+                          {usernameEditUid === u.uid && (
+                            <div className="px-4 pb-4 flex items-center gap-2">
+                              <input
+                                autoFocus
+                                type="text"
+                                value={usernameEditValue}
+                                onChange={(e) => setUsernameEditValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                                placeholder="new_username"
+                                maxLength={20}
+                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500 transition-all"
+                              />
+                              <button
+                                onClick={() => handleAdminChangeUsername(u.uid, usernameEditValue)}
+                                disabled={savingUsername || !usernameEditValue.trim()}
+                                className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                              >
+                                {savingUsername ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
+                              </button>
+                              <button
+                                onClick={() => { setUsernameEditUid(null); setUsernameEditValue(""); }}
+                                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white text-xs font-bold transition-all"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                       {users.length === 0 && (
@@ -2083,6 +2521,170 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   </div>
+                )}
+
+                {/* Feedback Tab */}
+                {activeTab === "feedback" && (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h2 className="text-lg font-bold text-white">User Feedback</h2>
+                        <p className="text-white/40 text-sm mt-1">Bug reports, feature requests, and general feedback.</p>
+                      </div>
+                      {openFeedbackCount > 0 && (
+                        <span className="px-3 py-1 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-bold border border-yellow-500/20">
+                          {openFeedbackCount} open
+                        </span>
+                      )}
+                    </div>
+
+                    {loadingFeedback ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 text-white/30 animate-spin" />
+                      </div>
+                    ) : feedbackItems.length === 0 ? (
+                      <div className="text-center py-12">
+                        <MessageSquare className="w-10 h-10 text-white/15 mx-auto mb-3" />
+                        <p className="text-white/30 text-sm">No feedback yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {feedbackItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`bg-[#111827] border rounded-2xl p-5 transition-all ${
+                              item.status === "open" ? "border-white/10" : "border-white/5 opacity-60"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  item.type === "bug"
+                                    ? "bg-red-500/15 text-red-400 border-red-500/20"
+                                    : item.type === "feature"
+                                    ? "bg-purple-500/15 text-purple-400 border-purple-500/20"
+                                    : "bg-blue-500/15 text-blue-400 border-blue-500/20"
+                                }`}>
+                                  {item.type === "bug" ? "🐛 Bug" : item.type === "feature" ? "✨ Feature" : "💬 Feedback"}
+                                </span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  item.status === "open"
+                                    ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                    : item.status === "resolved"
+                                    ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                    : "bg-white/5 text-white/30 border-white/10"
+                                }`}>
+                                  {item.status}
+                                </span>
+                              </div>
+                              {item.status === "open" && (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    onClick={() => handleResolveFeedback(item.id, "resolved")}
+                                    disabled={resolvingFeedback === item.id}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                  >
+                                    {resolvingFeedback === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                    Resolve
+                                  </button>
+                                  <button
+                                    onClick={() => handleResolveFeedback(item.id, "dismissed")}
+                                    disabled={resolvingFeedback === item.id}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/5 text-white/30 hover:bg-white/10 hover:text-white text-xs font-bold transition-all disabled:opacity-50"
+                                  >
+                                    <X className="w-3 h-3" />
+                                    Dismiss
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-sm text-white/80 mt-3 leading-relaxed">{item.message}</p>
+                            <div className="flex items-center gap-3 mt-3 text-[11px] text-white/30">
+                              {item.userEmail && <span>From: {item.userEmail}</span>}
+                              {item.createdAt && (
+                                <span>{new Date(item.createdAt.toDate?.() ?? item.createdAt).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Deletion Requests Tab */}
+                {activeTab === "deletions" && (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h2 className="text-lg font-bold text-white">Account Deletion Requests</h2>
+                        <p className="text-white/40 text-sm mt-1">Users who have requested their account to be deleted.</p>
+                      </div>
+                      {pendingDeletionCount > 0 && (
+                        <span className="px-3 py-1 rounded-full bg-red-500/15 text-red-400 text-xs font-bold border border-red-500/20">
+                          {pendingDeletionCount} pending
+                        </span>
+                      )}
+                    </div>
+
+                    {loadingDeletions ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 text-white/30 animate-spin" />
+                      </div>
+                    ) : deletionRequests.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Trash2 className="w-10 h-10 text-white/15 mx-auto mb-3" />
+                        <p className="text-white/30 text-sm">No deletion requests.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {deletionRequests.map((req) => (
+                          <div
+                            key={req.id}
+                            className={`bg-[#111827] border rounded-2xl p-5 transition-all ${
+                              req.status === "pending" ? "border-red-500/20" : "border-white/5 opacity-50"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                    req.status === "pending"
+                                      ? "bg-red-500/15 text-red-400 border-red-500/20"
+                                      : "bg-green-500/10 text-green-400 border-green-500/20"
+                                  }`}>
+                                    {req.status}
+                                  </span>
+                                </div>
+                                <p className="text-sm font-semibold text-white">{req.email}</p>
+                                <p className="text-xs text-white/40 font-mono mt-0.5">{req.userId}</p>
+                                {req.reason && (
+                                  <p className="text-xs text-white/50 mt-2 italic">"{req.reason}"</p>
+                                )}
+                                {req.requestedAt && (
+                                  <p className="text-[11px] text-white/25 mt-1">
+                                    {new Date(req.requestedAt.toDate?.() ?? req.requestedAt).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                              {req.status === "pending" && (
+                                <button
+                                  onClick={() => handleMarkDeletionProcessed(req.id)}
+                                  disabled={processingDeletion === req.id}
+                                  className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                >
+                                  {processingDeletion === req.id
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    : <Check className="w-3.5 h-3.5" />}
+                                  Mark Processed
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Maintenance Mode Tab */}

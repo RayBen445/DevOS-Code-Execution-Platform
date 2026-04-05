@@ -16,7 +16,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Community, CommunityMember, CommunityMemberRole, FeedPost } from "../types";
+import { Community, CommunityMember, CommunityMemberRole, FeedPost, CommunityChatMessage } from "../types";
 
 // ─── Read ────────────────────────────────────────────────────────────────────
 
@@ -186,4 +186,46 @@ export async function removeMember(communityId: string, userId: string): Promise
   await updateDoc(doc(db, "communities", communityId), {
     memberCount: increment(-1),
   });
+}
+
+// ─── Community Chat ───────────────────────────────────────────────────────────
+
+/** Subscribe to real-time chat messages in a community (last 100, oldest first) */
+export function subscribeChatMessages(
+  communityId: string,
+  callback: (messages: CommunityChatMessage[]) => void,
+  maxItems = 100
+): () => void {
+  const q = query(
+    collection(db, "communities", communityId, "chat"),
+    orderBy("createdAt", "asc"),
+    limit(maxItems)
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CommunityChatMessage)));
+  });
+}
+
+/** Send a chat message to a community (members only — enforced by Firestore rules) */
+export async function sendChatMessage(params: {
+  communityId: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  text: string;
+}): Promise<void> {
+  await addDoc(collection(db, "communities", params.communityId, "chat"), {
+    userId: params.userId,
+    username: params.username,
+    displayName: params.displayName ?? "",
+    avatarUrl: params.avatarUrl ?? "",
+    text: params.text.trim(),
+    createdAt: serverTimestamp(),
+  });
+}
+
+/** Delete a chat message (owner or community moderator/admin) */
+export async function deleteChatMessage(communityId: string, messageId: string): Promise<void> {
+  await deleteDoc(doc(db, "communities", communityId, "chat", messageId));
 }

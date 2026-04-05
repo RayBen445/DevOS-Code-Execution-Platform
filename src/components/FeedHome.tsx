@@ -27,6 +27,7 @@ import {
   Save,
   Rocket,
   Flame,
+  Users,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -52,6 +53,8 @@ import ConfirmModal from "./ConfirmModal";
 import { useSEO } from "../hooks/useSEO";
 import { toast } from "sonner";
 import { FeedPostShareCard, useShareAsImage } from "./ShareAsImageCard";
+import MentionInput, { extractMentions } from "./MentionInput";
+import { notifyMention } from "../lib/notificationService";
 
 interface FeedHomeProps {
   onOpenProject: (projectId: string) => void;
@@ -195,21 +198,44 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
 
   const handleAddComment = async (post: FeedPost, content: string) => {
     if (!user || !content.trim()) return;
+    const commenterUsername = settings?.username || user.email?.split("@")[0] || "user";
+    const mentions = extractMentions(content.trim());
     try {
-      await addComment({
+      const commentId = await addComment({
         postId: post.id,
         userId: user.uid,
-        username: settings?.username || user.email?.split("@")[0] || "user",
+        username: commenterUsername,
         displayName: settings?.displayName || user.displayName || undefined,
         avatarUrl: settings?.avatarUrl || user.photoURL || undefined,
         content: content.trim(),
+        mentions,
       });
       await notifyComment({
         postOwnerId: post.userId,
-        commenterUsername: settings?.username || user.email?.split("@")[0] || "user",
+        commenterUsername,
         commenterId: user.uid,
         postId: post.id,
       });
+      // Notify mentioned users
+      if (mentions.length) {
+        const { getDocs: _getDocs, query: _query, collection: _col, where: _where } = await import("firebase/firestore");
+        const { db: _db } = await import("../lib/firebase");
+        for (const mentionedUsername of mentions) {
+          const snap = await _getDocs(_query(_col(_db, "users"), _where("username", "==", mentionedUsername)));
+          if (!snap.empty) {
+            const mentionedUid = snap.docs[0].data().uid as string;
+            await notifyMention({
+              mentionedUserId: mentionedUid,
+              mentionedUsername,
+              mentionerUserId: user.uid,
+              mentionerUsername: commenterUsername,
+              contextType: "comment",
+              postId: post.id,
+            });
+          }
+        }
+      }
+      void commentId; // suppress unused warning
     } catch (err: any) {
       toast.error(
         isPermissionError(err)
@@ -244,11 +270,13 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const handleSubmitPost = async () => {
     if (!user) return;
     setIsPosting(true);
+    const posterUsername = settings?.username || user.email?.split("@")[0] || "user";
+    const mentions = extractMentions(postText.trim());
     try {
       const selectedProject = myProjects.find((p) => p.id === selectedProjectId);
-      await createFeedPost({
+      const postId = await createFeedPost({
         userId: user.uid,
-        username: settings?.username || user.email?.split("@")[0] || "user",
+        username: posterUsername,
         displayName: settings?.displayName || user.displayName || undefined,
         avatarUrl: settings?.avatarUrl || user.photoURL || undefined,
         content: postText.trim(),
@@ -256,7 +284,28 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         projectId: selectedProject?.id,
         projectName: selectedProject?.name,
         isPublic: true,
+        mentions,
+        isOfficial: settings?.isOfficial ?? false,
       });
+      // Notify mentioned users
+      if (mentions.length) {
+        const { getDocs: _getDocs, query: _query, collection: _col, where: _where } = await import("firebase/firestore");
+        const { db: _db } = await import("../lib/firebase");
+        for (const mentionedUsername of mentions) {
+          const snap = await _getDocs(_query(_col(_db, "users"), _where("username", "==", mentionedUsername)));
+          if (!snap.empty) {
+            const mentionedUid = snap.docs[0].data().uid as string;
+            await notifyMention({
+              mentionedUserId: mentionedUid,
+              mentionedUsername,
+              mentionerUserId: user.uid,
+              mentionerUsername: posterUsername,
+              contextType: "post",
+              postId,
+            });
+          }
+        }
+      }
       setPostText("");
       setSelectedProjectId("");
       setShowComposer(false);
@@ -458,6 +507,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
           onClose={() => { setShowComposer(false); setPostText(""); setSelectedProjectId(""); }}
           avatarUrl={resolveAvatar(settings?.avatarUrl || user.photoURL)}
           displayName={settings?.displayName || user.displayName || "You"}
+          userId={user.uid}
           postText={postText}
           setPostText={setPostText}
           postType={postType}
@@ -495,6 +545,7 @@ interface PostComposerModalProps {
   onClose: () => void;
   avatarUrl: string;
   displayName: string;
+  userId: string;
   postText: string;
   setPostText: (v: string) => void;
   postType: FeedPost["type"];
@@ -791,8 +842,32 @@ function FeedItem({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.045, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="rounded-2xl glass border border-white/[0.06] hover:border-white/12 card-glow p-5"
+        className={cn(
+          "rounded-2xl glass border p-5",
+          post.communityId
+            ? "border-purple-500/20 hover:border-purple-400/30 bg-purple-500/[0.03]"
+            : "border-white/[0.06] hover:border-white/12 card-glow"
+        )}
       >
+      {/* Community banner */}
+      {post.communityId && (
+        <div className="flex items-center gap-1.5 text-xs text-purple-400/80 mb-3 font-medium">
+          <Users className="w-3.5 h-3.5" />
+          <span>
+            {post.communityName ? (
+              <a
+                href={post.communitySlug ? `/c/${post.communitySlug}` : `/communities`}
+                className="hover:text-purple-300 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {post.communityName}
+              </a>
+            ) : (
+              "Community Post"
+            )}
+          </span>
+        </div>
+      )}
       {/* Repost header */}
       {post.type === "repost" && (
         <div className="flex items-center gap-1.5 text-xs text-teal-400/70 mb-3 font-medium">
@@ -1004,13 +1079,14 @@ function FeedItem({
               {/* Comment input */}
               {userId && (
                 <div className="flex items-center gap-2 pt-1">
-                  <input
-                    type="text"
+                  <MentionInput
                     value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
-                    placeholder="Write a comment…"
+                    onChange={setCommentText}
+                    currentUserId={userId}
+                    placeholder="Write a comment… (@mention someone)"
+                    multiline={false}
                     className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
                   />
                   <button
                     onClick={handleSubmitComment}

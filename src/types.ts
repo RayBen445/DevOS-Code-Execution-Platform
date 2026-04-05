@@ -200,7 +200,8 @@ export type NotificationType =
   | 'follow'
   | 'post_comment'
   | 'post_repost'
-  | 'post_like';
+  | 'post_like'
+  | 'post_mention';
 
 export interface Notification {
   id: string;
@@ -236,6 +237,9 @@ export interface FeedPost {
   isPublic: boolean;
   isOfficial?: boolean;
   communityId?: string;
+  communityName?: string;
+  communitySlug?: string;
+  mentions?: string[]; // usernames @mentioned in the post
   // Repost fields
   originalPostId?: string;
   originalPost?: Omit<FeedPost, 'originalPost'>; // embedded snapshot for display
@@ -250,6 +254,20 @@ export interface FeedComment {
   avatarUrl?: string;
   content: string;
   createdAt: any;
+  mentions?: string[]; // usernames @mentioned in the comment
+}
+
+export interface UsernameChangeRequest {
+  id: string;
+  uid: string;
+  currentUsername: string;
+  requestedUsername: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: any;
+  resolvedAt?: any;
+  resolvedBy?: string;
+  rejectionReason?: string;
 }
 
 export interface RedeemCode {
@@ -326,6 +344,16 @@ export interface CommunityMember {
   userId: string;
   role: CommunityMemberRole;
   joinedAt: any;
+}
+
+export interface CommunityChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  text: string;
+  createdAt: any;
 }
 
 // ── Polls ───────────────────────────────────────────────────────────────────

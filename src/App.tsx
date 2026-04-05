@@ -183,9 +183,21 @@ export default function App() {
     );
   }
 
-  // Maintenance mode — block everyone except admins
+  // Maintenance mode — block everyone except admins, but allow sign-in
   if (maintenance.enabled && userRole !== "admin") {
-    return <MaintenancePage banner={maintenance.banner} />;
+    return (
+      <>
+        <MaintenancePage
+          banner={maintenance.banner}
+          isAuthenticated={!!user}
+          onSignIn={() => setShowLogin(true)}
+          onSignOut={() => signOut(auth)}
+        />
+        <AnimatePresence>
+          {showLogin && <Login onClose={closeAuth} initialMode="login" />}
+        </AnimatePresence>
+      </>
+    );
   }
 
   // Banned user — hard block, force sign-out

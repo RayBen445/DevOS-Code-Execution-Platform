@@ -93,6 +93,32 @@ export async function getFollowing(uid: string): Promise<string[]> {
   return snap.docs.map((d) => d.data().followingId as string);
 }
 
+/** Get list of UIDs that follow uid */
+export async function getFollowers(uid: string): Promise<string[]> {
+  const snap = await getDocs(
+    query(collection(db, "follows"), where("followingId", "==", uid))
+  );
+  return snap.docs.map((d) => d.data().followerId as string);
+}
+
+/** Get follower user profiles for mention autocomplete (max 90) */
+export async function getFollowerProfiles(uid: string): Promise<
+  Array<{ uid: string; username: string; displayName?: string; avatarUrl?: string }>
+> {
+  const followerUids = await getFollowers(uid);
+  if (!followerUids.length) return [];
+  const profiles: Array<{ uid: string; username: string; displayName?: string; avatarUrl?: string }> = [];
+  for (let i = 0; i < Math.min(followerUids.length, 90); i += 30) {
+    const batch = followerUids.slice(i, i + 30);
+    const snap = await getDocs(query(collection(db, "users"), where("uid", "in", batch)));
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      profiles.push({ uid: data.uid, username: data.username, displayName: data.displayName, avatarUrl: data.avatarUrl });
+    });
+  }
+  return profiles;
+}
+
 /** Subscribe to real-time follow status between two users */
 export function subscribeIsFollowing(
   uid: string,
