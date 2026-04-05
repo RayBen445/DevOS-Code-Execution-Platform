@@ -176,6 +176,8 @@ export async function updateCommunity(
   communityId: string,
   updates: Partial<Pick<Community, "name" | "description" | "avatar" | "banner" | "category" | "isPublic">>
 ): Promise<void> {
+  if (!communityId) throw new Error("communityId is required");
+  if (Object.keys(updates).length === 0) return;
   await updateDoc(doc(db, "communities", communityId), updates);
 }
 

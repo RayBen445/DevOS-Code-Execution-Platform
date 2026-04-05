@@ -653,8 +653,9 @@ export default function CommunityPage() {
                   : "text-white/40 border-transparent hover:text-white/70"
               )}
             >
-              {tab.icon ? tab.icon : tab.label}
-              {!tab.icon && tab.count !== undefined && tab.count > 0 && (
+              {tab.icon && tab.icon}
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold", activeTab === tab.id ? "bg-blue-500/20 text-blue-400" : "bg-white/5 text-white/30")}>
                   {tab.count}
                 </span>
