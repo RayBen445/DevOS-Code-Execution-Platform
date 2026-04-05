@@ -991,7 +991,13 @@ export default function AdminDashboard() {
         },
         body: JSON.stringify({ to: toList, subject: emailSubject.trim(), message: emailMessage }),
       });
-      const data = await res.json();
+      const rawText = await res.text();
+      let data: { error?: string; success?: boolean; messageId?: string } = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        if (!res.ok) throw new Error(rawText.slice(0, 200) || "Failed to send email");
+      }
       if (!res.ok) throw new Error(data.error || "Failed to send email");
       toast.success(`Email sent to ${toList.length} recipient${toList.length !== 1 ? "s" : ""}.`);
       setEmailTo(""); setEmailSubject(""); setEmailMessage("");

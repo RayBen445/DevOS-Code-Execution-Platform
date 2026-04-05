@@ -376,6 +376,9 @@ export default function CommunityPage() {
     return subscribeCommunityMembers(community.id, setMembers);
   }, [community?.id, activeTab]);
 
+  const isMember = !!membership;
+  const memberRole = membership?.role ?? null;
+
   // Subscribe to chat when on chat tab and is a member
   useEffect(() => {
     if (!community?.id || activeTab !== "chat" || !isMember) return;
@@ -443,9 +446,6 @@ export default function CommunityPage() {
       setSendingChat(false);
     }
   };
-
-  const isMember = !!membership;
-  const memberRole = membership?.role ?? null;
 
   if (loading) {
     return (
