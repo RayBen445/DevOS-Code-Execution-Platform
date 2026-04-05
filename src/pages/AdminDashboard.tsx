@@ -21,7 +21,7 @@ import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCre
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
-import { banUser, suspendUser, reinstateUser } from "../lib/userService";
+import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable } from "../lib/userService";
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
 import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -68,6 +68,7 @@ import {
   BarChart2,
   Vote,
   Wrench,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -180,6 +181,11 @@ export default function AdminDashboard() {
   // Ban/Suspend state
   const [moderatingUser, setModeratingUser] = useState<string | null>(null);
   const [userActionConfirm, setUserActionConfirm] = useState<{ uid: string; action: "ban" | "suspend" | "reinstate" } | null>(null);
+
+  // Username change state
+  const [usernameEditUid, setUsernameEditUid] = useState<string | null>(null);
+  const [usernameEditValue, setUsernameEditValue] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
 
   // Gift Credits state
   const [giftTarget, setGiftTarget] = useState("");
@@ -665,6 +671,35 @@ export default function AdminDashboard() {
     } finally {
       setModeratingUser(null);
       setUserActionConfirm(null);
+    }
+  };
+
+  const handleAdminChangeUsername = async (uid: string, newUsername: string) => {
+    const trimmed = newUsername.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(trimmed)) {
+      toast.error("Username must be 3–20 chars: letters, numbers, underscores only.");
+      return;
+    }
+    const available = await checkUsernameAvailable(trimmed);
+    if (!available) {
+      // Allow saving if it's the same user's existing username
+      const owner = users.find((u) => u.uid === uid);
+      if (owner?.username !== trimmed) {
+        toast.error("That username is already taken.");
+        return;
+      }
+    }
+    setSavingUsername(true);
+    try {
+      await adminChangeUsername(uid, trimmed);
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, username: trimmed } : u)));
+      toast.success(`Username changed to @${trimmed}.`);
+      setUsernameEditUid(null);
+      setUsernameEditValue("");
+    } catch {
+      toast.error("Failed to change username.");
+    } finally {
+      setSavingUsername(false);
     }
   };
 
@@ -1355,7 +1390,8 @@ export default function AdminDashboard() {
                     {/* Desktop: table-like rows; Mobile: cards */}
                     <div className="space-y-2">
                       {users.map((u) => (
-                        <div key={u.uid} className="p-4 rounded-2xl bg-[#111827] border border-white/5 flex items-center gap-3">
+                        <div key={u.uid} className="rounded-2xl bg-[#111827] border border-white/5">
+                          <div className="p-4 flex items-center gap-3">
                           <Avatar src={u.avatarUrl} displayName={u.displayName} size="md" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -1433,6 +1469,50 @@ export default function AdminDashboard() {
                               </>
                             )}
                           </div>
+
+                          {/* Change Username button */}
+                          <div className="shrink-0 ml-1">
+                            <button
+                              onClick={() => {
+                                setUsernameEditUid(u.uid);
+                                setUsernameEditValue(u.username);
+                              }}
+                              title="Change username"
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-xs font-bold"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Rename</span>
+                            </button>
+                          </div>
+                          </div>
+
+                          {/* Inline username editor */}
+                          {usernameEditUid === u.uid && (
+                            <div className="px-4 pb-4 flex items-center gap-2">
+                              <input
+                                autoFocus
+                                type="text"
+                                value={usernameEditValue}
+                                onChange={(e) => setUsernameEditValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                                placeholder="new_username"
+                                maxLength={20}
+                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500 transition-all"
+                              />
+                              <button
+                                onClick={() => handleAdminChangeUsername(u.uid, usernameEditValue)}
+                                disabled={savingUsername || !usernameEditValue.trim()}
+                                className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                              >
+                                {savingUsername ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
+                              </button>
+                              <button
+                                onClick={() => { setUsernameEditUid(null); setUsernameEditValue(""); }}
+                                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white text-xs font-bold transition-all"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                       {users.length === 0 && (

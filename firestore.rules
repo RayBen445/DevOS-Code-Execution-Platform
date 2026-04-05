@@ -204,7 +204,7 @@ service cloud.firestore {
 
     match /user_settings/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow write: if isOwner(uid) && isValidUserSettings(request.resource.data);
+      allow write: if (isOwner(uid) && isValidUserSettings(request.resource.data)) || isAdmin();
     }
 
     match /projects/{projectId} {
@@ -281,7 +281,13 @@ service cloud.firestore {
 
     match /redeem_codes/{codeId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      // Admins can update any field; authenticated users can only increment usedCount during redemption
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedCount']) &&
+        request.resource.data.usedCount == resource.data.usedCount + 1
+      );
     }
 
     match /users/{uid}/redeemed_codes/{codeId} {

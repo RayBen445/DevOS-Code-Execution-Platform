@@ -27,6 +27,7 @@ import {
   Save,
   Rocket,
   Flame,
+  Users,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -791,8 +792,32 @@ function FeedItem({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.045, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="rounded-2xl glass border border-white/[0.06] hover:border-white/12 card-glow p-5"
+        className={cn(
+          "rounded-2xl glass border p-5",
+          post.communityId
+            ? "border-purple-500/20 hover:border-purple-400/30 bg-purple-500/[0.03]"
+            : "border-white/[0.06] hover:border-white/12 card-glow"
+        )}
       >
+      {/* Community banner */}
+      {post.communityId && (
+        <div className="flex items-center gap-1.5 text-xs text-purple-400/80 mb-3 font-medium">
+          <Users className="w-3.5 h-3.5" />
+          <span>
+            {post.communityName ? (
+              <a
+                href={`/communities`}
+                className="hover:text-purple-300 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {post.communityName}
+              </a>
+            ) : (
+              "Community Post"
+            )}
+          </span>
+        </div>
+      )}
       {/* Repost header */}
       {post.type === "repost" && (
         <div className="flex items-center gap-1.5 text-xs text-teal-400/70 mb-3 font-medium">

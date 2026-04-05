@@ -61,6 +61,7 @@ export async function createFeedPost(params: {
   projectName?: string;
   isPublic: boolean;
   communityId?: string;
+  communityName?: string;
 }): Promise<string> {
   const docRef = await addDoc(collection(db, "feed"), {
     userId: params.userId,
@@ -72,6 +73,7 @@ export async function createFeedPost(params: {
     ...(params.projectId ? { projectId: params.projectId } : {}),
     ...(params.projectName ? { projectName: params.projectName } : {}),
     ...(params.communityId ? { communityId: params.communityId } : {}),
+    ...(params.communityName ? { communityName: params.communityName } : {}),
     createdAt: serverTimestamp(),
     likes: 0,
     likedBy: [],

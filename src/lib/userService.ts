@@ -343,7 +343,13 @@ export const getUserSettings = async (uid: string) => {
   return snap.exists() ? (snap.data() as import("../types").UserSettings) : null;
 };
 
-/** Ban a user — they will be blocked from using the platform. */
+/** Admin: change the username of any user. Updates both users and user_settings docs. */
+export const adminChangeUsername = async (targetUid: string, newUsername: string): Promise<void> => {
+  const lower = newUsername.trim().toLowerCase();
+  await updateDoc(doc(db, "users", targetUid), { username: lower, updatedAt: serverTimestamp() });
+  await updateDoc(doc(db, "user_settings", targetUid), { username: lower, updatedAt: serverTimestamp() });
+};
+
 export const banUser = async (uid: string): Promise<void> => {
   await updateDoc(doc(db, "users", uid), { status: "banned" });
 };

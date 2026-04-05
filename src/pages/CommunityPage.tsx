@@ -54,6 +54,7 @@ type CommunityTab = "posts" | "members";
 // ─── Mini post composer ───────────────────────────────────────────────────────
 interface ComposerProps {
   communityId: string;
+  communityName?: string;
   userId: string;
   username: string;
   displayName?: string;
@@ -61,7 +62,7 @@ interface ComposerProps {
   onPosted: () => void;
 }
 
-function PostComposer({ communityId, userId, username, displayName, avatarUrl, onPosted }: ComposerProps) {
+function PostComposer({ communityId, communityName, userId, username, displayName, avatarUrl, onPosted }: ComposerProps) {
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -80,6 +81,7 @@ function PostComposer({ communityId, userId, username, displayName, avatarUrl, o
         type: "update",
         isPublic: true,
         communityId,
+        communityName,
       });
       setText("");
       toast.success("Post shared to community!");
@@ -532,6 +534,7 @@ export default function CommunityPage() {
               {user && isMember && userSettings?.username && (
                 <PostComposer
                   communityId={community.id}
+                  communityName={community.name}
                   userId={user.uid}
                   username={userSettings.username}
                   displayName={userSettings.displayName}

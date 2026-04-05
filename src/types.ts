@@ -236,6 +236,7 @@ export interface FeedPost {
   isPublic: boolean;
   isOfficial?: boolean;
   communityId?: string;
+  communityName?: string;
   // Repost fields
   originalPostId?: string;
   originalPost?: Omit<FeedPost, 'originalPost'>; // embedded snapshot for display
