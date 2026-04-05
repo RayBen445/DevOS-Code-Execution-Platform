@@ -479,7 +479,7 @@ async function startServer() {
     let userDoc: FirebaseFirestore.DocumentSnapshot;
     try {
       userDoc = await db.collection("users").doc(uid).get();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Firestore lookup error in send-email:", err);
       return res.status(500).json({ error: "Server configuration error. Please try again later." });
     }
