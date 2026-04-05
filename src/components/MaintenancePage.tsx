@@ -1,11 +1,14 @@
-import { Wrench, Zap } from "lucide-react";
+import { Wrench, Zap, LogIn, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface MaintenancePageProps {
   banner?: string;
+  isAuthenticated?: boolean;
+  onSignIn?: () => void;
+  onSignOut?: () => void;
 }
 
-export default function MaintenancePage({ banner }: MaintenancePageProps) {
+export default function MaintenancePage({ banner, isAuthenticated, onSignIn, onSignOut }: MaintenancePageProps) {
   return (
     <div className="fixed inset-0 z-[9999] bg-[#0B0F17] flex items-center justify-center p-6">
       <motion.div
@@ -51,6 +54,27 @@ export default function MaintenancePage({ banner }: MaintenancePageProps) {
         <p className="text-xs text-white/20 mt-6">
           Check back soon or follow our status page for updates.
         </p>
+
+        {/* Auth actions */}
+        <div className="mt-8 flex items-center justify-center gap-3">
+          {isAuthenticated ? (
+            <button
+              onClick={onSignOut}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-sm font-medium transition-all"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </button>
+          ) : (
+            <button
+              onClick={onSignIn}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-all shadow-lg shadow-blue-600/20"
+            >
+              <LogIn className="w-4 h-4" />
+              Sign In
+            </button>
+          )}
+        </div>
       </motion.div>
     </div>
   );

@@ -264,7 +264,7 @@ service cloud.firestore {
         // (follow, post_like, post_comment, post_repost, community_post)
         // for other users only — never targeting themselves.
         isAuthenticated() &&
-        request.resource.data.type in ['follow', 'post_like', 'post_comment', 'post_repost', 'community_post'] &&
+        request.resource.data.type in ['follow', 'post_like', 'post_comment', 'post_repost', 'community_post', 'post_mention'] &&
         request.resource.data.get('createdBy', '') == request.auth.uid &&
         request.resource.data.userId != request.auth.uid &&
         request.resource.data.get('isRead', false) == false
@@ -464,6 +464,18 @@ service cloud.firestore {
       // Owner can create their own deletion request; admin can read/delete
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if isAdmin();
+    }
+
+    match /username_change_requests/{reqId} {
+      // Owner can submit and read their own request; admin has full access
+      allow create: if isAuthenticated()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.requestedUsername is string
+        && request.resource.data.requestedUsername.size() >= 3
+        && request.resource.data.requestedUsername.size() <= 20;
+      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
     }
 
     // ── Polls ──────────────────────────────────────────────────────────────────

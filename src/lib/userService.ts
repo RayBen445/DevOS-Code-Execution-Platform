@@ -10,13 +10,23 @@ import {
   addDoc, 
   serverTimestamp,
   updateDoc,
+  orderBy,
+  limit,
 } from "firebase/firestore";
-import { Project } from "../types";
+import { Project, UsernameChangeRequest } from "../types";
 import { initializeCredits } from "./creditsService";
 import { DEFAULT_USER_AVATAR } from "./avatars";
 import { getOrCreateReferralCode, processReferral } from "./referralService";
 
 const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "oladoyeheritage445@gmail.com";
+
+/**
+ * Set this flag BEFORE calling signUpWithEmail so that initializeUser
+ * skips its own profile-creation logic and lets registerUserProfile handle it,
+ * preventing the race condition that sets the username to the email prefix.
+ */
+let _skipNextInitialize = false;
+export const skipNextInitialize = () => { _skipNextInitialize = true; };
 
 /**
  * Called immediately after email sign-up to persist fullName and username
@@ -76,6 +86,13 @@ export const registerUserProfile = async (
 
 export const initializeUser = async (user: any) => {
   if (!user) return;
+
+  // If a sign-up registration is in progress, let registerUserProfile handle
+  // profile creation to avoid the race condition that sets username to email prefix.
+  if (_skipNextInitialize) {
+    _skipNextInitialize = false;
+    return;
+  }
 
   const settingsRef = doc(db, "user_settings", user.uid);
   const userRef = doc(db, "users", user.uid);
@@ -385,5 +402,63 @@ export const requestAccountDeletion = async (
     reason: reason?.trim() || "",
     requestedAt: serverTimestamp(),
     status: "pending",
+  });
+};
+
+// ─── Username Change Requests ─────────────────────────────────────────────────
+
+/** Submit a username change request. A user may only have one pending request. */
+export const requestUsernameChange = async (
+  uid: string,
+  currentUsername: string,
+  requestedUsername: string,
+  reason?: string
+): Promise<string> => {
+  const ref = await addDoc(collection(db, "username_change_requests"), {
+    uid,
+    currentUsername,
+    requestedUsername: requestedUsername.toLowerCase().trim(),
+    reason: reason?.trim() || "",
+    status: "pending",
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+};
+
+/** Get the most recent username change request for the current user. */
+export const getUserOwnUsernameRequest = async (uid: string): Promise<UsernameChangeRequest | null> => {
+  const q = query(
+    collection(db, "username_change_requests"),
+    where("uid", "==", uid),
+    orderBy("createdAt", "desc"),
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { id: snap.docs[0].id, ...snap.docs[0].data() } as UsernameChangeRequest;
+};
+
+/** Admin: get username change requests (optionally filtered by status). */
+export const getUsernameChangeRequests = async (
+  statusFilter?: "pending" | "approved" | "rejected"
+): Promise<UsernameChangeRequest[]> => {
+  const constraints: any[] = [orderBy("createdAt", "desc"), limit(200)];
+  if (statusFilter) constraints.unshift(where("status", "==", statusFilter));
+  const snap = await getDocs(query(collection(db, "username_change_requests"), ...constraints));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as UsernameChangeRequest));
+};
+
+/** Admin: approve or reject a username change request. */
+export const resolveUsernameChangeRequest = async (
+  requestId: string,
+  action: "approved" | "rejected",
+  adminUid: string,
+  rejectionReason?: string
+): Promise<void> => {
+  await updateDoc(doc(db, "username_change_requests", requestId), {
+    status: action,
+    resolvedAt: serverTimestamp(),
+    resolvedBy: adminUid,
+    ...(rejectionReason ? { rejectionReason } : {}),
   });
 };
