@@ -9,6 +9,7 @@ import admin from "firebase-admin";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
+import nodemailer from "nodemailer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -393,6 +394,79 @@ async function startServer() {
     } catch (error: any) {
       console.error("Push Error:", error);
       res.status(500).json({ error: error.message || "Failed to push to GitHub" });
+    }
+  });
+
+  // Admin Email — send a custom email from the admin dashboard
+  app.post("/api/admin/send-email", async (req, res) => {
+    // 1. Verify Firebase ID token
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const idToken = authHeader.split("Bearer ")[1];
+
+    let uid: string;
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      uid = decoded.uid;
+    } catch {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    // 2. Confirm the caller is an admin
+    const userDoc = await db.collection("users").doc(uid).get();
+    if (userDoc.data()?.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: admin only" });
+    }
+
+    // 3. Validate payload
+    const { to, subject, message } = req.body as {
+      to?: string | string[];
+      subject?: string;
+      message?: string;
+    };
+
+    if (!to || !subject || !message) {
+      return res.status(400).json({ error: "Missing required fields: to, subject, message" });
+    }
+
+    const toAddresses = Array.isArray(to) ? to : [to];
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalid = toAddresses.find((a) => !emailRe.test(a.trim()));
+    if (invalid) {
+      return res.status(400).json({ error: `Invalid email address: ${invalid}` });
+    }
+
+    // 4. Send via Gmail SMTP
+    const gmailPass = process.env.GMAIL_APP_PASSWORD;
+    if (!gmailPass) {
+      return res.status(500).json({ error: "GMAIL_APP_PASSWORD is not configured on the server." });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false, // STARTTLS
+      auth: {
+        user: "coolshotsystemsofficial@gmail.com",
+        pass: gmailPass,
+      },
+    });
+
+    try {
+      const info = await transporter.sendMail({
+        from: '"DevOS" <coolshotsystemsofficial@gmail.com>',
+        to: toAddresses.map((a) => a.trim()).join(", "),
+        subject,
+        html: message,
+      });
+
+      console.log(`Admin email sent: ${info.messageId} → ${toAddresses.join(", ")}`);
+      res.json({ success: true, messageId: info.messageId });
+    } catch (error: any) {
+      console.error("Admin email send error:", error);
+      res.status(500).json({ error: error.message || "Failed to send email" });
     }
   });
 
