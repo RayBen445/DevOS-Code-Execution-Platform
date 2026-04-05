@@ -346,6 +346,16 @@ export interface CommunityMember {
   joinedAt: any;
 }
 
+export interface CommunityChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  text: string;
+  createdAt: any;
+}
+
 // ── Polls ───────────────────────────────────────────────────────────────────
 
 export interface PollOption {

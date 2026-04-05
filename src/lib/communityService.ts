@@ -16,7 +16,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Community, CommunityMember, CommunityMemberRole, FeedPost } from "../types";
+import { Community, CommunityMember, CommunityMemberRole, FeedPost, CommunityChatMessage } from "../types";
 
 // ─── Read ────────────────────────────────────────────────────────────────────
 
