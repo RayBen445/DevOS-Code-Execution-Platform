@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -77,7 +77,7 @@ import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "maintenance";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -207,6 +207,23 @@ export default function AdminDashboard() {
   const [openFeedbackCount, setOpenFeedbackCount] = useState(0);
   const [resolvingFeedback, setResolvingFeedback] = useState<string | null>(null);
 
+  // Deletion requests state
+  const [deletionRequests, setDeletionRequests] = useState<Array<{
+    id: string;
+    userId: string;
+    email: string;
+    reason?: string;
+    requestedAt: any;
+    status: string;
+  }>>([]);
+  const [loadingDeletions, setLoadingDeletions] = useState(false);
+  const [pendingDeletionCount, setPendingDeletionCount] = useState(0);
+  const [processingDeletion, setProcessingDeletion] = useState<string | null>(null);
+
+  // Admin notification bell state
+  const [showAdminNotifPanel, setShowAdminNotifPanel] = useState(false);
+  const [pendingUsernameRequestCount, setPendingUsernameRequestCount] = useState(0);
+
   // Username change requests state
   const [usernameRequests, setUsernameRequests] = useState<Array<{
     id: string; uid: string; currentUsername: string; requestedUsername: string;
@@ -314,6 +331,56 @@ export default function AdminDashboard() {
       .catch(() => {})
       .finally(() => setLoadingUsernameRequests(false));
   }, [activeTab, isAdmin]);
+
+  // Real-time badge counts — run once when admin is confirmed
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const unsubs: (() => void)[] = [];
+
+    // Open feedback count
+    unsubs.push(onSnapshot(
+      query(collection(db, "feedback"), where("status", "==", "open")),
+      (snap) => setOpenFeedbackCount(snap.size)
+    ));
+
+    // Pending username change requests
+    unsubs.push(onSnapshot(
+      query(collection(db, "username_change_requests"), where("status", "==", "pending")),
+      (snap) => setPendingUsernameRequestCount(snap.size)
+    ));
+
+    // Pending deletion requests
+    unsubs.push(onSnapshot(
+      query(collection(db, "deletion_requests"), where("status", "==", "pending")),
+      (snap) => setPendingDeletionCount(snap.size)
+    ));
+
+    return () => unsubs.forEach((u) => u());
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (activeTab !== "deletions" || !isAdmin) return;
+    setLoadingDeletions(true);
+    getDocs(query(collection(db, "deletion_requests"), orderBy("requestedAt", "desc"), limit(100)))
+      .then((snap) => {
+        setDeletionRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() } as any)));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingDeletions(false));
+  }, [activeTab, isAdmin]);
+
+  const adminNotifRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!showAdminNotifPanel) return;
+    const handler = (e: MouseEvent) => {
+      if (adminNotifRef.current && !adminNotifRef.current.contains(e.target as Node)) {
+        setShowAdminNotifPanel(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showAdminNotifPanel]);
 
   const loadData = async () => {
     setLoading(true);
@@ -811,6 +878,20 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleMarkDeletionProcessed = async (docId: string) => {
+    setProcessingDeletion(docId);
+    try {
+      await updateDoc(doc(db, "deletion_requests", docId), { status: "processed" });
+      setDeletionRequests((prev) => prev.map((d) => (d.id === docId ? { ...d, status: "processed" } : d)));
+      setPendingDeletionCount((c) => Math.max(0, c - 1));
+      toast.success("Marked as processed.");
+    } catch {
+      toast.error("Failed to update.");
+    } finally {
+      setProcessingDeletion(null);
+    }
+  };
+
   const handleGiftCredits = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetUser = users.find(
@@ -1031,13 +1112,14 @@ export default function AdminDashboard() {
       icon: <Layout className="w-4 h-4" />,
       badge: pendingTemplates.length || undefined,
     },
-    { id: "users", label: "Users", icon: <Users className="w-4 h-4" /> },
+    { id: "users", label: "Users", icon: <Users className="w-4 h-4" />, badge: pendingUsernameRequestCount || undefined },
     { id: "credits", label: "Credits", icon: <Zap className="w-4 h-4" /> },
     { id: "polls", label: "Polls", icon: <Vote className="w-4 h-4" /> },
     { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
     { id: "redeem", label: "Redeem Codes", icon: <Gift className="w-4 h-4" /> },
     { id: "posts", label: "Posts", icon: <Newspaper className="w-4 h-4" /> },
     { id: "feedback", label: "Feedback", icon: <MessageSquare className="w-4 h-4" />, badge: openFeedbackCount || undefined },
+    { id: "deletions", label: "Deletion Requests", icon: <Trash2 className="w-4 h-4" />, badge: pendingDeletionCount || undefined },
     { id: "reserved", label: "Reserved Names", icon: <AtSign className="w-4 h-4" /> },
     { id: "maintenance", label: "Maintenance", icon: <Wrench className="w-4 h-4" /> },
   ];
@@ -1163,22 +1245,102 @@ export default function AdminDashboard() {
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
             {/* Page title */}
-            <div className="mb-8">
-              <h1 className="text-2xl font-extrabold text-white">
-                {tabs.find((t) => t.id === activeTab)?.label}
-              </h1>
-              <p className="text-sm text-white/40 mt-0.5">
-                {activeTab === "overview" && "Platform health and key metrics"}
-                {activeTab === "templates" && "Review, approve, and manage all templates"}
-                {activeTab === "users" && "View and manage all registered users"}
-                {activeTab === "credits" && "Adjust user credit balances"}
-                {activeTab === "notifications" && "Send targeted or global notifications"}
-                {activeTab === "redeem" && "Create and manage promotional codes"}
-                {activeTab === "posts" && "Publish official announcements to the feed"}
-                {activeTab === "polls" && "Create and manage community polls"}
-                {activeTab === "reserved" && "Manage reserved and protected usernames"}
-                {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
-              </p>
+            <div className="mb-8 flex items-start gap-3">
+              <div className="flex-1">
+                <h1 className="text-2xl font-extrabold text-white">
+                  {tabs.find((t) => t.id === activeTab)?.label}
+                </h1>
+                <p className="text-sm text-white/40 mt-0.5">
+                  {activeTab === "overview" && "Platform health and key metrics"}
+                  {activeTab === "templates" && "Review, approve, and manage all templates"}
+                  {activeTab === "users" && "View and manage all registered users"}
+                  {activeTab === "credits" && "Adjust user credit balances"}
+                  {activeTab === "notifications" && "Send targeted or global notifications"}
+                  {activeTab === "redeem" && "Create and manage promotional codes"}
+                  {activeTab === "posts" && "Publish official announcements to the feed"}
+                  {activeTab === "polls" && "Create and manage community polls"}
+                  {activeTab === "reserved" && "Manage reserved and protected usernames"}
+                  {activeTab === "deletions" && "Users who have requested account deletion"}
+                  {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
+                </p>
+              </div>
+
+              {/* Admin notification bell */}
+              <div className="relative" ref={adminNotifRef}>
+                <button
+                  onClick={() => setShowAdminNotifPanel((v) => !v)}
+                  className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all border border-white/10"
+                  title="Pending items"
+                >
+                  <Bell className="w-5 h-5" />
+                  {(pendingTemplates.length + openFeedbackCount + pendingUsernameRequestCount + pendingDeletionCount) > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[1.1rem] flex items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white px-1 leading-none h-[1.1rem]">
+                      {pendingTemplates.length + openFeedbackCount + pendingUsernameRequestCount + pendingDeletionCount}
+                    </span>
+                  )}
+                </button>
+
+                {showAdminNotifPanel && (
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-[#111827] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-white/5">
+                      <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Pending Items</p>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      {pendingTemplates.length > 0 && (
+                        <button
+                          onClick={() => { setActiveTab("templates"); setShowAdminNotifPanel(false); }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Layout className="w-4 h-4 text-purple-400" />
+                            <span className="text-sm text-white">Template approvals</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold">{pendingTemplates.length}</span>
+                        </button>
+                      )}
+                      {openFeedbackCount > 0 && (
+                        <button
+                          onClick={() => { setActiveTab("feedback"); setShowAdminNotifPanel(false); }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <MessageSquare className="w-4 h-4 text-blue-400" />
+                            <span className="text-sm text-white">Open feedback</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-bold">{openFeedbackCount}</span>
+                        </button>
+                      )}
+                      {pendingUsernameRequestCount > 0 && (
+                        <button
+                          onClick={() => { setActiveTab("users"); setShowAdminNotifPanel(false); }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <AtSign className="w-4 h-4 text-yellow-400" />
+                            <span className="text-sm text-white">Username requests</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 text-[10px] font-bold">{pendingUsernameRequestCount}</span>
+                        </button>
+                      )}
+                      {pendingDeletionCount > 0 && (
+                        <button
+                          onClick={() => { setActiveTab("deletions"); setShowAdminNotifPanel(false); }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                            <span className="text-sm text-white">Deletion requests</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 text-[10px] font-bold">{pendingDeletionCount}</span>
+                        </button>
+                      )}
+                      {(pendingTemplates.length + openFeedbackCount + pendingUsernameRequestCount + pendingDeletionCount) === 0 && (
+                        <p className="text-sm text-white/30 text-center py-4">All clear ✓</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {loading ? (
@@ -2441,6 +2603,81 @@ export default function AdminDashboard() {
                               {item.userEmail && <span>From: {item.userEmail}</span>}
                               {item.createdAt && (
                                 <span>{new Date(item.createdAt.toDate?.() ?? item.createdAt).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Deletion Requests Tab */}
+                {activeTab === "deletions" && (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h2 className="text-lg font-bold text-white">Account Deletion Requests</h2>
+                        <p className="text-white/40 text-sm mt-1">Users who have requested their account to be deleted.</p>
+                      </div>
+                      {pendingDeletionCount > 0 && (
+                        <span className="px-3 py-1 rounded-full bg-red-500/15 text-red-400 text-xs font-bold border border-red-500/20">
+                          {pendingDeletionCount} pending
+                        </span>
+                      )}
+                    </div>
+
+                    {loadingDeletions ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 text-white/30 animate-spin" />
+                      </div>
+                    ) : deletionRequests.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Trash2 className="w-10 h-10 text-white/15 mx-auto mb-3" />
+                        <p className="text-white/30 text-sm">No deletion requests.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {deletionRequests.map((req) => (
+                          <div
+                            key={req.id}
+                            className={`bg-[#111827] border rounded-2xl p-5 transition-all ${
+                              req.status === "pending" ? "border-red-500/20" : "border-white/5 opacity-50"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                    req.status === "pending"
+                                      ? "bg-red-500/15 text-red-400 border-red-500/20"
+                                      : "bg-green-500/10 text-green-400 border-green-500/20"
+                                  }`}>
+                                    {req.status}
+                                  </span>
+                                </div>
+                                <p className="text-sm font-semibold text-white">{req.email}</p>
+                                <p className="text-xs text-white/40 font-mono mt-0.5">{req.userId}</p>
+                                {req.reason && (
+                                  <p className="text-xs text-white/50 mt-2 italic">"{req.reason}"</p>
+                                )}
+                                {req.requestedAt && (
+                                  <p className="text-[11px] text-white/25 mt-1">
+                                    {new Date(req.requestedAt.toDate?.() ?? req.requestedAt).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                              {req.status === "pending" && (
+                                <button
+                                  onClick={() => handleMarkDeletionProcessed(req.id)}
+                                  disabled={processingDeletion === req.id}
+                                  className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                >
+                                  {processingDeletion === req.id
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    : <Check className="w-3.5 h-3.5" />}
+                                  Mark Processed
+                                </button>
                               )}
                             </div>
                           </div>

@@ -457,6 +457,23 @@ service cloud.firestore {
           )
         );
       }
+
+      match /chat/{messageId} {
+        // Any member can read; only members can create their own messages; owner or moderator can delete
+        allow read: if isAuthenticated() &&
+          exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid));
+        allow create: if isAuthenticated() &&
+          exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 2000;
+        allow delete: if isAuthenticated() && (
+          resource.data.userId == request.auth.uid ||
+          get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.role in ['admin', 'moderator'] ||
+          isAdmin()
+        );
+      }
     }
 
     // ── Account deletion requests ──────────────────────────────────────────────
