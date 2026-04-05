@@ -452,7 +452,13 @@ async function startServer() {
     }
 
     // 3. Confirm the caller is an admin
-    const userDoc = await db.collection("users").doc(uid).get();
+    let userDoc: FirebaseFirestore.DocumentSnapshot;
+    try {
+      userDoc = await db.collection("users").doc(uid).get();
+    } catch (err: any) {
+      console.error("Firestore lookup error in send-email:", err);
+      return res.status(500).json({ error: "Server configuration error. Please try again later." });
+    }
     if (userDoc.data()?.role !== "admin") {
       return res.status(403).json({ error: "Forbidden: admin only" });
     }

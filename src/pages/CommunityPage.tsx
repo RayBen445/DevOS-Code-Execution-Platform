@@ -20,6 +20,9 @@ import {
   Trash2,
   ShieldAlert,
   Code2,
+  Settings,
+  ShieldCheck,
+  UserMinus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -40,6 +43,8 @@ import {
   joinCommunity,
   leaveCommunity,
   removeMember,
+  updateMemberRole,
+  updateCommunity,
   subscribeChatMessages,
   sendChatMessage,
   deleteChatMessage,
@@ -52,7 +57,7 @@ import {
 } from "../lib/feedService";
 import { useSEO } from "../hooks/useSEO";
 
-type CommunityTab = "posts" | "members" | "chat";
+type CommunityTab = "posts" | "members" | "chat" | "settings";
 
 // ─── Mini post composer ───────────────────────────────────────────────────────
 interface ComposerProps {
@@ -247,13 +252,15 @@ interface MemberRowProps {
   currentUserRole?: CommunityMemberRole | null;
   currentUserId?: string;
   onRemoved: (userId: string) => void;
+  onRoleChanged: (userId: string, newRole: CommunityMemberRole) => void;
 }
 
 type CommunityMemberRole = "member" | "moderator" | "admin";
 
-function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemoved }: MemberRowProps) {
+function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemoved, onRoleChanged }: MemberRowProps) {
   const [userData, setUserData] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [updatingRole, setUpdatingRole] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "users", member.userId), (snap) => {
@@ -267,6 +274,16 @@ function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemo
     currentUserId !== member.userId &&
     member.role !== "admin";
 
+  const canPromote =
+    currentUserRole === "admin" &&
+    currentUserId !== member.userId &&
+    member.role === "member";
+
+  const canDemote =
+    currentUserRole === "admin" &&
+    currentUserId !== member.userId &&
+    member.role === "moderator";
+
   const handleRemove = async () => {
     setRemoving(true);
     try {
@@ -277,6 +294,19 @@ function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemo
       toast.error("Failed to remove member");
     } finally {
       setRemoving(false);
+    }
+  };
+
+  const handleRoleChange = async (newRole: CommunityMemberRole) => {
+    setUpdatingRole(true);
+    try {
+      await updateMemberRole(communityId, member.userId, newRole);
+      onRoleChanged(member.userId, newRole);
+      toast.success(newRole === "moderator" ? "Promoted to moderator" : "Demoted to member");
+    } catch {
+      toast.error("Failed to update role");
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
@@ -303,10 +333,31 @@ function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemo
         <span className={cn("text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border", roleColors[member.role])}>
           {member.role}
         </span>
+        {canPromote && (
+          <button
+            onClick={() => handleRoleChange("moderator")}
+            disabled={updatingRole}
+            title="Promote to moderator"
+            className="text-white/20 hover:text-blue-400 transition-colors p-1.5 rounded-lg hover:bg-blue-500/10"
+          >
+            {updatingRole ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+          </button>
+        )}
+        {canDemote && (
+          <button
+            onClick={() => handleRoleChange("member")}
+            disabled={updatingRole}
+            title="Demote to member"
+            className="text-white/20 hover:text-orange-400 transition-colors p-1.5 rounded-lg hover:bg-orange-500/10"
+          >
+            {updatingRole ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserMinus className="w-3.5 h-3.5" />}
+          </button>
+        )}
         {canRemove && (
           <button
             onClick={handleRemove}
             disabled={removing}
+            title="Remove member"
             className="text-white/20 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
           >
             {removing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldAlert className="w-3.5 h-3.5" />}
@@ -335,6 +386,15 @@ export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+
+  // Settings form state
+  const [settingsName, setSettingsName] = useState("");
+  const [settingsDescription, setSettingsDescription] = useState("");
+  const [settingsCategory, setSettingsCategory] = useState("");
+  const [settingsAvatar, setSettingsAvatar] = useState("");
+  const [settingsBanner, setSettingsBanner] = useState("");
+  const [settingsIsPublic, setSettingsIsPublic] = useState(true);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useSEO({
     title: community ? `${community.name} — DevOS` : "Community — DevOS",
@@ -399,6 +459,39 @@ export default function CommunityPage() {
     return unsub;
   }, [user]);
 
+  // Sync settings form when community loads or settings tab is opened
+  useEffect(() => {
+    if (!community || activeTab !== "settings") return;
+    setSettingsName(community.name);
+    setSettingsDescription(community.description);
+    setSettingsCategory(community.category ?? "");
+    setSettingsAvatar(community.avatar ?? "");
+    setSettingsBanner(community.banner ?? "");
+    setSettingsIsPublic(community.isPublic);
+  }, [community, activeTab]);
+
+  const handleSaveSettings = async () => {
+    if (!community) return;
+    const trimmedName = settingsName.trim();
+    if (!trimmedName) { toast.error("Community name is required"); return; }
+    setSavingSettings(true);
+    try {
+      await updateCommunity(community.id, {
+        name: trimmedName,
+        description: settingsDescription.trim(),
+        category: settingsCategory.trim() || undefined,
+        avatar: settingsAvatar.trim(),
+        banner: settingsBanner.trim(),
+        isPublic: settingsIsPublic,
+      });
+      toast.success("Community settings saved!");
+    } catch {
+      toast.error("Failed to save settings");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   const handleJoin = async () => {
     if (!user || !community) return;
     setJoining(true);
@@ -460,10 +553,11 @@ export default function CommunityPage() {
 
   if (!community) return null;
 
-  const tabs: { id: CommunityTab; label: string; count?: number }[] = [
+  const tabs: { id: CommunityTab; label: string; count?: number; icon?: React.ReactNode }[] = [
     { id: "posts", label: "Posts", count: posts.length },
     { id: "chat", label: "Chat", count: undefined },
     { id: "members", label: "Members", count: community.memberCount },
+    ...(memberRole === "admin" ? [{ id: "settings" as CommunityTab, label: "Settings", icon: <Settings className="w-3.5 h-3.5" /> }] : []),
   ];
 
   return (
@@ -559,8 +653,8 @@ export default function CommunityPage() {
                   : "text-white/40 border-transparent hover:text-white/70"
               )}
             >
-              {tab.label}
-              {tab.count !== undefined && tab.count > 0 && (
+              {tab.icon ? tab.icon : tab.label}
+              {!tab.icon && tab.count !== undefined && tab.count > 0 && (
                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold", activeTab === tab.id ? "bg-blue-500/20 text-blue-400" : "bg-white/5 text-white/30")}>
                   {tab.count}
                 </span>
@@ -640,6 +734,9 @@ export default function CommunityPage() {
                       currentUserRole={memberRole}
                       currentUserId={user?.uid}
                       onRemoved={(id) => setMembers((prev) => prev.filter((x) => x.userId !== id))}
+                      onRoleChanged={(id, newRole) =>
+                        setMembers((prev) => prev.map((x) => x.userId === id ? { ...x, role: newRole } : x))
+                      }
                     />
                   ))}
                 </div>
@@ -719,6 +816,113 @@ export default function CommunityPage() {
                   </div>
                 </>
               )}
+            </motion.div>
+          )}
+
+          {activeTab === "settings" && memberRole === "admin" && (
+            <motion.div key="settings" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-5">
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-white/40" />
+                  Community Settings
+                </h2>
+
+                {/* Name */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/50 uppercase tracking-widest">Name</label>
+                  <input
+                    type="text"
+                    value={settingsName}
+                    onChange={(e) => setSettingsName(e.target.value)}
+                    maxLength={100}
+                    placeholder="Community name"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/50 uppercase tracking-widest">Description</label>
+                  <textarea
+                    value={settingsDescription}
+                    onChange={(e) => setSettingsDescription(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    placeholder="What is this community about?"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors resize-none"
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/50 uppercase tracking-widest">Category</label>
+                  <input
+                    type="text"
+                    value={settingsCategory}
+                    onChange={(e) => setSettingsCategory(e.target.value)}
+                    maxLength={50}
+                    placeholder="e.g. Web Dev, AI/ML, Gaming…"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                  />
+                </div>
+
+                {/* Avatar URL */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/50 uppercase tracking-widest">Avatar URL</label>
+                  <input
+                    type="url"
+                    value={settingsAvatar}
+                    onChange={(e) => setSettingsAvatar(e.target.value)}
+                    placeholder="https://…"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                  />
+                </div>
+
+                {/* Banner URL */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/50 uppercase tracking-widest">Banner URL</label>
+                  <input
+                    type="url"
+                    value={settingsBanner}
+                    onChange={(e) => setSettingsBanner(e.target.value)}
+                    placeholder="https://…"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                  />
+                </div>
+
+                {/* Visibility */}
+                <div className="flex items-center justify-between py-3 border-t border-white/5">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Public community</p>
+                    <p className="text-xs text-white/30 mt-0.5">Anyone can discover and join this community</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSettingsIsPublic((v) => !v)}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
+                      settingsIsPublic ? "bg-blue-600" : "bg-white/10"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
+                        settingsIsPublic ? "translate-x-6" : "translate-x-1"
+                      )}
+                    />
+                  </button>
+                </div>
+
+                {/* Save */}
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={savingSettings || !settingsName.trim()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-all"
+                >
+                  {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {savingSettings ? "Saving…" : "Save Changes"}
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

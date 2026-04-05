@@ -171,6 +171,14 @@ export async function leaveCommunity(communityId: string, userId: string): Promi
   });
 }
 
+/** Update community metadata (community admin or platform admin — enforced by Firestore rules) */
+export async function updateCommunity(
+  communityId: string,
+  updates: Partial<Pick<Community, "name" | "description" | "avatar" | "banner" | "category" | "isPublic">>
+): Promise<void> {
+  await updateDoc(doc(db, "communities", communityId), updates);
+}
+
 /** Update member role (community admin only — enforced by Firestore rules) */
 export async function updateMemberRole(
   communityId: string,
