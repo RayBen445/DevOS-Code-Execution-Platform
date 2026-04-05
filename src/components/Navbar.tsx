@@ -146,17 +146,22 @@ export default function Navbar({ onSignIn }: NavbarProps) {
         {user ? (
           <>
             {/* Credits display — clickable pill that opens a panel */}
-            {dailyRemaining !== null && (
+            {(isAdmin || dailyRemaining !== null) && (
               <div className="relative hidden sm:block" ref={creditsPanelRef}>
                 <button
                   onClick={() => { setIsCreditsPanelOpen((v) => !v); setIsProfileOpen(false); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition-all"
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all",
+                    isAdmin
+                      ? "bg-red-500/10 border-red-500/20 hover:bg-red-500/20"
+                      : "bg-yellow-500/10 border-yellow-500/20 hover:bg-yellow-500/20"
+                  )}
                 >
-                  <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                  <span className="text-yellow-300 font-bold text-sm">
-                    {dailyRemaining} credits
+                  <Zap className={cn("w-3.5 h-3.5", isAdmin ? "text-red-400" : "text-yellow-400")} />
+                  <span className={cn("font-bold text-sm", isAdmin ? "text-red-300" : "text-yellow-300")}>
+                    {isAdmin ? "∞ Unlimited" : `${dailyRemaining} credits`}
                   </span>
-                  <TrendingUp className="w-3 h-3 text-yellow-400/60" />
+                  {!isAdmin && <TrendingUp className="w-3 h-3 text-yellow-400/60" />}
                 </button>
 
                 <AnimatePresence>
@@ -169,50 +174,64 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                       className="absolute right-0 top-full mt-2 w-64 bg-[#111] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 p-4"
                     >
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-yellow-500/15 flex items-center justify-center">
-                          <Zap className="w-4 h-4 text-yellow-400" />
+                        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", isAdmin ? "bg-red-500/15" : "bg-yellow-500/15")}>
+                          <Zap className={cn("w-4 h-4", isAdmin ? "text-red-400" : "text-yellow-400")} />
                         </div>
                         <div>
                           <p className="text-sm font-bold text-white">DevOS Credits</p>
-                          <p className="text-[11px] text-white/40">Used for projects &amp; deployments</p>
+                          <p className="text-[11px] text-white/40">{isAdmin ? "Admin • All limits bypassed" : "Used for projects & deployments"}</p>
                         </div>
                       </div>
 
-                      {/* Total */}
-                      <div className="mb-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-white/50 font-semibold">Total Available</span>
-                          <span className="text-lg font-black text-yellow-300">{totalRemaining}</span>
+                      {isAdmin ? (
+                        <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-white/50 font-semibold">Admin Unlimited Pass</span>
+                            <span className="text-lg font-black text-red-300">∞</span>
+                          </div>
+                          <p className="text-[11px] text-white/30 leading-relaxed">
+                            As an admin, all credit costs are bypassed automatically.
+                          </p>
                         </div>
-                      </div>
+                      ) : (
+                        <>
+                          {/* Total */}
+                          <div className="mb-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-white/50 font-semibold">Total Available</span>
+                              <span className="text-lg font-black text-yellow-300">{totalRemaining}</span>
+                            </div>
+                          </div>
 
-                      {/* Daily */}
-                      <div className="space-y-2">
-                        <div>
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-white/50">Daily</span>
-                            <span className="font-bold text-white">{dailyRemaining} / {DAILY_CREDITS_AMOUNT}</span>
+                          {/* Daily */}
+                          <div className="space-y-2">
+                            <div>
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-white/50">Daily</span>
+                                <span className="font-bold text-white">{dailyRemaining} / {DAILY_CREDITS_AMOUNT}</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                <div
+                                  className="h-full bg-yellow-400 rounded-full transition-all"
+                                  style={{ width: `${Math.max(0, dailyPct)}%` }}
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-white/50">Monthly</span>
+                                <span className="font-bold text-white">{monthlyRemaining ?? 0} / {MONTHLY_CREDITS_AMOUNT}</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                <div
+                                  className="h-full bg-blue-400 rounded-full transition-all"
+                                  style={{ width: `${Math.max(0, monthlyPct)}%` }}
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                            <div
-                              className="h-full bg-yellow-400 rounded-full transition-all"
-                              style={{ width: `${Math.max(0, dailyPct)}%` }}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-white/50">Monthly</span>
-                            <span className="font-bold text-white">{monthlyRemaining ?? 0} / {MONTHLY_CREDITS_AMOUNT}</span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                            <div
-                              className="h-full bg-blue-400 rounded-full transition-all"
-                              style={{ width: `${Math.max(0, monthlyPct)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                        </>
+                      )}
 
                       <div className="border-t border-white/5 mt-4 pt-3">
                         <button
@@ -378,31 +397,40 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               </div>
 
               {/* Credits on mobile — detailed breakdown */}
-              {dailyRemaining !== null && (
-                <div className="mx-4 mt-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3">
+              {(isAdmin || dailyRemaining !== null) && (
+                <div className={cn(
+                  "mx-4 mt-4 rounded-xl border p-3",
+                  isAdmin ? "bg-red-500/10 border-red-500/20" : "bg-yellow-500/10 border-yellow-500/20"
+                )}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                      <span className="text-xs font-bold text-yellow-300 uppercase tracking-widest">Credits</span>
+                      <Zap className={cn("w-3.5 h-3.5", isAdmin ? "text-red-400" : "text-yellow-400")} />
+                      <span className={cn("text-xs font-bold uppercase tracking-widest", isAdmin ? "text-red-300" : "text-yellow-300")}>Credits</span>
                     </div>
-                    <span className="text-lg font-black text-yellow-300">{totalRemaining}</span>
+                    <span className={cn("text-lg font-black", isAdmin ? "text-red-300" : "text-yellow-300")}>
+                      {isAdmin ? "∞" : totalRemaining}
+                    </span>
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-white/50">Daily</span>
-                      <span className="text-white font-semibold">{dailyRemaining} / {DAILY_CREDITS_AMOUNT}</span>
+                  {isAdmin ? (
+                    <p className="text-[11px] text-white/30">Admin • All credit limits bypassed</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-white/50">Daily</span>
+                        <span className="text-white font-semibold">{dailyRemaining} / {DAILY_CREDITS_AMOUNT}</span>
+                      </div>
+                      <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                        <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${Math.max(0, dailyPct)}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-white/50">Monthly</span>
+                        <span className="text-white font-semibold">{monthlyRemaining ?? 0} / {MONTHLY_CREDITS_AMOUNT}</span>
+                      </div>
+                      <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                        <div className="h-full bg-blue-400 rounded-full" style={{ width: `${Math.max(0, monthlyPct)}%` }} />
+                      </div>
                     </div>
-                    <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-                      <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${Math.max(0, dailyPct)}%` }} />
-                    </div>
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-white/50">Monthly</span>
-                      <span className="text-white font-semibold">{monthlyRemaining ?? 0} / {MONTHLY_CREDITS_AMOUNT}</span>
-                    </div>
-                    <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-                      <div className="h-full bg-blue-400 rounded-full" style={{ width: `${Math.max(0, monthlyPct)}%` }} />
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
 

@@ -310,11 +310,11 @@ service cloud.firestore {
           && (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['likedBy'])
             || (
-              request.resource.data.likedBy.toSet()
-                .difference(resource.data.likedBy.toSet())
+              request.resource.data.get('likedBy', []).toSet()
+                .difference(resource.data.get('likedBy', []).toSet())
                 .hasOnly([request.auth.uid])
-              && resource.data.likedBy.toSet()
-                .difference(request.resource.data.likedBy.toSet())
+              && resource.data.get('likedBy', []).toSet()
+                .difference(request.resource.data.get('likedBy', []).toSet())
                 .hasOnly([request.auth.uid])
             )
           )

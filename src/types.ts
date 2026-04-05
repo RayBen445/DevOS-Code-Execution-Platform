@@ -39,6 +39,7 @@ export interface Project {
   entryFile?: string;
   savedAt?: any;
   env?: Record<string, string>;
+  tags?: string[];
   parentTemplateId?: string;
 }
 

@@ -1,5 +1,5 @@
 import { db, auth } from "./firebase";
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp, arrayUnion } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp, arrayUnion, runTransaction } from "firebase/firestore";
 import { Credits, GiftedCredit } from "../types";
 
 export const DAILY_CREDITS_AMOUNT = 50;
@@ -129,67 +129,64 @@ export const deductCredits = async (uid: string, action: CreditAction): Promise<
     return true;
   }
 
-  const credits = await getCredits(uid);
-
-  // Check unlimited pass
-  if (credits.creditsUnlimitedUntil) {
-    const unlimitedUntilMs = credits.creditsUnlimitedUntil?.toMillis?.() ?? 0;
-    if (unlimitedUntilMs > Date.now()) {
-      return true;
-    }
-  }
-
   const cost = config.chargePerAction > 0
     ? config.chargePerAction
     : (config.actionCosts?.[action] ?? CREDIT_COSTS[action]);
 
-  // Prune expired gifted credits, compute available gifted amount
-  const now = Date.now();
-  const activeGifted = (credits.gifted ?? []).filter(
-    (g) => g.expiresAt === null || !g.expiresAt || (g.expiresAt?.toMillis?.() ?? Infinity) > now
-  );
-  const expiredIds = (credits.gifted ?? [])
-    .filter((g) => g.expiresAt && (g.expiresAt?.toMillis?.() ?? 0) <= now)
-    .map((g) => g.id);
-
-  const totalGifted = activeGifted.reduce((sum, g) => sum + g.amount, 0);
-
-  if (totalGifted + credits.daily + credits.monthly < cost) {
-    return false;
-  }
-
   const creditsRef = doc(db, "user_credits", uid);
-  const updates: Record<string, any> = {};
 
-  // Remove expired gifted entries if any
-  if (expiredIds.length > 0) {
-    updates.gifted = activeGifted;
-  }
-
-  // Drain gifted first, then daily, then monthly
-  let remaining = cost;
-
-  let newGifted = [...activeGifted];
-  if (remaining > 0 && totalGifted > 0) {
-    // Drain from each gifted entry in order
-    for (let i = newGifted.length - 1; i >= 0 && remaining > 0; i--) {
-      const used = Math.min(newGifted[i].amount, remaining);
-      newGifted[i] = { ...newGifted[i], amount: newGifted[i].amount - used };
-      remaining -= used;
+  // Wrap the balance check and deduction in a transaction to prevent race conditions
+  // (concurrent calls cannot race and over-spend or clobber each other's writes).
+  return runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(creditsRef);
+    if (!snap.exists()) {
+      return false;
     }
-    newGifted = newGifted.filter((g) => g.amount > 0);
-    updates.gifted = newGifted;
-  }
 
-  const dailyUsed = Math.min(credits.daily, remaining);
-  remaining -= dailyUsed;
-  const newMonthly = credits.monthly - remaining;
+    const credits = snap.data() as Credits;
 
-  updates.daily = credits.daily - dailyUsed;
-  updates.monthly = newMonthly;
+    // Check unlimited pass
+    if (credits.creditsUnlimitedUntil) {
+      const unlimitedUntilMs = credits.creditsUnlimitedUntil?.toMillis?.() ?? 0;
+      if (unlimitedUntilMs > Date.now()) return true;
+    }
 
-  await updateDoc(creditsRef, updates);
-  return true;
+    // Prune expired gifted credits, compute available gifted amount
+    const now = Date.now();
+    const activeGifted = (credits.gifted ?? []).filter(
+      (g) => g.expiresAt === null || !g.expiresAt || (g.expiresAt?.toMillis?.() ?? Infinity) > now
+    );
+    const totalGifted = activeGifted.reduce((sum, g) => sum + g.amount, 0);
+
+    if (totalGifted + credits.daily + credits.monthly < cost) {
+      return false;
+    }
+
+    const updates: Record<string, any> = {};
+
+    // Drain gifted first (FIFO — oldest entry first, preserving insertion order)
+    let remaining = cost;
+    let newGifted = [...activeGifted];
+    if (remaining > 0 && totalGifted > 0) {
+      for (let i = 0; i < newGifted.length && remaining > 0; i++) {
+        const used = Math.min(newGifted[i].amount, remaining);
+        newGifted[i] = { ...newGifted[i], amount: newGifted[i].amount - used };
+        remaining -= used;
+      }
+      newGifted = newGifted.filter((g) => g.amount > 0);
+      updates.gifted = newGifted;
+    }
+
+    const dailyUsed = Math.min(credits.daily, remaining);
+    remaining -= dailyUsed;
+    const monthlyUsed = remaining;
+
+    updates.daily = credits.daily - dailyUsed;
+    updates.monthly = credits.monthly - monthlyUsed;
+
+    transaction.update(creditsRef, updates);
+    return true;
+  });
 };
 
 export const adjustCredits = async (
