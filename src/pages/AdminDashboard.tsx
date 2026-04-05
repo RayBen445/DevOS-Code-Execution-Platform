@@ -21,7 +21,7 @@ import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCre
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
-import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable, setUserOfficial, getUsernameChangeRequests, resolveUsernameChangeRequest } from "../lib/userService";
+import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable, setUserOfficial, getUsernameChangeRequests, resolveUsernameChangeRequest, createPortfolioProject } from "../lib/userService";
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
 import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -92,6 +92,7 @@ interface UserWithCredits extends UserProfile {
   credits?: Credits;
   projectCount?: number;
   isOfficial?: boolean;
+  hasPortfolio?: boolean;
 }
 
 interface SystemHealth {
@@ -192,6 +193,7 @@ export default function AdminDashboard() {
 
   // Official toggle state
   const [togglingOfficial, setTogglingOfficial] = useState<string | null>(null);
+  const [creatingPortfolio, setCreatingPortfolio] = useState<string | null>(null);
 
   // Feedback state
   const [feedbackItems, setFeedbackItems] = useState<Array<{
@@ -409,12 +411,21 @@ export default function AdminDashboard() {
       const usersWithCredits: UserWithCredits[] = await Promise.all(
         usersData.map(async (u) => {
           try {
-            const cSnap = await getDoc(doc(db, "user_credits", u.uid));
+            const [cSnap, portfolioSnap] = await Promise.all([
+              getDoc(doc(db, "user_credits", u.uid)),
+              getDocs(query(
+                collection(db, "projects"),
+                where("ownerId", "==", u.uid),
+                where("isSystem", "==", true),
+                where("systemType", "==", "portfolio"),
+                limit(1)
+              )),
+            ]);
             const credits = cSnap.exists() ? (cSnap.data() as Credits) : undefined;
             const pCount = projectsSnap.docs.filter(
               (p) => p.data().ownerId === u.uid
             ).length;
-            return { ...u, credits, projectCount: pCount };
+            return { ...u, credits, projectCount: pCount, hasPortfolio: !portfolioSnap.empty };
           } catch {
             return u;
           }
@@ -838,6 +849,19 @@ export default function AdminDashboard() {
       toast.error("Failed to update official status.");
     } finally {
       setTogglingOfficial(null);
+    }
+  };
+
+  const handleCreatePortfolio = async (uid: string, username: string) => {
+    setCreatingPortfolio(uid);
+    try {
+      await createPortfolioProject(uid, username);
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, hasPortfolio: true } : u)));
+      toast.success(`Portfolio created for @${username}`);
+    } catch {
+      toast.error("Failed to create portfolio.");
+    } finally {
+      setCreatingPortfolio(null);
     }
   };
 
@@ -1885,6 +1909,23 @@ export default function AdminDashboard() {
                               <span className="hidden sm:inline">{u.isOfficial ? "Official ✓" : "Official"}</span>
                             </button>
                           </div>
+
+                          {/* Create Portfolio button — only shown when user has no portfolio */}
+                          {!u.hasPortfolio && (
+                            <div className="shrink-0 ml-1">
+                              <button
+                                onClick={() => handleCreatePortfolio(u.uid, u.username)}
+                                disabled={creatingPortfolio === u.uid}
+                                title="Create portfolio for this user"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                              >
+                                {creatingPortfolio === u.uid
+                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  : <Plus className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">Portfolio</span>
+                              </button>
+                            </div>
+                          )}
                           </div>
 
                           {/* Inline username editor */}

@@ -216,7 +216,7 @@ export const checkUsernameAvailable = async (username: string): Promise<boolean>
   return snap.empty;
 };
 
-const createPortfolioProject = async (uid: string, username: string): Promise<string> => {
+export const createPortfolioProject = async (uid: string, username: string): Promise<string> => {
   const portfolioConfig = {
     bio: "I am a developer building awesome things with DevOS.",
     featuredProjects: [],
