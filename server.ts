@@ -398,23 +398,45 @@ async function startServer() {
   });
 
   // Admin Email — send a custom email from the admin dashboard.
-  // Restricted to users with role "admin"; rate-limited to 20 sends per hour.
+  // Restricted to users with role "admin".
+  // Rate-limited: 30 requests/minute per IP (pre-auth) + 20 sends/hour per admin UID.
   const ADMIN_EMAIL_SENDER = process.env.GMAIL_SENDER_ADDRESS || "coolshotsystemsofficial@gmail.com";
   const adminEmailRateLimit = new Map<string, { count: number; resetAt: number }>();
   const ADMIN_EMAIL_RATE_MAX = 20;
   const ADMIN_EMAIL_RATE_WINDOW_MS = 60 * 60_000; // 1 hour
+  const adminEmailIpRateLimit = new Map<string, { count: number; resetAt: number }>();
+  const ADMIN_EMAIL_IP_MAX = 30;
+  const ADMIN_EMAIL_IP_WINDOW_MS = 60_000; // 1 minute
 
   /** Validate an email address without a regex prone to polynomial backtracking. */
   const isValidEmailAddress = (email: string): boolean => {
-    const at = email.indexOf("@");
-    if (at < 1 || at !== email.lastIndexOf("@")) return false;
-    const domain = email.slice(at + 1);
+    const trimmed = email.trim();
+    if (trimmed.includes(" ")) return false;
+    const at = trimmed.indexOf("@");
+    if (at < 1 || at !== trimmed.lastIndexOf("@")) return false;
+    const domain = trimmed.slice(at + 1);
+    if (domain.includes(" ")) return false;
     const dot = domain.lastIndexOf(".");
-    return dot > 0 && dot < domain.length - 1 && !domain.includes("@");
+    return dot > 0 && dot < domain.length - 1;
   };
 
   app.post("/api/admin/send-email", async (req, res) => {
-    // 1. Verify Firebase ID token
+    // 1. IP-level rate limit (protects the auth step from brute-force / DoS)
+    const clientIp = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0].trim()
+      || req.socket.remoteAddress
+      || "unknown";
+    const ipNow = Date.now();
+    const ipEntry = adminEmailIpRateLimit.get(clientIp);
+    if (ipEntry && ipNow < ipEntry.resetAt) {
+      if (ipEntry.count >= ADMIN_EMAIL_IP_MAX) {
+        return res.status(429).json({ error: "Too many requests. Please try again later." });
+      }
+      ipEntry.count++;
+    } else {
+      adminEmailIpRateLimit.set(clientIp, { count: 1, resetAt: ipNow + ADMIN_EMAIL_IP_WINDOW_MS });
+    }
+
+    // 2. Verify Firebase ID token
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -429,13 +451,13 @@ async function startServer() {
       return res.status(401).json({ error: "Invalid or expired token" });
     }
 
-    // 2. Confirm the caller is an admin
+    // 3. Confirm the caller is an admin
     const userDoc = await db.collection("users").doc(uid).get();
     if (userDoc.data()?.role !== "admin") {
       return res.status(403).json({ error: "Forbidden: admin only" });
     }
 
-    // 3. Rate-limit per admin (20 emails / hour)
+    // 4. Per-admin rate limit (20 emails / hour)
     const now = Date.now();
     const rlEntry = adminEmailRateLimit.get(uid);
     if (rlEntry && now < rlEntry.resetAt) {
@@ -447,7 +469,7 @@ async function startServer() {
       adminEmailRateLimit.set(uid, { count: 1, resetAt: now + ADMIN_EMAIL_RATE_WINDOW_MS });
     }
 
-    // 4. Validate payload
+    // 5. Validate payload
     const { to, subject, message } = req.body as {
       to?: string | string[];
       subject?: string;
@@ -459,12 +481,12 @@ async function startServer() {
     }
 
     const toAddresses = Array.isArray(to) ? to : [to];
-    const invalid = toAddresses.find((a) => !isValidEmailAddress(a.trim()));
+    const invalid = toAddresses.find((a) => !isValidEmailAddress(a));
     if (invalid) {
       return res.status(400).json({ error: `Invalid email address: ${invalid}` });
     }
 
-    // 5. Send via Gmail SMTP
+    // 6. Send via Gmail SMTP
     const gmailPass = process.env.GMAIL_APP_PASSWORD;
     if (!gmailPass) {
       return res.status(500).json({ error: "GMAIL_APP_PASSWORD is not configured on the server." });
@@ -481,8 +503,10 @@ async function startServer() {
     });
 
     try {
-      // message is admin-supplied HTML sent as an email body (not rendered in a browser).
-      // The endpoint is restricted to authenticated admins, so HTML content is intentional.
+      // `message` is admin-supplied HTML for the email body.
+      // This endpoint is restricted to authenticated admins only; the HTML is
+      // delivered to an email client, not rendered in a browser, so it is not
+      // an XSS surface for other users of the platform.
       const info = await transporter.sendMail({
         from: `"DevOS" <${ADMIN_EMAIL_SENDER}>`,
         to: toAddresses.map((a) => a.trim()).join(", "),
@@ -490,7 +514,7 @@ async function startServer() {
         html: message,
       });
 
-      console.log(`Admin email sent: ${info.messageId} → ${toAddresses.join(", ")}`);
+      console.log(`Admin email sent: ${info.messageId} to ${toAddresses.length} recipient(s).`);
       res.json({ success: true, messageId: info.messageId });
     } catch (error: any) {
       console.error("Admin email send error:", error);
