@@ -1000,28 +1000,64 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-0 left-0 h-full w-72 bg-[#161B22] border-r border-[#21262D] z-40 flex flex-col md:hidden shadow-2xl"
+              className={cn(
+                "fixed top-0 left-0 h-full bg-[#161B22] border-r border-[#21262D] z-40 flex flex-col md:hidden shadow-2xl",
+                activePanel === "preview" ? "w-full" : "w-72"
+              )}
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[#21262D]">
-                <span className="text-xs font-bold uppercase tracking-widest text-white/40">Files & Tools</span>
-                <button
-                  onClick={() => setIsMobileSidebarOpen(false)}
-                  className="p-1 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#21262D] flex-shrink-0">
+                {activePanel === "preview" ? (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Globe className="w-3.5 h-3.5 text-green-400/60 flex-shrink-0" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-white/40">Live Preview</span>
+                    {project?.entryFile && (
+                      <span className="text-[10px] text-white/20 font-mono truncate">{project.entryFile}</span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs font-bold uppercase tracking-widest text-white/40">Files & Tools</span>
+                )}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {activePanel === "preview" && (
+                    <>
+                      <button
+                        onClick={() => setPreviewSaveKey(k => k + 1)}
+                        title="Refresh preview"
+                        className="p-1.5 rounded-lg text-white/25 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                      {(project?.liveUrl || project?.deployUrl) && (
+                        <button
+                          onClick={() => window.open(project.liveUrl || project.deployUrl, "_blank")}
+                          title="Open in new tab"
+                          className="p-1.5 rounded-lg text-white/25 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                  <button
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className="p-1 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               {/* Tab selector */}
-              <div className="flex border-b border-white/5">
+              <div className="flex border-b border-white/5 flex-shrink-0">
                 {[
                   { panel: "explorer" as PanelType, icon: Files, label: "Files" },
+                  { panel: "preview" as PanelType, icon: Eye, label: "Preview" },
                   { panel: "git" as PanelType, icon: GitBranch, label: "Git" },
-                  { panel: "terminal" as PanelType, icon: Terminal, label: "Terminal" },
-                  { panel: "settings" as PanelType, icon: Settings, label: "Settings" },
+                  { panel: "terminal" as PanelType, icon: Terminal, label: "Term" },
+                  { panel: "settings" as PanelType, icon: Settings, label: "More" },
                 ].map(({ panel, icon: Icon, label }) => (
                   <button
                     key={panel}
-                    onClick={() => { setActivePanel(panel); setIsMobileSidebarOpen(false); }}
+                    onClick={() => setActivePanel(panel)}
                     className={cn(
                       "flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors",
                       activePanel === panel ? "text-blue-400 border-b-2 border-blue-500" : "text-white/30 hover:text-white/60"
@@ -1032,22 +1068,38 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   </button>
                 ))}
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-hidden">
                 {activePanel === "explorer" && (
-                  <Sidebar
-                    files={files}
-                    activeFileId={activeFileId}
-                    onSelectFile={(id) => { openFileInTab(id); setIsMobileSidebarOpen(false); }}
-                    projectId={projectId}
-                    readOnly={isReadOnly}
-                  />
+                  <div className="h-full overflow-y-auto">
+                    <Sidebar
+                      files={files}
+                      activeFileId={activeFileId}
+                      onSelectFile={(id) => { openFileInTab(id); setIsMobileSidebarOpen(false); }}
+                      projectId={projectId}
+                      readOnly={isReadOnly}
+                    />
+                  </div>
                 )}
-                {activePanel === "git" && <GitPanel projectId={projectId} files={files} />}
+                {activePanel === "preview" && (
+                  <PreviewPanel projectId={projectId} files={files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
+                )}
+                {activePanel === "git" && (
+                  <div className="h-full overflow-y-auto">
+                    <GitPanel projectId={projectId} files={files} />
+                  </div>
+                )}
                 {activePanel === "settings" && (
-                  <SettingsPanel projectId={projectId} project={project} files={files} onDelete={onBack} />
+                  <div className="h-full overflow-y-auto">
+                    <SettingsPanel projectId={projectId} project={project} files={files} onDelete={onBack} />
+                  </div>
                 )}
                 {activePanel === "terminal" && (
-                  <p className="p-4 text-xs text-white/30">Terminal is shown below the editor.</p>
+                  <div className="h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
+                    <Terminal className="w-8 h-8 text-white/10" />
+                    <p className="text-xs text-white/30 leading-relaxed">
+                      Close this panel and tap the <span className="text-white/50 font-bold">Terminal</span> button in the toolbar, or scroll down to the terminal at the bottom of the editor.
+                    </p>
+                  </div>
                 )}
               </div>
             </motion.div>
