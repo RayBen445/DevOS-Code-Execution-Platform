@@ -8,7 +8,9 @@ export default function Footer() {
   const [config, setConfig] = useState<SiteConfig>(SITE_CONFIG_DEFAULTS);
 
   useEffect(() => {
-    getSiteConfig().then(setConfig).catch(() => {/* use defaults */});
+    getSiteConfig().then(setConfig).catch((err) => {
+      console.error("Failed to load site config:", err);
+    });
   }, []);
 
   const socials = [

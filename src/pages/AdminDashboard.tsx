@@ -23,7 +23,7 @@ import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/red
 import { createAdminPost } from "../lib/feedService";
 import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable, setUserOfficial, getUsernameChangeRequests, resolveUsernameChangeRequest, createPortfolioProject } from "../lib/userService";
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
-import { subscribeCommunities, updateCommunity, deleteCommunity } from "../lib/communityService";
+import { updateCommunity, deleteCommunity } from "../lib/communityService";
 import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -1206,13 +1206,16 @@ export default function AdminDashboard() {
 
   // ── Community management handlers ─────────────────────────────────────────
 
-  const loadCommunities = () => {
+  const loadCommunities = async () => {
     setLoadingCommunities(true);
-    const unsub = subscribeCommunities((list) => {
-      setCommunities(list);
+    try {
+      const snap = await getDocs(collection(db, "communities"));
+      setCommunities(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Community)));
+    } catch {
+      toast.error("Failed to load communities.");
+    } finally {
       setLoadingCommunities(false);
-      unsub(); // one-shot load
-    }, { maxItems: 200 });
+    }
   };
 
   const handleEditCommunity = (c: Community) => {
