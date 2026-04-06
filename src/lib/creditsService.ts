@@ -277,3 +277,48 @@ export const saveMaintenanceConfig = async (config: MaintenanceConfig): Promise<
     maintenancePages: config.maintenancePages ?? [],
   });
 };
+
+// ─── Site / Branding Config ──────────────────────────────────────────────────
+
+const SITE_DOC = "site";
+
+export interface SiteConfig {
+  platformName: string;
+  tagline: string;
+  contactEmail: string;
+  githubUrl: string;
+  twitterUrl: string;
+  websiteUrl: string;
+  footerCredit: string;
+}
+
+export const SITE_CONFIG_DEFAULTS: SiteConfig = {
+  platformName: "DevOS",
+  tagline: "The cloud IDE built for builders who want to ship faster.",
+  contactEmail: "info@devos.zone.id",
+  githubUrl: "https://github.com/devos",
+  twitterUrl: "https://twitter.com/devos",
+  websiteUrl: "https://devos.app",
+  footerCredit: "Built by Cool Shot Systems · TVN",
+};
+
+/** Read site branding config from system_config/site */
+export const getSiteConfig = async (): Promise<SiteConfig> => {
+  const snap = await getDoc(doc(db, "system_config", SITE_DOC));
+  if (!snap.exists()) return SITE_CONFIG_DEFAULTS;
+  const d = snap.data();
+  return {
+    platformName: d.platformName ?? SITE_CONFIG_DEFAULTS.platformName,
+    tagline: d.tagline ?? SITE_CONFIG_DEFAULTS.tagline,
+    contactEmail: d.contactEmail ?? SITE_CONFIG_DEFAULTS.contactEmail,
+    githubUrl: d.githubUrl ?? SITE_CONFIG_DEFAULTS.githubUrl,
+    twitterUrl: d.twitterUrl ?? SITE_CONFIG_DEFAULTS.twitterUrl,
+    websiteUrl: d.websiteUrl ?? SITE_CONFIG_DEFAULTS.websiteUrl,
+    footerCredit: d.footerCredit ?? SITE_CONFIG_DEFAULTS.footerCredit,
+  };
+};
+
+/** Persist site branding config (admin only) */
+export const saveSiteConfig = async (config: SiteConfig): Promise<void> => {
+  await setDoc(doc(db, "system_config", SITE_DOC), { ...config });
+};

@@ -198,6 +198,11 @@ export async function removeMember(communityId: string, userId: string): Promise
   });
 }
 
+/** Delete a community entirely (platform admin only) */
+export async function deleteCommunity(communityId: string): Promise<void> {
+  await deleteDoc(doc(db, "communities", communityId));
+}
+
 // ─── Community Chat ───────────────────────────────────────────────────────────
 
 /** Subscribe to real-time chat messages in a community (last 100, oldest first) */

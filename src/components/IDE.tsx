@@ -12,9 +12,10 @@ import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
-import { FileData, Project } from "../types";
+import { FileData, Project, OrgMember, OrgMemberRole } from "../types";
 import { cn } from "../lib/utils";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu, Save, Check, RefreshCw, ExternalLink } from "lucide-react";
+import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,7 +24,7 @@ interface IDEProps {
   onBack: () => void;
 }
 
-type PanelType = "explorer" | "git" | "terminal" | "preview" | "settings" | null;
+type PanelType = "explorer" | "git" | "terminal" | "preview" | "settings" | "collaborators" | null;
 
 interface LogEntry {
   type: "system" | "success" | "error" | "info" | "output" | "warning";
@@ -75,6 +76,11 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const terminalDragStartH = useRef<number>(0);
   const [cursorLine, setCursorLine] = useState(1);
   const [cursorCol, setCursorCol] = useState(1);
+
+  // Org-aware state
+  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
+  const [orgRole, setOrgRole] = useState<OrgMemberRole | null>(null);
+  const [orgMembersLoading, setOrgMembersLoading] = useState(false);
 
   // Persist active file and panel to localStorage (per-project key)
   useEffect(() => {
@@ -347,7 +353,27 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
   };
 
-  const isReadOnly = project && user && project.ownerId !== user.uid && !project.collaborators.includes(user.uid);
+  const isOrgProject = project?.ownerType === "organization" && !!project?.ownerOrgId;
+
+  // Org-aware: read-only if not a member, or personal project owned by someone else
+  const isReadOnly = (() => {
+    if (!project || !user) return true;
+    if (project.ownerId === user.uid) return false; // owner always has full access
+    if (isOrgProject) {
+      // In an org project, members can edit; non-members are read-only
+      return orgRole === null;
+    }
+    // Personal project: must be owner or collaborator
+    return !project.collaborators.includes(user.uid);
+  })();
+
+  // Can deploy: owner always; in org projects, org admin only
+  const canDeploy = (() => {
+    if (!project || !user) return false;
+    if (project.ownerId === user.uid) return true;
+    if (isOrgProject) return orgRole === "admin";
+    return project.collaborators.includes(user.uid);
+  })();
   const isDeployed = !!project?.deployUrl;
 
   useEffect(() => {
@@ -415,6 +441,26 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, [user, projectId]);
+
+  // Load org members when project is loaded and it's an org project
+  useEffect(() => {
+    if (!project?.ownerOrgId || project?.ownerType !== "organization") {
+      setOrgMembers([]);
+      setOrgRole(null);
+      return;
+    }
+    const orgId = project.ownerOrgId;
+    setOrgMembersLoading(true);
+    const unsub = subscribeOrgMembers(orgId, (members) => {
+      setOrgMembers(members);
+      setOrgMembersLoading(false);
+    });
+    // Load user's own role
+    if (user) {
+      getOrgMember(orgId, user.uid).then((m) => setOrgRole(m?.role ?? null)).catch(() => setOrgRole(null));
+    }
+    return () => unsub();
+  }, [project?.ownerOrgId, project?.ownerType, user?.uid]);
 
   const activeFile = files.find(f => f.id === activeFileId);
 
@@ -513,6 +559,18 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           // Version creation is best-effort; log for debugging but do not surface to user.
           console.warn("Version snapshot failed:", versionErr);
         }
+      }
+
+      // Track activity for org projects (best-effort)
+      if (!silent && isOrgProject && user) {
+        try {
+          await addDoc(collection(db, "projects", projectId, "activity"), {
+            userId: user.uid,
+            action: "save",
+            file: activeFile?.name ?? null,
+            timestamp: serverTimestamp(),
+          });
+        } catch { /* best-effort */ }
       }
     } catch (error) {
       console.error("Error saving project:", error);
@@ -797,6 +855,19 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       className="h-screen flex flex-col bg-[#0D1117] overflow-hidden"
       onClick={() => contextMenu && setContextMenu(null)}
     >
+      {/* Org project permission banner */}
+      {isOrgProject && orgRole === null && !loading && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 border-b border-orange-500/20 text-orange-300 text-xs font-medium">
+          <Shield className="w-3.5 h-3.5 flex-shrink-0" />
+          You are not a member of this organization — the project is read-only.
+        </div>
+      )}
+      {isOrgProject && orgRole === "member" && !loading && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-blue-300 text-xs font-medium">
+          <UserCheck className="w-3.5 h-3.5 flex-shrink-0" />
+          Org member — you can edit files. Deployment requires admin role.
+        </div>
+      )}
       <header className="h-11 border-b border-[#21262D] flex items-center justify-between px-3 bg-[#161B22] flex-shrink-0">
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
           <button
@@ -812,8 +883,22 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 aria-label="breadcrumb"
                 className="flex items-center gap-1 min-w-0 text-xs"
               >
-                {/* @username — desktop only */}
-                {breadcrumbUsername && (
+                {/* Org badge for org projects — desktop only */}
+                {isOrgProject && project?.ownerOrgName && (
+                  <>
+                    <a
+                      href={`/org/${project.ownerOrgSlug ?? ""}`}
+                      className="hidden md:flex items-center gap-1 text-[#9CA3AF] hover:text-white font-medium transition-colors flex-shrink-0"
+                      title={project.ownerOrgName}
+                    >
+                      <Building2 className="w-3 h-3" />
+                      {project.ownerOrgName}
+                    </a>
+                    <span className="hidden md:inline text-white/20 flex-shrink-0 select-none">/</span>
+                  </>
+                )}
+                {/* @username — desktop only (personal projects) */}
+                {!isOrgProject && breadcrumbUsername && (
                   <>
                     <a
                       href={`/u/${breadcrumbUsername}`}
@@ -917,7 +1002,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 <Share2 className="w-3 h-3" />
                 Share
               </button>
-              {!isReadOnly && (
+              {!isReadOnly && canDeploy && (
                 <button 
                   onClick={() => setIsDeployModalOpen(true)}
                   className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
@@ -973,6 +1058,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               { id: "git" as PanelType, icon: GitBranch, label: "Source Control" },
               { id: "terminal" as PanelType, icon: Terminal, label: "Terminal" },
               { id: "preview" as PanelType, icon: Eye, label: "Preview" },
+              ...(isOrgProject ? [{ id: "collaborators" as PanelType, icon: Users, label: "Collaborators" }] : []),
               { id: "settings" as PanelType, icon: Settings, label: "Settings" },
             ].map(({ id, icon: Icon, label }) => (
               <button
@@ -1051,6 +1137,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {[
                   { panel: "explorer" as PanelType, icon: Files, label: "Files" },
                   { panel: "preview" as PanelType, icon: Eye, label: "Preview" },
+                  ...(isOrgProject ? [{ panel: "collaborators" as PanelType, icon: Users, label: "Team" }] : []),
                   { panel: "git" as PanelType, icon: GitBranch, label: "Git" },
                   { panel: "terminal" as PanelType, icon: Terminal, label: "Term" },
                   { panel: "settings" as PanelType, icon: Settings, label: "More" },
@@ -1101,6 +1188,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     </p>
                   </div>
                 )}
+                {activePanel === "collaborators" && (
+                  <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} />
+                )}
               </div>
             </motion.div>
           )}
@@ -1140,6 +1230,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     files={files} 
                     onDelete={onBack}
                   />
+                </div>
+              )}
+
+              {/* Collaborators Panel — org projects only, hidden on mobile */}
+              {project?.systemType !== 'portfolio' && activePanel === "collaborators" && !isFocusMode && isOrgProject && (
+                <div className="hidden md:flex w-72 border-r border-white/5 flex-col overflow-y-auto">
+                  <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} />
                 </div>
               )}
 
@@ -1433,6 +1530,75 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         projectId={projectId}
         files={files}
       />
+    </div>
+  );
+}
+
+// ── Collaborators Panel ───────────────────────────────────────────────────────
+
+function roleIcon(role: OrgMemberRole) {
+  if (role === "admin") return <Crown className="w-3 h-3 text-yellow-400" />;
+  if (role === "moderator") return <Shield className="w-3 h-3 text-blue-400" />;
+  return <UserCheck className="w-3 h-3 text-white/30" />;
+}
+
+function CollaboratorsPanel({
+  orgMembers,
+  loading,
+  currentUserId,
+  ownerId,
+}: {
+  orgMembers: OrgMember[];
+  loading: boolean;
+  currentUserId?: string;
+  ownerId?: string;
+}) {
+  return (
+    <div className="h-full flex flex-col bg-[#161B22]">
+      <div className="px-4 py-3 border-b border-[#21262D] flex items-center gap-2 flex-shrink-0">
+        <Users className="w-3.5 h-3.5 text-blue-400" />
+        <span className="text-xs font-bold uppercase tracking-widest text-white/40">Collaborators</span>
+        {!loading && (
+          <span className="ml-auto text-[10px] text-white/25 font-mono">{orgMembers.length}</span>
+        )}
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+          </div>
+        ) : orgMembers.length === 0 ? (
+          <p className="text-xs text-white/25 text-center py-8">No members found.</p>
+        ) : (
+          orgMembers.map((m) => (
+            <div
+              key={m.userId}
+              className={cn(
+                "flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors",
+                m.userId === currentUserId ? "bg-blue-600/10" : "hover:bg-white/[0.04]"
+              )}
+            >
+              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-white/50 uppercase">
+                {(m.username ?? m.userId).charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">
+                  @{m.username ?? m.userId}
+                  {m.userId === ownerId && (
+                    <span className="ml-1.5 text-[9px] text-yellow-400/70 font-bold uppercase">owner</span>
+                  )}
+                  {m.userId === currentUserId && (
+                    <span className="ml-1.5 text-[9px] text-blue-400/70 font-bold uppercase">you</span>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0" title={m.role}>
+                {roleIcon(m.role as OrgMemberRole)}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

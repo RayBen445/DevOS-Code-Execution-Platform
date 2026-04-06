@@ -12,6 +12,10 @@ export interface Project {
   description?: string;
   ownerId: string;
   ownerUsername?: string;
+  ownerType?: "user" | "organization";
+  ownerOrgId?: string;
+  ownerOrgSlug?: string;
+  ownerOrgName?: string;
   projectSlug?: string;
   createdAt: any;
   updatedAt: any;

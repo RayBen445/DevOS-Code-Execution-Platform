@@ -1,14 +1,21 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Code2, Mail, Github, Twitter, Globe } from "lucide-react";
-
-const SOCIALS = [
-  { icon: Github, href: "https://github.com/devos", label: "GitHub" },
-  { icon: Twitter, href: "https://twitter.com/devos", label: "Twitter" },
-  { icon: Globe, href: "https://devos.app", label: "Website" },
-];
+import { getSiteConfig, SiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 
 export default function Footer() {
   const year = new Date().getFullYear();
+  const [config, setConfig] = useState<SiteConfig>(SITE_CONFIG_DEFAULTS);
+
+  useEffect(() => {
+    getSiteConfig().then(setConfig).catch(() => {/* use defaults */});
+  }, []);
+
+  const socials = [
+    { icon: Github, href: config.githubUrl, label: "GitHub" },
+    { icon: Twitter, href: config.twitterUrl, label: "Twitter" },
+    { icon: Globe, href: config.websiteUrl, label: "Website" },
+  ];
 
   return (
     <footer className="relative border-t border-white/[0.06] bg-[#0a0a0a] mt-auto overflow-hidden">
@@ -23,14 +30,14 @@ export default function Footer() {
               <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/25">
                 <Code2 className="w-4 h-4 text-white" />
               </div>
-              <span className="font-black text-white text-lg tracking-tight">DevOS</span>
+              <span className="font-black text-white text-lg tracking-tight">{config.platformName}</span>
             </div>
             <p className="text-xs text-white/30 leading-relaxed max-w-[200px]">
-              The cloud IDE built for builders who want to ship faster.
+              {config.tagline}
             </p>
             {/* Social links */}
             <div className="flex items-center gap-2 pt-1">
-              {SOCIALS.map(({ icon: Icon, href, label }) => (
+              {socials.map(({ icon: Icon, href, label }) => (
                 <a
                   key={label}
                   href={href}
@@ -66,11 +73,11 @@ export default function Footer() {
           <div className="flex flex-col gap-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Contact &amp; Legal</p>
             <a
-              href="mailto:info@devos.zone.id"
+              href={`mailto:${config.contactEmail}`}
               className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors w-fit"
             >
               <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-              info@devos.zone.id
+              {config.contactEmail}
             </a>
             <FooterLink to="/privacy">Privacy Policy</FooterLink>
             <FooterLink to="/terms">Terms of Service</FooterLink>
@@ -82,7 +89,7 @@ export default function Footer() {
 
         <div className="border-t border-white/[0.05] pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-[11px] text-white/20">
-            © {year} DevOS. All rights reserved.
+            © {year} {config.platformName}. All rights reserved.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
             {[
@@ -98,7 +105,7 @@ export default function Footer() {
             ))}
           </div>
           <p className="text-[11px] text-white/20">
-            Built by Cool Shot Systems · TVN
+            {config.footerCredit}
           </p>
         </div>
       </div>
@@ -116,4 +123,3 @@ function FooterLink({ to, children }: { to: string; children: React.ReactNode })
     </Link>
   );
 }
-

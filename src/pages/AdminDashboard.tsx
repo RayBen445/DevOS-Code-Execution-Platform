@@ -17,13 +17,14 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
-import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits, getMaintenanceConfig, saveMaintenanceConfig, MaintenanceConfig } from "../lib/creditsService";
+import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits, getMaintenanceConfig, saveMaintenanceConfig, MaintenanceConfig, getSiteConfig, saveSiteConfig, SiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
 import { createAdminPost } from "../lib/feedService";
 import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable, setUserOfficial, getUsernameChangeRequests, resolveUsernameChangeRequest, createPortfolioProject } from "../lib/userService";
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
-import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll } from "../types";
+import { subscribeCommunities, updateCommunity, deleteCommunity } from "../lib/communityService";
+import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -71,13 +72,17 @@ import {
   Pencil,
   BadgeCheck,
   Check,
+  Globe,
+  Users2,
+  Save,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "site";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -277,6 +282,23 @@ export default function AdminDashboard() {
   const [emailMessage, setEmailMessage] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
 
+  // Communities management state
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [loadingCommunities, setLoadingCommunities] = useState(false);
+  const [editingCommunity, setEditingCommunity] = useState<Community | null>(null);
+  const [communityEditName, setCommunityEditName] = useState("");
+  const [communityEditDesc, setCommunityEditDesc] = useState("");
+  const [communityEditCategory, setCommunityEditCategory] = useState("");
+  const [communityEditPublic, setCommunityEditPublic] = useState(true);
+  const [savingCommunity, setSavingCommunity] = useState(false);
+  const [deleteCommunityConfirm, setDeleteCommunityConfirm] = useState<string | null>(null);
+  const [deletingCommunity, setDeletingCommunity] = useState(false);
+
+  // Site settings state
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(SITE_CONFIG_DEFAULTS);
+  const [loadingSiteConfig, setLoadingSiteConfig] = useState(false);
+  const [savingSiteConfig, setSavingSiteConfig] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     const checkAdmin = async () => {
@@ -310,6 +332,12 @@ export default function AdminDashboard() {
     }
     if (activeTab === "maintenance" && isAdmin) {
       loadMaintenanceConfig();
+    }
+    if (activeTab === "communities" && isAdmin) {
+      loadCommunities();
+    }
+    if (activeTab === "site" && isAdmin) {
+      loadSiteConfig();
     }
   }, [activeTab, isAdmin]);
 
@@ -1176,6 +1204,89 @@ export default function AdminDashboard() {
     }
   };
 
+  // ── Community management handlers ─────────────────────────────────────────
+
+  const loadCommunities = () => {
+    setLoadingCommunities(true);
+    const unsub = subscribeCommunities((list) => {
+      setCommunities(list);
+      setLoadingCommunities(false);
+      unsub(); // one-shot load
+    }, { maxItems: 200 });
+  };
+
+  const handleEditCommunity = (c: Community) => {
+    setEditingCommunity(c);
+    setCommunityEditName(c.name);
+    setCommunityEditDesc(c.description);
+    setCommunityEditCategory(c.category ?? "general");
+    setCommunityEditPublic(c.isPublic);
+  };
+
+  const handleSaveCommunity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCommunity) return;
+    if (!communityEditName.trim()) { toast.error("Name is required."); return; }
+    setSavingCommunity(true);
+    try {
+      await updateCommunity(editingCommunity.id, {
+        name: communityEditName.trim(),
+        description: communityEditDesc.trim(),
+        category: communityEditCategory.trim() || "general",
+        isPublic: communityEditPublic,
+      });
+      setCommunities((prev) => prev.map((c) =>
+        c.id === editingCommunity.id
+          ? { ...c, name: communityEditName.trim(), description: communityEditDesc.trim(), category: communityEditCategory || "general", isPublic: communityEditPublic }
+          : c
+      ));
+      toast.success("Community updated.");
+      setEditingCommunity(null);
+    } catch {
+      toast.error("Failed to update community.");
+    } finally {
+      setSavingCommunity(false);
+    }
+  };
+
+  const confirmDeleteCommunity = async () => {
+    if (!deleteCommunityConfirm) return;
+    setDeletingCommunity(true);
+    try {
+      await deleteCommunity(deleteCommunityConfirm);
+      setCommunities((prev) => prev.filter((c) => c.id !== deleteCommunityConfirm));
+      toast.success("Community deleted.");
+      setDeleteCommunityConfirm(null);
+    } catch {
+      toast.error("Failed to delete community.");
+    } finally {
+      setDeletingCommunity(false);
+    }
+  };
+
+  // ── Site settings handlers ─────────────────────────────────────────────────
+
+  const loadSiteConfig = () => {
+    setLoadingSiteConfig(true);
+    getSiteConfig()
+      .then(setSiteConfig)
+      .catch(() => {})
+      .finally(() => setLoadingSiteConfig(false));
+  };
+
+  const handleSaveSiteConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSiteConfig(true);
+    try {
+      await saveSiteConfig(siteConfig);
+      toast.success("Site settings saved. Footer will update on next page load.");
+    } catch {
+      toast.error("Failed to save site settings.");
+    } finally {
+      setSavingSiteConfig(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
@@ -1221,6 +1332,8 @@ export default function AdminDashboard() {
     { id: "reserved", label: "Reserved Names", icon: <AtSign className="w-4 h-4" /> },
     { id: "maintenance", label: "Maintenance", icon: <Wrench className="w-4 h-4" /> },
     { id: "email", label: "Send Email", icon: <Send className="w-4 h-4" /> },
+    { id: "communities", label: "Communities", icon: <Users2 className="w-4 h-4" /> },
+    { id: "site", label: "Site Settings", icon: <Globe className="w-4 h-4" /> },
   ];
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1362,6 +1475,8 @@ export default function AdminDashboard() {
                   {activeTab === "deletions" && "Users who have requested account deletion"}
                   {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
                   {activeTab === "email" && "Send a custom email to any user via Gmail SMTP"}
+                  {activeTab === "communities" && "View, edit and delete all platform communities"}
+                  {activeTab === "site" && "Edit platform name, tagline, social links and footer text"}
                 </p>
               </div>
 
@@ -3083,6 +3198,230 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 )}
+
+                {/* Communities Tab */}
+                {activeTab === "communities" && (
+                  <div className="space-y-6">
+                    {loadingCommunities ? (
+                      <div className="flex items-center gap-2 text-white/40 py-8 justify-center">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Loading communities…
+                      </div>
+                    ) : communities.length === 0 ? (
+                      <div className="text-center py-12 text-white/30">
+                        <Users2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">No communities yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {communities.map((c) => (
+                          <div key={c.id} className="bg-[#111827] border border-white/10 rounded-2xl p-5">
+                            {editingCommunity?.id === c.id ? (
+                              <form onSubmit={handleSaveCommunity} className="space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Name</label>
+                                    <input
+                                      value={communityEditName}
+                                      onChange={(e) => setCommunityEditName(e.target.value)}
+                                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                                      required
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Category</label>
+                                    <input
+                                      value={communityEditCategory}
+                                      onChange={(e) => setCommunityEditCategory(e.target.value)}
+                                      placeholder="general"
+                                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Description</label>
+                                  <textarea
+                                    value={communityEditDesc}
+                                    onChange={(e) => setCommunityEditDesc(e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setCommunityEditPublic(v => !v)}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${communityEditPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}
+                                  >
+                                    {communityEditPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                                    {communityEditPublic ? "Public" : "Private"}
+                                  </button>
+                                  <div className="flex-1" />
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingCommunity(null)}
+                                    className="px-4 py-1.5 rounded-xl text-xs font-bold bg-white/5 text-white/50 hover:bg-white/10 transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    disabled={savingCommunity}
+                                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                  >
+                                    {savingCommunity ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                    Save
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-bold text-white text-sm">{c.name}</p>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/40 font-mono">/{c.slug}</span>
+                                    {c.category && (
+                                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-400 border border-blue-500/20">{c.category}</span>
+                                    )}
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${c.isPublic ? "bg-green-600/10 text-green-400" : "bg-orange-600/10 text-orange-400"}`}>
+                                      {c.isPublic ? "Public" : "Private"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-white/40 mt-1 line-clamp-2">{c.description || <span className="italic opacity-50">No description</span>}</p>
+                                  <p className="text-[10px] text-white/25 mt-1">
+                                    {c.memberCount ?? 0} member{(c.memberCount ?? 0) !== 1 ? "s" : ""}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <button
+                                    onClick={() => handleEditCommunity(c)}
+                                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteCommunityConfirm(c.id)}
+                                    className="p-1.5 rounded-lg bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Site Settings Tab */}
+                {activeTab === "site" && (
+                  <div className="space-y-6 max-w-2xl">
+                    {loadingSiteConfig ? (
+                      <div className="flex items-center gap-2 text-white/40 py-8 justify-center">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Loading…
+                      </div>
+                    ) : (
+                      <form onSubmit={handleSaveSiteConfig} className="space-y-5">
+                        {/* Branding */}
+                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-4">
+                          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-blue-400" />
+                            Branding
+                          </h2>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">Platform Name</label>
+                            <input
+                              type="text"
+                              value={siteConfig.platformName}
+                              onChange={(e) => setSiteConfig((s) => ({ ...s, platformName: e.target.value }))}
+                              placeholder="DevOS"
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">Tagline</label>
+                            <input
+                              type="text"
+                              value={siteConfig.tagline}
+                              onChange={(e) => setSiteConfig((s) => ({ ...s, tagline: e.target.value }))}
+                              placeholder="The cloud IDE built for builders…"
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">Footer Credit Text</label>
+                            <input
+                              type="text"
+                              value={siteConfig.footerCredit}
+                              onChange={(e) => setSiteConfig((s) => ({ ...s, footerCredit: e.target.value }))}
+                              placeholder="Built by Cool Shot Systems · TVN"
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Contact */}
+                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-4">
+                          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
+                            <Send className="w-4 h-4 text-blue-400" />
+                            Contact
+                          </h2>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">Contact Email</label>
+                            <input
+                              type="email"
+                              value={siteConfig.contactEmail}
+                              onChange={(e) => setSiteConfig((s) => ({ ...s, contactEmail: e.target.value }))}
+                              placeholder="info@devos.zone.id"
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        {/* Social Links */}
+                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-4">
+                          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
+                            <Link2 className="w-4 h-4 text-blue-400" />
+                            Social Links
+                          </h2>
+                          {[
+                            { key: "githubUrl", label: "GitHub URL", placeholder: "https://github.com/devos" },
+                            { key: "twitterUrl", label: "Twitter / X URL", placeholder: "https://twitter.com/devos" },
+                            { key: "websiteUrl", label: "Website URL", placeholder: "https://devos.app" },
+                          ].map(({ key, label, placeholder }) => (
+                            <div key={key}>
+                              <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">{label}</label>
+                              <input
+                                type="url"
+                                value={(siteConfig as any)[key]}
+                                onChange={(e) => setSiteConfig((s) => ({ ...s, [key]: e.target.value }))}
+                                placeholder={placeholder}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={savingSiteConfig}
+                          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all"
+                        >
+                          {savingSiteConfig
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                            : <><Save className="w-4 h-4" /> Save Site Settings</>}
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -3119,6 +3458,17 @@ export default function AdminDashboard() {
       confirmLabel="Delete Poll"
       onConfirm={confirmDeletePoll}
       onCancel={() => setDeletePollConfirm(null)}
+    />
+
+    <ConfirmModal
+      open={!!deleteCommunityConfirm}
+      title="Delete Community"
+      description={`Delete this community? All its data will be permanently removed.`}
+      warning="This action cannot be undone."
+      confirmLabel="Delete Community"
+      loading={deletingCommunity}
+      onConfirm={confirmDeleteCommunity}
+      onCancel={() => setDeleteCommunityConfirm(null)}
     />
 
     <ConfirmModal
