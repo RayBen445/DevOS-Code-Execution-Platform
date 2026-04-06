@@ -173,6 +173,8 @@ export default function AdminDashboard() {
   const [loadingReserved, setLoadingReserved] = useState(false);
   const [newReservedName, setNewReservedName] = useState("");
   const [savingReserved, setSavingReserved] = useState(false);
+  const [reservedPortfolios, setReservedPortfolios] = useState<Record<string, boolean>>({});
+  const [creatingReservedPortfolio, setCreatingReservedPortfolio] = useState<string | null>(null);
 
   // Credit config state
   const [creditConfig, setCreditConfig] = useState<CreditConfig>({ creditsEnabled: true, chargePerAction: 0, actionCosts: {} });
@@ -610,7 +612,24 @@ export default function AdminDashboard() {
     setLoadingReserved(true);
     try {
       const snap = await getDocs(collection(db, "reservedUsernames"));
-      setReservedNames(snap.docs.map((d) => d.id));
+      const names = snap.docs.map((d) => d.id);
+      setReservedNames(names);
+
+      // Check which reserved names already have a portfolio project
+      const portfolioChecks = await Promise.all(
+        names.map(async (name) => {
+          const q = query(
+            collection(db, "projects"),
+            where("ownerUsername", "==", name),
+            where("isSystem", "==", true),
+            where("systemType", "==", "portfolio"),
+            limit(1)
+          );
+          const pSnap = await getDocs(q);
+          return [name, !pSnap.empty] as [string, boolean];
+        })
+      );
+      setReservedPortfolios(Object.fromEntries(portfolioChecks));
     } catch {
       toast.error("Failed to load reserved names.");
     } finally {
@@ -645,6 +664,20 @@ export default function AdminDashboard() {
       toast.success(`"${name}" removed from reserved list.`);
     } catch {
       toast.error("Failed to remove reserved name.");
+    }
+  };
+
+  const handleCreateReservedPortfolio = async (name: string) => {
+    if (!user) return;
+    setCreatingReservedPortfolio(name);
+    try {
+      await createPortfolioProject(user.uid, name);
+      setReservedPortfolios((prev) => ({ ...prev, [name]: true }));
+      toast.success(`Portfolio created for @${name}`);
+    } catch {
+      toast.error(`Failed to create portfolio for @${name}`);
+    } finally {
+      setCreatingReservedPortfolio(null);
     }
   };
 
@@ -2592,13 +2625,32 @@ export default function AdminDashboard() {
                           {reservedNames.map((name) => (
                             <div key={name} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-white/5">
                               <span className="text-sm font-mono text-white/80">@{name}</span>
-                              <button
-                                onClick={() => handleUnreserveName(name)}
-                                className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                title="Remove"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center gap-2">
+                                {reservedPortfolios[name] ? (
+                                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider">
+                                    <CheckCircle2 className="w-3 h-3" /> Portfolio
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleCreateReservedPortfolio(name)}
+                                    disabled={creatingReservedPortfolio === name}
+                                    title={`Create portfolio for @${name}`}
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                  >
+                                    {creatingReservedPortfolio === name
+                                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                                      : <Plus className="w-3 h-3" />}
+                                    Portfolio
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleUnreserveName(name)}
+                                  className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                  title="Remove"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
