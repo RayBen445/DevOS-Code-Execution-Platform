@@ -227,7 +227,7 @@ export async function repostPost(params: {
     type: params.originalPost.type,
     projectId: params.originalPost.projectId,
     projectName: params.originalPost.projectName,
-    createdAt: params.originalPost.createdAt,
+    createdAt: params.originalPost.createdAt?.toDate?.()?.toISOString?.() ?? params.originalPost.createdAt,
     likes: params.originalPost.likes,
     isPublic: params.originalPost.isPublic,
     isOfficial: params.originalPost.isOfficial,

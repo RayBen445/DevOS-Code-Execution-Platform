@@ -459,11 +459,6 @@ export default function CommunityPage() {
     getSiteConfig().then(setSiteConfig).catch(() => {});
   }, []);
 
-  // Auto-scroll chat to bottom when new messages arrive
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
-
   // Load current user settings
   useEffect(() => {
     if (!user) return;
@@ -547,11 +542,8 @@ export default function CommunityPage() {
     }
   };
 
-  const handleSendChat = async () => {
-    if (!user || !chatText.trim() || !community?.id || community.chatEnabled === false) return;
-    setSendingChat(true);
-    const text = chatText.trim();
-    setChatText("");
+  const handleSendChat = async (text: string, replyToId?: string, replyToText?: string, replyToUsername?: string) => {
+    if (!user || !community?.id || community.chatEnabled === false) return;
     try {
       await sendChatMessage({
         communityId: community.id,
@@ -560,12 +552,12 @@ export default function CommunityPage() {
         displayName: userSettings?.displayName || user.displayName || undefined,
         avatarUrl: userSettings?.avatarUrl || user.photoURL || undefined,
         text,
+        replyToId,
+        replyToText,
+        replyToUsername,
       });
     } catch {
       toast.error("Failed to send message.");
-      setChatText(text);
-    } finally {
-      setSendingChat(false);
     }
   };
 
@@ -916,145 +908,25 @@ export default function CommunityPage() {
           )}
 
           {activeTab === "chat" && community.chatEnabled !== false && (
-            <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col h-[540px]">
-              {!isMember ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
-                    <MessageCircle className="w-6 h-6 text-white/20" />
-                  </div>
-                  <p className="text-white/40 text-sm">Join the community to chat.</p>
-                  {user && (
-                    <button onClick={handleJoin} disabled={joining} className="text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors">
-                      Join Community →
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {/* Messages area */}
-                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 min-h-0 px-1">
-                    {chatMessages.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-full gap-3">
-                        <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
-                          <MessageCircle className="w-6 h-6 text-white/15" />
-                        </div>
-                        <p className="text-white/30 text-sm">No messages yet. Say hello! 👋</p>
-                      </div>
-                    ) : (
-                      chatMessages.map((msg) => {
-                        const isOwn = msg.userId === user?.uid;
-                        return (
-                          <div
-                            key={msg.id}
-                            className={cn("flex items-end gap-2 group", isOwn ? "flex-row-reverse" : "flex-row")}
-                          >
-                            {/* Avatar — others only */}
-                            {!isOwn && (
-                              <img
-                                src={resolveAvatar(msg.avatarUrl)}
-                                alt={msg.displayName || msg.username}
-                                className="w-7 h-7 rounded-full object-cover flex-shrink-0 mb-0.5"
-                                referrerPolicy="no-referrer"
-                              />
-                            )}
-
-                            <div className={cn("max-w-[72%] flex flex-col gap-0.5", isOwn ? "items-end" : "items-start")}>
-                              {/* Sender name — others only */}
-                              {!isOwn && (
-                                <div className="flex items-baseline gap-1.5 px-1">
-                                  <span className="text-[11px] font-bold text-white/60">{msg.displayName || msg.username}</span>
-                                  {msg.createdAt && (
-                                    <span className="text-[10px] text-white/25">
-                                      {formatTime(msg.createdAt)}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className={cn("flex items-end gap-1.5", isOwn ? "flex-row-reverse" : "flex-row")}>
-                                {/* Bubble */}
-                                <div className={cn(
-                                  "px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
-                                  isOwn
-                                    ? "bg-indigo-600 text-white rounded-br-sm shadow-md shadow-indigo-500/20"
-                                    : "bg-white/[0.07] text-white/85 border border-white/[0.08] rounded-bl-sm"
-                                )}>
-                                  {renderDevosEmojiText(msg.text)}
-                                </div>
-
-                                {/* Meta (time + delete) — shown on hover */}
-                                <div className={cn(
-                                  "flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0",
-                                  isOwn ? "items-end" : "items-start"
-                                )}>
-                                  {isOwn && msg.createdAt && (
-                                    <span className="text-[10px] text-white/25">
-                                      {formatTime(msg.createdAt)}
-                                    </span>
-                                  )}
-                                  {(user?.uid === msg.userId || memberRole === "admin" || memberRole === "moderator") && (
-                                    <button
-                                      onClick={() => community?.id && deleteChatMessage(community.id, msg.id)}
-                                      className="p-1 rounded-lg hover:bg-red-500/10 text-red-400/50 hover:text-red-400 transition-all"
-                                      title="Delete message"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                    <div ref={chatEndRef} />
-                  </div>
-
-                  {/* Chat input */}
-                  {(community.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls && (
-                    <div className="mb-2">
-                      <button
-                        onClick={inVoiceCall ? endVoiceCall : startVoiceCall}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/25 transition-colors flex items-center gap-1.5"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        {inVoiceCall ? `End Voice Call (${voicePeers.length + 1})` : "Start Voice Call"}
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 pt-3 border-t border-white/[0.07]">
-                    <img
-                      src={resolveAvatar(userSettings?.avatarUrl)}
-                      alt=""
-                      className="w-8 h-8 rounded-full object-cover shrink-0 ring-2 ring-white/10"
-                    />
-                    <input
-                      type="text"
-                      value={chatText}
-                      onChange={(e) => setChatText(e.target.value)}
-                      placeholder="Send a message…"
-                      maxLength={2000}
-                      className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/40 focus:bg-white/[0.08] transition-all"
-                    />
-                    <div className="hidden md:flex items-center gap-1 px-2">
-                      {DEVOS_EMOJI_LIST.slice(0, 4).map(({ code, value }) => (
-                        <button key={code} type="button" title={code} onClick={() => setChatText((t) => `${t} ${code}`.trim())} className="text-sm hover:scale-110 transition-transform">
-                          {value}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={handleSendChat}
-                      disabled={sendingChat || !chatText.trim()}
-                      className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all shadow-md shadow-indigo-500/20"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </div>
-                </>
-              )}
-            </motion.div>
+            <GroupChat
+              messages={chatMessages}
+              currentUserId={user?.uid}
+              currentAvatarUrl={userSettings?.avatarUrl}
+              accentColor="indigo"
+              onSend={handleSendChat}
+              onDelete={(msgId) => community?.id && deleteChatMessage(community.id, msgId)}
+              canDelete={(msg) => msg.userId === user?.uid || memberRole === "admin" || memberRole === "moderator"}
+              voiceCallEnabled={(community.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls}
+              inVoiceCall={inVoiceCall}
+              voicePeerCount={voicePeers.length}
+              onStartVoiceCall={startVoiceCall}
+              onEndVoiceCall={endVoiceCall}
+              emptyLabel="No messages yet. Say hello! 👋"
+              notMemberLabel="Join the community to chat."
+              isMember={isMember}
+              onJoin={handleJoin}
+              joining={joining}
+            />
           )}
 
           {activeTab === "settings" && memberRole === "admin" && (

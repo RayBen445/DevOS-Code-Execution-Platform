@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, CheckCircle2, XCircle, Zap, Radio, Crown, User, MessageCircle, Repeat2, Heart } from "lucide-react";
+import { Bell, CheckCircle2, XCircle, Zap, Radio, Crown, User, MessageCircle, Repeat2, Heart, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -26,6 +26,10 @@ const TYPE_ICON: Record<string, (p: NotificationIconProps) => React.ReactElement
   post_comment:       (p) => <MessageCircle {...p} />,
   post_repost:        (p) => <Repeat2 {...p} />,
   post_like:          (p) => <Heart {...p} />,
+  like:               (p) => <Heart {...p} />,
+  community_join:     (p) => <Users {...p} />,
+  org_join:           (p) => <Users {...p} />,
+  mention:            (p) => <MessageCircle {...p} />,
 };
 
 export default function NotificationBell() {

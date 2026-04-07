@@ -208,7 +208,11 @@ export type NotificationType =
   | 'post_comment'
   | 'post_repost'
   | 'post_like'
-  | 'post_mention';
+  | 'post_mention'
+  | 'like'
+  | 'community_join'
+  | 'org_join'
+  | 'mention';
 
 export interface Notification {
   id: string;

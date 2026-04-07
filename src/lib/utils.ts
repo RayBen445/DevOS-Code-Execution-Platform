@@ -17,7 +17,7 @@ export function toValidDate(value: any): Date | null {
 
 export function formatTime(value: any): string {
   const date = toValidDate(value);
-  if (!date) return "—";
+  if (!date) return "";
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
