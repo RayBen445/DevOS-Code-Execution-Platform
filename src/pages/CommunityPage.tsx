@@ -580,6 +580,12 @@ export default function CommunityPage() {
     );
   }
 
+  useEffect(() => {
+    if (community?.chatEnabled === false && activeTab === "chat") {
+      setActiveTab("posts");
+    }
+  }, [community?.chatEnabled, activeTab]);
+
   if (!community) return null;
 
   const tabs: { id: CommunityTab; label: string; count?: number; icon?: React.ReactNode }[] = [
@@ -588,12 +594,6 @@ export default function CommunityPage() {
     { id: "members", label: "Members", count: community.memberCount },
     ...(memberRole === "admin" ? [{ id: "settings" as CommunityTab, label: "Settings", icon: <Settings className="w-3.5 h-3.5" /> }] : []),
   ];
-
-  useEffect(() => {
-    if (community.chatEnabled === false && activeTab === "chat") {
-      setActiveTab("posts");
-    }
-  }, [community.chatEnabled, activeTab]);
 
   const roomId = community?.id ? `community-${community.id}` : "";
 
