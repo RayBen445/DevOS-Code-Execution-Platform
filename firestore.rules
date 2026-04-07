@@ -234,6 +234,18 @@ service cloud.firestore {
         allow read: if canReadProject(projectId, getProjectData(projectId));
         allow create, delete: if canWriteProject(projectId, getProjectData(projectId));
       }
+
+      // Real-time presence: each user writes only their own doc; all project readers can see who's online
+      match /presence/{uid} {
+        allow read: if canReadProject(projectId, getProjectData(projectId));
+        allow write: if isAuthenticated() && request.auth.uid == uid;
+      }
+
+      // Activity stream: project members append events; all project readers can see the stream
+      match /activity/{activityId} {
+        allow read: if canReadProject(projectId, getProjectData(projectId));
+        allow create: if canWriteProject(projectId, getProjectData(projectId));
+      }
     }
 
     match /templates/{templateId} {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { db, auth, handleFirestoreError, OperationType, storage } from "../lib/firebase";
-import { collection, onSnapshot, doc, getDoc, updateDoc, serverTimestamp, addDoc, getDocs, increment } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, addDoc, getDocs, increment, query, orderBy, limit } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Sidebar from "./Sidebar";
@@ -12,10 +12,10 @@ import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
-import { FileData, Project, OrgMember, OrgMemberRole } from "../types";
+import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem } from "../types";
 import { cn } from "../lib/utils";
 import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -81,6 +81,11 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
   const [orgRole, setOrgRole] = useState<OrgMemberRole | null>(null);
   const [orgMembersLoading, setOrgMembersLoading] = useState(false);
+
+  // Real-time collaboration state (org projects only)
+  const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
+  const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
+  const orgMembersRef = useRef<OrgMember[]>([]); // stable ref for use in closures
 
   // Persist active file and panel to localStorage (per-project key)
   useEffect(() => {
@@ -461,6 +466,87 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
     return () => unsub();
   }, [project?.ownerOrgId, project?.ownerType, user?.uid]);
+
+  // Keep stable ref in sync (used inside activity subscription closure)
+  useEffect(() => { orgMembersRef.current = orgMembers; }, [orgMembers]);
+
+  // ── Presence: write own record on mount + heartbeat + cleanup on unmount ────
+  useEffect(() => {
+    if (!isOrgProject || !user || !projectId) return;
+    const presenceRef = doc(db, "projects", projectId, "presence", user.uid);
+    setDoc(presenceRef, {
+      userId: user.uid,
+      name: user.displayName || user.email?.split("@")[0] || "User",
+      avatar: user.photoURL || "",
+      lastSeen: serverTimestamp(),
+      currentFile: null,
+    }).catch(() => {});
+    const heartbeat = setInterval(() => {
+      updateDoc(presenceRef, { lastSeen: serverTimestamp() }).catch(() => {});
+    }, 30_000);
+    return () => {
+      clearInterval(heartbeat);
+      deleteDoc(presenceRef).catch(() => {});
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOrgProject, user?.uid, projectId]);
+
+  // ── Presence: update currentFile whenever active file changes ───────────────
+  useEffect(() => {
+    if (!isOrgProject || !user || !projectId) return;
+    const presenceRef = doc(db, "projects", projectId, "presence", user.uid);
+    setDoc(presenceRef, {
+      currentFile: activeFile?.name ?? null,
+      lastSeen: serverTimestamp(),
+    }, { merge: true }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFileId, isOrgProject, user?.uid, projectId, activeFile?.name]);
+
+  // ── Presence: subscribe to all active users in this project ─────────────────
+  useEffect(() => {
+    if (!isOrgProject || !projectId) return;
+    const unsub = onSnapshot(collection(db, "projects", projectId, "presence"), (snap) => {
+      const STALE_MS = 90_000; // 3× heartbeat interval
+      const now = Date.now();
+      const users = snap.docs
+        .map(d => d.data() as PresenceUser)
+        .filter(u => now - (u.lastSeen?.toMillis?.() ?? 0) < STALE_MS);
+      setPresenceUsers(users);
+    }, () => {});
+    return unsub;
+  }, [isOrgProject, projectId]);
+
+  // ── Activity: subscribe to activity stream + notify on remote saves ──────────
+  useEffect(() => {
+    if (!isOrgProject || !projectId) return;
+    const q = query(
+      collection(db, "projects", projectId, "activity"),
+      orderBy("timestamp", "desc"),
+      limit(20)
+    );
+    let initialized = false;
+    const unsub = onSnapshot(q, (snap) => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as ActivityItem));
+      setActivityItems(items);
+      // After the first load, show toasts for new events from other users
+      if (initialized && items.length > 0) {
+        const latest = items[0];
+        const age = Date.now() - (latest.timestamp?.toMillis?.() ?? 0);
+        if (age < 8_000 && latest.userId !== user?.uid) {
+          const actor = orgMembersRef.current.find(m => m.userId === latest.userId);
+          const name = actor?.username ?? "A collaborator";
+          if (latest.action === "save") {
+            toast.info(`${name} saved ${latest.file ?? "a file"}`, { duration: 3000, icon: "💾" });
+          } else if (latest.action === "deploy") {
+            toast.success(`${name} deployed the project`, { duration: 4000, icon: "🚀" });
+          }
+        }
+      }
+      initialized = true;
+    }, () => {});
+    return unsub;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOrgProject, projectId, user?.uid]);
 
   const activeFile = files.find(f => f.id === activeFileId);
 

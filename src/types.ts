@@ -388,3 +388,23 @@ export interface PollVote {
   textResponse?: string;      // free-text answer (if allowTextInput and user supplied one)
   votedAt: any;
 }
+
+// ── Real-time collaboration ────────────────────────────────────────────────────
+
+/** Presence record written to projects/{projectId}/presence/{userId} */
+export interface PresenceUser {
+  userId: string;
+  name: string;
+  avatar: string;
+  lastSeen: any;             // Firestore Timestamp
+  currentFile: string | null;
+}
+
+/** Activity record written to projects/{projectId}/activity/{id} */
+export interface ActivityItem {
+  id: string;
+  userId: string;
+  action: "save" | "edit" | "deploy";
+  file?: string | null;
+  timestamp: any;            // Firestore Timestamp
+}
