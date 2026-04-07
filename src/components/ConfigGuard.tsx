@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { getDocs, collection, query, limit } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
 import { AlertTriangle, RefreshCw, ExternalLink, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -34,6 +34,27 @@ export default function ConfigGuard({ children }: { children: React.ReactNode })
       // `templates` has public read access. An infra failure throws here.
       // `permission-denied` is NOT an infra failure — it means rules are active.
       await getDocs(query(collection(db, "templates"), limit(1)));
+
+      // Rules integrity sanity check for guests:
+      // Unauthenticated users should not read private `users` collection.
+      if (!auth.currentUser) {
+        try {
+          await getDocs(query(collection(db, "users"), limit(1)));
+          setFailedCheck("Firestore rules integrity (users collection should not be publicly readable)");
+          setErrorCode("rules-integrity-failed");
+          setStatus("blocked");
+          return;
+        } catch (rulesErr: any) {
+          const code: string = rulesErr?.code ?? "";
+          // permission-denied is expected; infra codes should still block.
+          if (INFRA_CODES.has(code)) {
+            setFailedCheck("Firestore users collection access check");
+            setErrorCode(code);
+            setStatus("blocked");
+            return;
+          }
+        }
+      }
       setStatus("ok");
     } catch (err: any) {
       const code: string = err?.code ?? "";

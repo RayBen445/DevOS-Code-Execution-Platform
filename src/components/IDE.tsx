@@ -473,7 +473,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         return null;
       });
       setOpenFileIds(prev => {
-        if (prev.length > 0) return prev;
+        const validOpen = prev.filter((id) => fileList.some((f) => f.id === id));
+        if (validOpen.length > 0) return validOpen;
         return fileList.length > 0 ? [fileList[0].id] : [];
       });
       setLoading(false);

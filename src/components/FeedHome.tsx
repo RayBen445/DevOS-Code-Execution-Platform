@@ -201,8 +201,33 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     }
     try {
       const liked = post.likedBy?.includes(user.uid) ?? false;
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id !== post.id
+            ? p
+            : {
+                ...p,
+                likes: Math.max(0, (p.likes ?? 0) + (liked ? -1 : 1)),
+                likedBy: liked
+                  ? (p.likedBy ?? []).filter((id) => id !== user.uid)
+                  : [...(p.likedBy ?? []), user.uid],
+              }
+        )
+      );
       await toggleLike(post.id, user.uid, liked);
     } catch (err: any) {
+      // Rollback snapshot from server subscription shortly; force local correction now too.
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id !== post.id
+            ? p
+            : {
+                ...p,
+                likes: post.likes ?? 0,
+                likedBy: post.likedBy ?? [],
+              }
+        )
+      );
       toast.error(
         isPermissionError(err)
           ? "Permission denied. Firebase rules may need updating."
@@ -217,6 +242,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       return;
     }
     try {
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id === originalPost.id ? { ...p, repostCount: (p.repostCount ?? 0) + 1 } : p
+        )
+      );
       await repostPost({
         originalPost,
         userId: user.uid,
@@ -233,6 +263,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       });
       toast.success("Reposted!");
     } catch (err: any) {
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id === originalPost.id ? { ...p, repostCount: Math.max(0, (p.repostCount ?? 1) - 1) } : p
+        )
+      );
       toast.error(
         isPermissionError(err)
           ? "Permission denied. Firebase rules may need updating."
@@ -245,6 +280,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     if (!user || !content.trim()) return;
     const commenterUsername = settings?.username || user.email?.split("@")[0] || "user";
     const mentions = extractMentions(content.trim());
+    setFeed((prev) =>
+      prev.map((p) =>
+        p.id === post.id ? { ...p, commentsCount: (p.commentsCount ?? 0) + 1 } : p
+      )
+    );
     try {
       const commentId = await addComment({
         postId: post.id,
@@ -282,6 +322,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       }
       void commentId; // suppress unused warning
     } catch (err: any) {
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id === post.id ? { ...p, commentsCount: Math.max(0, (p.commentsCount ?? 1) - 1) } : p
+        )
+      );
       toast.error(
         isPermissionError(err)
           ? "Permission denied. Firebase rules may need updating."
