@@ -75,6 +75,8 @@ export default function Footer() {
           {/* Contact & Legal */}
           <div className="flex flex-col gap-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Contact &amp; Legal</p>
+            <FooterLink to="/about">About</FooterLink>
+            <FooterLink to="/contact">Contact Us</FooterLink>
             <a
               href={`mailto:${config.contactEmail}`}
               className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors w-fit"

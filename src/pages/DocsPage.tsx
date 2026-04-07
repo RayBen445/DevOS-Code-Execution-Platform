@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, ShieldCheck, Activity } from "lucide-react";
+import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, Activity } from "lucide-react";
 import { cn } from "../lib/utils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -317,42 +317,6 @@ const sections: DocSection[] = [
         <InfoBox>
           File paths are normalized automatically. Leading slashes are stripped before the push so
           Git tree objects are always valid.
-        </InfoBox>
-      </div>
-    ),
-  },
-  {
-    id: "admin",
-    label: "Admin",
-    icon: ShieldCheck,
-    content: (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Admin Dashboard</h2>
-        <p className="text-white/60 leading-relaxed">
-          The Admin Dashboard is accessible at <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">/admin</code> to
-          accounts whose email matches <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">VITE_ADMIN_EMAIL</code>.
-        </p>
-        <Section title="Users tab">
-          Search all registered users. Ban, Suspend, or Reinstate any account — each action requires
-          confirmation via the ConfirmModal to prevent accidental changes.
-        </Section>
-        <Section title="Credits tab">
-          Gift a specific number of credits to any user with an optional expiry date. Grant an
-          Unlimited Pass valid until a chosen date. Both actions are reflected instantly.
-        </Section>
-        <Section title="Polls tab">
-          Create platform polls with a custom option builder. View live vote-bar results. Close polls
-          to prevent further voting, or delete them entirely.
-        </Section>
-        <Section title="Overview tab">
-          Toggle <strong>maintenance mode</strong> on or off with a single click and set a custom
-          banner message. Enable <strong>per-page maintenance</strong> to disable specific routes
-          (e.g. <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">/explore</code>) without
-          a full platform shutdown.
-        </Section>
-        <InfoBox>
-          Admin accounts display <strong>∞ Unlimited</strong> in the credits panel and bypass all
-          credit deductions automatically.
         </InfoBox>
       </div>
     ),

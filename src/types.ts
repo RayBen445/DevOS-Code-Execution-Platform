@@ -314,6 +314,7 @@ export interface Organization {
   avatar?: string;
   isPublic: boolean;
   joinPolicy?: "open" | "request";
+  chatEnabled?: boolean;
   createdBy: string;
   memberCount: number;
   createdAt: any;
@@ -336,6 +337,16 @@ export interface OrgJoinRequest {
   avatarUrl?: string;
   requestedAt: any;
   status: "pending" | "approved" | "rejected";
+}
+
+export interface OrgChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  text: string;
+  createdAt: any;
 }
 
 // ── Community System ────────────────────────────────────────────────────────

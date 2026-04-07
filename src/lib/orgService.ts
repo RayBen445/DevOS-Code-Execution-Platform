@@ -10,12 +10,14 @@ import {
   onSnapshot,
   query,
   where,
+  orderBy,
+  limit,
   serverTimestamp,
   increment,
   collectionGroup,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { OrgMemberRole, Organization, OrgMember, OrgJoinRequest } from "../types";
+import { OrgMemberRole, Organization, OrgMember, OrgJoinRequest, OrgChatMessage } from "../types";
 
 export async function createOrg(params: {
   name: string;
@@ -224,4 +226,51 @@ export async function getPublicOrgs(): Promise<Organization[]> {
   const snap = await getDocs(q);
   const orgs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Organization));
   return orgs.sort((a, b) => (b.memberCount ?? 0) - (a.memberCount ?? 0));
+}
+
+// ── Organization Chat ────────────────────────────────────────────────────────
+
+/** Subscribe to the live chat messages for an organization (last 100). */
+export function subscribeOrgChatMessages(
+  orgId: string,
+  callback: (messages: OrgChatMessage[]) => void,
+  maxItems = 100
+): () => void {
+  const q = query(
+    collection(db, "organizations", orgId, "chat"),
+    orderBy("createdAt", "asc"),
+    limit(maxItems)
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as OrgChatMessage)));
+  });
+}
+
+/** Send a chat message to an organization (members only — enforced by Firestore rules). */
+export async function sendOrgChatMessage(params: {
+  orgId: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  text: string;
+}): Promise<void> {
+  await addDoc(collection(db, "organizations", params.orgId, "chat"), {
+    userId: params.userId,
+    username: params.username,
+    displayName: params.displayName ?? "",
+    avatarUrl: params.avatarUrl ?? "",
+    text: params.text.trim(),
+    createdAt: serverTimestamp(),
+  });
+}
+
+/** Delete a chat message (sender or org admin/moderator). */
+export async function deleteOrgChatMessage(orgId: string, messageId: string): Promise<void> {
+  await deleteDoc(doc(db, "organizations", orgId, "chat", messageId));
+}
+
+/** Toggle the chatEnabled flag on an organization. */
+export async function setOrgChatEnabled(orgId: string, enabled: boolean): Promise<void> {
+  await updateDoc(doc(db, "organizations", orgId), { chatEnabled: enabled, updatedAt: serverTimestamp() });
 }
