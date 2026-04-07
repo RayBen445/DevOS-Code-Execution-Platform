@@ -12,10 +12,8 @@ import {
   Loader2,
   UserPlus,
   UserCheck,
-  Send,
   Heart,
   MessageCircle,
-  Trash2,
   ShieldAlert,
   Code2,
   Settings,
@@ -30,12 +28,13 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
-import { formatRelativeTime, formatTime } from "../lib/utils";
+import { formatRelativeTime } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import ConfirmModal from "../components/ConfirmModal";
+import GroupChat from "../components/GroupChat";
 import { Community, CommunityMember, FeedPost, CommunityChatMessage } from "../types";
 import {
   getCommunityBySlug,
@@ -59,7 +58,6 @@ import {
   deletePost,
 } from "../lib/feedService";
 import { useSEO } from "../hooks/useSEO";
-import { DEVOS_EMOJI_LIST, renderDevosEmojiText } from "../lib/devosEmoji";
 import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import socket from "../lib/socket";
 
@@ -386,15 +384,12 @@ export default function CommunityPage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [members, setMembers] = useState<CommunityMember[]>([]);
   const [chatMessages, setChatMessages] = useState<CommunityChatMessage[]>([]);
-  const [chatText, setChatText] = useState("");
-  const [sendingChat, setSendingChat] = useState(false);
   const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
   const [inVoiceCall, setInVoiceCall] = useState(false);
   const [voicePeers, setVoicePeers] = useState<string[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerMapRef = useRef<Record<string, RTCPeerConnection>>({});
   const remoteAudioRef = useRef<Record<string, HTMLAudioElement>>({});
-  const chatEndRef = useRef<HTMLDivElement>(null);
   const voiceHandlersRef = useRef<Partial<Record<string, (...args: any[]) => void>>>({});
   const [userSettings, setUserSettings] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");

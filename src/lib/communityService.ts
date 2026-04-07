@@ -14,6 +14,7 @@ import {
   orderBy,
   limit,
   onSnapshot,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Community, CommunityMember, CommunityMemberRole, FeedPost, CommunityChatMessage } from "../types";
@@ -239,6 +240,9 @@ export async function sendChatMessage(params: {
   displayName?: string;
   avatarUrl?: string;
   text: string;
+  replyToId?: string;
+  replyToText?: string;
+  replyToUsername?: string;
 }): Promise<void> {
   await addDoc(collection(db, "communities", params.communityId, "chat"), {
     userId: params.userId,
@@ -246,6 +250,7 @@ export async function sendChatMessage(params: {
     displayName: params.displayName ?? "",
     avatarUrl: params.avatarUrl ?? "",
     text: params.text.trim(),
+    ...(params.replyToId ? { replyToId: params.replyToId, replyToText: params.replyToText ?? "", replyToUsername: params.replyToUsername ?? "" } : {}),
     createdAt: serverTimestamp(),
   });
 }
@@ -253,4 +258,51 @@ export async function sendChatMessage(params: {
 /** Delete a chat message (owner or community moderator/admin) */
 export async function deleteChatMessage(communityId: string, messageId: string): Promise<void> {
   await deleteDoc(doc(db, "communities", communityId, "chat", messageId));
+}
+
+// ---------------------------------------------------------------------------
+// Official community auto-join helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Auto-join a single user to every official community they are not yet in.
+ * Called on new user registration and first-login init.
+ */
+export async function joinOfficialCommunities(userId: string): Promise<void> {
+  const snap = await getDocs(query(collection(db, "communities"), where("isOfficial", "==", true)));
+  for (const communityDoc of snap.docs) {
+    const memberRef = doc(db, "communities", communityDoc.id, "members", userId);
+    const existing = await getDoc(memberRef);
+    if (!existing.exists()) {
+      await setDoc(memberRef, { role: "member" as CommunityMemberRole, joinedAt: serverTimestamp() });
+      await updateDoc(communityDoc.ref, { memberCount: increment(1) });
+    }
+  }
+}
+
+/**
+ * Batch-add ALL existing users to a newly-created official community.
+ * Fires 500-write Firestore batches and updates memberCount once at the end.
+ * Called by the admin dashboard immediately after creating an official community.
+ */
+export async function batchAddAllUsersToCommunity(communityId: string): Promise<void> {
+  const usersSnap = await getDocs(collection(db, "users"));
+  const existingSnap = await getDocs(collection(db, "communities", communityId, "members"));
+  const existing = new Set(existingSnap.docs.map((d) => d.id));
+
+  const toAdd = usersSnap.docs.filter((d) => !existing.has(d.id));
+  if (toAdd.length === 0) return;
+
+  const BATCH_SIZE = 499;
+  for (let i = 0; i < toAdd.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    const chunk = toAdd.slice(i, i + BATCH_SIZE);
+    chunk.forEach((userDoc) => {
+      const memberRef = doc(db, "communities", communityId, "members", userDoc.id);
+      batch.set(memberRef, { role: "member" as CommunityMemberRole, joinedAt: serverTimestamp() }, { merge: true });
+    });
+    await batch.commit();
+  }
+  // Update memberCount to the total we just set
+  await updateDoc(doc(db, "communities", communityId), { memberCount: toAdd.length + existing.size });
 }

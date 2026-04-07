@@ -22,6 +22,7 @@ export interface Project {
   collaborators: string[];
   isPublic: boolean;
   isTemplate: boolean;
+  isOfficial?: boolean;
   forksCount: number;
   views?: number;
   deployUrl?: string;
@@ -314,6 +315,7 @@ export interface Organization {
   description: string;
   avatar?: string;
   isPublic: boolean;
+  isOfficial?: boolean;
   joinPolicy?: "open" | "request";
   chatEnabled?: boolean;
   voiceCallsEnabled?: boolean;
@@ -349,6 +351,9 @@ export interface OrgChatMessage {
   avatarUrl?: string;
   text: string;
   createdAt: any;
+  replyToId?: string;
+  replyToText?: string;
+  replyToUsername?: string;
 }
 
 // ── Community System ────────────────────────────────────────────────────────
@@ -365,6 +370,7 @@ export interface Community {
   createdBy: string;
   memberCount: number;
   isPublic: boolean;
+  isOfficial?: boolean;
   category?: string;
   chatEnabled?: boolean;
   voiceCallsEnabled?: boolean;
@@ -385,6 +391,9 @@ export interface CommunityChatMessage {
   avatarUrl?: string;
   text: string;
   createdAt: any;
+  replyToId?: string;
+  replyToText?: string;
+  replyToUsername?: string;
 }
 
 // ── Polls ───────────────────────────────────────────────────────────────────
