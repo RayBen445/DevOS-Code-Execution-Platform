@@ -70,6 +70,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [openFileIds, setOpenFileIds] = useState<string[]>([]);
   const [previewSaveKey, setPreviewSaveKey] = useState(0);
   const [buildPreviewFiles, setBuildPreviewFiles] = useState<FileData[] | null>(null);
+  const [fileModes, setFileModes] = useState<Record<string, "read" | "edit">>({});
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runAbortRef = useRef<AbortController | null>(null);
   const [terminalHeight, setTerminalHeight] = useState(240);
@@ -604,6 +605,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   }, [isOrgProject, projectId, user?.uid]);
 
   const activeFile = files.find(f => f.id === activeFileId);
+  const activeFileMode: "read" | "edit" = activeFileId ? (fileModes[activeFileId] ?? "edit") : "edit";
+  const editorReadOnly = isReadOnly || activeFileMode === "read";
 
   const handleUpdateFile = async (fileId: string, content: string) => {
     if (!fileId || !projectId || isReadOnly) return;
@@ -646,6 +649,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   const handleCodeChange = (content: string) => {
     if (!activeFileId) return;
+    if (editorReadOnly) return;
     if (buildPreviewFiles) setBuildPreviewFiles(null);
     setIsSaved(false);
     // Local optimistic update for smooth typing
@@ -878,6 +882,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       runAbortRef.current.abort();
       runAbortRef.current = null;
     }
+  };
+
+  const toggleActiveFileMode = () => {
+    if (!activeFileId) return;
+    setFileModes((prev) => ({
+      ...prev,
+      [activeFileId]: (prev[activeFileId] ?? "edit") === "edit" ? "read" : "edit",
+    }));
   };
 
   const togglePanel = (panel: PanelType) => {
@@ -1265,6 +1277,20 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               )}
               {!isReadOnly && (
                 <button
+                  onClick={toggleActiveFileMode}
+                  className={cn(
+                    "flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    activeFileMode === "read"
+                      ? "bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25"
+                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                  )}
+                  title={activeFileMode === "read" ? "Switch active file to edit mode" : "Switch active file to read mode"}
+                >
+                  {activeFileMode === "read" ? "Read mode" : "Edit mode"}
+                </button>
+              )}
+              {!isReadOnly && (
+                <button
                   onClick={() => handleSave()}
                   disabled={isSaving}
                   title={isSaved ? "Project saved" : "Save project"}
@@ -1387,7 +1413,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     activeFileId={activeFileId}
                     onSelectFile={(id) => { openFileInTab(id); setMobileTab("editor"); }}
                     projectId={projectId}
-                    readOnly={isReadOnly}
+                    readOnly={editorReadOnly}
                   />
                 </div>
               )}
@@ -1544,7 +1570,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     activeFileId={activeFileId}
                     onSelectFile={openFileInTab}
                     projectId={projectId}
-                    readOnly={isReadOnly}
+                    readOnly={editorReadOnly}
                   />
                 </div>
               )}
@@ -1654,7 +1680,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       file={activeFile}
                       onChange={handleCodeChange}
                       projectId={projectId}
-                      readOnly={isReadOnly}
+                      readOnly={editorReadOnly}
                       onCursorChange={(line, col) => { setCursorLine(line); setCursorCol(col); }}
                     />
                   ) : (
@@ -1864,6 +1890,11 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           </span>
           {activeFile && (
             <span className="text-white/20">{activeFile.language ?? "text"}</span>
+          )}
+          {activeFile && (
+            <span className={cn("px-1.5 py-0.5 rounded", activeFileMode === "read" ? "bg-indigo-500/20 text-indigo-300" : "bg-white/10 text-white/40")}>
+              {activeFileMode === "read" ? "READ" : "EDIT"}
+            </span>
           )}
           {!isSaved && (
             <span className="text-orange-400/70 flex items-center gap-1">
