@@ -634,6 +634,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   Communities
                 </Link>
                 <Link
+                  to="/orgs"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <Building2 className="w-4 h-4" />
+                  Organizations
+                </Link>
+                <Link
                   to="/templates"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"

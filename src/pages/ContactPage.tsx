@@ -8,6 +8,9 @@ import { useSEO } from "../hooks/useSEO";
 import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import { useEffect } from "react";
 import type { SiteConfig } from "../lib/creditsService";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db, auth } from "../lib/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -32,6 +35,7 @@ export default function ContactPage() {
   });
 
   const [config, setConfig] = useState<SiteConfig>(SITE_CONFIG_DEFAULTS);
+  const [user] = useAuthState(auth);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [topic, setTopic] = useState(TOPICS[0]);
@@ -46,14 +50,21 @@ export default function ContactPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Compose a mailto link as a best-effort contact form (no server required)
-    const subject = encodeURIComponent(`[DevOS Contact] ${topic} – from ${name}`);
-    const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\nTopic: ${topic}\n\n${message}`);
-    window.open(`mailto:${config.contactEmail}?subject=${subject}&body=${body}`, "_blank");
-    // Simulate a brief delay then show success
-    await new Promise((r) => setTimeout(r, 600));
-    setLoading(false);
-    setSubmitted(true);
+    try {
+      await addDoc(collection(db, "feedback"), {
+        type: "feedback",
+        source: "contact_page",
+        topic,
+        message: `[Contact] ${topic}\nName: ${name}\nEmail: ${email}\n\n${message}`.trim(),
+        userId: user?.uid ?? null,
+        userEmail: email.trim(),
+        createdAt: serverTimestamp(),
+        status: "open",
+      });
+      setSubmitted(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/60 transition-all text-sm";
@@ -146,8 +157,7 @@ export default function ContactPage() {
                   </div>
                   <h3 className="text-xl font-bold text-white mb-2">Message Sent!</h3>
                   <p className="text-sm text-white/40 max-w-sm leading-relaxed mb-6">
-                    Your email client should have opened. If not, email us directly at{" "}
-                    <a href={`mailto:${config.contactEmail}`} className="text-blue-400 hover:underline">{config.contactEmail}</a>.
+                    Thanks — your message was sent to the DevOS admin dashboard.
                   </p>
                   <button
                     onClick={() => { setSubmitted(false); setName(""); setEmail(""); setMessage(""); setTopic(TOPICS[0]); }}
@@ -214,12 +224,11 @@ export default function ContactPage() {
                     className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    {loading ? "Opening mail client…" : "Send Message"}
+                    {loading ? "Sending…" : "Send Message"}
                   </button>
 
                   <p className="text-xs text-white/20 text-center">
-                    This will open your email client. Alternatively, email us directly at{" "}
-                    <a href={`mailto:${config.contactEmail}`} className="text-blue-400/60 hover:text-blue-400 transition-colors">{config.contactEmail}</a>.
+                    Your message is sent directly to the DevOS admin dashboard.
                   </p>
                 </form>
               )}

@@ -52,7 +52,7 @@ const STATS = [
 ];
 
 const TEAM = [
-  { name: "RayBen445", role: "Founder & Lead Engineer", avatar: "https://github.com/RayBen445.png" },
+  { name: "RayBen445", role: "Founder & Lead Engineer", avatar: "https://github.com/rayben445.png?size=200" },
 ];
 
 export default function AboutPage() {
