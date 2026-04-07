@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, Activity } from "lucide-react";
+import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, Activity, ArrowLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -492,7 +492,11 @@ export default function DocsPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
 
-      <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12 gap-8">
+      <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12 gap-8 relative">
+        <button onClick={() => window.history.back()} className="absolute -top-2 left-4 md:left-6 inline-flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back
+        </button>
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col gap-1 w-52 flex-shrink-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3 px-3">

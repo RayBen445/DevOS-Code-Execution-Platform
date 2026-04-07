@@ -117,7 +117,7 @@ export interface UserSettings {
   preferences?: {
     fontSize?: number;
     tabSize?: number;
-    uiTheme?: 'dark' | 'midnight' | 'ocean' | 'light';
+    uiTheme?: 'system' | 'dark' | 'midnight' | 'ocean' | 'light' | 'sunset';
   };
   birthday?: string;  // ISO date YYYY-MM-DD
   notifications?: {
@@ -125,6 +125,7 @@ export interface UserSettings {
     adminAnnouncements?: boolean;
   };
   updatedAt?: any;
+  isOfficial?: boolean;
 }
 
 export interface CursorPosition {

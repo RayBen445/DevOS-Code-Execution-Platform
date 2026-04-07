@@ -2,7 +2,7 @@
  * UI Themes — defines CSS custom-property overrides applied to :root.
  * The default "dark" theme is the existing design; all others are variants.
  */
-export type UITheme = 'dark' | 'midnight' | 'ocean' | 'light';
+export type UITheme = 'system' | 'dark' | 'midnight' | 'ocean' | 'light' | 'sunset';
 
 export interface ThemeDefinition {
   id: UITheme;
@@ -15,6 +15,13 @@ export interface ThemeDefinition {
 }
 
 export const THEMES: ThemeDefinition[] = [
+  {
+    id: 'system',
+    label: 'System',
+    description: 'Follow your OS theme',
+    preview: 'linear-gradient(135deg,#111827 0%, #f8fafc 100%)',
+    vars: {},
+  },
   {
     id: 'dark',
     label: 'Dark',
@@ -79,12 +86,31 @@ export const THEMES: ThemeDefinition[] = [
       '--accent-hover': '#2563eb',
     },
   },
+  {
+    id: 'sunset',
+    label: 'Sunset',
+    description: 'Warm dusk gradient tones',
+    preview: '#2a1633',
+    vars: {
+      '--bg-base': '#140f1f',
+      '--bg-surface': '#1e1730',
+      '--bg-card': '#261b3b',
+      '--border-base': 'rgba(251,146,60,0.2)',
+      '--text-primary': '#fff7ed',
+      '--text-secondary': 'rgba(255,237,213,0.6)',
+      '--accent': '#fb923c',
+      '--accent-hover': '#f97316',
+    },
+  },
 ];
 
 /** Apply a theme by injecting CSS variables onto <html> */
 export function applyTheme(theme: UITheme): void {
-  const def = THEMES.find((t) => t.id === theme) ?? THEMES[0];
+  const resolvedTheme: UITheme = theme === "system"
+    ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+    : theme;
+  const def = THEMES.find((t) => t.id === resolvedTheme) ?? THEMES[1];
   const root = document.documentElement;
   Object.entries(def.vars).forEach(([k, v]) => root.style.setProperty(k, v));
-  root.setAttribute('data-theme', theme);
+  root.setAttribute('data-theme', resolvedTheme);
 }

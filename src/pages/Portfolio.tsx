@@ -296,7 +296,9 @@ export default function Portfolio() {
               {userSettings.fullName || userSettings.displayName || userSettings.username}
             </h1>
             {(userSettings as any)?.isOfficial && (
-              <BadgeCheck className="w-8 h-8 text-blue-400 flex-shrink-0" title="Official" />
+              <span title="Official">
+                <BadgeCheck className="w-8 h-8 text-blue-400 flex-shrink-0" />
+              </span>
             )}
           </div>
           <div className="flex items-center gap-3 mb-8">

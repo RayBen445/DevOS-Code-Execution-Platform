@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { Mail, MessageSquare, Github, Twitter, Globe, Send, Loader2, CheckCircle2, MapPin, Clock } from "lucide-react";
+import { Mail, MessageSquare, Github, Twitter, Globe, Send, Loader2, CheckCircle2, MapPin, Clock, ArrowLeft } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
@@ -79,6 +79,12 @@ export default function ContactPage() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-blue-600/10 rounded-full blur-[100px]" />
         </div>
         <div className="relative max-w-4xl mx-auto text-center">
+          <div className="mb-6 text-left">
+            <button onClick={() => window.history.back()} className="inline-flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back
+            </button>
+          </div>
           <motion.div {...fadeUp}>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest mb-8">
               <MessageSquare className="w-3.5 h-3.5" />

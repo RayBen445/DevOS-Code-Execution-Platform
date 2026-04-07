@@ -64,6 +64,7 @@ export async function createFeedPost(params: {
   communityName?: string;
   communitySlug?: string;
   mentions?: string[]; // array of @mentioned usernames
+  isOfficial?: boolean;
 }): Promise<string> {
   const docRef = await addDoc(collection(db, "feed"), {
     userId: params.userId,
@@ -78,6 +79,7 @@ export async function createFeedPost(params: {
     ...(params.communityName ? { communityName: params.communityName } : {}),
     ...(params.communitySlug ? { communitySlug: params.communitySlug } : {}),
     ...(params.mentions?.length ? { mentions: params.mentions } : {}),
+    ...(params.isOfficial ? { isOfficial: true } : {}),
     createdAt: serverTimestamp(),
     likes: 0,
     likedBy: [],
