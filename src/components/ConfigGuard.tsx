@@ -35,18 +35,15 @@ export default function ConfigGuard({ children }: { children: React.ReactNode })
       // `permission-denied` is NOT an infra failure — it means rules are active.
       await getDocs(query(collection(db, "templates"), limit(1)));
 
-      // Rules integrity sanity check for guests:
-      // Unauthenticated users should not read private `users` collection.
+      // Optional non-blocking sanity probe for guests.
+      // Some DevOS deployments intentionally allow reading `users` for public profile UX,
+      // so this probe must never hard-block startup.
       if (!auth.currentUser) {
         try {
           await getDocs(query(collection(db, "users"), limit(1)));
-          setFailedCheck("Firestore rules integrity (users collection should not be publicly readable)");
-          setErrorCode("rules-integrity-failed");
-          setStatus("blocked");
-          return;
         } catch (rulesErr: any) {
           const code: string = rulesErr?.code ?? "";
-          // permission-denied is expected; infra codes should still block.
+          // permission-denied is acceptable. Infra codes are not.
           if (INFRA_CODES.has(code)) {
             setFailedCheck("Firestore users collection access check");
             setErrorCode(code);
