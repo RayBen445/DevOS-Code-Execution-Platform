@@ -28,6 +28,7 @@ import {
   Rocket,
   Flame,
   Users,
+  BarChart2,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -45,7 +46,8 @@ import {
 import { notifyComment, notifyRepost } from "../lib/notificationService";
 import { resolveAvatar } from "../lib/avatars";
 import { formatRelativeTime, cn } from "../lib/utils";
-import { FeedPost, FeedComment, Project, UserSettings } from "../types";
+import { FeedPost, FeedComment, Project, UserSettings, Poll } from "../types";
+import { getActivePolls, voteOnPoll, getUserVote } from "../lib/pollService";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import MobileBottomNav from "./MobileBottomNav";
@@ -78,6 +80,9 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const [showComposer, setShowComposer] = useState(false);
   const [deleteConfirmPost, setDeleteConfirmPost] = useState<FeedPost | null>(null);
   const [isDeletingPost, setIsDeletingPost] = useState(false);
+  const [activePolls, setActivePolls] = useState<Poll[]>([]);
+  const [userVotes, setUserVotes] = useState<Record<string, string[]>>({});
+  const [votingPollId, setVotingPollId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useSEO({ title: "Home — DevOS" });
@@ -111,6 +116,44 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     }, (err) => handleFirestoreError(err, OperationType.LIST, "projects"));
     return unsub;
   }, [user]);
+
+  useEffect(() => {
+    getActivePolls().then(setActivePolls).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!user || activePolls.length === 0) return;
+    Promise.all(
+      activePolls.map((p) =>
+        getUserVote(p.id, user.uid).then((v) => v ? [p.id, v.optionIds] as const : null)
+      )
+    ).then((results) => {
+      const map: Record<string, string[]> = {};
+      for (const r of results) {
+        if (r) map[r[0]] = r[1];
+      }
+      setUserVotes(map);
+    }).catch(() => {});
+  }, [user, activePolls]);
+
+  const handleVote = async (pollId: string, optionId: string) => {
+    if (!user) {
+      toast.error("Sign in to vote.");
+      return;
+    }
+    if (userVotes[pollId]) return;
+    setVotingPollId(pollId);
+    try {
+      await voteOnPoll(pollId, user.uid, [optionId]);
+      setUserVotes((prev) => ({ ...prev, [pollId]: [optionId] }));
+      getActivePolls().then(setActivePolls).catch(() => {});
+      toast.success("Vote recorded!");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to vote.");
+    } finally {
+      setVotingPollId(null);
+    }
+  };
 
   const lastProject = myProjects[0] ?? null;
 
@@ -486,6 +529,83 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                 </div>
               )}
             </div>
+
+            {activePolls.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
+                    Community Polls
+                  </h2>
+                </div>
+                {activePolls.map((poll) => {
+                  const voted = !!userVotes[poll.id];
+                  const votedIds = userVotes[poll.id] ?? [];
+                  const total = poll.totalVotes || 1;
+                  return (
+                    <div
+                      key={poll.id}
+                      className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-3"
+                    >
+                      <div className="flex items-start gap-2">
+                        <BarChart2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm font-semibold text-white leading-snug">{poll.question}</p>
+                      </div>
+                      <div className="space-y-2">
+                        {poll.options.map((opt) => {
+                          const pct = voted ? Math.round((opt.votes / total) * 100) : 0;
+                          const isVoted = votedIds.includes(opt.id);
+                          return (
+                            <button
+                              key={opt.id}
+                              disabled={voted || votingPollId === poll.id}
+                              onClick={() => handleVote(poll.id, opt.id)}
+                              className={cn(
+                                "w-full text-left rounded-xl overflow-hidden transition-all relative",
+                                voted
+                                  ? "cursor-default"
+                                  : "hover:ring-1 hover:ring-blue-500/40 active:scale-[0.99]"
+                              )}
+                            >
+                              <div className="relative z-10 flex items-center justify-between px-3 py-2.5">
+                                <span
+                                  className={cn(
+                                    "text-xs font-medium",
+                                    isVoted ? "text-blue-300" : "text-white/70"
+                                  )}
+                                >
+                                  {opt.text}
+                                </span>
+                                {voted && (
+                                  <span className="text-xs text-white/40 font-mono ml-2 flex-shrink-0">
+                                    {pct}%
+                                  </span>
+                                )}
+                              </div>
+                              {/* Background fill */}
+                              <div
+                                className={cn(
+                                  "absolute inset-0 rounded-xl transition-all duration-500",
+                                  isVoted
+                                    ? "bg-blue-600/20 border border-blue-500/30"
+                                    : voted
+                                    ? "bg-white/[0.04] border border-white/[0.07]"
+                                    : "bg-white/[0.04] border border-white/[0.07]"
+                                )}
+                                style={voted ? { width: `${pct}%`, minWidth: "2rem" } : undefined}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-white/25">
+                        {poll.totalVotes} vote{poll.totalVotes !== 1 ? "s" : ""}
+                        {voted ? " · You voted" : " · Click to vote"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </main>

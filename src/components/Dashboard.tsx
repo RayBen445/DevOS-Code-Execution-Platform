@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Star } from "lucide-react";
+import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Star, Building2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime } from "../lib/utils";
@@ -17,6 +17,7 @@ import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import { useNavigate } from "react-router-dom";
 import { ProjectShareCard, useShareAsImage } from "./ShareAsImageCard";
+import CreateOrgModal from "./CreateOrgModal";
 
 interface DashboardProps {
   onSelectProject: (projectId: string) => void;
@@ -47,6 +48,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<{ projectId: string } | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
   const [resetPortfolioConfirm, setResetPortfolioConfirm] = useState<Project | null>(null);
+  const [showCreateOrg, setShowCreateOrg] = useState(false);
 
   // Debounced project name uniqueness check
   useEffect(() => {
@@ -557,6 +559,13 @@ p {
           >
             <Plus className="w-5 h-5" />
             New Project
+          </button>
+          <button
+            onClick={() => setShowCreateOrg(true)}
+            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
+          >
+            <Building2 className="w-4 h-4 text-blue-400" />
+            New Organization
           </button>
           {/* Secondary */}
           <button
@@ -1079,6 +1088,8 @@ p {
         onConfirm={confirmResetPortfolio}
         onCancel={() => setResetPortfolioConfirm(null)}
       />
+
+      <CreateOrgModal open={showCreateOrg} onClose={() => setShowCreateOrg(false)} />
     </div>
   );
 }
