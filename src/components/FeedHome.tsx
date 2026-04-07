@@ -540,7 +540,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                 {activePolls.map((poll) => {
                   const voted = !!userVotes[poll.id];
                   const votedIds = userVotes[poll.id] ?? [];
-                  const total = poll.totalVotes || 1;
+                  const total = Math.max(poll.totalVotes, 1);
                   return (
                     <div
                       key={poll.id}
@@ -552,7 +552,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                       </div>
                       <div className="space-y-2">
                         {poll.options.map((opt) => {
-                          const pct = voted ? Math.round((opt.votes / total) * 100) : 0;
+                          const pct = voted && total > 0 ? Math.round((opt.votes / total) * 100) : 0;
                           const isVoted = votedIds.includes(opt.id);
                           return (
                             <button
