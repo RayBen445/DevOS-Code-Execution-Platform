@@ -11,6 +11,7 @@ import type { SiteConfig } from "../lib/creditsService";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import { toast } from "sonner";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -62,6 +63,8 @@ export default function ContactPage() {
         status: "open",
       });
       setSubmitted(true);
+    } catch {
+      toast.error("Failed to send your message. Please try again.");
     } finally {
       setLoading(false);
     }

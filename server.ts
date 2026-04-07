@@ -104,6 +104,22 @@ const terminalRateLimit = new Map<string, { count: number; resetAt: number }>();
 const TERMINAL_RATE_MAX = 30;
 const TERMINAL_RATE_WINDOW_MS = 60_000;
 
+const runProjectRateLimit = new Map<string, { count: number; resetAt: number }>();
+const RUN_PROJECT_RATE_MAX = 5;
+const RUN_PROJECT_RATE_WINDOW_MS = 60_000;
+
+// Per-user persistent workspace directories for the terminal (lives for the process lifetime).
+// This lets successive commands (e.g. `npm install` then `node index.js`) share state.
+const userWorkspaceDirs = new Map<string, string>();
+
+const getUserWorkspaceDir = (uid: string): string => {
+  const existing = userWorkspaceDirs.get(uid);
+  if (existing && fs.existsSync(existing)) return existing;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `devos-ws-${uid.slice(0, 8)}-`));
+  userWorkspaceDirs.set(uid, dir);
+  return dir;
+};
+
 type ProjectInputFile = { name: string; content: string };
 
 const sanitizeRelativePath = (rawPath: string): string => {
@@ -172,6 +188,19 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.post("/api/run-project", async (req, res) => {
+  // Guard: untrusted project builds must be explicitly enabled in non-production environments
+  const allowUntrustedProjectBuilds =
+    process.env.ALLOW_UNTRUSTED_PROJECT_BUILDS === "true" &&
+    process.env.NODE_ENV !== "production";
+  if (!allowUntrustedProjectBuilds) {
+    return res.status(403).json({
+      success: false,
+      error: "untrusted_build_disabled",
+      stderr:
+        "Building uploaded projects is disabled unless ALLOW_UNTRUSTED_PROJECT_BUILDS=true is set in a non-production environment.",
+    });
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer "))
     return res.status(401).json({ error: "Unauthorized" });
@@ -183,6 +212,17 @@ app.post("/api/run-project", async (req, res) => {
     uid = decoded.uid;
   } catch {
     return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  // Per-user rate limit for expensive project builds
+  const nowRp = Date.now();
+  const rpEntry = runProjectRateLimit.get(uid);
+  if (rpEntry && nowRp < rpEntry.resetAt) {
+    if (rpEntry.count >= RUN_PROJECT_RATE_MAX)
+      return res.status(429).json({ success: false, error: "Rate limit exceeded. Try again in a moment." });
+    rpEntry.count++;
+  } else {
+    runProjectRateLimit.set(uid, { count: 1, resetAt: nowRp + RUN_PROJECT_RATE_WINDOW_MS });
   }
 
   const { files, mode } = req.body as { files?: ProjectInputFile[]; mode?: string };
@@ -772,7 +812,7 @@ app.post("/api/terminal", async (req, res) => {
     });
   }
 
-  const { command } = req.body;
+  const { command, packageJson } = req.body;
   if (!command || typeof command !== "string")
     return res.status(400).json({ error: "No command provided" });
 
@@ -802,7 +842,7 @@ app.post("/api/terminal", async (req, res) => {
   if (!ALLOWED_COMMANDS.has(firstWord))
     return res.json({
       stdout: "",
-      stderr: `Command not permitted: '${firstWord}'. Allowed tools: node, npm, git, ls, pwd, echo, cat, and common dev utilities.`,
+      stderr: `Command not permitted: '${firstWord}'. Allowed tools: node, npm, npx, git, ls, pwd, echo, cat, and common dev utilities.`,
       exitCode: 1,
     });
 
@@ -822,16 +862,40 @@ app.post("/api/terminal", async (req, res) => {
       exitCode: 1,
     });
 
+  // Use a per-user persistent workspace so state carries across commands
+  // (e.g. `npm install express` then `node -e "require('express')"` both work).
+  const workspaceDir = getUserWorkspaceDir(uid);
+
+  // If the caller provided a package.json, write/refresh it in the workspace
+  // before running the command so npm install uses the project's dependencies.
+  if (packageJson && typeof packageJson === "string") {
+    try {
+      const parsed = JSON.parse(packageJson);
+      fs.writeFileSync(
+        path.join(workspaceDir, "package.json"),
+        JSON.stringify(parsed, null, 2),
+        "utf-8"
+      );
+    } catch {
+      // Ignore malformed package.json — don't abort the command
+    }
+  }
+
   const parts =
     cmd.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
   const executable = parts[0];
   const args = parts.slice(1).map((a) => a.replace(/^['"]|['"]$/g, ""));
 
+  // npm install / npx can be slow — give them up to 60 s
+  const isNpmInstall = /^(npm|npx|yarn|pnpm)/.test(firstWord) &&
+    /\binstall\b|\bi\b|\badd\b/.test(cmd);
+  const timeoutMs = isNpmInstall ? 60_000 : 15_000;
+
   const { execFile } = await import("child_process");
   execFile(
     executable,
     args,
-    { timeout: 10_000, cwd: process.cwd() },
+    { timeout: timeoutMs, cwd: workspaceDir },
     (error, stdout, stderr) => {
       res.json({
         stdout: stdout || "",
@@ -1000,8 +1064,23 @@ if (process.env.VERCEL !== "1") {
     });
 
     // ── Voice calling signaling (WebRTC) ─────────────────────────────────────
+    // Per-socket per-event rate limiter to prevent signaling abuse
+    const voiceRateLimit: Record<string, { count: number; resetAt: number }> = {};
+    const consumeVoiceQuota = (event: string, limit: number, windowMs: number): boolean => {
+      const now = Date.now();
+      const cur = voiceRateLimit[event];
+      if (!cur || now >= cur.resetAt) {
+        voiceRateLimit[event] = { count: 1, resetAt: now + windowMs };
+        return true;
+      }
+      if (cur.count >= limit) return false;
+      cur.count++;
+      return true;
+    };
+
     socket.on("join-voice-room", ({ roomId, userId, name }: { roomId: string; userId: string; name?: string }) => {
       if (!roomId || !userId) return;
+      if (!consumeVoiceQuota("join-voice-room", 5, 60_000)) return;
       socket.join(roomId);
       socket.data.voice = { roomId, userId };
       socket.to(roomId).emit("voice-user-joined", { userId, name });
@@ -1009,6 +1088,7 @@ if (process.env.VERCEL !== "1") {
 
     socket.on("voice-offer", ({ roomId, targetUserId, fromUserId, offer }: any) => {
       if (!roomId || !targetUserId || !fromUserId || !offer) return;
+      if (!consumeVoiceQuota("voice-offer", 60, 60_000)) return;
       for (const [, s] of io.of("/").sockets) {
         if (s.data?.voice?.roomId === roomId && s.data?.voice?.userId === targetUserId) {
           s.emit("voice-offer", { fromUserId, offer });
@@ -1019,6 +1099,7 @@ if (process.env.VERCEL !== "1") {
 
     socket.on("voice-answer", ({ roomId, targetUserId, fromUserId, answer }: any) => {
       if (!roomId || !targetUserId || !fromUserId || !answer) return;
+      if (!consumeVoiceQuota("voice-answer", 60, 60_000)) return;
       for (const [, s] of io.of("/").sockets) {
         if (s.data?.voice?.roomId === roomId && s.data?.voice?.userId === targetUserId) {
           s.emit("voice-answer", { fromUserId, answer });
@@ -1029,6 +1110,7 @@ if (process.env.VERCEL !== "1") {
 
     socket.on("voice-ice-candidate", ({ roomId, targetUserId, fromUserId, candidate }: any) => {
       if (!roomId || !targetUserId || !fromUserId || !candidate) return;
+      if (!consumeVoiceQuota("voice-ice-candidate", 180, 60_000)) return;
       for (const [, s] of io.of("/").sockets) {
         if (s.data?.voice?.roomId === roomId && s.data?.voice?.userId === targetUserId) {
           s.emit("voice-ice-candidate", { fromUserId, candidate });

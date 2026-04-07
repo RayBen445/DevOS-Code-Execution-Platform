@@ -24,7 +24,7 @@ import {
   setOrgChatEnabled,
 } from "../lib/orgService";
 import { getUserSettings } from "../lib/userService";
-import { Organization, OrgMember, OrgJoinRequest, OrgChatMessage } from "../types";
+import { Organization, OrgMember, OrgJoinRequest, OrgChatMessage, Project } from "../types";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
@@ -68,7 +68,7 @@ import { DEVOS_EMOJI_LIST, renderDevosEmojiText } from "../lib/devosEmoji";
 import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import socket from "../lib/socket";
 
-type OrgTab = "overview" | "posts" | "chat" | "members" | "settings";
+type OrgTab = "overview" | "posts" | "chat" | "members" | "projects" | "settings";
 
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-blue-500/20 text-blue-400 border border-blue-500/30",
@@ -98,12 +98,14 @@ export default function OrgPage() {
   const [togglingPolicy, setTogglingPolicy] = useState(false);
   const [togglingChat, setTogglingChat] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [orgProjects, setOrgProjects] = useState<Project[]>([]);
   const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
   const [inVoiceCall, setInVoiceCall] = useState(false);
   const [voicePeers, setVoicePeers] = useState<string[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerMapRef = useRef<Record<string, RTCPeerConnection>>({});
   const remoteAudioRef = useRef<Record<string, HTMLAudioElement>>({});
+  const voiceHandlersRef = useRef<Partial<Record<string, (...args: any[]) => void>>>({});
 
   const copyOrgLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}/org/${slug}`).then(() => {
@@ -198,6 +200,17 @@ export default function OrgPage() {
     }
   }, [org?.chatEnabled, activeTab]);
 
+  // Subscribe to org projects when on the projects tab
+  useEffect(() => {
+    if (!org?.id || activeTab !== "projects") return;
+    const q = query(collection(db, "projects"), where("ownerOrgId", "==", org.id));
+    return onSnapshot(q, (snap) => {
+      const projs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Project));
+      projs.sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0));
+      setOrgProjects(projs);
+    });
+  }, [org?.id, activeTab]);
+
   const roomId = org?.id ? `org-${org.id}` : "";
 
   const cleanupVoiceCall = () => {
@@ -252,36 +265,50 @@ export default function OrgPage() {
       const meId = user.uid;
       socket.emit("join-voice-room", { roomId, userId: meId, name: userSettings?.displayName || userSettings?.username || "User" });
       setInVoiceCall(true);
-      socket.on("voice-user-joined", ({ userId }: { userId: string }) => {
+
+      const onVoiceUserJoined = ({ userId }: { userId: string }) => {
         if (!userId || userId === meId) return;
         setVoicePeers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
         buildPeer(userId, meId, true);
-      });
-      socket.on("voice-offer", async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
+      };
+      const onVoiceOffer = async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
         const pc = buildPeer(fromUserId, meId, false);
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit("voice-answer", { roomId, targetUserId: fromUserId, fromUserId: meId, answer });
         setVoicePeers((prev) => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
-      });
-      socket.on("voice-answer", async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
+      };
+      const onVoiceAnswer = async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
         const pc = peerMapRef.current[fromUserId];
         if (!pc) return;
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
-      });
-      socket.on("voice-ice-candidate", async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
+      };
+      const onVoiceIceCandidate = async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
         const pc = peerMapRef.current[fromUserId];
         if (!pc) return;
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      });
-      socket.on("voice-user-left", ({ userId }: { userId: string }) => {
+      };
+      const onVoiceUserLeft = ({ userId }: { userId: string }) => {
         peerMapRef.current[userId]?.close();
         delete peerMapRef.current[userId];
         remoteAudioRef.current[userId]?.remove();
         delete remoteAudioRef.current[userId];
         setVoicePeers((prev) => prev.filter((p) => p !== userId));
-      });
+      };
+
+      voiceHandlersRef.current = {
+        "voice-user-joined": onVoiceUserJoined,
+        "voice-offer": onVoiceOffer,
+        "voice-answer": onVoiceAnswer,
+        "voice-ice-candidate": onVoiceIceCandidate,
+        "voice-user-left": onVoiceUserLeft,
+      };
+      socket.on("voice-user-joined", onVoiceUserJoined);
+      socket.on("voice-offer", onVoiceOffer);
+      socket.on("voice-answer", onVoiceAnswer);
+      socket.on("voice-ice-candidate", onVoiceIceCandidate);
+      socket.on("voice-user-left", onVoiceUserLeft);
     } catch {
       toast.error("Could not start voice call. Microphone permission may be blocked.");
       cleanupVoiceCall();
@@ -290,11 +317,13 @@ export default function OrgPage() {
 
   const endVoiceCall = () => {
     if (user && roomId) socket.emit("leave-voice-room", { roomId, userId: user.uid });
-    socket.off("voice-user-joined");
-    socket.off("voice-offer");
-    socket.off("voice-answer");
-    socket.off("voice-ice-candidate");
-    socket.off("voice-user-left");
+    const handlers = voiceHandlersRef.current;
+    if (handlers["voice-user-joined"]) socket.off("voice-user-joined", handlers["voice-user-joined"]);
+    if (handlers["voice-offer"]) socket.off("voice-offer", handlers["voice-offer"]);
+    if (handlers["voice-answer"]) socket.off("voice-answer", handlers["voice-answer"]);
+    if (handlers["voice-ice-candidate"]) socket.off("voice-ice-candidate", handlers["voice-ice-candidate"]);
+    if (handlers["voice-user-left"]) socket.off("voice-user-left", handlers["voice-user-left"]);
+    voiceHandlersRef.current = {};
     cleanupVoiceCall();
   };
 
@@ -474,9 +503,8 @@ export default function OrgPage() {
       });
       toast.success("Project created!", { id: toastId });
       setShowCreateProject(false);
-      // Open the new project in the IDE
-      sessionStorage.setItem("devos_active_project", docRef.id);
-      navigate("/projects");
+      // Switch to the Projects tab so the user sees the new project in the org
+      setActiveTab("projects");
     } catch {
       toast.error("Failed to create project", { id: toastId });
     }
@@ -578,7 +606,7 @@ export default function OrgPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 mb-6 border-b border-gray-800 overflow-x-auto">
-          {(["overview", "posts", ...(org.chatEnabled !== false ? ["chat"] : []), "members", ...(isAdmin ? ["settings"] : [])] as OrgTab[]).map((tab) => (
+          {(["overview", "posts", ...(org.chatEnabled !== false ? ["chat"] : []), "members", "projects", ...(isAdmin ? ["settings"] : [])] as OrgTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as OrgTab)}
@@ -589,7 +617,7 @@ export default function OrgPage() {
                   : "border-transparent text-gray-500 hover:text-gray-300"
               )}
             >
-              {tab === "members" ? `Members (${members.length})` : tab === "posts" ? `Posts (${posts.length})` : tab}
+              {tab === "members" ? `Members (${members.length})` : tab === "posts" ? `Posts (${posts.length})` : tab === "projects" ? `Projects (${orgProjects.length})` : tab}
               {tab === "settings" && joinRequests.length > 0 && (
                 <span className="ml-1 text-xs bg-orange-500 text-white rounded-full px-1.5 py-0.5">{joinRequests.length}</span>
               )}
@@ -857,6 +885,68 @@ export default function OrgPage() {
             ))}
             {members.length === 0 && (
               <p className="text-center text-gray-500 py-12">No members yet.</p>
+            )}
+          </div>
+        )}
+
+        {/* Projects tab */}
+        {activeTab === "projects" && (
+          <div>
+            {isAdmin && (
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setShowCreateProject(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-blue-500/20"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                  New Project
+                </button>
+              </div>
+            )}
+            {orgProjects.length === 0 ? (
+              <div className="text-center py-16">
+                <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-3" />
+                <p className="text-white/40 font-semibold mb-1">No projects yet</p>
+                {isAdmin && (
+                  <p className="text-white/25 text-sm">Create the first project for this organization.</p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {orgProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="bg-[#111] border border-gray-800 hover:border-blue-500/40 rounded-xl p-4 flex flex-col gap-3 transition-all group"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{project.name}</p>
+                        {project.description && (
+                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{project.description}</p>
+                        )}
+                      </div>
+                      {project.isPublic ? (
+                        <Globe className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
+                      ) : (
+                        <Lock className="w-3.5 h-3.5 text-gray-500 shrink-0 mt-0.5" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-600">
+                      <span>Updated {project.updatedAt?.seconds ? formatRelativeTime({ seconds: project.updatedAt.seconds, nanoseconds: 0 } as any) : "—"}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        sessionStorage.setItem("devos_active_project", project.id);
+                        navigate("/projects");
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 transition-all text-xs font-bold"
+                    >
+                      <FolderCode className="w-3.5 h-3.5" />
+                      Open in IDE
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}

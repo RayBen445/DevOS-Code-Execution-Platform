@@ -246,35 +246,21 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     // help
     if (cmd === "help") {
       addLog("info", "Available commands:");
-      addLog("output", "  save      Save project and refresh preview");
-      addLog("output", "  deploy    Deploy project to DevOS (live URL)");
-      addLog("output", "  sync      Sync and deploy project");
-      addLog("output", "  run       Run active file in terminal");
-      addLog("output", "  clear     Clear terminal output");
-      addLog("output", "  help      Show this help");
+      addLog("output", "  save              Save project and refresh preview");
+      addLog("output", "  deploy            Deploy project to DevOS (live URL)");
+      addLog("output", "  sync              Sync and deploy project");
+      addLog("output", "  run               Run active file in terminal");
+      addLog("output", "  clear             Clear terminal output");
+      addLog("output", "  help              Show this help");
+      addLog("info", "npm / node:");
+      addLog("output", "  npm install       Install packages from package.json");
+      addLog("output", "  npm install <pkg> Install a specific package");
+      addLog("output", "  npm run <script>  Run a package.json script");
+      addLog("output", "  node <file>       Run a Node.js file");
       addLog("info", "Tips:");
       addLog("output", "  • Use Preview panel for instant live rendering");
       addLog("output", "  • Use 'save' then 'deploy' to publish your project");
       addLog("output", "  • Use ZIP upload to import entire projects");
-      setIsExecRunning(false);
-      setTimeout(() => terminalInputRef.current?.focus(), 0);
-      return;
-    }
-
-    // Block npm/yarn/pnpm package manager commands
-    const npmBlocked = [
-      /^npm\s+install\b/i,
-      /^npm\s+run\b/i,
-      /^npm\s+start\b/i,
-      /^yarn\b/i,
-      /^pnpm\b/i,
-    ];
-    if (npmBlocked.some(p => p.test(cmd))) {
-      addLog("error", "npm commands are not supported in DevOS.");
-      addLog("warning", "Suggestions:");
-      addLog("output", "  • Use Preview panel for instant rendering");
-      addLog("output", "  • Use 'deploy' command for a live URL");
-      addLog("output", "  • Use Templates or ZIP upload to import projects");
       setIsExecRunning(false);
       setTimeout(() => terminalInputRef.current?.focus(), 0);
       return;

@@ -25,6 +25,7 @@ export async function createOrg(params: {
   description: string;
   avatar?: string;
   isPublic: boolean;
+  isOfficial?: boolean;
   createdBy: string;
   createdByUsername: string;
 }): Promise<string> {
@@ -34,6 +35,7 @@ export async function createOrg(params: {
     description: params.description,
     avatar: params.avatar ?? "",
     isPublic: params.isPublic,
+    isOfficial: params.isOfficial ?? false,
     chatEnabled: true,
     voiceCallsEnabled: true,
     createdBy: params.createdBy,

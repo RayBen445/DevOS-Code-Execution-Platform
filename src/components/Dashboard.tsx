@@ -92,9 +92,12 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         id: doc.id,
         ...doc.data()
       })) as Project[];
+
+      // Exclude org-owned projects – they live on the org page, not the personal dashboard
+      const personalProjs = projs.filter(p => p.ownerType !== "organization");
       
       // Sort: Portfolio first, then by updatedAt
-      projs.sort((a, b) => {
+      personalProjs.sort((a, b) => {
         if (a.systemType === 'portfolio') return -1;
         if (b.systemType === 'portfolio') return 1;
         const timeA = a.updatedAt?.seconds || 0;
@@ -102,7 +105,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         return timeB - timeA;
       });
       
-      setProjects(projs);
+      setProjects(personalProjs);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "projects");
     });

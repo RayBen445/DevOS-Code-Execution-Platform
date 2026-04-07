@@ -136,7 +136,7 @@ function CreateCommunityModal({ open, onClose, userId, onCreated }: CreateModalP
             <button
               type="submit"
               disabled={saving || !name.trim() || !description.trim() || !slug}
-              className={cn("flex-1 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2", saving || !name.trim() ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95")}
+              className={cn("flex-1 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2", saving || !name.trim() || !description.trim() || !slug ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95")}
             >
               {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Creating…</> : "Create Community"}
             </button>

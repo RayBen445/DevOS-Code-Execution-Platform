@@ -119,7 +119,7 @@ export function initializeBotEngine({ bots = [] } = {}) {
   bots.forEach(registerBot);
 
   on("*", async (payload, event) => {
-    await executeBotsForEvent(event, payload);
+    return await executeBotsForEvent(event, payload);
   });
 }
 

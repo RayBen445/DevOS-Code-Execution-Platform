@@ -395,6 +395,7 @@ export default function CommunityPage() {
   const peerMapRef = useRef<Record<string, RTCPeerConnection>>({});
   const remoteAudioRef = useRef<Record<string, HTMLAudioElement>>({});
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const voiceHandlersRef = useRef<Partial<Record<string, (...args: any[]) => void>>>({});
   const [userSettings, setUserSettings] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
   const [loading, setLoading] = useState(true);
@@ -488,6 +489,13 @@ export default function CommunityPage() {
     setSettingsIsPublic(community.isPublic);
   }, [community, activeTab]);
 
+  // Switch away from the chat tab if chat gets disabled while user is on it
+  useEffect(() => {
+    if (community?.chatEnabled === false && activeTab === "chat") {
+      setActiveTab("posts");
+    }
+  }, [community?.chatEnabled, activeTab]);
+
   const handleSaveSettings = async () => {
     if (!community) return;
     const trimmedName = settingsName.trim();
@@ -580,12 +588,6 @@ export default function CommunityPage() {
     );
   }
 
-  useEffect(() => {
-    if (community?.chatEnabled === false && activeTab === "chat") {
-      setActiveTab("posts");
-    }
-  }, [community?.chatEnabled, activeTab]);
-
   if (!community) return null;
 
   const tabs: { id: CommunityTab; label: string; count?: number; icon?: React.ReactNode }[] = [
@@ -649,36 +651,50 @@ export default function CommunityPage() {
       const meId = user.uid;
       socket.emit("join-voice-room", { roomId, userId: meId, name: userSettings?.displayName || userSettings?.username || "User" });
       setInVoiceCall(true);
-      socket.on("voice-user-joined", ({ userId }: { userId: string }) => {
+
+      const onVoiceUserJoined = ({ userId }: { userId: string }) => {
         if (!userId || userId === meId) return;
         setVoicePeers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
         buildPeer(userId, meId, true);
-      });
-      socket.on("voice-offer", async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
+      };
+      const onVoiceOffer = async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
         const pc = buildPeer(fromUserId, meId, false);
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit("voice-answer", { roomId, targetUserId: fromUserId, fromUserId: meId, answer });
         setVoicePeers((prev) => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
-      });
-      socket.on("voice-answer", async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
+      };
+      const onVoiceAnswer = async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
         const pc = peerMapRef.current[fromUserId];
         if (!pc) return;
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
-      });
-      socket.on("voice-ice-candidate", async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
+      };
+      const onVoiceIceCandidate = async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
         const pc = peerMapRef.current[fromUserId];
         if (!pc) return;
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      });
-      socket.on("voice-user-left", ({ userId }: { userId: string }) => {
+      };
+      const onVoiceUserLeft = ({ userId }: { userId: string }) => {
         peerMapRef.current[userId]?.close();
         delete peerMapRef.current[userId];
         remoteAudioRef.current[userId]?.remove();
         delete remoteAudioRef.current[userId];
         setVoicePeers((prev) => prev.filter((p) => p !== userId));
-      });
+      };
+
+      voiceHandlersRef.current = {
+        "voice-user-joined": onVoiceUserJoined,
+        "voice-offer": onVoiceOffer,
+        "voice-answer": onVoiceAnswer,
+        "voice-ice-candidate": onVoiceIceCandidate,
+        "voice-user-left": onVoiceUserLeft,
+      };
+      socket.on("voice-user-joined", onVoiceUserJoined);
+      socket.on("voice-offer", onVoiceOffer);
+      socket.on("voice-answer", onVoiceAnswer);
+      socket.on("voice-ice-candidate", onVoiceIceCandidate);
+      socket.on("voice-user-left", onVoiceUserLeft);
     } catch {
       toast.error("Could not start voice call. Microphone permission may be blocked.");
       cleanupVoiceCall();
@@ -687,11 +703,13 @@ export default function CommunityPage() {
 
   const endVoiceCall = () => {
     if (user && roomId) socket.emit("leave-voice-room", { roomId, userId: user.uid });
-    socket.off("voice-user-joined");
-    socket.off("voice-offer");
-    socket.off("voice-answer");
-    socket.off("voice-ice-candidate");
-    socket.off("voice-user-left");
+    const handlers = voiceHandlersRef.current;
+    if (handlers["voice-user-joined"]) socket.off("voice-user-joined", handlers["voice-user-joined"]);
+    if (handlers["voice-offer"]) socket.off("voice-offer", handlers["voice-offer"]);
+    if (handlers["voice-answer"]) socket.off("voice-answer", handlers["voice-answer"]);
+    if (handlers["voice-ice-candidate"]) socket.off("voice-ice-candidate", handlers["voice-ice-candidate"]);
+    if (handlers["voice-user-left"]) socket.off("voice-user-left", handlers["voice-user-left"]);
+    voiceHandlersRef.current = {};
     cleanupVoiceCall();
   };
 

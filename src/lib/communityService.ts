@@ -121,6 +121,7 @@ export async function createCommunity(params: {
   category?: string;
   createdBy: string;
   isPublic?: boolean;
+  isOfficial?: boolean;
 }): Promise<{ id: string; slug: string }> {
   const normalizedSlug = params.slug.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
   if (!normalizedSlug) throw new Error("Community name must contain letters or numbers.");
@@ -138,6 +139,7 @@ export async function createCommunity(params: {
     createdBy: params.createdBy,
     memberCount: 1,
     isPublic: params.isPublic ?? true,
+    isOfficial: params.isOfficial ?? false,
     chatEnabled: true,
     voiceCallsEnabled: true,
     createdAt: serverTimestamp(),
