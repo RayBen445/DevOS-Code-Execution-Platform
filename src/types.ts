@@ -45,6 +45,7 @@ export interface Project {
   env?: Record<string, string>;
   tags?: string[];
   parentTemplateId?: string;
+  group?: string;            // user-defined project group name
 }
 
 export interface ProjectVersion {

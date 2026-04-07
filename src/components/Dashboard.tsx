@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Users, ChevronRight, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Star, Building2 } from "lucide-react";
+import { Plus, FolderCode, Clock, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Star, Building2, Tag, FolderOpen, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime } from "../lib/utils";
@@ -49,6 +49,12 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [deletingProject, setDeletingProject] = useState(false);
   const [resetPortfolioConfirm, setResetPortfolioConfirm] = useState<Project | null>(null);
   const [showCreateOrg, setShowCreateOrg] = useState(false);
+
+  // Project grouping
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [groupPopoverProjectId, setGroupPopoverProjectId] = useState<string | null>(null);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [savingGroup, setSavingGroup] = useState(false);
 
   // Debounced project name uniqueness check
   useEffect(() => {
@@ -537,6 +543,331 @@ p {
   const displayName = settings?.displayName || user?.displayName || "Developer";
   const avatarUrl = resolveAvatar(settings?.avatarUrl || user?.photoURL);
 
+  // ── Grouping helpers ────────────────────────────────────────────────────────
+  const toggleGroupCollapse = (groupName: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupName)) next.delete(groupName);
+      else next.add(groupName);
+      return next;
+    });
+  };
+
+  const handleMoveToGroup = async (projectId: string, groupValue: string | null) => {
+    setSavingGroup(true);
+    try {
+      await updateDoc(doc(db, "projects", projectId), {
+        group: groupValue ?? null,
+        updatedAt: serverTimestamp(),
+      });
+      setGroupPopoverProjectId(null);
+      setNewGroupName("");
+    } catch {
+      toast.error("Failed to update group.");
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
+  // Collect all unique group names from the user's projects
+  const allGroupNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const p of projects) {
+      if (p.group && p.systemType !== "portfolio") names.add(p.group);
+    }
+    return Array.from(names).sort();
+  }, [projects]);
+
+  // Compute groups for "My Projects" tab:
+  //   - portfolio projects  → own section at top
+  //   - user-defined group  → one section per group (sorted alphabetically)
+  //   - no group            → "Ungrouped" section at bottom
+  const { portfolioProjects, groupedMap, ungroupedProjects } = useMemo(() => {
+    const portfolio: Project[] = [];
+    const grouped: Record<string, Project[]> = {};
+    const ungrouped: Project[] = [];
+    for (const p of projects) {
+      if (p.systemType === "portfolio") {
+        portfolio.push(p);
+      } else if (p.group) {
+        if (!grouped[p.group]) grouped[p.group] = [];
+        grouped[p.group].push(p);
+      } else {
+        ungrouped.push(p);
+      }
+    }
+    return { portfolioProjects: portfolio, groupedMap: grouped, ungroupedProjects: ungrouped };
+  }, [projects]);
+
+  // ── Card renderer (used in every group section) ────────────────────────────
+  const renderCard = (project: Project, animIdx: number) => {
+    const isGroupPopoverOpen = groupPopoverProjectId === project.id;
+    return (
+      <motion.div
+        key={project.id}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: animIdx * 0.04, ease: [0.22, 1, 0.36, 1] }}
+        className={cn(
+          "group rounded-2xl border transition-all relative flex flex-col card-glow",
+          project.systemType === 'portfolio'
+            ? "bg-gradient-to-br from-yellow-500/5 to-yellow-600/5 border-yellow-500/20 hover:border-yellow-500/40"
+            : "glass border-white/[0.07] hover:border-white/15"
+        )}
+      >
+        {/* Portfolio badge */}
+        {project.systemType === 'portfolio' && (
+          <div className="px-4 pt-3 pb-0">
+            <span className="text-[10px] font-bold text-yellow-400/80 uppercase tracking-widest flex items-center gap-1">
+              <Star className="w-3 h-3" /> Your Public Profile
+            </span>
+          </div>
+        )}
+
+        {/* Card body */}
+        <div
+          className="p-5 flex-1 cursor-pointer"
+          onClick={() => onSelectProject(project.id)}
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+              project.systemType === 'portfolio' ? "bg-yellow-600/20 text-yellow-500 group-hover:bg-yellow-600 group-hover:text-white" :
+              project.isTemplate ? "bg-purple-600/20 text-purple-500 group-hover:bg-purple-600 group-hover:text-white" : "bg-blue-600/20 text-blue-500 group-hover:bg-blue-600 group-hover:text-white"
+            )}>
+              {project.systemType === 'portfolio' ? <UserIcon className="w-5 h-5" /> : <FolderCode className="w-5 h-5" />}
+            </div>
+            <div className="flex gap-1.5 items-center">
+              {project.isPublic ? (
+                <span className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-wider">Public</span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-md bg-white/5 text-white/30 text-[10px] font-bold uppercase tracking-wider">Private</span>
+              )}
+              {project.isTemplate && (
+                <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider">Template</span>
+              )}
+            </div>
+          </div>
+          <h3 className="text-base font-bold text-white mb-1">{project.name}</h3>
+          {project.description && (
+            <p className="text-xs text-white/40 mb-3 line-clamp-2 leading-relaxed">{project.description}</p>
+          )}
+          {project.group && (
+            <div className="mb-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400/70 text-[10px] font-medium border border-blue-500/15">
+                <Tag className="w-2.5 h-2.5" />{project.group}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center gap-3 text-xs text-white/30">
+            <div className="flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{formatRelativeTime(project.updatedAt)}</span>
+            </div>
+            <div className="w-1 h-1 rounded-full bg-white/10" />
+            <div className="flex items-center gap-1">
+              <Eye className="w-3.5 h-3.5" />
+              <span>{project.views || 0}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card actions footer */}
+        <div className="px-4 pb-4 flex gap-2">
+          {project.systemType === 'portfolio' ? (
+            <>
+              <button
+                onClick={() => onSelectProject(project.id)}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-all text-xs font-bold"
+              >
+                <FolderCode className="w-3.5 h-3.5" />
+                Open
+              </button>
+              {settings?.username && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/u/${settings.username}`); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  View Portfolio
+                </button>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); handleResetPortfolio(project); }}
+                disabled={resettingPortfolio}
+                className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-orange-500/10 hover:text-orange-400 transition-all"
+                title="Reset Portfolio"
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", resettingPortfolio && "animate-spin")} />
+              </button>
+              <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
+            </>
+          ) : project.ownerId === user?.uid ? (
+            <>
+              <button
+                onClick={() => onSelectProject(project.id)}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 transition-all text-xs font-bold"
+              >
+                <FolderCode className="w-3.5 h-3.5" />
+                Open
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setSettingsProject(project); }}
+                className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all"
+                title="Project Settings"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </button>
+              {!['portfolio' as string].includes(project.systemType ?? '') && !project.isTemplate && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setPublishTemplateProject(project); }}
+                  className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-purple-500/10 hover:text-purple-400 transition-all"
+                  title="Publish as Template"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {!['portfolio' as string].includes(project.systemType ?? '') && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
+                  title="Deploy project (open IDE → Deploy tab)"
+                >
+                  <Rocket className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {/* ── Group button + popover ── */}
+              {project.systemType !== 'portfolio' && (
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setGroupPopoverProjectId(isGroupPopoverOpen ? null : project.id);
+                      setNewGroupName("");
+                    }}
+                    className={cn(
+                      "flex items-center justify-center px-3 py-2 rounded-lg transition-all",
+                      project.group
+                        ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                        : "bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"
+                    )}
+                    title="Move to group"
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                  </button>
+                  <AnimatePresence>
+                    {isGroupPopoverOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute bottom-full right-0 mb-2 w-52 bg-[#111] border border-white/10 rounded-xl shadow-2xl z-30 overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="px-3 py-2 border-b border-white/5">
+                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Move to Group</p>
+                        </div>
+                        <div className="py-1 max-h-48 overflow-y-auto">
+                          {allGroupNames.map((gn) => (
+                            <button
+                              key={gn}
+                              onClick={() => handleMoveToGroup(project.id, project.group === gn ? null : gn)}
+                              disabled={savingGroup}
+                              className="w-full flex items-center justify-between px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors text-left"
+                            >
+                              <span className="flex items-center gap-2">
+                                <FolderOpen className="w-3.5 h-3.5 text-white/30" />
+                                {gn}
+                              </span>
+                              {project.group === gn && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                            </button>
+                          ))}
+                          {project.group && (
+                            <button
+                              onClick={() => handleMoveToGroup(project.id, null)}
+                              disabled={savingGroup}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400/70 hover:bg-red-500/10 hover:text-red-400 transition-colors text-left"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              Remove from group
+                            </button>
+                          )}
+                        </div>
+                        {/* New group input */}
+                        <div className="px-3 py-2 border-t border-white/5">
+                          <div className="flex gap-1.5">
+                            <input
+                              autoFocus
+                              type="text"
+                              placeholder="New group…"
+                              value={newGroupName}
+                              onChange={(e) => setNewGroupName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && newGroupName.trim()) {
+                                  handleMoveToGroup(project.id, newGroupName.trim());
+                                }
+                              }}
+                              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                            />
+                            <button
+                              onClick={() => { if (newGroupName.trim()) handleMoveToGroup(project.id, newGroupName.trim()); }}
+                              disabled={!newGroupName.trim() || savingGroup}
+                              className="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all disabled:opacity-40"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+              <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
+              {project.isDeletable !== false && (
+                <button
+                  onClick={(e) => handleDeleteProject(e, project.id)}
+                  className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                  title="Delete Project"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => onSelectProject(project.id)}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
+              >
+                <FolderCode className="w-3.5 h-3.5" />
+                Open
+              </button>
+              <button
+                onClick={(e) => handleForkProject(e, project)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all text-xs font-bold"
+                title="Fork Project"
+              >
+                <GitFork className="w-3.5 h-3.5" />
+                Fork
+              </button>
+              <ProjectShareButton project={project} username={project.ownerUsername} avatarUrl={null} />
+            </>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
+
+  // Close group popover when clicking outside
+  useEffect(() => {
+    if (!groupPopoverProjectId) return;
+    const handler = () => setGroupPopoverProjectId(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [groupPopoverProjectId]);
+
   useSEO({ title: "Dashboard — DevOS" });
   return (
     <div className="max-w-6xl mx-auto p-8">
@@ -845,20 +1176,156 @@ p {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {(activeTab === "my-projects" ? projects : publicProjects).map((project, idx) => (
-          <motion.div
-            key={project.id}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
-            className={cn(
-              "group rounded-2xl border transition-all relative flex flex-col card-glow",
-              project.systemType === 'portfolio'
-                ? "bg-gradient-to-br from-yellow-500/5 to-yellow-600/5 border-yellow-500/20 hover:border-yellow-500/40"
-                : "glass border-white/[0.07] hover:border-white/15"
-            )}
-          >
+      {/* ─── My Projects: Grouped Sections ─── */}
+      {activeTab === "my-projects" && (
+        <div className="space-y-8">
+          {/* Portfolio section — always at top */}
+          {portfolioProjects.length > 0 && (
+            <div>
+              <button
+                onClick={() => toggleGroupCollapse("__portfolio__")}
+                className="w-full flex items-center justify-between mb-4 group"
+              >
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-yellow-400/70" />
+                  <span className="text-sm font-bold text-white/50 uppercase tracking-widest">Portfolio</span>
+                  <span className="px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400/70 text-[10px] font-bold">
+                    {portfolioProjects.length}
+                  </span>
+                </div>
+                <ChevronDown className={cn("w-4 h-4 text-white/20 transition-transform", collapsedGroups.has("__portfolio__") && "-rotate-90")} />
+              </button>
+              <AnimatePresence initial={false}>
+                {!collapsedGroups.has("__portfolio__") && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {portfolioProjects.map((p, i) => renderCard(p, i))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* User-defined named groups */}
+          {allGroupNames.map((groupName, gi) => {
+            const groupProjects = groupedMap[groupName] ?? [];
+            const collapseKey = `__group__${groupName}`;
+            return (
+              <div key={groupName}>
+                <button
+                  onClick={() => toggleGroupCollapse(collapseKey)}
+                  className="w-full flex items-center justify-between mb-4 group"
+                >
+                  <div className="flex items-center gap-2">
+                    <FolderOpen className="w-4 h-4 text-blue-400/60" />
+                    <span className="text-sm font-bold text-white/50 uppercase tracking-widest">{groupName}</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400/70 text-[10px] font-bold">
+                      {groupProjects.length}
+                    </span>
+                  </div>
+                  <ChevronDown className={cn("w-4 h-4 text-white/20 transition-transform", collapsedGroups.has(collapseKey) && "-rotate-90")} />
+                </button>
+                <AnimatePresence initial={false}>
+                  {!collapsedGroups.has(collapseKey) && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {groupProjects.map((p, i) => renderCard(p, gi * 50 + i))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+
+          {/* Ungrouped projects */}
+          {ungroupedProjects.length > 0 && (
+            <div>
+              {/* Only show section header when there are also named groups or portfolio */}
+              {(portfolioProjects.length > 0 || allGroupNames.length > 0) && (
+                <button
+                  onClick={() => toggleGroupCollapse("__ungrouped__")}
+                  className="w-full flex items-center justify-between mb-4 group"
+                >
+                  <div className="flex items-center gap-2">
+                    <FolderCode className="w-4 h-4 text-white/20" />
+                    <span className="text-sm font-bold text-white/30 uppercase tracking-widest">Ungrouped</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-white/5 text-white/30 text-[10px] font-bold">
+                      {ungroupedProjects.length}
+                    </span>
+                  </div>
+                  <ChevronDown className={cn("w-4 h-4 text-white/20 transition-transform", collapsedGroups.has("__ungrouped__") && "-rotate-90")} />
+                </button>
+              )}
+              <AnimatePresence initial={false}>
+                {!collapsedGroups.has("__ungrouped__") && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {ungroupedProjects.map((p, i) => renderCard(p, allGroupNames.length * 50 + i))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {projects.length === 0 && !isCreating && (
+            <div className="py-20 text-center rounded-3xl border-2 border-dashed border-white/5">
+              <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-4" />
+              <p className="text-white/40 font-medium mb-6">No projects yet. Create your first one to get started!</p>
+              <div className="flex items-center justify-center gap-4 flex-wrap">
+                <button
+                  onClick={() => setIsCreating(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Project
+                </button>
+                <button
+                  onClick={() => navigate("/templates")}
+                  className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
+                >
+                  <Layout className="w-4 h-4 text-purple-400" />
+                  Use Template
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Explore Public: Flat Grid ─── */}
+      {activeTab === "public-projects" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {publicProjects.map((project, idx) => renderCard(project, idx))}
+          {publicProjects.length === 0 && !isCreating && (
+            <div className="col-span-full py-20 text-center rounded-3xl border-2 border-dashed border-white/5">
+              <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-4" />
+              <p className="text-white/40 font-medium mb-6">No public projects found.</p>
+            </div>
+          )}
+        </div>
+      )}
             {/* Portfolio badge */}
             {project.systemType === 'portfolio' && (
               <div className="px-4 pt-3 pb-0">
