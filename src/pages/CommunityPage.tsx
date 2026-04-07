@@ -21,6 +21,8 @@ import {
   Settings,
   ShieldCheck,
   UserMinus,
+  Link2,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -385,6 +387,7 @@ export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Settings form state
   const [settingsName, setSettingsName] = useState("");
@@ -504,6 +507,14 @@ export default function CommunityPage() {
     }
   };
 
+  const copyCommunityLink = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/community/${slug}`).then(() => {
+      setLinkCopied(true);
+      toast.success("Link copied!");
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  };
+
   const handleLeave = async () => {
     if (!user || !community) return;
     setJoining(true);
@@ -621,6 +632,14 @@ export default function CommunityPage() {
                   <ArrowLeft className="w-3.5 h-3.5" />
                   Back
                 </Link>
+                {/* Copy link */}
+                <button
+                  onClick={copyCommunityLink}
+                  title="Copy community link"
+                  className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10"
+                >
+                  {linkCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Link2 className="w-3.5 h-3.5" />}
+                </button>
                 {user && (
                   <button
                     onClick={isMember ? handleLeave : handleJoin}

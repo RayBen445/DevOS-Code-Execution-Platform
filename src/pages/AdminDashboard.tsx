@@ -202,6 +202,11 @@ export default function AdminDashboard() {
   const [togglingOfficial, setTogglingOfficial] = useState<string | null>(null);
   const [creatingPortfolio, setCreatingPortfolio] = useState<string | null>(null);
 
+  // Duplicate portfolios state
+  const [dupPortfolios, setDupPortfolios] = useState<Array<{ uid: string; username: string; portfolios: Array<{ id: string; name: string; createdAt: any }> }>>([]);
+  const [loadingDupPortfolios, setLoadingDupPortfolios] = useState(false);
+  const [deletingPortfolio, setDeletingPortfolio] = useState<string | null>(null);
+
   // Feedback state
   const [feedbackItems, setFeedbackItems] = useState<Array<{
     id: string;
@@ -923,6 +928,46 @@ export default function AdminDashboard() {
       toast.error("Failed to create portfolio.");
     } finally {
       setCreatingPortfolio(null);
+    }
+  };
+
+  const loadDuplicatePortfolios = async () => {
+    setLoadingDupPortfolios(true);
+    try {
+      const q = query(collection(db, "projects"), where("systemType", "==", "portfolio"));
+      const snap = await getDocs(q);
+      // Group by ownerId
+      const grouped: Record<string, { uid: string; username: string; portfolios: Array<{ id: string; name: string; createdAt: any }> }> = {};
+      for (const d of snap.docs) {
+        const data = d.data();
+        const uid = data.ownerId as string;
+        if (!uid) continue;
+        if (!grouped[uid]) grouped[uid] = { uid, username: data.ownerUsername ?? uid, portfolios: [] };
+        grouped[uid].portfolios.push({ id: d.id, name: data.name ?? "Portfolio", createdAt: data.createdAt });
+      }
+      // Only keep users with more than 1 portfolio
+      setDupPortfolios(Object.values(grouped).filter((g) => g.portfolios.length > 1));
+    } catch {
+      toast.error("Failed to load portfolios");
+    } finally {
+      setLoadingDupPortfolios(false);
+    }
+  };
+
+  const handleDeletePortfolio = async (projectId: string) => {
+    setDeletingPortfolio(projectId);
+    try {
+      await deleteDoc(doc(db, "projects", projectId));
+      setDupPortfolios((prev) =>
+        prev
+          .map((u) => ({ ...u, portfolios: u.portfolios.filter((p) => p.id !== projectId) }))
+          .filter((u) => u.portfolios.length > 1)
+      );
+      toast.success("Portfolio deleted");
+    } catch {
+      toast.error("Failed to delete portfolio");
+    } finally {
+      setDeletingPortfolio(null);
     }
   };
 

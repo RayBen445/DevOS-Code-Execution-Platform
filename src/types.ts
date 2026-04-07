@@ -313,6 +313,7 @@ export interface Organization {
   description: string;
   avatar?: string;
   isPublic: boolean;
+  joinPolicy?: "open" | "request";
   createdBy: string;
   memberCount: number;
   createdAt: any;
@@ -325,6 +326,16 @@ export interface OrgMember {
   username: string;
   role: OrgMemberRole;
   joinedAt: any;
+}
+
+export interface OrgJoinRequest {
+  id: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  requestedAt: any;
+  status: "pending" | "approved" | "rejected";
 }
 
 // ── Community System ────────────────────────────────────────────────────────

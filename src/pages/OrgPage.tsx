@@ -10,9 +10,14 @@ import {
   joinOrg,
   leaveOrg,
   updateMemberRole,
+  requestJoinOrg,
+  approveJoinRequest,
+  rejectJoinRequest,
+  subscribeJoinRequests,
+  updateOrgJoinPolicy,
 } from "../lib/orgService";
 import { getUserSettings } from "../lib/userService";
-import { Organization, OrgMember } from "../types";
+import { Organization, OrgMember, OrgJoinRequest } from "../types";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useSEO } from "../hooks/useSEO";
@@ -28,6 +33,12 @@ import {
   Shield,
   ChevronDown,
   Settings,
+  Link2,
+  Check,
+  UserCheck,
+  X,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { formatRelativeTime } from "../lib/utils";
 import { cn } from "../lib/utils";
@@ -46,9 +57,20 @@ export default function OrgPage() {
   const [org, setOrg] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [myMember, setMyMember] = useState<OrgMember | null>(null);
+  const [joinRequests, setJoinRequests] = useState<OrgJoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "members">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "members" | "settings">("overview");
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [togglingPolicy, setTogglingPolicy] = useState(false);
+
+  const copyOrgLink = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/org/${slug}`).then(() => {
+      setLinkCopied(true);
+      toast.success("Link copied!");
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  };
 
   useSEO({
     title: org ? `${org.name} — DevOS` : "Organization — DevOS",
@@ -85,14 +107,25 @@ export default function OrgPage() {
     getOrgMember(org.id, user.uid).then(setMyMember);
   }, [org?.id, user, members]);
 
+  // Subscribe to join requests (admin only)
+  useEffect(() => {
+    if (!org?.id || myMember?.role !== "admin") { setJoinRequests([]); return; }
+    return subscribeJoinRequests(org.id, setJoinRequests);
+  }, [org?.id, myMember?.role]);
+
   const handleJoin = async () => {
     if (!user || !org) return;
     const settings = await getUserSettings(user.uid);
     const username = settings?.username ?? user.displayName ?? user.email ?? "user";
     setJoining(true);
     try {
-      await joinOrg(org.id, user.uid, username);
-      toast.success("Joined organization");
+      if ((org.joinPolicy ?? "open") === "request") {
+        await requestJoinOrg(org.id, user.uid, username, settings?.displayName, settings?.avatarUrl);
+        toast.success("Join request sent! Awaiting admin approval.");
+      } else {
+        await joinOrg(org.id, user.uid, username);
+        toast.success("Joined organization");
+      }
     } catch {
       toast.error("Failed to join organization");
     } finally {
@@ -118,6 +151,40 @@ export default function OrgPage() {
       toast.success(`Updated ${member.username}'s role to ${role}`);
     } catch {
       toast.error("Failed to update role");
+    }
+  };
+
+  const handleApproveRequest = async (req: OrgJoinRequest) => {
+    if (!org) return;
+    try {
+      await approveJoinRequest(org.id, req.userId, req.username);
+      toast.success(`${req.username} approved`);
+    } catch {
+      toast.error("Failed to approve request");
+    }
+  };
+
+  const handleRejectRequest = async (req: OrgJoinRequest) => {
+    if (!org) return;
+    try {
+      await rejectJoinRequest(org.id, req.userId);
+      toast.success(`${req.username} rejected`);
+    } catch {
+      toast.error("Failed to reject request");
+    }
+  };
+
+  const handleToggleJoinPolicy = async () => {
+    if (!org) return;
+    const newPolicy = (org.joinPolicy ?? "open") === "open" ? "request" : "open";
+    setTogglingPolicy(true);
+    try {
+      await updateOrgJoinPolicy(org.id, newPolicy);
+      toast.success(newPolicy === "request" ? "Join requests enabled" : "Open joining enabled");
+    } catch {
+      toast.error("Failed to update join policy");
+    } finally {
+      setTogglingPolicy(false);
     }
   };
 
@@ -174,7 +241,7 @@ export default function OrgPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
               >
                 <UserPlus className="w-4 h-4" />
-                Join
+                {(org.joinPolicy ?? "open") === "request" ? "Request to Join" : "Join"}
               </button>
             )}
             {myMember && !isAdmin && (
@@ -188,22 +255,30 @@ export default function OrgPage() {
             )}
             {isAdmin && (
               <button
-                onClick={() => toast.info("Org settings coming soon")}
+                onClick={() => setActiveTab("settings")}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg transition-colors"
               >
                 <Settings className="w-4 h-4" />
                 Settings
               </button>
             )}
+            {/* Copy Link */}
+            <button
+              onClick={copyOrgLink}
+              title="Copy organization link"
+              className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm rounded-lg transition-colors"
+            >
+              {linkCopied ? <Check className="w-4 h-4 text-green-400" /> : <Link2 className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 mb-6 border-b border-gray-800">
-          {(["overview", "members"] as const).map((tab) => (
+          {(isAdmin ? ["overview", "members", "settings"] : ["overview", "members"]).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => setActiveTab(tab as typeof activeTab)}
               className={cn(
                 "px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors",
                 activeTab === tab
@@ -212,6 +287,9 @@ export default function OrgPage() {
               )}
             >
               {tab === "members" ? `Members (${members.length})` : tab}
+              {tab === "settings" && joinRequests.length > 0 && (
+                <span className="ml-1 text-xs bg-orange-500 text-white rounded-full px-1.5 py-0.5">{joinRequests.length}</span>
+              )}
             </button>
           ))}
         </div>
@@ -314,6 +392,87 @@ export default function OrgPage() {
             ))}
             {members.length === 0 && (
               <p className="text-center text-gray-500 py-12">No members yet.</p>
+            )}
+          </div>
+        )}
+
+        {/* Settings tab (admin only) */}
+        {activeTab === "settings" && isAdmin && (
+          <div className="space-y-6">
+            {/* Join Policy */}
+            <div className="bg-[#111] border border-gray-800 rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
+                <Settings className="w-4 h-4 text-blue-400" />
+                Join Policy
+              </h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-white">Require approval to join</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {(org.joinPolicy ?? "open") === "request"
+                      ? "Members must request and be approved by an admin"
+                      : "Anyone can join this organization directly"}
+                  </p>
+                </div>
+                <button
+                  onClick={handleToggleJoinPolicy}
+                  disabled={togglingPolicy}
+                  className="flex items-center gap-1 transition-colors disabled:opacity-50"
+                  title="Toggle join policy"
+                >
+                  {(org.joinPolicy ?? "open") === "request" ? (
+                    <ToggleRight className="w-8 h-8 text-blue-500" />
+                  ) : (
+                    <ToggleLeft className="w-8 h-8 text-gray-600" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Pending Join Requests */}
+            {(org.joinPolicy ?? "open") === "request" && (
+              <div className="bg-[#111] border border-gray-800 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-orange-400" />
+                  Pending Requests ({joinRequests.length})
+                </h3>
+                {joinRequests.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No pending requests.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {joinRequests.map((req) => (
+                      <div key={req.id} className="flex items-center gap-3 bg-gray-900 rounded-lg px-4 py-3">
+                        <img
+                          src={resolveAvatar(req.avatarUrl)}
+                          alt={req.username}
+                          className="w-8 h-8 rounded-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{req.displayName || req.username}</p>
+                          <p className="text-xs text-gray-500">@{req.username}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApproveRequest(req)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 text-xs rounded-lg transition-colors"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectRequest(req)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 text-xs rounded-lg transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

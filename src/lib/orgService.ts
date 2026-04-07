@@ -15,7 +15,7 @@ import {
   collectionGroup,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { OrgMemberRole, Organization, OrgMember } from "../types";
+import { OrgMemberRole, Organization, OrgMember, OrgJoinRequest } from "../types";
 
 export async function createOrg(params: {
   name: string;
@@ -148,3 +148,61 @@ export function subscribeUserOrgs(
   });
 }
 
+
+// ── Join Request System ──────────────────────────────────────────────────────
+
+export async function requestJoinOrg(
+  orgId: string,
+  userId: string,
+  username: string,
+  displayName?: string,
+  avatarUrl?: string
+): Promise<void> {
+  await setDoc(doc(db, "organizations", orgId, "joinRequests", userId), {
+    userId,
+    username,
+    displayName: displayName ?? username,
+    avatarUrl: avatarUrl ?? "",
+    requestedAt: serverTimestamp(),
+    status: "pending",
+  });
+}
+
+export async function approveJoinRequest(
+  orgId: string,
+  userId: string,
+  username: string
+): Promise<void> {
+  await setDoc(doc(db, "organizations", orgId, "members", userId), {
+    userId,
+    username,
+    role: "member" as OrgMemberRole,
+    joinedAt: serverTimestamp(),
+  });
+  await updateDoc(doc(db, "organizations", orgId), { memberCount: increment(1) });
+  await updateDoc(doc(db, "organizations", orgId, "joinRequests", userId), { status: "approved" });
+}
+
+export async function rejectJoinRequest(orgId: string, userId: string): Promise<void> {
+  await updateDoc(doc(db, "organizations", orgId, "joinRequests", userId), { status: "rejected" });
+}
+
+export function subscribeJoinRequests(
+  orgId: string,
+  callback: (requests: OrgJoinRequest[]) => void
+): () => void {
+  const q = query(
+    collection(db, "organizations", orgId, "joinRequests"),
+    where("status", "==", "pending")
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as OrgJoinRequest)));
+  });
+}
+
+export async function updateOrgJoinPolicy(
+  orgId: string,
+  joinPolicy: "open" | "request"
+): Promise<void> {
+  await updateDoc(doc(db, "organizations", orgId), { joinPolicy, updatedAt: serverTimestamp() });
+}
