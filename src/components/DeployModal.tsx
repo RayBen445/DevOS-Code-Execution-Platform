@@ -23,9 +23,10 @@ interface DeployModalProps {
   projectName: string;
   projectId: string;
   files: FileData[];
+  onDeployed?: () => void;
 }
 
-export default function DeployModal({ isOpen, onClose, projectName, projectId, files }: DeployModalProps) {
+export default function DeployModal({ isOpen, onClose, projectName, projectId, files, onDeployed }: DeployModalProps) {
   const [step, setStep] = useState<"select" | "entry-selection" | "deploying" | "success">("select");
   const [method, setMethod] = useState<"vercel" | "internal" | null>(null);
   const [deployedUrl, setDeployedUrl] = useState("");
@@ -161,6 +162,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       setDeployedUrl(url);
       setStep("success");
       toast.success("Your project is live!");
+      onDeployed?.();
     } catch (error: any) {
       console.error("Deployment error:", error);
       toast.error(error.message || "Deployment failed");

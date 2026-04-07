@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2 } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
 import RedeemCodeModal from "./RedeemCodeModal";
 import FeedbackModal from "./FeedbackModal";
-import { UserSettings, Credits } from "../types";
+import { UserSettings, Credits, Organization } from "../types";
 import { getCredits, DAILY_CREDITS_AMOUNT, MONTHLY_CREDITS_AMOUNT } from "../lib/creditsService";
 import { resolveAvatar } from "../lib/avatars";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { subscribeUserOrgs } from "../lib/orgService";
 
 interface NavbarProps {
   onSignIn?: () => void;
@@ -30,6 +31,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [savedAccounts, setSavedAccounts] = useState<Array<{ uid: string; username: string; displayName: string; avatarUrl: string; email: string }>>([]);
   const [isSwitchAccountOpen, setIsSwitchAccountOpen] = useState(false);
+  const [userOrgs, setUserOrgs] = useState<Organization[]>([]);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const creditsPanelRef = useRef<HTMLDivElement>(null);
 
@@ -102,6 +104,12 @@ export default function Navbar({ onSignIn }: NavbarProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Subscribe to user's organizations for the nav dropdown
+  useEffect(() => {
+    if (!user) { setUserOrgs([]); return; }
+    return subscribeUserOrgs(user.uid, setUserOrgs);
+  }, [user]);
 
   const displayName = settings?.displayName || user?.displayName || "User";
   const avatarUrl = resolveAvatar(settings?.avatarUrl || user?.photoURL);
@@ -400,6 +408,26 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                       </>
                     )}
                     <div className="border-t border-white/5 my-1" />
+                    {/* My Organizations */}
+                    {userOrgs.length > 0 && (
+                      <>
+                        <div className="px-4 py-1.5">
+                          <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">My Organizations</p>
+                        </div>
+                        {userOrgs.slice(0, 4).map((org) => (
+                          <Link
+                            key={org.id}
+                            to={`/org/${org.slug}`}
+                            onClick={() => setIsProfileOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <Building2 className="w-4 h-4 text-blue-400/70" />
+                            <span className="truncate">{org.name}</span>
+                          </Link>
+                        ))}
+                        <div className="border-t border-white/5 my-1" />
+                      </>
+                    )}
                     <button
                       onClick={() => { setIsProfileOpen(false); logout(); }}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors text-left"
@@ -564,6 +592,25 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     <ShieldCheck className="w-4 h-4" />
                     Admin
                   </Link>
+                )}
+
+                {/* My Organizations (mobile) */}
+                {userOrgs.length > 0 && (
+                  <>
+                    <div className="border-t border-white/5 my-2" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">My Organizations</p>
+                    {userOrgs.slice(0, 4).map((org) => (
+                      <Link
+                        key={org.id}
+                        to={`/org/${org.slug}`}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm"
+                      >
+                        <Building2 className="w-4 h-4 text-blue-400/70" />
+                        <span className="truncate">{org.name}</span>
+                      </Link>
+                    ))}
+                  </>
                 )}
 
                 <div className="border-t border-white/5 my-2" />

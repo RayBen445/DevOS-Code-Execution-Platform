@@ -12,6 +12,10 @@ export interface Project {
   description?: string;
   ownerId: string;
   ownerUsername?: string;
+  ownerType?: "user" | "organization";
+  ownerOrgId?: string;
+  ownerOrgSlug?: string;
+  ownerOrgName?: string;
   projectSlug?: string;
   createdAt: any;
   updatedAt: any;
@@ -41,6 +45,7 @@ export interface Project {
   env?: Record<string, string>;
   tags?: string[];
   parentTemplateId?: string;
+  group?: string;            // user-defined project group name
 }
 
 export interface ProjectVersion {
@@ -308,6 +313,7 @@ export interface Organization {
   description: string;
   avatar?: string;
   isPublic: boolean;
+  joinPolicy?: "open" | "request";
   createdBy: string;
   memberCount: number;
   createdAt: any;
@@ -320,6 +326,16 @@ export interface OrgMember {
   username: string;
   role: OrgMemberRole;
   joinedAt: any;
+}
+
+export interface OrgJoinRequest {
+  id: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  requestedAt: any;
+  status: "pending" | "approved" | "rejected";
 }
 
 // ── Community System ────────────────────────────────────────────────────────
@@ -382,4 +398,24 @@ export interface PollVote {
   optionIds: string[];        // one or more selected option IDs
   textResponse?: string;      // free-text answer (if allowTextInput and user supplied one)
   votedAt: any;
+}
+
+// ── Real-time collaboration ────────────────────────────────────────────────────
+
+/** Presence record written to projects/{projectId}/presence/{userId} */
+export interface PresenceUser {
+  userId: string;
+  name: string;
+  avatar: string;
+  lastSeen: any;             // Firestore Timestamp
+  currentFile: string | null;
+}
+
+/** Activity record written to projects/{projectId}/activity/{id} */
+export interface ActivityItem {
+  id: string;
+  userId: string;
+  action: "save" | "edit" | "deploy";
+  file?: string | null;
+  timestamp: any;            // Firestore Timestamp
 }

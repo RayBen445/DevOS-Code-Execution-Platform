@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { db, auth, handleFirestoreError, OperationType, storage } from "../lib/firebase";
-import { collection, onSnapshot, doc, getDoc, updateDoc, serverTimestamp, addDoc, getDocs, increment } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, addDoc, getDocs, increment, query, orderBy, limit } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Sidebar from "./Sidebar";
@@ -12,9 +12,10 @@ import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
-import { FileData, Project } from "../types";
+import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem } from "../types";
 import { cn } from "../lib/utils";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Menu, Save, Check, RefreshCw, ExternalLink } from "lucide-react";
+import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,7 +24,7 @@ interface IDEProps {
   onBack: () => void;
 }
 
-type PanelType = "explorer" | "git" | "terminal" | "preview" | "settings" | null;
+type PanelType = "explorer" | "git" | "terminal" | "preview" | "settings" | "collaborators" | null;
 
 interface LogEntry {
   type: "system" | "success" | "error" | "info" | "output" | "warning";
@@ -62,7 +63,6 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const terminalInputRef = useRef<HTMLInputElement>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [isSaved, setIsSaved] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -75,6 +75,22 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const terminalDragStartH = useRef<number>(0);
   const [cursorLine, setCursorLine] = useState(1);
   const [cursorCol, setCursorCol] = useState(1);
+
+  // Mobile top-nav state (replaces slide-in drawer)
+  type MobileTabId = "editor" | "files" | "preview" | "git" | "terminal" | "settings" | "collaborators";
+  const [mobileTab, setMobileTab] = useState<MobileTabId>("editor");
+  const touchStartX = useRef<number>(0);
+
+  // Org-aware state
+  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
+  const [orgRole, setOrgRole] = useState<OrgMemberRole | null>(null);
+  const [orgMembersLoading, setOrgMembersLoading] = useState(false);
+
+  // Real-time collaboration state (org projects only)
+  const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
+  const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
+  const orgMembersRef = useRef<OrgMember[]>([]); // stable ref for use in closures
+  const notifiedActivityIds = useRef<Set<string>>(new Set()); // prevents duplicate toasts
 
   // Persist active file and panel to localStorage (per-project key)
   useEffect(() => {
@@ -94,7 +110,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   };
 
   useEffect(() => {
-    if (activePanel === "terminal") {
+    if (activePanel === "terminal" || mobileTab === "terminal") {
       scrollToBottom();
       terminalInputRef.current?.focus();
       if (!terminalInitialized) {
@@ -107,7 +123,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         ]);
       }
     }
-  }, [runOutput, activePanel, terminalInitialized]);
+  }, [runOutput, activePanel, mobileTab, terminalInitialized]);
 
   const addLog = (type: LogEntry["type"], message: string) => {
     const timestamp = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -347,7 +363,51 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
   };
 
-  const isReadOnly = project && user && project.ownerId !== user.uid && !project.collaborators.includes(user.uid);
+  const isOrgProject = project?.ownerType === "organization" && !!project?.ownerOrgId;
+
+  // Mobile nav tabs definition (order matters for swipe)
+  const mobileNavTabs = [
+    { id: "editor" as MobileTabId, icon: Code2, label: "Editor" },
+    { id: "files" as MobileTabId, icon: Files, label: "Files" },
+    { id: "preview" as MobileTabId, icon: Eye, label: "Preview" },
+    ...(isOrgProject ? [{ id: "collaborators" as MobileTabId, icon: Users, label: "Team" }] : []),
+    { id: "git" as MobileTabId, icon: GitBranch, label: "Git" },
+    { id: "terminal" as MobileTabId, icon: Terminal, label: "Term" },
+    { id: "settings" as MobileTabId, icon: Settings, label: "More" },
+  ];
+
+  // Swipe handler: horizontal swipe ≥ 60px switches to adjacent tab
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) < 60) return;
+    const ids = mobileNavTabs.map(t => t.id);
+    const cur = ids.indexOf(mobileTab);
+    if (diff > 0 && cur < ids.length - 1) setMobileTab(ids[cur + 1]);
+    else if (diff < 0 && cur > 0) setMobileTab(ids[cur - 1]);
+  };
+
+  // Org-aware: read-only if not a member, or personal project owned by someone else
+  const isReadOnly = (() => {
+    if (!project || !user) return true;
+    if (project.ownerId === user.uid) return false; // owner always has full access
+    if (isOrgProject) {
+      // In an org project, members can edit; non-members are read-only
+      return orgRole === null;
+    }
+    // Personal project: must be owner or collaborator
+    return !project.collaborators.includes(user.uid);
+  })();
+
+  // Can deploy: owner always; in org projects, org admin only
+  const canDeploy = (() => {
+    if (!project || !user) return false;
+    if (project.ownerId === user.uid) return true;
+    if (isOrgProject) return orgRole === "admin";
+    return project.collaborators.includes(user.uid);
+  })();
   const isDeployed = !!project?.deployUrl;
 
   useEffect(() => {
@@ -415,6 +475,108 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, [user, projectId]);
+
+  // Load org members when project is loaded and it's an org project
+  useEffect(() => {
+    if (!project?.ownerOrgId || project?.ownerType !== "organization") {
+      setOrgMembers([]);
+      setOrgRole(null);
+      return;
+    }
+    const orgId = project.ownerOrgId;
+    setOrgMembersLoading(true);
+    const unsub = subscribeOrgMembers(orgId, (members) => {
+      setOrgMembers(members);
+      setOrgMembersLoading(false);
+    });
+    // Load user's own role
+    if (user) {
+      getOrgMember(orgId, user.uid).then((m) => setOrgRole(m?.role ?? null)).catch(() => setOrgRole(null));
+    }
+    return () => unsub();
+  }, [project?.ownerOrgId, project?.ownerType, user?.uid]);
+
+  // Keep stable ref in sync (used inside activity subscription closure)
+  useEffect(() => { orgMembersRef.current = orgMembers; }, [orgMembers]);
+
+  // ── Presence: write own record on mount + heartbeat + cleanup on unmount ────
+  useEffect(() => {
+    if (!isOrgProject || !user || !projectId) return;
+    const presenceRef = doc(db, "projects", projectId, "presence", user.uid);
+    setDoc(presenceRef, {
+      userId: user.uid,
+      name: user.displayName || user.email?.split("@")[0] || "User",
+      avatar: user.photoURL || "",
+      lastSeen: serverTimestamp(),
+      currentFile: null,
+    }).catch(() => {});
+    const heartbeat = setInterval(() => {
+      updateDoc(presenceRef, { lastSeen: serverTimestamp() }).catch(() => {});
+    }, 30_000);
+    return () => {
+      clearInterval(heartbeat);
+      deleteDoc(presenceRef).catch(() => {});
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOrgProject, user?.uid, projectId]);
+
+  // ── Presence: update currentFile whenever active file changes ───────────────
+  useEffect(() => {
+    if (!isOrgProject || !user || !projectId) return;
+    const presenceRef = doc(db, "projects", projectId, "presence", user.uid);
+    const currentFileName = files.find(f => f.id === activeFileId)?.name ?? null;
+    setDoc(presenceRef, {
+      currentFile: currentFileName,
+      lastSeen: serverTimestamp(),
+    }, { merge: true }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFileId, files, isOrgProject, user?.uid, projectId]);
+
+  // ── Presence: subscribe to all active users in this project ─────────────────
+  useEffect(() => {
+    if (!isOrgProject || !projectId) return;
+    const unsub = onSnapshot(collection(db, "projects", projectId, "presence"), (snap) => {
+      const STALE_MS = 90_000; // 3× heartbeat interval
+      const now = Date.now();
+      const users = snap.docs
+        .map(d => d.data() as PresenceUser)
+        .filter(u => now - (u.lastSeen?.toMillis?.() ?? 0) < STALE_MS);
+      setPresenceUsers(users);
+    }, () => {});
+    return unsub;
+  }, [isOrgProject, projectId]);
+
+  // ── Activity: subscribe to activity stream + notify on remote saves ──────────
+  useEffect(() => {
+    if (!isOrgProject || !projectId) return;
+    const q = query(
+      collection(db, "projects", projectId, "activity"),
+      orderBy("timestamp", "desc"),
+      limit(20)
+    );
+    let initialized = false;
+    const unsub = onSnapshot(q, (snap) => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as ActivityItem));
+      setActivityItems(items);
+      // After the first load, show toasts for new events from other users
+      if (initialized && items.length > 0) {
+        const latest = items[0];
+        const age = Date.now() - (latest.timestamp?.toMillis?.() ?? 0);
+        if (age < 8_000 && latest.userId !== user?.uid) {
+          const actor = orgMembersRef.current.find(m => m.userId === latest.userId);
+          const name = actor?.username ?? "A collaborator";
+          if (latest.action === "save") {
+            toast.info(`${name} saved ${latest.file ?? "a file"}`, { duration: 3000, icon: "💾" });
+          } else if (latest.action === "deploy") {
+            toast.success(`${name} deployed the project`, { duration: 4000, icon: "🚀" });
+          }
+        }
+      }
+      initialized = true;
+    }, () => {});
+    return unsub;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOrgProject, projectId, user?.uid]);
 
   const activeFile = files.find(f => f.id === activeFileId);
 
@@ -513,6 +675,18 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           // Version creation is best-effort; log for debugging but do not surface to user.
           console.warn("Version snapshot failed:", versionErr);
         }
+      }
+
+      // Track activity for org projects (best-effort)
+      if (!silent && isOrgProject && user) {
+        try {
+          await addDoc(collection(db, "projects", projectId, "activity"), {
+            userId: user.uid,
+            action: "save",
+            file: activeFile?.name ?? null,
+            timestamp: serverTimestamp(),
+          });
+        } catch { /* best-effort */ }
       }
     } catch (error) {
       console.error("Error saving project:", error);
@@ -797,6 +971,19 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       className="h-screen flex flex-col bg-[#0D1117] overflow-hidden"
       onClick={() => contextMenu && setContextMenu(null)}
     >
+      {/* Org project permission banner */}
+      {isOrgProject && orgRole === null && !loading && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 border-b border-orange-500/20 text-orange-300 text-xs font-medium">
+          <Shield className="w-3.5 h-3.5 flex-shrink-0" />
+          You are not a member of this organization — the project is read-only.
+        </div>
+      )}
+      {isOrgProject && orgRole === "member" && !loading && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-blue-300 text-xs font-medium">
+          <UserCheck className="w-3.5 h-3.5 flex-shrink-0" />
+          Org member — you can edit files. Deployment requires admin role.
+        </div>
+      )}
       <header className="h-11 border-b border-[#21262D] flex items-center justify-between px-3 bg-[#161B22] flex-shrink-0">
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
           <button
@@ -812,8 +999,22 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 aria-label="breadcrumb"
                 className="flex items-center gap-1 min-w-0 text-xs"
               >
-                {/* @username — desktop only */}
-                {breadcrumbUsername && (
+                {/* Org badge for org projects — desktop only */}
+                {isOrgProject && project?.ownerOrgName && (
+                  <>
+                    <a
+                      href={`/org/${project.ownerOrgSlug ?? ""}`}
+                      className="hidden md:flex items-center gap-1 text-[#9CA3AF] hover:text-white font-medium transition-colors flex-shrink-0"
+                      title={project.ownerOrgName}
+                    >
+                      <Building2 className="w-3 h-3" />
+                      {project.ownerOrgName}
+                    </a>
+                    <span className="hidden md:inline text-white/20 flex-shrink-0 select-none">/</span>
+                  </>
+                )}
+                {/* @username — desktop only (personal projects) */}
+                {!isOrgProject && breadcrumbUsername && (
                   <>
                     <a
                       href={`/u/${breadcrumbUsername}`}
@@ -874,6 +1075,39 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         </div>
 
         <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+          {/* ── Presence avatars (org projects, desktop) ── */}
+          {isOrgProject && presenceUsers.filter(u => u.userId !== user?.uid).length > 0 && (
+            <div className="hidden md:flex items-center -space-x-1.5 mr-1">
+              {presenceUsers
+                .filter(u => u.userId !== user?.uid)
+                .slice(0, 5)
+                .map(u => (
+                  <div key={u.userId} className="relative group">
+                    <div className="w-6 h-6 rounded-full ring-2 ring-[#161B22] overflow-hidden bg-blue-600/30 flex items-center justify-center flex-shrink-0">
+                      {u.avatar
+                        ? <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                        : <span className="text-[9px] font-bold text-white">{u.name.charAt(0).toUpperCase()}</span>
+                      }
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-400 ring-1 ring-[#161B22]" />
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-50 pointer-events-none">
+                      <div className="bg-[#1a1a2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl text-xs text-white whitespace-nowrap">
+                        <p className="font-semibold">{u.name}</p>
+                        {u.currentFile && <p className="text-white/50 text-[11px]">editing {u.currentFile}</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              {presenceUsers.filter(u => u.userId !== user?.uid).length > 5 && (
+                <div className="w-6 h-6 rounded-full ring-2 ring-[#161B22] bg-white/10 flex items-center justify-center">
+                  <span className="text-[9px] font-bold text-white/50">
+                    +{presenceUsers.filter(u => u.userId !== user?.uid).length - 5}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
           {isReadOnly && (
             <button
               onClick={handleFork}
@@ -917,7 +1151,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 <Share2 className="w-3 h-3" />
                 Share
               </button>
-              {!isReadOnly && (
+              {!isReadOnly && canDeploy && (
                 <button 
                   onClick={() => setIsDeployModalOpen(true)}
                   className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
@@ -938,34 +1172,39 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               {isFocusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
           )}
-          {/* Mobile sidebar toggle */}
-          {project?.systemType !== 'portfolio' && (
-            <button
-              onClick={() => setIsMobileSidebarOpen(v => !v)}
-              title="Files & Tools"
-              className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors md:hidden"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-          )}
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Mobile sidebar backdrop */}
-        <AnimatePresence>
-          {isMobileSidebarOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 z-30 md:hidden"
-              onClick={() => setIsMobileSidebarOpen(false)}
-            />
-          )}
-        </AnimatePresence>
+      {/* ── Mobile top navigation bar (replaces slide-in drawer) ───────────── */}
+      {project?.systemType !== 'portfolio' && !isFocusMode && (
+        <nav className="md:hidden flex-shrink-0 bg-[#0B0F19] border-b border-[#21262D] overflow-x-auto">
+          <div className="flex items-stretch min-w-max">
+            {mobileNavTabs.map(({ id, icon: Icon, label }) => (
+              <button
+                key={id}
+                onClick={() => setMobileTab(id)}
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap transition-colors relative",
+                  mobileTab === id ? "text-blue-400" : "text-white/30 active:text-white/70"
+                )}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+                {mobileTab === id && (
+                  <motion.div
+                    layoutId="mobileTabUnderline"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"
+                    transition={{ duration: 0.15 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
 
-        {/* Sidebar icon tabs — hidden on mobile (controlled via hamburger), hidden in focus mode */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Sidebar icon tabs — desktop only, hidden in focus mode */}
         {project?.systemType !== 'portfolio' && !isFocusMode && (
           <div className="hidden md:flex w-12 border-r border-[#21262D] bg-[#0D1117] flex-col items-center py-3 gap-1 flex-shrink-0">
             {[
@@ -973,6 +1212,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               { id: "git" as PanelType, icon: GitBranch, label: "Source Control" },
               { id: "terminal" as PanelType, icon: Terminal, label: "Terminal" },
               { id: "preview" as PanelType, icon: Eye, label: "Preview" },
+              ...(isOrgProject ? [{ id: "collaborators" as PanelType, icon: Users, label: "Collaborators" }] : []),
               { id: "settings" as PanelType, icon: Settings, label: "Settings" },
             ].map(({ id, icon: Icon, label }) => (
               <button
@@ -992,74 +1232,179 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           </div>
         )}
 
-        {/* Mobile slide-in sidebar drawer */}
+        {/* ── Mobile panel overlay ─────────────────────────────────────────── */}
+        {/* Lightweight absolute overlay — only appears on mobile when not in editor mode.
+            The editor underneath stays mounted (no unmount/remount cost). */}
         <AnimatePresence>
-          {isMobileSidebarOpen && project?.systemType !== 'portfolio' && (
+          {mobileTab !== "editor" && project?.systemType !== 'portfolio' && (
             <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-0 left-0 h-full w-72 bg-[#161B22] border-r border-[#21262D] z-40 flex flex-col md:hidden shadow-2xl"
+              key={mobileTab}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+              className="md:hidden absolute inset-0 z-20 bg-[#0D1117] flex flex-col overflow-hidden"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[#21262D]">
-                <span className="text-xs font-bold uppercase tracking-widest text-white/40">Files & Tools</span>
-                <button
-                  onClick={() => setIsMobileSidebarOpen(false)}
-                  className="p-1 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              {/* Tab selector */}
-              <div className="flex border-b border-white/5">
-                {[
-                  { panel: "explorer" as PanelType, icon: Files, label: "Files" },
-                  { panel: "git" as PanelType, icon: GitBranch, label: "Git" },
-                  { panel: "terminal" as PanelType, icon: Terminal, label: "Terminal" },
-                  { panel: "settings" as PanelType, icon: Settings, label: "Settings" },
-                ].map(({ panel, icon: Icon, label }) => (
-                  <button
-                    key={panel}
-                    onClick={() => { setActivePanel(panel); setIsMobileSidebarOpen(false); }}
-                    className={cn(
-                      "flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors",
-                      activePanel === panel ? "text-blue-400 border-b-2 border-blue-500" : "text-white/30 hover:text-white/60"
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {activePanel === "explorer" && (
+              {/* Files */}
+              {mobileTab === "files" && (
+                <div className="h-full overflow-y-auto">
                   <Sidebar
                     files={files}
                     activeFileId={activeFileId}
-                    onSelectFile={(id) => { openFileInTab(id); setIsMobileSidebarOpen(false); }}
+                    onSelectFile={(id) => { openFileInTab(id); setMobileTab("editor"); }}
                     projectId={projectId}
                     readOnly={isReadOnly}
                   />
-                )}
-                {activePanel === "git" && <GitPanel projectId={projectId} files={files} />}
-                {activePanel === "settings" && (
+                </div>
+              )}
+
+              {/* Preview */}
+              {mobileTab === "preview" && (
+                <div className="h-full flex flex-col">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-[#161B22] border-b border-[#21262D] flex-shrink-0">
+                    <Globe className="w-3.5 h-3.5 text-green-400/60" />
+                    <span className="text-xs text-white/40 font-bold uppercase tracking-widest flex-1">Live Preview</span>
+                    {project?.entryFile && (
+                      <span className="text-[10px] text-white/20 font-mono">{project.entryFile}</span>
+                    )}
+                    <button
+                      onClick={() => setPreviewSaveKey(k => k + 1)}
+                      className="p-1.5 rounded text-white/30 hover:text-white/70 transition-colors"
+                      title="Refresh"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                    {(project?.liveUrl || project?.deployUrl) && (
+                      <button
+                        onClick={() => window.open(project?.liveUrl || project?.deployUrl, "_blank")}
+                        className="p-1.5 rounded text-white/30 hover:text-white/70 transition-colors"
+                        title="Open in new tab"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <PreviewPanel projectId={projectId} files={files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
+                  </div>
+                </div>
+              )}
+
+              {/* Git */}
+              {mobileTab === "git" && (
+                <div className="h-full overflow-y-auto">
+                  <GitPanel projectId={projectId} files={files} />
+                </div>
+              )}
+
+              {/* Terminal — full-height on mobile */}
+              {mobileTab === "terminal" && (
+                <div className="h-full flex flex-col bg-[#0D1117]">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-[#21262D] bg-[#161B22] flex-shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 text-white/40">
+                        <Terminal className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">DevOS Terminal</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className={cn("w-1.5 h-1.5 rounded-full", (isRunning || isExecRunning) ? "bg-yellow-500 animate-pulse" : "bg-green-500")} />
+                        <span className="text-[9px] text-white/20 font-bold uppercase">
+                          {(isRunning || isExecRunning) ? "Running" : "Ready"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setRunOutput([]); setCmdHistory([]); setHistoryIdx(-1); setTerminalInitialized(false); }}
+                      className="text-[9px] font-bold uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors px-2 py-1 rounded hover:bg-white/5"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div
+                    className="flex-1 px-4 py-3 font-mono text-[11px] overflow-y-auto custom-scrollbar"
+                    onClick={() => terminalInputRef.current?.focus()}
+                  >
+                    <div className="space-y-1.5">
+                      {runOutput.length === 0 && (
+                        <div className="text-white/20 italic text-[10px]">DevOS Terminal — Type 'help' for available commands.</div>
+                      )}
+                      {runOutput.map((log, i) => (
+                        <div key={i} className="flex gap-3">
+                          <span className="text-white/10 select-none shrink-0 tabular-nums">{log.timestamp}</span>
+                          <span className={cn(
+                            "break-all leading-relaxed whitespace-pre-wrap",
+                            log.type === "system" && "text-green-400/80 font-bold",
+                            log.type === "info" && "text-blue-400",
+                            log.type === "success" && "text-green-400",
+                            log.type === "error" && "text-red-400",
+                            log.type === "warning" && "text-yellow-400",
+                            log.type === "output" && "text-white/80"
+                          )}>
+                            {log.message}
+                          </span>
+                        </div>
+                      ))}
+                      {(isRunning || isExecRunning) && (
+                        <div className="flex gap-3 animate-pulse">
+                          <span className="text-white/10 select-none shrink-0">--:--:--</span>
+                          <div className="flex items-center gap-2 text-white/40 italic">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Running...
+                          </div>
+                        </div>
+                      )}
+                      <div ref={terminalEndRef} />
+                    </div>
+                  </div>
+                  <form
+                    onSubmit={handleTerminalSubmit}
+                    className="flex items-center gap-2 px-4 py-2 border-t border-[#21262D] bg-[#0D1117] flex-shrink-0"
+                  >
+                    <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0 whitespace-nowrap">
+                      devos ▶ {project?.name || "project"} $
+                    </span>
+                    <input
+                      ref={terminalInputRef}
+                      type="text"
+                      value={terminalInput}
+                      onChange={e => setTerminalInput(e.target.value)}
+                      onKeyDown={handleTerminalKeyDown}
+                      placeholder="Type a command…"
+                      className="flex-1 bg-transparent text-white/80 font-mono text-[11px] outline-none placeholder-white/15"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </form>
+                </div>
+              )}
+
+              {/* Settings */}
+              {mobileTab === "settings" && (
+                <div className="h-full overflow-y-auto">
                   <SettingsPanel projectId={projectId} project={project} files={files} onDelete={onBack} />
-                )}
-                {activePanel === "terminal" && (
-                  <p className="p-4 text-xs text-white/30">Terminal is shown below the editor.</p>
-                )}
-              </div>
+                </div>
+              )}
+
+              {/* Collaborators (org projects only) */}
+              {mobileTab === "collaborators" && isOrgProject && (
+                <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} presenceUsers={presenceUsers} activityItems={activityItems} />
+              )}
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Main Content Area: Split Screen */}
-        <div className="flex-1 flex overflow-hidden">
+        <div
+          className="flex-1 flex overflow-hidden"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {/* Left Pane: Explorer + Editor + Terminal */}
           <div className="flex-1 flex flex-col border-r border-[#21262D] overflow-hidden">
             <div className="flex-1 flex overflow-hidden">
-              {/* Explorer Panel — hidden on mobile (use drawer), hidden in focus mode */}
+              {/* Explorer Panel — desktop only, hidden in focus mode */}
               {project?.systemType !== 'portfolio' && activePanel === "explorer" && !isFocusMode && (
                 <div className="hidden md:flex">
                   <Sidebar
@@ -1091,6 +1436,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 </div>
               )}
 
+              {/* Collaborators Panel — org projects only, hidden on mobile */}
+              {project?.systemType !== 'portfolio' && activePanel === "collaborators" && !isFocusMode && isOrgProject && (
+                <div className="hidden md:flex w-72 border-r border-white/5 flex-col overflow-y-auto">
+                  <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} presenceUsers={presenceUsers} activityItems={activityItems} />
+                </div>
+              )}
+
               {/* Editor Area */}
               <main
                 className="flex-1 relative bg-[#0D1117] flex flex-col overflow-hidden"
@@ -1103,6 +1455,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       const file = files.find(f => f.id === fileId);
                       if (!file) return null;
                       const isActive = fileId === activeFileId;
+                      // Presence: other users with this file open
+                      const watchers = presenceUsers.filter(u => u.userId !== user?.uid && u.currentFile === file.name);
                       return (
                         <div
                           key={fileId}
@@ -1115,6 +1469,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                           onClick={() => setActiveFileId(fileId)}
                         >
                           <span className="truncate max-w-[120px]">{file.name}</span>
+                          {/* Per-tab presence dot */}
+                          {isOrgProject && watchers.length > 0 && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"
+                              title={`${watchers.map(w => w.name).join(", ")} ${watchers.length === 1 ? "is" : "are"} viewing`}
+                            />
+                          )}
                           {!isReadOnly && (
                             <>
                               {!isSaved && fileId === activeFileId && (
@@ -1134,6 +1495,20 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     })}
                   </div>
                 )}
+
+                {/* "X is editing this file" banner (org projects only) */}
+                {isOrgProject && (() => {
+                  const editing = presenceUsers.filter(u => u.userId !== user?.uid && u.currentFile === activeFile?.name);
+                  if (!editing.length || !activeFile) return null;
+                  const names = editing.slice(0, 2).map(u => u.name).join(", ");
+                  const extra = editing.length > 2 ? ` +${editing.length - 2} more` : "";
+                  return (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-yellow-500/8 border-b border-yellow-500/15 text-yellow-300/70 text-[11px] flex-shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse flex-shrink-0" />
+                      <span>{names}{extra} {editing.length === 1 ? "is" : "are"} viewing this file</span>
+                    </div>
+                  );
+                })()}
 
                 <div className="flex-1 relative">
                   {project?.systemType === 'portfolio' ? (
@@ -1380,7 +1755,161 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         projectName={project?.name || "Project"} 
         projectId={projectId}
         files={files}
+        onDeployed={isOrgProject && user ? async () => {
+          try {
+            await addDoc(collection(db, "projects", projectId, "activity"), {
+              userId: user.uid,
+              action: "deploy",
+              file: null,
+              timestamp: serverTimestamp(),
+            });
+          } catch { /* best-effort */ }
+        } : undefined}
       />
+    </div>
+  );
+}
+
+// ── Collaborators Panel ───────────────────────────────────────────────────────
+
+function roleIcon(role: OrgMemberRole) {
+  if (role === "admin") return <Crown className="w-3 h-3 text-yellow-400" />;
+  if (role === "moderator") return <Shield className="w-3 h-3 text-blue-400" />;
+  return <UserCheck className="w-3 h-3 text-white/30" />;
+}
+
+function CollaboratorsPanel({
+  orgMembers,
+  loading,
+  currentUserId,
+  ownerId,
+  presenceUsers,
+  activityItems,
+}: {
+  orgMembers: OrgMember[];
+  loading: boolean;
+  currentUserId?: string;
+  ownerId?: string;
+  presenceUsers: PresenceUser[];
+  activityItems: ActivityItem[];
+}) {
+  const isOnline = (userId: string) => presenceUsers.some(p => p.userId === userId);
+  const currentFile = (userId: string) => presenceUsers.find(p => p.userId === userId)?.currentFile ?? null;
+
+  const formatRelative = (ts: any): string => {
+    if (!ts?.toMillis) return "";
+    const secs = Math.floor((Date.now() - ts.toMillis()) / 1000);
+    if (secs < 60) return "just now";
+    if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+    if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+    return `${Math.floor(secs / 86400)}d ago`;
+  };
+
+  const actionLabel = (item: ActivityItem) => {
+    const actor = orgMembers.find(m => m.userId === item.userId);
+    const name = actor ? `@${actor.username ?? actor.userId}` : "Someone";
+    if (item.action === "save") return `${name} saved ${item.file ?? "a file"}`;
+    if (item.action === "deploy") return `${name} deployed the project`;
+    return `${name} edited ${item.file ?? "a file"}`;
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-[#161B22]">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-[#21262D] flex items-center gap-2 flex-shrink-0">
+        <Users className="w-3.5 h-3.5 text-blue-400" />
+        <span className="text-xs font-bold uppercase tracking-widest text-white/40">Team</span>
+        {!loading && (
+          <span className="ml-auto text-[10px] text-white/25 font-mono">{orgMembers.length}</span>
+        )}
+        {presenceUsers.length > 0 && (
+          <span className="flex items-center gap-1 text-[10px] text-green-400/70 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+            {presenceUsers.length} online
+          </span>
+        )}
+      </div>
+
+      {/* Members list */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-3 space-y-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+            </div>
+          ) : orgMembers.length === 0 ? (
+            <p className="text-xs text-white/25 text-center py-8">No members found.</p>
+          ) : (
+            orgMembers.map((m) => {
+              const online = isOnline(m.userId);
+              const file = currentFile(m.userId);
+              return (
+                <div
+                  key={m.userId}
+                  className={cn(
+                    "flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors",
+                    m.userId === currentUserId ? "bg-blue-600/10" : "hover:bg-white/[0.04]"
+                  )}
+                >
+                  {/* Avatar with online dot */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/50 uppercase">
+                      {(m.username ?? m.userId).charAt(0)}
+                    </div>
+                    {online && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400 ring-2 ring-[#161B22]" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-white truncate">
+                      @{m.username ?? m.userId}
+                      {m.userId === ownerId && (
+                        <span className="ml-1.5 text-[9px] text-yellow-400/70 font-bold uppercase">owner</span>
+                      )}
+                      {m.userId === currentUserId && (
+                        <span className="ml-1.5 text-[9px] text-blue-400/70 font-bold uppercase">you</span>
+                      )}
+                    </p>
+                    {online && file && (
+                      <p className="text-[10px] text-white/30 truncate">editing {file}</p>
+                    )}
+                    {online && !file && (
+                      <p className="text-[10px] text-green-400/50">● Active now</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0" title={m.role}>
+                    {roleIcon(m.role as OrgMemberRole)}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Activity stream */}
+        {activityItems.length > 0 && (
+          <div className="border-t border-[#21262D] mt-1">
+            <div className="flex items-center gap-2 px-4 py-2.5">
+              <Activity className="w-3 h-3 text-white/25" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/25">Activity</span>
+            </div>
+            <div className="px-3 pb-3 space-y-1">
+              {activityItems.slice(0, 10).map((item) => (
+                <div key={item.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.03] transition-colors">
+                  <div className={cn(
+                    "w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0",
+                    item.action === "deploy" ? "bg-blue-400" : item.action === "save" ? "bg-green-400/60" : "bg-white/20"
+                  )} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-white/50 leading-snug truncate">{actionLabel(item)}</p>
+                    <p className="text-[10px] text-white/20">{formatRelative(item.timestamp)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

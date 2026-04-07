@@ -15,11 +15,14 @@ import {
   Send,
   Heart,
   MessageCircle,
-  Repeat2,
-  MoreHorizontal,
   Trash2,
   ShieldAlert,
   Code2,
+  Settings,
+  ShieldCheck,
+  UserMinus,
+  Link2,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -40,6 +43,8 @@ import {
   joinCommunity,
   leaveCommunity,
   removeMember,
+  updateMemberRole,
+  updateCommunity,
   subscribeChatMessages,
   sendChatMessage,
   deleteChatMessage,
@@ -52,7 +57,7 @@ import {
 } from "../lib/feedService";
 import { useSEO } from "../hooks/useSEO";
 
-type CommunityTab = "posts" | "members" | "chat";
+type CommunityTab = "posts" | "members" | "chat" | "settings";
 
 // ─── Mini post composer ───────────────────────────────────────────────────────
 interface ComposerProps {
@@ -99,9 +104,9 @@ function PostComposer({ communityId, communityName, communitySlug, userId, usern
   };
 
   return (
-    <div className="bg-[#111827] border border-white/10 rounded-2xl p-4 mb-4">
+    <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 mb-4 backdrop-blur-sm">
       <div className="flex gap-3">
-        <img src={resolveAvatar(avatarUrl)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5" />
+        <img src={resolveAvatar(avatarUrl)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5 ring-2 ring-white/10" />
         <div className="flex-1">
           <textarea
             ref={textareaRef}
@@ -110,18 +115,18 @@ function PostComposer({ communityId, communityName, communitySlug, userId, usern
             placeholder="Share something with this community…"
             rows={2}
             maxLength={1000}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-blue-500 transition-all placeholder-white/30"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-indigo-500/60 focus:bg-white/[0.07] transition-all placeholder-white/25"
           />
           <div className="flex items-center justify-end mt-2 gap-2">
-            <span className="text-[11px] text-white/25">{text.length}/1000</span>
+            <span className="text-[11px] text-white/20">{text.length}/1000</span>
             <button
               onClick={handlePost}
               disabled={posting || !text.trim()}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all",
                 posting || !text.trim()
-                  ? "bg-white/5 text-white/30 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
+                  ? "bg-white/5 text-white/25 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-500 text-white active:scale-95 shadow-md shadow-indigo-500/20"
               )}
             >
               {posting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
@@ -180,47 +185,48 @@ function PostItem({ post, currentUserId, isAdmin, onDeleted }: PostItemProps) {
   };
 
   return (
-    <div className="bg-[#111827] border border-white/5 hover:border-white/10 rounded-2xl p-4 transition-all">
+    <div className="bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.14] rounded-2xl p-4 transition-all backdrop-blur-sm">
       <div className="flex items-start gap-3">
         <Link to={`/u/${post.username}`}>
-          <img src={resolveAvatar(post.avatarUrl)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+          <img src={resolveAvatar(post.avatarUrl)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-white/10" />
         </Link>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-2 min-w-0">
-              <Link to={`/u/${post.username}`} className="text-sm font-bold text-white hover:text-blue-400 transition-colors truncate">
+              <Link to={`/u/${post.username}`} className="text-sm font-bold text-white hover:text-indigo-400 transition-colors truncate">
                 {post.displayName || post.username}
               </Link>
-              <span className="text-xs text-white/30 shrink-0">{formatRelativeTime(post.createdAt)}</span>
+              <span className="text-[11px] text-white/25 shrink-0">·</span>
+              <span className="text-[11px] text-white/25 shrink-0">{formatRelativeTime(post.createdAt)}</span>
             </div>
             {canDelete && (
-              <button onClick={() => setConfirmDelete(true)} className="text-white/20 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-500/10 shrink-0">
+              <button onClick={() => setConfirmDelete(true)} className="text-white/20 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10 shrink-0">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          <p className="text-sm text-white/80 leading-relaxed mb-3 whitespace-pre-wrap break-words">{post.content}</p>
+          <p className="text-sm text-white/75 leading-relaxed mb-3 whitespace-pre-wrap break-words">{post.content}</p>
 
           {post.projectName && (
-            <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-xs text-white/50 w-fit">
+            <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300 w-fit">
               <Code2 className="w-3.5 h-3.5" />
               {post.projectName}
             </div>
           )}
 
-          <div className="flex items-center gap-4 text-white/30 text-xs">
+          <div className="flex items-center gap-4 text-white/30 text-xs pt-2.5 border-t border-white/[0.05]">
             <button
               onClick={handleLike}
               disabled={!currentUserId}
-              className={cn("flex items-center gap-1.5 transition-colors hover:text-red-400", liked && "text-red-400")}
+              className={cn("flex items-center gap-1.5 transition-colors hover:text-rose-400 disabled:cursor-not-allowed", liked && "text-rose-400")}
             >
               <Heart className={cn("w-3.5 h-3.5", liked && "fill-current")} />
-              {likeCount > 0 && likeCount}
+              {likeCount > 0 && <span>{likeCount}</span>}
             </button>
             <div className="flex items-center gap-1.5">
               <MessageCircle className="w-3.5 h-3.5" />
-              {(post.commentsCount ?? 0) > 0 && post.commentsCount}
+              {(post.commentsCount ?? 0) > 0 && <span>{post.commentsCount}</span>}
             </div>
           </div>
         </div>
@@ -247,13 +253,15 @@ interface MemberRowProps {
   currentUserRole?: CommunityMemberRole | null;
   currentUserId?: string;
   onRemoved: (userId: string) => void;
+  onRoleChanged: (userId: string, newRole: CommunityMemberRole) => void;
 }
 
 type CommunityMemberRole = "member" | "moderator" | "admin";
 
-function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemoved }: MemberRowProps) {
+function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemoved, onRoleChanged }: MemberRowProps) {
   const [userData, setUserData] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [updatingRole, setUpdatingRole] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "users", member.userId), (snap) => {
@@ -267,6 +275,16 @@ function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemo
     currentUserId !== member.userId &&
     member.role !== "admin";
 
+  const canPromote =
+    currentUserRole === "admin" &&
+    currentUserId !== member.userId &&
+    member.role === "member";
+
+  const canDemote =
+    currentUserRole === "admin" &&
+    currentUserId !== member.userId &&
+    member.role === "moderator";
+
   const handleRemove = async () => {
     setRemoving(true);
     try {
@@ -277,6 +295,19 @@ function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemo
       toast.error("Failed to remove member");
     } finally {
       setRemoving(false);
+    }
+  };
+
+  const handleRoleChange = async (newRole: CommunityMemberRole) => {
+    setUpdatingRole(true);
+    try {
+      await updateMemberRole(communityId, member.userId, newRole);
+      onRoleChanged(member.userId, newRole);
+      toast.success(newRole === "moderator" ? "Promoted to moderator" : "Demoted to member");
+    } catch {
+      toast.error("Failed to update role");
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
@@ -303,10 +334,31 @@ function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemo
         <span className={cn("text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border", roleColors[member.role])}>
           {member.role}
         </span>
+        {canPromote && (
+          <button
+            onClick={() => handleRoleChange("moderator")}
+            disabled={updatingRole}
+            title="Promote to moderator"
+            className="text-white/20 hover:text-blue-400 transition-colors p-1.5 rounded-lg hover:bg-blue-500/10"
+          >
+            {updatingRole ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+          </button>
+        )}
+        {canDemote && (
+          <button
+            onClick={() => handleRoleChange("member")}
+            disabled={updatingRole}
+            title="Demote to member"
+            className="text-white/20 hover:text-orange-400 transition-colors p-1.5 rounded-lg hover:bg-orange-500/10"
+          >
+            {updatingRole ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserMinus className="w-3.5 h-3.5" />}
+          </button>
+        )}
         {canRemove && (
           <button
             onClick={handleRemove}
             disabled={removing}
+            title="Remove member"
             className="text-white/20 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
           >
             {removing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldAlert className="w-3.5 h-3.5" />}
@@ -335,6 +387,16 @@ export default function CommunityPage() {
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  // Settings form state
+  const [settingsName, setSettingsName] = useState("");
+  const [settingsDescription, setSettingsDescription] = useState("");
+  const [settingsCategory, setSettingsCategory] = useState("");
+  const [settingsAvatar, setSettingsAvatar] = useState("");
+  const [settingsBanner, setSettingsBanner] = useState("");
+  const [settingsIsPublic, setSettingsIsPublic] = useState(true);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useSEO({
     title: community ? `${community.name} — DevOS` : "Community — DevOS",
@@ -399,6 +461,39 @@ export default function CommunityPage() {
     return unsub;
   }, [user]);
 
+  // Sync settings form when community loads or settings tab is opened
+  useEffect(() => {
+    if (!community || activeTab !== "settings") return;
+    setSettingsName(community.name);
+    setSettingsDescription(community.description);
+    setSettingsCategory(community.category ?? "");
+    setSettingsAvatar(community.avatar ?? "");
+    setSettingsBanner(community.banner ?? "");
+    setSettingsIsPublic(community.isPublic);
+  }, [community, activeTab]);
+
+  const handleSaveSettings = async () => {
+    if (!community) return;
+    const trimmedName = settingsName.trim();
+    if (!trimmedName) { toast.error("Community name is required"); return; }
+    setSavingSettings(true);
+    try {
+      await updateCommunity(community.id, {
+        name: trimmedName,
+        description: settingsDescription.trim(),
+        category: settingsCategory.trim() || undefined,
+        avatar: settingsAvatar.trim(),
+        banner: settingsBanner.trim(),
+        isPublic: settingsIsPublic,
+      });
+      toast.success("Community settings saved!");
+    } catch {
+      toast.error("Failed to save settings");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   const handleJoin = async () => {
     if (!user || !community) return;
     setJoining(true);
@@ -410,6 +505,14 @@ export default function CommunityPage() {
     } finally {
       setJoining(false);
     }
+  };
+
+  const copyCommunityLink = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/community/${slug}`).then(() => {
+      setLinkCopied(true);
+      toast.success("Link copied!");
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
   };
 
   const handleLeave = async () => {
@@ -449,10 +552,13 @@ export default function CommunityPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <div className="min-h-screen bg-[#0a0a0f] flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+            <p className="text-white/30 text-sm">Loading community…</p>
+          </div>
         </div>
       </div>
     );
@@ -460,72 +566,89 @@ export default function CommunityPage() {
 
   if (!community) return null;
 
-  const tabs: { id: CommunityTab; label: string; count?: number }[] = [
+  const tabs: { id: CommunityTab; label: string; count?: number; icon?: React.ReactNode }[] = [
     { id: "posts", label: "Posts", count: posts.length },
     { id: "chat", label: "Chat", count: undefined },
     { id: "members", label: "Members", count: community.memberCount },
+    ...(memberRole === "admin" ? [{ id: "settings" as CommunityTab, label: "Settings", icon: <Settings className="w-3.5 h-3.5" /> }] : []),
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
       <Navbar />
 
-      {/* Banner */}
-      <div className="relative h-36 md:h-48 bg-gradient-to-br from-blue-600/30 via-purple-600/20 to-transparent overflow-hidden">
+      {/* Hero banner */}
+      <div className="relative h-40 md:h-52 overflow-hidden bg-gradient-to-br from-indigo-900/40 via-purple-900/20 to-transparent">
         {community.banner ? (
-          <img src={community.banner} alt="" className="w-full h-full object-cover opacity-40" />
+          <img src={community.banner} alt="" className="w-full h-full object-cover opacity-30" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 via-indigo-900/20 to-transparent" />
+          <>
+            <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-indigo-600/10 blur-3xl" />
+            <div className="absolute top-10 left-1/4 w-48 h-48 rounded-full bg-purple-600/10 blur-2xl" />
+          </>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/20 to-transparent" />
       </div>
 
-      <div className="max-w-4xl mx-auto w-full px-4 pb-20 md:pb-8">
-        {/* Community header card */}
-        <div className="relative -mt-12 mb-6 flex flex-col sm:flex-row sm:items-end gap-4">
+      <div className="max-w-4xl mx-auto w-full px-4 pb-20 md:pb-8 -mt-14 relative z-10">
+        {/* Community header */}
+        <div className="relative mb-6 flex flex-col sm:flex-row sm:items-end gap-4">
           {/* Avatar */}
-          <div className="w-20 h-20 rounded-2xl bg-[#111827] border-4 border-[#0a0a0a] flex items-center justify-center overflow-hidden shadow-xl shrink-0">
+          <div className="w-22 h-22 w-[88px] h-[88px] rounded-2xl bg-[#111827] border-4 border-[#0a0a0f] flex items-center justify-center overflow-hidden shadow-2xl shrink-0 ring-1 ring-white/10">
             {community.avatar ? (
               <img src={community.avatar} alt={community.name} className="w-full h-full object-cover" />
             ) : (
-              <Hash className="w-9 h-9 text-blue-400" />
+              <div className="w-full h-full bg-gradient-to-br from-indigo-600/30 to-purple-600/30 flex items-center justify-center">
+                <Hash className="w-10 h-10 text-indigo-400" />
+              </div>
             )}
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl font-black text-white truncate">{community.name}</h1>
-                  {!community.isPublic && <Lock className="w-4 h-4 text-white/30 shrink-0" />}
+          <div className="flex-1 min-w-0 pb-1">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2.5 flex-wrap mb-1">
+                  <h1 className="text-2xl font-black text-white tracking-tight">{community.name}</h1>
+                  {!community.isPublic
+                    ? <span className="flex items-center gap-1 text-[11px] text-white/40 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full"><Lock className="w-3 h-3" />Private</span>
+                    : <span className="flex items-center gap-1 text-[11px] text-indigo-400/70 bg-indigo-500/5 border border-indigo-500/20 px-2 py-0.5 rounded-full"><Globe className="w-3 h-3" />Public</span>
+                  }
                 </div>
-                <div className="flex items-center gap-3 text-sm text-white/40 mt-0.5 flex-wrap">
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5" />
-                    {community.memberCount.toLocaleString()} members
+                <div className="flex items-center gap-3 text-sm text-white/40 flex-wrap">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-indigo-400/60" />
+                    <span className="font-semibold text-white/60">{community.memberCount.toLocaleString()}</span> members
                   </span>
                   {community.category && (
-                    <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold">
+                    <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-semibold text-indigo-400 capitalize">
                       {community.category}
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="sm:ml-auto flex items-center gap-2">
-                <Link to="/communities" className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-2 rounded-xl hover:bg-white/5">
+              <div className="flex items-center gap-2 shrink-0">
+                <Link to="/communities" className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10">
                   <ArrowLeft className="w-3.5 h-3.5" />
                   Back
                 </Link>
+                {/* Copy link */}
+                <button
+                  onClick={copyCommunityLink}
+                  title="Copy community link"
+                  className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10"
+                >
+                  {linkCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Link2 className="w-3.5 h-3.5" />}
+                </button>
                 {user && (
                   <button
                     onClick={isMember ? handleLeave : handleJoin}
                     disabled={joining}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all",
+                      "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all",
                       isMember
-                        ? "bg-white/5 text-white/60 hover:bg-red-500/10 hover:text-red-400 border border-white/10"
-                        : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
+                        ? "bg-white/5 text-white/50 hover:bg-red-500/10 hover:text-red-400 border border-white/10 hover:border-red-500/20"
+                        : "bg-indigo-600 hover:bg-indigo-500 text-white active:scale-95 shadow-lg shadow-indigo-500/20 border border-indigo-500/30"
                     )}
                   >
                     {joining ? (
@@ -543,11 +666,11 @@ export default function CommunityPage() {
         </div>
 
         {community.description && (
-          <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-2xl">{community.description}</p>
+          <p className="text-white/45 text-sm leading-relaxed mb-6 max-w-2xl">{community.description}</p>
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-white/10 mb-6">
+        <div className="flex gap-1 border-b border-white/[0.07] mb-6">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -555,13 +678,14 @@ export default function CommunityPage() {
               className={cn(
                 "flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-all border-b-2 -mb-px",
                 activeTab === tab.id
-                  ? "text-blue-400 border-blue-500"
-                  : "text-white/40 border-transparent hover:text-white/70"
+                  ? "text-indigo-400 border-indigo-500"
+                  : "text-white/35 border-transparent hover:text-white/60"
               )}
             >
+              {tab.icon && <span className="shrink-0">{tab.icon}</span>}
               {tab.label}
               {tab.count !== undefined && tab.count > 0 && (
-                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold", activeTab === tab.id ? "bg-blue-500/20 text-blue-400" : "bg-white/5 text-white/30")}>
+                <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold", activeTab === tab.id ? "bg-indigo-500/20 text-indigo-400" : "bg-white/5 text-white/25")}>
                   {tab.count}
                 </span>
               )}
@@ -587,25 +711,27 @@ export default function CommunityPage() {
                 />
               )}
               {!user && (
-                <div className="bg-[#111827] border border-white/5 rounded-2xl p-5 mb-4 text-center">
+                <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5 mb-4 text-center">
                   <p className="text-white/40 text-sm mb-3">Sign in to post in this community</p>
-                  <Link to="/" className="text-blue-400 text-sm font-semibold hover:text-blue-300 transition-colors">Sign in →</Link>
+                  <Link to="/" className="text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors">Sign in →</Link>
                 </div>
               )}
               {user && !isMember && (
-                <div className="bg-[#111827] border border-white/5 rounded-2xl p-5 mb-4 text-center">
+                <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5 mb-4 text-center">
                   <p className="text-white/40 text-sm mb-3">Join this community to post</p>
-                  <button onClick={handleJoin} disabled={joining} className="text-blue-400 text-sm font-semibold hover:text-blue-300 transition-colors">
+                  <button onClick={handleJoin} disabled={joining} className="text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors">
                     Join Community →
                   </button>
                 </div>
               )}
 
               {posts.length === 0 ? (
-                <div className="text-center py-16">
-                  <MessageCircle className="w-10 h-10 text-white/10 mx-auto mb-3" />
+                <div className="text-center py-20">
+                  <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mx-auto mb-4">
+                    <MessageCircle className="w-7 h-7 text-white/15" />
+                  </div>
                   <p className="text-white/40 font-semibold mb-1">No posts yet</p>
-                  <p className="text-white/25 text-sm">Be the first to share something!</p>
+                  <p className="text-white/20 text-sm">Be the first to share something!</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -626,12 +752,14 @@ export default function CommunityPage() {
           {activeTab === "members" && (
             <motion.div key="members" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               {members.length === 0 ? (
-                <div className="text-center py-16">
-                  <Users className="w-10 h-10 text-white/10 mx-auto mb-3" />
+                <div className="text-center py-20">
+                  <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-7 h-7 text-white/15" />
+                  </div>
                   <p className="text-white/40 font-semibold">No members loaded yet</p>
                 </div>
               ) : (
-                <div className="bg-[#111827] border border-white/10 rounded-2xl px-4 divide-y divide-white/5">
+                <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl px-4 divide-y divide-white/[0.05] backdrop-blur-sm">
                   {members.map((m) => (
                     <MemberRow
                       key={m.userId}
@@ -640,6 +768,9 @@ export default function CommunityPage() {
                       currentUserRole={memberRole}
                       currentUserId={user?.uid}
                       onRemoved={(id) => setMembers((prev) => prev.filter((x) => x.userId !== id))}
+                      onRoleChanged={(id, newRole) =>
+                        setMembers((prev) => prev.map((x) => x.userId === id ? { ...x, role: newRole } : x))
+                      }
                     />
                   ))}
                 </div>
@@ -648,58 +779,108 @@ export default function CommunityPage() {
           )}
 
           {activeTab === "chat" && (
-            <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col h-[520px]">
+            <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col h-[540px]">
               {!isMember ? (
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
+                    <MessageCircle className="w-6 h-6 text-white/20" />
+                  </div>
                   <p className="text-white/40 text-sm">Join the community to chat.</p>
+                  {user && (
+                    <button onClick={handleJoin} disabled={joining} className="text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors">
+                      Join Community →
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
-                  {/* Messages */}
-                  <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3 min-h-0">
+                  {/* Messages area */}
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 min-h-0 px-1">
                     {chatMessages.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-full py-12">
-                        <MessageCircle className="w-10 h-10 text-white/15 mb-3" />
+                      <div className="flex flex-col items-center justify-center h-full gap-3">
+                        <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
+                          <MessageCircle className="w-6 h-6 text-white/15" />
+                        </div>
                         <p className="text-white/30 text-sm">No messages yet. Say hello! 👋</p>
                       </div>
                     ) : (
-                      chatMessages.map((msg) => (
-                        <div key={msg.id} className="flex items-start gap-3 group">
-                          <img
-                            src={resolveAvatar(msg.avatarUrl)}
-                            alt={msg.displayName || msg.username}
-                            className="w-7 h-7 rounded-full object-cover flex-shrink-0 mt-0.5"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline gap-1.5 flex-wrap">
-                              <span className="text-xs font-bold text-white">{msg.displayName || msg.username}</span>
-                              <span className="text-[10px] text-white/30 font-mono">@{msg.username}</span>
-                              {msg.createdAt && (
-                                <span className="text-[10px] text-white/20">
-                                  {new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                </span>
+                      chatMessages.map((msg) => {
+                        const isOwn = msg.userId === user?.uid;
+                        return (
+                          <div
+                            key={msg.id}
+                            className={cn("flex items-end gap-2 group", isOwn ? "flex-row-reverse" : "flex-row")}
+                          >
+                            {/* Avatar — others only */}
+                            {!isOwn && (
+                              <img
+                                src={resolveAvatar(msg.avatarUrl)}
+                                alt={msg.displayName || msg.username}
+                                className="w-7 h-7 rounded-full object-cover flex-shrink-0 mb-0.5"
+                                referrerPolicy="no-referrer"
+                              />
+                            )}
+
+                            <div className={cn("max-w-[72%] flex flex-col gap-0.5", isOwn ? "items-end" : "items-start")}>
+                              {/* Sender name — others only */}
+                              {!isOwn && (
+                                <div className="flex items-baseline gap-1.5 px-1">
+                                  <span className="text-[11px] font-bold text-white/60">{msg.displayName || msg.username}</span>
+                                  {msg.createdAt && (
+                                    <span className="text-[10px] text-white/25">
+                                      {new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                    </span>
+                                  )}
+                                </div>
                               )}
+
+                              <div className={cn("flex items-end gap-1.5", isOwn ? "flex-row-reverse" : "flex-row")}>
+                                {/* Bubble */}
+                                <div className={cn(
+                                  "px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
+                                  isOwn
+                                    ? "bg-indigo-600 text-white rounded-br-sm shadow-md shadow-indigo-500/20"
+                                    : "bg-white/[0.07] text-white/85 border border-white/[0.08] rounded-bl-sm"
+                                )}>
+                                  {msg.text}
+                                </div>
+
+                                {/* Meta (time + delete) — shown on hover */}
+                                <div className={cn(
+                                  "flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0",
+                                  isOwn ? "items-end" : "items-start"
+                                )}>
+                                  {isOwn && msg.createdAt && (
+                                    <span className="text-[10px] text-white/25">
+                                      {new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                    </span>
+                                  )}
+                                  {(user?.uid === msg.userId || memberRole === "admin" || memberRole === "moderator") && (
+                                    <button
+                                      onClick={() => community?.id && deleteChatMessage(community.id, msg.id)}
+                                      className="p-1 rounded-lg hover:bg-red-500/10 text-red-400/50 hover:text-red-400 transition-all"
+                                      title="Delete message"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <p className="text-sm text-white/80 mt-0.5 leading-relaxed break-words">{msg.text}</p>
                           </div>
-                          {(user?.uid === msg.userId || memberRole === "admin" || memberRole === "moderator") && (
-                            <button
-                              onClick={() => community?.id && deleteChatMessage(community.id, msg.id)}
-                              className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 text-red-400/60 hover:text-red-400 transition-all text-xs shrink-0"
-                              title="Delete message"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                     <div ref={chatEndRef} />
                   </div>
 
-                  {/* Input */}
-                  <div className="flex items-center gap-2 pt-3 border-t border-white/5">
+                  {/* Chat input */}
+                  <div className="flex items-center gap-2 pt-3 border-t border-white/[0.07]">
+                    <img
+                      src={resolveAvatar(userSettings?.avatarUrl)}
+                      alt=""
+                      className="w-8 h-8 rounded-full object-cover shrink-0 ring-2 ring-white/10"
+                    />
                     <input
                       type="text"
                       value={chatText}
@@ -707,18 +888,125 @@ export default function CommunityPage() {
                       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
                       placeholder="Send a message…"
                       maxLength={2000}
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                      className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/40 focus:bg-white/[0.08] transition-all"
                     />
                     <button
                       onClick={handleSendChat}
                       disabled={sendingChat || !chatText.trim()}
-                      className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all"
+                      className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all shadow-md shadow-indigo-500/20"
                     >
                       <Send className="w-4 h-4" />
                     </button>
                   </div>
                 </>
               )}
+            </motion.div>
+          )}
+
+          {activeTab === "settings" && memberRole === "admin" && (
+            <motion.div key="settings" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 space-y-5 backdrop-blur-sm">
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-indigo-400/70" />
+                  Community Settings
+                </h2>
+
+                {/* Name */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Name</label>
+                  <input
+                    type="text"
+                    value={settingsName}
+                    onChange={(e) => setSettingsName(e.target.value)}
+                    maxLength={100}
+                    placeholder="Community name"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Description</label>
+                  <textarea
+                    value={settingsDescription}
+                    onChange={(e) => setSettingsDescription(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    placeholder="What is this community about?"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors resize-none"
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Category</label>
+                  <input
+                    type="text"
+                    value={settingsCategory}
+                    onChange={(e) => setSettingsCategory(e.target.value)}
+                    maxLength={50}
+                    placeholder="e.g. Web Dev, AI/ML, Gaming…"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  />
+                </div>
+
+                {/* Avatar URL */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Avatar URL</label>
+                  <input
+                    type="url"
+                    value={settingsAvatar}
+                    onChange={(e) => setSettingsAvatar(e.target.value)}
+                    placeholder="https://…"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  />
+                </div>
+
+                {/* Banner URL */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Banner URL</label>
+                  <input
+                    type="url"
+                    value={settingsBanner}
+                    onChange={(e) => setSettingsBanner(e.target.value)}
+                    placeholder="https://…"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  />
+                </div>
+
+                {/* Visibility */}
+                <div className="flex items-center justify-between py-3.5 px-4 bg-white/[0.03] border border-white/[0.07] rounded-xl">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Public community</p>
+                    <p className="text-xs text-white/30 mt-0.5">Anyone can discover and join this community</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSettingsIsPublic((v) => !v)}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0",
+                      settingsIsPublic ? "bg-indigo-600" : "bg-white/10"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
+                        settingsIsPublic ? "translate-x-6" : "translate-x-1"
+                      )}
+                    />
+                  </button>
+                </div>
+
+                {/* Save */}
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={savingSettings || !settingsName.trim()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-all shadow-md shadow-indigo-500/20"
+                >
+                  {savingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {savingSettings ? "Saving…" : "Save Changes"}
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

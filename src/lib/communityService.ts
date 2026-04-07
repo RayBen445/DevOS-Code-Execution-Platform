@@ -171,6 +171,16 @@ export async function leaveCommunity(communityId: string, userId: string): Promi
   });
 }
 
+/** Update community metadata (community admin or platform admin — enforced by Firestore rules) */
+export async function updateCommunity(
+  communityId: string,
+  updates: Partial<Pick<Community, "name" | "description" | "avatar" | "banner" | "category" | "isPublic">>
+): Promise<void> {
+  if (!communityId) throw new Error("communityId is required");
+  if (Object.keys(updates).length === 0) return;
+  await updateDoc(doc(db, "communities", communityId), updates);
+}
+
 /** Update member role (community admin only — enforced by Firestore rules) */
 export async function updateMemberRole(
   communityId: string,
@@ -186,6 +196,11 @@ export async function removeMember(communityId: string, userId: string): Promise
   await updateDoc(doc(db, "communities", communityId), {
     memberCount: increment(-1),
   });
+}
+
+/** Delete a community entirely (platform admin only) */
+export async function deleteCommunity(communityId: string): Promise<void> {
+  await deleteDoc(doc(db, "communities", communityId));
 }
 
 // ─── Community Chat ───────────────────────────────────────────────────────────
