@@ -71,6 +71,15 @@ const ROLE_BADGE: Record<string, string> = {
   member: "bg-gray-700 text-gray-400 border border-gray-600",
 };
 
+/** Format a Firestore timestamp as a short HH:MM string. */
+function formatChatTime(ts: any): string {
+  try {
+    return new Date(ts.toDate?.() ?? ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
 export default function OrgPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -321,7 +330,7 @@ export default function OrgPage() {
         toast.error("This organization already has a project with that name.", { id: toastId });
         return;
       }
-      const projectSlug = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
+      const projectSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
       const template = TEMPLATES[0]; // blank
       const docRef = await addDoc(collection(db, "projects"), {
         name: name.trim(),
