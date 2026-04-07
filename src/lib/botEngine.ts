@@ -49,9 +49,10 @@ export async function emitBotEvent(event: BotEvent): Promise<BotMessage[]> {
 
   return results
     .flatMap((result: any) => Array.isArray(result) ? result : [result])
+    .filter((entry: any) => entry && typeof entry === "object" && ("success" in entry || "bot" in entry))
     .map((entry: any) => ({
       botId: entry?.bot || coreToLegacyEvent[eventName] || eventName,
-      level: entry?.success === false ? "warning" : "info",
+      level: entry?.success === false ? "warning" : "success",
       text: entry?.success === false
         ? `${entry.bot}: ${entry.error}`
         : `${entry.bot}: action completed for ${eventName}`,

@@ -44,7 +44,9 @@ function normalizeBot(inputBot) {
 
 export function registerBot(inputBot) {
   const bot = normalizeBot(inputBot);
-  if (!bot?.name || !Array.isArray(bot?.events) || typeof bot?.handler !== "function") {
+  const hasHandler = typeof bot?.handler === "function";
+  const hasSdkHandlers = bot?.on && typeof bot.on === "object";
+  if (!bot?.name || !Array.isArray(bot?.events) || (!hasHandler && !hasSdkHandlers)) {
     throw new Error("Invalid bot registration payload");
   }
 
@@ -84,6 +86,12 @@ export async function executeBotsForEvent(event, payload = {}, context = {}) {
   for (const bot of matchingBots) {
     const sdkHandler = bot.on?.[event];
     const handler = typeof sdkHandler === "function" ? sdkHandler : bot.handler;
+
+    if (typeof handler !== "function") {
+      logBot(`[${bot.name}] No handler for event ${event}`, "error");
+      results.push({ bot: bot.name, success: false, error: `No handler for ${event}` });
+      continue;
+    }
 
     try {
       const sandboxContext = buildSandboxContext(event, payload, bot, context);

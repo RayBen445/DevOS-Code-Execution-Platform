@@ -1,13 +1,19 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bot, BotMessageSquare } from "lucide-react";
 import { getBotsForUI, getBotLogsForUI, setBotEnabledForUI, runBotTestFlow } from "../lib/botEngine";
 
 export default function BotsPage() {
-  const [refreshTick, setRefreshTick] = useState(0);
-  const bots = useMemo(() => getBotsForUI(), [refreshTick]);
-  const logs = useMemo(() => getBotLogsForUI(), [refreshTick]);
+  const [bots, setBots] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
 
-  const refresh = () => setRefreshTick((v) => v + 1);
+  const refresh = useCallback(() => {
+    setBots(getBotsForUI());
+    setLogs(getBotLogsForUI());
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6 text-white">
