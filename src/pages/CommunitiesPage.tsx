@@ -54,11 +54,15 @@ function CreateCommunityModal({ open, onClose, userId, onCreated }: CreateModalP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !description.trim()) return;
+    if (!slug) {
+      toast.error("Please use a name with letters or numbers.");
+      return;
+    }
     setSaving(true);
     try {
-      await createCommunity({ name: name.trim(), slug, description: description.trim(), category, isPublic, createdBy: userId });
+      const created = await createCommunity({ name: name.trim(), slug, description: description.trim(), category, isPublic, createdBy: userId });
       toast.success(`Community "${name}" created!`);
-      onCreated(slug);
+      onCreated(created.slug);
     } catch (err: any) {
       toast.error(err.message ?? "Failed to create community");
     } finally {
@@ -131,7 +135,7 @@ function CreateCommunityModal({ open, onClose, userId, onCreated }: CreateModalP
             <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 hover:bg-white/5 transition-all font-semibold">Cancel</button>
             <button
               type="submit"
-              disabled={saving || !name.trim() || !description.trim()}
+              disabled={saving || !name.trim() || !description.trim() || !slug}
               className={cn("flex-1 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2", saving || !name.trim() ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95")}
             >
               {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Creating…</> : "Create Community"}

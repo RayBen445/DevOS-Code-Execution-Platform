@@ -121,10 +121,16 @@ export async function createCommunity(params: {
   category?: string;
   createdBy: string;
   isPublic?: boolean;
-}): Promise<string> {
+}): Promise<{ id: string; slug: string }> {
+  const normalizedSlug = params.slug.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  if (!normalizedSlug) throw new Error("Community name must contain letters or numbers.");
+
+  const exists = await getDocs(query(collection(db, "communities"), where("slug", "==", normalizedSlug), limit(1)));
+  if (!exists.empty) throw new Error("That community URL is already taken. Please choose a different name.");
+
   const docRef = await addDoc(collection(db, "communities"), {
     name: params.name,
-    slug: params.slug.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+    slug: normalizedSlug,
     description: params.description,
     avatar: params.avatar ?? "",
     banner: params.banner ?? "",
@@ -143,7 +149,7 @@ export async function createCommunity(params: {
     joinedAt: serverTimestamp(),
   });
 
-  return docRef.id;
+  return { id: docRef.id, slug: normalizedSlug };
 }
 
 /** Join a community */
