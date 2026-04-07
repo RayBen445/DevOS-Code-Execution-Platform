@@ -796,7 +796,36 @@ if (process.env.VERCEL !== "1") {
   const { Server } = await import("socket.io");
 
   const httpServer = createServer(app);
-  new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
+  const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
+
+  io.on("connection", (socket) => {
+    socket.on("join-project", (projectId: string) => {
+      if (!projectId) return;
+      socket.join(projectId);
+    });
+
+    // Alias used by some clients/specs
+    socket.on("joinProject", (projectId: string) => {
+      if (!projectId) return;
+      socket.join(projectId);
+    });
+
+    socket.on("code-change", (payload: { projectId: string; fileId: string; content: string; userId?: string }) => {
+      if (!payload?.projectId) return;
+      // Last-write-wins strategy: broadcast latest payload to room except sender
+      socket.to(payload.projectId).emit("code-update", payload);
+    });
+
+    socket.on("fileChange", (payload: { projectId: string; fileName: string; content: string; userId?: string }) => {
+      if (!payload?.projectId) return;
+      socket.to(payload.projectId).emit("fileChange", payload);
+    });
+
+    socket.on("cursor-move", (payload: { projectId: string; userId?: string; userName?: string; cursor?: any }) => {
+      if (!payload?.projectId) return;
+      socket.to(payload.projectId).emit("cursor-update", payload);
+    });
+  });
 
   const PORT = Number(process.env.PORT) || 3000;
   httpServer.listen(PORT, "0.0.0.0", () => {

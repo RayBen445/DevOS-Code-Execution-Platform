@@ -89,8 +89,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   // Real-time collaboration state (org projects only)
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
+  const [realtimeConnected, setRealtimeConnected] = useState(true);
   const orgMembersRef = useRef<OrgMember[]>([]); // stable ref for use in closures
   const notifiedActivityIds = useRef<Set<string>>(new Set()); // prevents duplicate toasts
+  const editDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Persist active file and panel to localStorage (per-project key)
   useEffect(() => {
@@ -428,6 +430,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     // Join socket room
     socket.connect();
     socket.emit("join-project", projectId);
+    socket.emit("joinProject", projectId);
+
+    const onConnect = () => setRealtimeConnected(true);
+    const onDisconnect = () => setRealtimeConnected(false);
+    const onConnectError = () => setRealtimeConnected(false);
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
 
     // Fetch project metadata
     const projectRef = doc(db, "projects", projectId);
@@ -471,7 +481,12 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     return () => {
       unsubProject();
       unsubFiles();
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
       socket.disconnect();
+      Object.values(editDebounceRef.current).forEach((t) => clearTimeout(t));
+      editDebounceRef.current = {};
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, [user, projectId]);
@@ -508,6 +523,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       name: user.displayName || user.email?.split("@")[0] || "User",
       avatar: user.photoURL || "",
       lastSeen: serverTimestamp(),
+      active: true,
       currentFile: null,
     }).catch(() => {});
     const heartbeat = setInterval(() => {
@@ -515,6 +531,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }, 30_000);
     return () => {
       clearInterval(heartbeat);
+      updateDoc(presenceRef, { active: false, lastSeen: serverTimestamp() }).catch(() => {});
       deleteDoc(presenceRef).catch(() => {});
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -527,6 +544,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     const currentFileName = files.find(f => f.id === activeFileId)?.name ?? null;
     setDoc(presenceRef, {
       currentFile: currentFileName,
+      active: true,
       lastSeen: serverTimestamp(),
     }, { merge: true }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -619,10 +637,19 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     });
   };
 
-  const handleCodeChange = async (content: string) => {
+  const handleCodeChange = (content: string) => {
     if (!activeFileId) return;
     setIsSaved(false);
-    await handleUpdateFile(activeFileId, content);
+    // Local optimistic update for smooth typing
+    setFiles((prev) => prev.map((f) => (f.id === activeFileId ? { ...f, content } : f)));
+
+    // Debounced sync (last-write-wins)
+    if (editDebounceRef.current[activeFileId]) {
+      clearTimeout(editDebounceRef.current[activeFileId]);
+    }
+    editDebounceRef.current[activeFileId] = setTimeout(() => {
+      handleUpdateFile(activeFileId, content);
+    }, 120);
 
     // Schedule auto-save after 2.5s of idle
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -1117,6 +1144,11 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               {isForking ? <Loader2 className="w-3 h-3 animate-spin" /> : <GitFork className="w-3 h-3" />}
               <span className="hidden sm:inline">Fork to Edit</span>
             </button>
+          )}
+          {!realtimeConnected && (
+            <span className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 text-amber-300 text-[10px] font-bold border border-amber-500/25">
+              Realtime disabled
+            </span>
           )}
           {project?.systemType !== 'portfolio' && (
             <>

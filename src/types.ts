@@ -422,6 +422,7 @@ export interface PresenceUser {
   name: string;
   avatar: string;
   lastSeen: any;             // Firestore Timestamp
+  active?: boolean;
   currentFile: string | null;
 }
 
