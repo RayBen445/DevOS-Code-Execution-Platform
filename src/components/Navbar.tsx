@@ -219,6 +219,15 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                       <Plus className="w-4 h-4" />
                       Create Organisation
                     </button>
+                    <div className="border-t border-white/5" />
+                    <Link
+                      to="/orgs"
+                      onClick={() => setIsOrgsOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <Users className="w-4 h-4" />
+                      Browse all organisations
+                    </Link>
                   </motion.div>
                 )}
               </AnimatePresence>

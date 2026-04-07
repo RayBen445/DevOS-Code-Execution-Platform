@@ -206,3 +206,22 @@ export async function updateOrgJoinPolicy(
 ): Promise<void> {
   await updateDoc(doc(db, "organizations", orgId), { joinPolicy, updatedAt: serverTimestamp() });
 }
+
+/** Fetch every organization (admin use). */
+export async function getAllOrgs(): Promise<Organization[]> {
+  const snap = await getDocs(collection(db, "organizations"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Organization));
+}
+
+/** Permanently delete an organization document (does NOT cascade-delete subcollections). */
+export async function deleteOrg(orgId: string): Promise<void> {
+  await deleteDoc(doc(db, "organizations", orgId));
+}
+
+/** Fetch all public organizations, ordered by memberCount descending. */
+export async function getPublicOrgs(): Promise<Organization[]> {
+  const q = query(collection(db, "organizations"), where("isPublic", "==", true));
+  const snap = await getDocs(q);
+  const orgs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Organization));
+  return orgs.sort((a, b) => (b.memberCount ?? 0) - (a.memberCount ?? 0));
+}

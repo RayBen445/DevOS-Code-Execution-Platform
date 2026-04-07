@@ -60,6 +60,7 @@ export default function Footer() {
             <FooterLink to="/">Explore</FooterLink>
             <FooterLink to="/templates">Templates</FooterLink>
             <FooterLink to="/communities">Communities</FooterLink>
+            <FooterLink to="/orgs">Organizations</FooterLink>
             <FooterLink to="/docs">Docs</FooterLink>
           </div>
 
