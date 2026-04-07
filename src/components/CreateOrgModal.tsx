@@ -85,13 +85,14 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
             className="fixed inset-0 bg-black/80 z-50"
             onClick={handleClose}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
-          >
-            <div className="w-full max-w-lg bg-[#0f0f0f] border border-white/10 rounded-3xl overflow-hidden shadow-2xl pointer-events-auto">
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-[#0f0f0f] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+            >
               {/* Header */}
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -218,8 +219,9 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
                   </button>
                 </div>
               </form>
+            </motion.div>
             </div>
-          </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
