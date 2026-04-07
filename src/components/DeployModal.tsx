@@ -162,6 +162,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       setDeployedUrl(url);
       setStep("success");
       toast.success("Your project is live!");
+      onDeployed?.();
     } catch (error: any) {
       console.error("Deployment error:", error);
       toast.error(error.message || "Deployment failed");
