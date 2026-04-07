@@ -104,12 +104,185 @@ const terminalRateLimit = new Map<string, { count: number; resetAt: number }>();
 const TERMINAL_RATE_MAX = 30;
 const TERMINAL_RATE_WINDOW_MS = 60_000;
 
+type ProjectInputFile = { name: string; content: string };
+
+const sanitizeRelativePath = (rawPath: string): string => {
+  const normalized = path.posix.normalize(String(rawPath || "").replace(/\\/g, "/"));
+  const trimmed = normalized.replace(/^\/+/, "");
+  if (!trimmed || trimmed.startsWith("..") || trimmed.includes("\0")) {
+    throw new Error(`Invalid file path: ${rawPath}`);
+  }
+  return trimmed;
+};
+
+const runCommand = async (
+  executable: string,
+  args: string[],
+  cwd: string,
+  timeoutMs: number
+): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
+  const { execFile } = await import("child_process");
+  return await new Promise((resolve, reject) => {
+    execFile(
+      executable,
+      args,
+      {
+        cwd,
+        timeout: timeoutMs,
+        env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=256" },
+        maxBuffer: 1024 * 1024 * 10,
+      },
+      (error, stdout, stderr) => {
+        const timedOut = Boolean((error as any)?.killed || (error as any)?.code === "ETIMEDOUT");
+        const exitCode = (error as any)?.code ?? (error ? 1 : 0);
+        if (timedOut) {
+          reject(new Error("Execution timeout exceeded."));
+          return;
+        }
+        resolve({ stdout: stdout || "", stderr: stderr || "", exitCode });
+      }
+    );
+  });
+};
+
+const walkFiles = (dir: string): string[] => {
+  const output: string[] = [];
+  const stack = [dir];
+  while (stack.length) {
+    const current = stack.pop()!;
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (entry.isFile()) {
+        output.push(full);
+      }
+    }
+  }
+  return output;
+};
+
 // ---------------------------------------------------------------------------
 // API Routes
 // ---------------------------------------------------------------------------
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+app.post("/api/run-project", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer "))
+    return res.status(401).json({ error: "Unauthorized" });
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let uid: string;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid = decoded.uid;
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const { files, mode } = req.body as { files?: ProjectInputFile[]; mode?: string };
+  if (!Array.isArray(files) || files.length === 0) {
+    return res.status(400).json({ success: false, error: "Missing files payload." });
+  }
+  if (mode && mode !== "build") {
+    return res.status(400).json({ success: false, error: "Unsupported mode." });
+  }
+
+  const startedAt = Date.now();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `devos-${uid.slice(0, 8)}-`));
+
+  try {
+    for (const file of files) {
+      const rel = sanitizeRelativePath(file.name);
+      const destination = path.join(tmpDir, rel);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.writeFileSync(destination, String(file.content ?? ""), "utf-8");
+    }
+
+    const packagePath = path.join(tmpDir, "package.json");
+    if (!fs.existsSync(packagePath)) {
+      return res.status(400).json({ success: false, error: "missing_package_json", stderr: "package.json is required." });
+    }
+
+    const pkg = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
+    const scripts = pkg?.scripts ?? {};
+    if (!scripts?.build) {
+      return res.status(400).json({ success: false, error: "missing_build_script", stderr: "No build script found in package.json." });
+    }
+    if (scripts?.dev) {
+      // explicit policy: do not run dev servers in execution env
+    }
+
+    const installResult = await runCommand("npm", ["install", "--ignore-scripts"], tmpDir, 15_000);
+    const buildResult = await runCommand("npm", ["run", "build"], tmpDir, 15_000);
+
+    // Next.js static-export path
+    const nextConfigPath = path.join(tmpDir, "next.config.js");
+    if (fs.existsSync(nextConfigPath)) {
+      const nextConfigContent = fs.readFileSync(nextConfigPath, "utf-8");
+      if (nextConfigContent.includes("output: 'export'") || nextConfigContent.includes('output: "export"')) {
+        try {
+          await runCommand("npm", ["run", "export"], tmpDir, 15_000);
+        } catch {
+          // keep build logs; output detection below will decide if preview is possible
+        }
+      }
+    }
+
+    const outputCandidates = ["dist", "build", ".next", "out"];
+    const outputDirName = outputCandidates.find((dirName) => fs.existsSync(path.join(tmpDir, dirName)));
+    if (!outputDirName) {
+      return res.status(400).json({
+        success: false,
+        error: "unsupported_preview",
+        stdout: `${installResult.stdout}\n${buildResult.stdout}`.trim(),
+        stderr: `${installResult.stderr}\n${buildResult.stderr}`.trim(),
+        duration: Date.now() - startedAt,
+      });
+    }
+
+    const outputDir = path.join(tmpDir, outputDirName);
+    const outputFiles = walkFiles(outputDir)
+      .filter((fullPath) => fs.statSync(fullPath).size <= 1024 * 1024)
+      .slice(0, 300)
+      .map((fullPath) => {
+        const rel = path.relative(outputDir, fullPath).replace(/\\/g, "/");
+        return {
+          path: rel,
+          content: fs.readFileSync(fullPath, "utf-8"),
+        };
+      });
+
+    return res.json({
+      success: true,
+      stdout: `${installResult.stdout}\n${buildResult.stdout}`.trim(),
+      stderr: `${installResult.stderr}\n${buildResult.stderr}`.trim(),
+      previewPath: `/tmp/${path.basename(tmpDir)}/${outputDirName}`,
+      outputDir: outputDirName,
+      outputFiles,
+      duration: Date.now() - startedAt,
+    });
+  } catch (error: any) {
+    const message = String(error?.message || "Execution failed");
+    const timedOut = message.toLowerCase().includes("timeout");
+    return res.status(timedOut ? 408 : 500).json({
+      success: false,
+      error: timedOut ? "timeout_exceeded" : "execution_failed",
+      stderr: message,
+      duration: Date.now() - startedAt,
+    });
+  } finally {
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // noop cleanup best effort
+    }
+  }
 });
 
 // Link GitHub Installation ID to User

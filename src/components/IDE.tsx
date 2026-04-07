@@ -69,7 +69,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [openFileIds, setOpenFileIds] = useState<string[]>([]);
   const [previewSaveKey, setPreviewSaveKey] = useState(0);
+  const [buildPreviewFiles, setBuildPreviewFiles] = useState<FileData[] | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runAbortRef = useRef<AbortController | null>(null);
   const [terminalHeight, setTerminalHeight] = useState(240);
   const terminalResizeRef = useRef<boolean>(false);
   const terminalDragStartY = useRef<number>(0);
@@ -644,6 +646,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   const handleCodeChange = (content: string) => {
     if (!activeFileId) return;
+    if (buildPreviewFiles) setBuildPreviewFiles(null);
     setIsSaved(false);
     // Local optimistic update for smooth typing
     setFiles((prev) => prev.map((f) => (f.id === activeFileId ? { ...f, content } : f)));
@@ -744,6 +747,72 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     setActivePanel("terminal");
     addLog("system", `devos ▶ ${project?.name || "project"} $ run`);
 
+    const packageFile = files.find((f) => f.name === "package.json" || f.path === "/package.json");
+    if (packageFile) {
+      try {
+        const idToken = await auth.currentUser?.getIdToken();
+        const controller = new AbortController();
+        runAbortRef.current = controller;
+        const response = await fetch("/api/run-project", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            mode: "build",
+            files: files.map((f) => ({
+              name: (f.path || f.name || "").replace(/^\/+/, ""),
+              content: f.content ?? "",
+            })),
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.success) {
+          addLog("error", "✖ Build failed");
+          addLog("error", data?.stderr || data?.error || "Build request failed");
+          setIsRunning(false);
+          return;
+        }
+
+        addLog("output", data.stdout || "Build completed.");
+        if (data.stderr) addLog("output", data.stderr);
+
+        const generatedFiles: FileData[] = (data.outputFiles || []).map((f: any, index: number) => ({
+          id: `build-${index}-${f.path}`,
+          projectId,
+          name: String(f.path).split("/").pop() || f.path,
+          path: `/${String(f.path).replace(/^\/+/, "")}`,
+          content: String(f.content ?? ""),
+          language: f.path.endsWith(".css")
+            ? "css"
+            : f.path.endsWith(".js")
+              ? "javascript"
+              : f.path.endsWith(".html")
+                ? "html"
+                : "plaintext",
+          updatedAt: new Date().toISOString(),
+        }));
+        setBuildPreviewFiles(generatedFiles);
+        setPreviewSaveKey((k) => k + 1);
+        setActivePanel("preview");
+        setMobileTab("preview");
+        addLog("success", "✔ Build output loaded into Preview.");
+      } catch (error: any) {
+        if (error?.name === "AbortError") {
+          addLog("error", "Execution stopped by user.");
+        } else {
+          addLog("error", "✖ Build pipeline failed");
+          addLog("error", error.message || "Unknown build error");
+        }
+      } finally {
+        runAbortRef.current = null;
+        setIsRunning(false);
+      }
+      return;
+    }
+
     // Block unsupported file types — .tsx/.jsx are React components; use Preview instead
     const blockedExtensions = [".tsx", ".jsx"];
     const fileExt = activeFile.name.includes(".") ? `.${activeFile.name.split(".").pop()?.toLowerCase()}` : "";
@@ -799,7 +868,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       addLog("error", "✖ Execution failed");
       addLog("error", error.message);
     } finally {
+      runAbortRef.current = null;
       setIsRunning(false);
+    }
+  };
+
+  const handleStopExecution = () => {
+    if (runAbortRef.current) {
+      runAbortRef.current.abort();
+      runAbortRef.current = null;
     }
   };
 
@@ -1177,6 +1254,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                 <span className="hidden sm:inline">{isRunning ? "Running..." : "Run"}</span>
               </button>
+              {isRunning && (
+                <button
+                  onClick={handleStopExecution}
+                  className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white text-xs font-bold transition-all"
+                >
+                  <X className="w-3 h-3" />
+                  <span className="hidden sm:inline">Stop Execution</span>
+                </button>
+              )}
               {!isReadOnly && (
                 <button
                   onClick={() => handleSave()}
@@ -1333,7 +1419,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     )}
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <PreviewPanel projectId={projectId} files={files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
+                    <PreviewPanel projectId={projectId} files={buildPreviewFiles ?? files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
                   </div>
                 </div>
               )}
@@ -1762,7 +1848,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 </div>
               </div>
               <div className="flex-1">
-                <PreviewPanel projectId={projectId} files={files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
+                <PreviewPanel projectId={projectId} files={buildPreviewFiles ?? files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
               </div>
             </div>
           )}
