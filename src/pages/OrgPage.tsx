@@ -826,7 +826,7 @@ export default function OrgPage() {
                   onClick={async () => {
                     if (!org) return;
                     try {
-                      await updateOrg(org.id, { voiceCallsEnabled: !(org.voiceCallsEnabled ?? true) } as any);
+                      await updateOrg(org.id, { voiceCallsEnabled: !(org.voiceCallsEnabled ?? true) });
                     } catch {
                       toast.error("Failed to toggle voice calls");
                     }
