@@ -1400,19 +1400,27 @@ function ProjectShareButton({
   avatarUrl?: string | null;
 }) {
   const shareCardRef = useRef<HTMLDivElement>(null);
+  const [showShareCard, setShowShareCard] = useState(false);
   const filename = `devos-${project.name.replace(/\s+/g, "-").toLowerCase().slice(0, 40)}.png`;
   const { capture, capturing } = useShareAsImage(shareCardRef, filename);
 
+  const handleCapture = async () => {
+    setShowShareCard(true);
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await capture();
+    setShowShareCard(false);
+  };
+
   return (
     <>
-      <ProjectShareCard
+      {(showShareCard || capturing) && <ProjectShareCard
         project={project}
         username={username}
         avatarUrl={avatarUrl}
         cardRef={shareCardRef}
-      />
+      />}
       <button
-        onClick={(e) => { e.stopPropagation(); capture(); }}
+        onClick={(e) => { e.stopPropagation(); handleCapture(); }}
         disabled={capturing}
         className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-blue-500/10 hover:text-blue-400 transition-all disabled:opacity-50"
         title="Share as Image"

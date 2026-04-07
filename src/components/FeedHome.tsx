@@ -923,6 +923,7 @@ function FeedItem({
   const [showRepostModal, setShowRepostModal] = useState(false);
   const [repostText, setRepostText] = useState("");
   const [isReposting, setIsReposting] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const shareCardRef = useRef<HTMLDivElement>(null);
   const { capture: captureImage, capturing } = useShareAsImage(
@@ -962,10 +963,17 @@ function FeedItem({
     setIsReposting(false);
   };
 
+  const handleCaptureImage = async () => {
+    setShowShareCard(true);
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await captureImage();
+    setShowShareCard(false);
+  };
+
   return (
     <>
       {/* Hidden card rendered off-screen for html2canvas capture */}
-      <FeedPostShareCard post={post} cardRef={shareCardRef} />
+      {(showShareCard || capturing) && <FeedPostShareCard post={post} cardRef={shareCardRef} />}
 
       <motion.div
         ref={cardRef}
@@ -1158,7 +1166,7 @@ function FeedItem({
 
         {/* Share as Image */}
         <button
-          onClick={captureImage}
+          onClick={handleCaptureImage}
           disabled={capturing}
           className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-white/40 hover:text-blue-400 hover:bg-blue-500/5 transition-all ml-auto disabled:opacity-50"
           aria-label="Share as image"
