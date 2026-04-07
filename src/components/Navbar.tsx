@@ -7,6 +7,7 @@ import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
 import RedeemCodeModal from "./RedeemCodeModal";
 import FeedbackModal from "./FeedbackModal";
+import CreateOrgModal from "./CreateOrgModal";
 import { UserSettings, Credits, Organization } from "../types";
 import { getCredits, DAILY_CREDITS_AMOUNT, MONTHLY_CREDITS_AMOUNT } from "../lib/creditsService";
 import { resolveAvatar } from "../lib/avatars";
@@ -33,6 +34,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const [isSwitchAccountOpen, setIsSwitchAccountOpen] = useState(false);
   const [userOrgs, setUserOrgs] = useState<Organization[]>([]);
   const [isOrgsOpen, setIsOrgsOpen] = useState(false);
+  const [isCreateOrgOpen, setIsCreateOrgOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const creditsPanelRef = useRef<HTMLDivElement>(null);
   const orgsDropdownRef = useRef<HTMLDivElement>(null);
@@ -210,14 +212,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                         <p className="text-xs text-white/30">No organisations yet</p>
                       </div>
                     )}
-                    <Link
-                      to="/projects"
-                      onClick={() => setIsOrgsOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-blue-400/70 hover:text-blue-400 hover:bg-blue-500/5 transition-colors"
+                    <button
+                      onClick={() => { setIsOrgsOpen(false); setIsCreateOrgOpen(true); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-blue-400/70 hover:text-blue-400 hover:bg-blue-500/5 transition-colors text-left"
                     >
                       <Plus className="w-4 h-4" />
                       Create Organisation
-                    </Link>
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -736,6 +737,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
 
       <RedeemCodeModal isOpen={isRedeemOpen} onClose={() => setIsRedeemOpen(false)} />
       <FeedbackModal open={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
+      <CreateOrgModal open={isCreateOrgOpen} onClose={() => setIsCreateOrgOpen(false)} />
     </nav>
   );
 }

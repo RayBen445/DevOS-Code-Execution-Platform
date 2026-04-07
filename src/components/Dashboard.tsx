@@ -927,6 +927,7 @@ p {
       <AnimatePresence>
         {isQuickStarting && (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
+            {/* Scrollable overlay — allows the modal to scroll on short viewports */}
             <div className="flex min-h-full items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -983,6 +984,7 @@ p {
 
         {isCreating && (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
+            {/* Scrollable overlay — allows the modal to scroll on short viewports */}
             <div className="flex min-h-full items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}

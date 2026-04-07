@@ -6,12 +6,57 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* ── Theme CSS variables (defaults = dark theme) ───────────────────────────── */
 :root {
   --primary-color: #3b82f6;
+  --bg-base:        #0B0F17;
+  --bg-surface:     #111827;
+  --bg-card:        #111111;
+  --border-base:    rgba(255,255,255,0.08);
+  --text-primary:   #ffffff;
+  --text-secondary: rgba(255,255,255,0.5);
+  --accent:         #3b82f6;
+  --accent-hover:   #2563eb;
+}
+
+[data-theme="midnight"] {
+  --bg-base:        #0d0d1f;
+  --bg-surface:     #13132b;
+  --bg-card:        #18183a;
+  --border-base:    rgba(139,92,246,0.15);
+  --text-primary:   #e8e8ff;
+  --text-secondary: rgba(232,232,255,0.5);
+  --accent:         #8b5cf6;
+  --accent-hover:   #7c3aed;
+}
+
+[data-theme="ocean"] {
+  --bg-base:        #071f2e;
+  --bg-surface:     #0e2c3f;
+  --bg-card:        #0c2a3b;
+  --border-base:    rgba(20,184,166,0.15);
+  --text-primary:   #e0f4f1;
+  --text-secondary: rgba(224,244,241,0.5);
+  --accent:         #14b8a6;
+  --accent-hover:   #0d9488;
+}
+
+[data-theme="light"] {
+  --bg-base:        #f8fafc;
+  --bg-surface:     #ffffff;
+  --bg-card:        #f1f5f9;
+  --border-base:    rgba(0,0,0,0.08);
+  --text-primary:   #0f172a;
+  --text-secondary: rgba(15,23,42,0.55);
+  --accent:         #3b82f6;
+  --accent-hover:   #2563eb;
+  color-scheme: light;
 }
 
 body {
-  @apply bg-[#0a0a0a] text-white antialiased;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  @apply antialiased;
   font-family: var(--font-sans);
 }
 
@@ -27,6 +72,14 @@ body {
 
 ::-webkit-scrollbar-thumb {
   @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
 }
 
 /* Hide scrollbar while keeping scroll functionality */
@@ -51,11 +104,21 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+[data-theme="light"] .glass {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
 .glass-dark {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="light"] .glass-dark {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 /* ── Gradient text ─────────────────────────────────────────────────────────── */
