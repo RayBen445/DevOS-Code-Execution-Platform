@@ -333,7 +333,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         isOfficial: settings?.isOfficial ?? false,
       });
       emitBotEventWithToast({
-        name: "post_created",
+        name: "post.created",
         payload: { postId, content: postText.trim(), userId: user.uid },
       }).catch(() => {});
       // Notify mentioned users

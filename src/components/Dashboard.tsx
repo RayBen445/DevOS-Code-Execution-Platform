@@ -234,7 +234,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
       
       toast.success("Project created successfully", { id: toastId });
       emitBotEventWithToast({
-        name: "project_created",
+        name: "project.created",
         payload: { projectId: docRef.id, projectName: newProjectName, userId: user.uid },
       }).catch(() => {});
       onSelectProject(docRef.id);

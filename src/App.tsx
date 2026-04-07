@@ -38,6 +38,7 @@ import OrgPage from "./pages/OrgPage";
 import OrgsPage from "./pages/OrgsPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
+import BotsPage from "./pages/BotsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import { Zap, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -169,7 +170,7 @@ export default function App() {
   useEffect(() => {
     initializeDefaultBots();
     emitBotEventWithToast({
-      name: "system_boot",
+      name: "system.boot",
       payload: { firebaseReady: true },
     }).catch(() => {});
   }, []);
@@ -354,6 +355,7 @@ export default function App() {
             <Route path="/orgs" element={withPageMaintenance("/orgs", <OrgsPage />)} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
             <Route path="/not-found" element={<NotFoundPage />} />
             <Route path="/u/:username" element={withPageMaintenance("/u", <Portfolio />)} />
             <Route path="/u/:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />

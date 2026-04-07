@@ -164,7 +164,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       setStep("success");
       toast.success("Your project is live!");
       emitBotEventWithToast({
-        name: "deploy_triggered",
+        name: "deploy.triggered",
         payload: { projectId, projectName, url, userId: auth.currentUser.uid },
       }).catch(() => {});
       onDeployed?.();
