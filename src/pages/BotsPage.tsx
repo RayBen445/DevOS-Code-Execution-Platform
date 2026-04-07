@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bot, BotMessageSquare } from "lucide-react";
-import { getBotsForUI, getBotLogsForUI, setBotEnabledForUI, runBotTestFlow } from "../lib/botEngine";
+import { BotMessageSquare } from "lucide-react";
+import { getBotsForUI, getBotLogsForUI, setBotEnabledForUI } from "../lib/botEngine";
 
 export default function BotsPage() {
   const [bots, setBots] = useState<any[]>([]);
@@ -17,19 +17,6 @@ export default function BotsPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6 text-white">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Bot className="w-6 h-6 text-blue-400" /> Bots</h1>
-          <p className="text-white/60 text-sm">Manage DevOS built-in automation bots and view execution logs.</p>
-        </div>
-        <button
-          onClick={async () => { await runBotTestFlow(); refresh(); }}
-          className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-semibold"
-        >
-          Run test flow
-        </button>
-      </div>
-
       <div className="grid md:grid-cols-2 gap-4">
         {bots.map((bot: any) => (
           <div key={bot.name} className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
