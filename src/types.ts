@@ -315,6 +315,7 @@ export interface Organization {
   isPublic: boolean;
   joinPolicy?: "open" | "request";
   chatEnabled?: boolean;
+  voiceCallsEnabled?: boolean;
   createdBy: string;
   memberCount: number;
   createdAt: any;
@@ -364,6 +365,8 @@ export interface Community {
   memberCount: number;
   isPublic: boolean;
   category?: string;
+  chatEnabled?: boolean;
+  voiceCallsEnabled?: boolean;
   createdAt: any;
 }
 

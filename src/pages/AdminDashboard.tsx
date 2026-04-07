@@ -1599,7 +1599,7 @@ export default function AdminDashboard() {
                   {activeTab === "email" && "Send a custom email to any user via Gmail SMTP"}
                   {activeTab === "communities" && "View, edit and delete all platform communities"}
                   {activeTab === "organizations" && "View, edit and delete all platform organizations"}
-                  {activeTab === "site" && "Edit platform name, tagline, social links and footer text"}
+                  {activeTab === "site" && "Edit branding, links, footer text, and global voice-call availability"}
                 </p>
               </div>
 
@@ -3624,6 +3624,19 @@ export default function AdminDashboard() {
                               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                               required
                             />
+                          </div>
+                          <div className="flex items-center justify-between py-3.5 px-4 bg-black/30 border border-white/10 rounded-xl">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Allow voice calls platform-wide</p>
+                              <p className="text-xs text-white/35 mt-0.5">If disabled, community and organization voice call buttons are hidden.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSiteConfig((s) => ({ ...s, allowVoiceCalls: !s.allowVoiceCalls }))}
+                              className="text-white/70 hover:text-white transition-colors"
+                            >
+                              {siteConfig.allowVoiceCalls ? <ToggleRight className="w-8 h-8 text-blue-400" /> : <ToggleLeft className="w-8 h-8 text-white/35" />}
+                            </button>
                           </div>
                         </div>
 

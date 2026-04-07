@@ -5,14 +5,31 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function toValidDate(value: any): Date | null {
+  if (!value) return null;
+  try {
+    const date = value?.toDate ? value.toDate() : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  } catch {
+    return null;
+  }
+}
+
+export function formatTime(value: any): string {
+  const date = toValidDate(value);
+  if (!date) return "—";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export function formatRelativeTime(date: any): string {
   if (!date) return "Just now";
   
   try {
     const now = new Date();
-    const timestamp = date.toDate ? date.toDate() : new Date(date);
-    if (isNaN(timestamp.getTime())) return "—";
+    const timestamp = toValidDate(date);
+    if (!timestamp) return "—";
     const diffInSeconds = Math.floor((now.getTime() - timestamp.getTime()) / 1000);
+    if (diffInSeconds < 0) return "just now";
 
     if (diffInSeconds < 60) {
       return "just now";

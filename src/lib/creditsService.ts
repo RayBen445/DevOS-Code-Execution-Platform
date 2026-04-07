@@ -290,6 +290,7 @@ export interface SiteConfig {
   twitterUrl: string;
   websiteUrl: string;
   footerCredit: string;
+  allowVoiceCalls: boolean;
 }
 
 export const SITE_CONFIG_DEFAULTS: SiteConfig = {
@@ -300,6 +301,7 @@ export const SITE_CONFIG_DEFAULTS: SiteConfig = {
   twitterUrl: "https://twitter.com/devos",
   websiteUrl: "https://devos.app",
   footerCredit: "Built by Cool Shot Systems · TVN",
+  allowVoiceCalls: true,
 };
 
 /** Read site branding config from system_config/site */
@@ -315,6 +317,7 @@ export const getSiteConfig = async (): Promise<SiteConfig> => {
     twitterUrl: d.twitterUrl ?? SITE_CONFIG_DEFAULTS.twitterUrl,
     websiteUrl: d.websiteUrl ?? SITE_CONFIG_DEFAULTS.websiteUrl,
     footerCredit: d.footerCredit ?? SITE_CONFIG_DEFAULTS.footerCredit,
+    allowVoiceCalls: d.allowVoiceCalls ?? SITE_CONFIG_DEFAULTS.allowVoiceCalls,
   };
 };
 

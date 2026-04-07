@@ -34,6 +34,8 @@ export async function createOrg(params: {
     description: params.description,
     avatar: params.avatar ?? "",
     isPublic: params.isPublic,
+    chatEnabled: true,
+    voiceCallsEnabled: true,
     createdBy: params.createdBy,
     memberCount: 1,
     createdAt: serverTimestamp(),
@@ -111,7 +113,7 @@ export async function updateMemberRole(
 
 export async function updateOrg(
   orgId: string,
-  data: Partial<Pick<Organization, "name" | "description" | "avatar" | "isPublic">>
+  data: Partial<Pick<Organization, "name" | "description" | "avatar" | "isPublic" | "voiceCallsEnabled">>
 ): Promise<void> {
   await updateDoc(doc(db, "organizations", orgId), { ...data, updatedAt: serverTimestamp() });
 }

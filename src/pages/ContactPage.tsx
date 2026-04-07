@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { Mail, MessageSquare, Github, Twitter, Globe, Send, Loader2, CheckCircle2, MapPin, Clock } from "lucide-react";
 import Navbar from "../components/Navbar";
@@ -43,7 +43,7 @@ export default function ContactPage() {
     getSiteConfig().then(setConfig).catch(() => {});
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     // Compose a mailto link as a best-effort contact form (no server required)

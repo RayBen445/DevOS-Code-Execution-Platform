@@ -17,6 +17,7 @@ import {
   rejectJoinRequest,
   subscribeJoinRequests,
   updateOrgJoinPolicy,
+  updateOrg,
   subscribeOrgChatMessages,
   sendOrgChatMessage,
   deleteOrgChatMessage,
@@ -59,9 +60,12 @@ import {
   Loader2,
   FolderPlus,
   FolderCode,
+  Phone,
 } from "lucide-react";
-import { formatRelativeTime } from "../lib/utils";
+import { formatRelativeTime, formatTime } from "../lib/utils";
 import { cn } from "../lib/utils";
+import { DEVOS_EMOJI_LIST, renderDevosEmojiText } from "../lib/devosEmoji";
+import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 
 type OrgTab = "overview" | "posts" | "chat" | "members" | "settings";
 
@@ -70,15 +74,6 @@ const ROLE_BADGE: Record<string, string> = {
   moderator: "bg-purple-500/20 text-purple-400 border border-purple-500/30",
   member: "bg-gray-700 text-gray-400 border border-gray-600",
 };
-
-/** Format a Firestore timestamp as a short HH:MM string. */
-function formatChatTime(ts: any): string {
-  try {
-    return new Date(ts.toDate?.() ?? ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return "";
-  }
-}
 
 export default function OrgPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -102,6 +97,7 @@ export default function OrgPage() {
   const [togglingPolicy, setTogglingPolicy] = useState(false);
   const [togglingChat, setTogglingChat] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
 
   const copyOrgLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}/org/${slug}`).then(() => {
@@ -185,6 +181,10 @@ export default function OrgPage() {
     });
     return unsub;
   }, [user]);
+
+  useEffect(() => {
+    getSiteConfig().then(setSiteConfig).catch(() => {});
+  }, []);
 
   const handleJoin = async () => {
     if (!user || !org) return;
@@ -560,8 +560,8 @@ export default function OrgPage() {
                               <div className="flex items-baseline gap-1.5 px-1">
                                 <span className="text-[11px] font-bold text-white/60">{msg.displayName || msg.username}</span>
                                 {msg.createdAt && (
-                                  <span className="text-[10px] text-white/25">
-                                    {(() => { try { return new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch { return ""; } })()}
+                                <span className="text-[10px] text-white/25">
+                                    {formatTime(msg.createdAt)}
                                   </span>
                                 )}
                               </div>
@@ -573,12 +573,12 @@ export default function OrgPage() {
                                   ? "bg-blue-600 text-white rounded-br-sm shadow-md shadow-blue-500/20"
                                   : "bg-white/[0.07] text-white/85 border border-white/[0.08] rounded-bl-sm"
                               )}>
-                                {msg.text}
+                                {renderDevosEmojiText(msg.text)}
                               </div>
                               <div className={cn("flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0", isOwn ? "items-end" : "items-start")}>
                                 {isOwn && msg.createdAt && (
                                   <span className="text-[10px] text-white/25">
-                                    {(() => { try { return new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch { return ""; } })()}
+                                    {formatTime(msg.createdAt)}
                                   </span>
                                 )}
                                 {(user?.uid === msg.userId || isAdmin) && (
@@ -600,6 +600,17 @@ export default function OrgPage() {
                 </div>
 
                 {/* Chat input */}
+                {(org.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls && (
+                  <div className="mb-2">
+                    <button
+                      onClick={() => toast.info("Voice calling UI is enabled. Real-time call transport will be connected next.")}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/25 transition-colors flex items-center gap-1.5"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      Start Voice Call
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 pt-3 border-t border-white/[0.07]">
                   <img
                     src={resolveAvatar(userSettings?.avatarUrl)}
@@ -614,6 +625,13 @@ export default function OrgPage() {
                     maxLength={2000}
                     className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500/40 focus:bg-white/[0.08] transition-all"
                   />
+                  <div className="hidden md:flex items-center gap-1 px-2">
+                    {DEVOS_EMOJI_LIST.slice(0, 4).map(({ code, value }) => (
+                      <button key={code} type="button" title={code} onClick={() => setChatText((t) => `${t} ${code}`.trim())} className="text-sm hover:scale-110 transition-transform">
+                        {value}
+                      </button>
+                    ))}
+                  </div>
                   <button
                     onClick={handleSendChat}
                     disabled={sendingChat || !chatText.trim()}
@@ -782,6 +800,40 @@ export default function OrgPage() {
                   className="flex items-center gap-1 transition-colors disabled:opacity-50"
                 >
                   {(org.chatEnabled ?? true) ? (
+                    <ToggleRight className="w-8 h-8 text-blue-500" />
+                  ) : (
+                    <ToggleLeft className="w-8 h-8 text-gray-600" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-[#111] border border-gray-800 rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
+                <Phone className="w-4 h-4 text-blue-400" />
+                Voice Calls
+              </h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-white">Enable voice calls</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {(org.voiceCallsEnabled ?? true)
+                      ? "Members can start voice calls in chat"
+                      : "Voice calls are disabled for this organization"}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!org) return;
+                    try {
+                      await updateOrg(org.id, { voiceCallsEnabled: !(org.voiceCallsEnabled ?? true) } as any);
+                    } catch {
+                      toast.error("Failed to toggle voice calls");
+                    }
+                  }}
+                  className="flex items-center gap-1 transition-colors disabled:opacity-50"
+                >
+                  {(org.voiceCallsEnabled ?? true) ? (
                     <ToggleRight className="w-8 h-8 text-blue-500" />
                   ) : (
                     <ToggleLeft className="w-8 h-8 text-gray-600" />

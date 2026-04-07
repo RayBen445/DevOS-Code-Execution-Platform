@@ -344,6 +344,7 @@ export default function App() {
             <Route path="/orgs" element={withPageMaintenance("/orgs", <OrgsPage />)} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/not-found" element={<NotFoundPage />} />
             <Route path="/u/:username" element={withPageMaintenance("/u", <Portfolio />)} />
             <Route path="/u/:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
             {/* /projects — full dashboard & project management */}
@@ -389,4 +390,3 @@ export default function App() {
     </>
   );
 }
-

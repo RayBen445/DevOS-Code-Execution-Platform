@@ -23,11 +23,14 @@ import {
   UserMinus,
   Link2,
   Check,
+  Phone,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
-import { formatRelativeTime } from "../lib/utils";
+import { formatRelativeTime, formatTime } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -56,6 +59,8 @@ import {
   deletePost,
 } from "../lib/feedService";
 import { useSEO } from "../hooks/useSEO";
+import { DEVOS_EMOJI_LIST, renderDevosEmojiText } from "../lib/devosEmoji";
+import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 
 type CommunityTab = "posts" | "members" | "chat" | "settings";
 
@@ -382,6 +387,7 @@ export default function CommunityPage() {
   const [chatMessages, setChatMessages] = useState<CommunityChatMessage[]>([]);
   const [chatText, setChatText] = useState("");
   const [sendingChat, setSendingChat] = useState(false);
+  const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [userSettings, setUserSettings] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
@@ -447,6 +453,10 @@ export default function CommunityPage() {
     return subscribeChatMessages(community.id, setChatMessages);
   }, [community?.id, activeTab, isMember]);
 
+  useEffect(() => {
+    getSiteConfig().then(setSiteConfig).catch(() => {});
+  }, []);
+
   // Auto-scroll chat to bottom when new messages arrive
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -508,7 +518,7 @@ export default function CommunityPage() {
   };
 
   const copyCommunityLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/community/${slug}`).then(() => {
+    navigator.clipboard.writeText(`${window.location.origin}/c/${slug}`).then(() => {
       setLinkCopied(true);
       toast.success("Link copied!");
       setTimeout(() => setLinkCopied(false), 2000);
@@ -568,7 +578,7 @@ export default function CommunityPage() {
 
   const tabs: { id: CommunityTab; label: string; count?: number; icon?: React.ReactNode }[] = [
     { id: "posts", label: "Posts", count: posts.length },
-    { id: "chat", label: "Chat", count: undefined },
+    ...(community.chatEnabled === false ? [] : [{ id: "chat" as CommunityTab, label: "Chat", count: undefined }]),
     { id: "members", label: "Members", count: community.memberCount },
     ...(memberRole === "admin" ? [{ id: "settings" as CommunityTab, label: "Settings", icon: <Settings className="w-3.5 h-3.5" /> }] : []),
   ];
@@ -828,7 +838,7 @@ export default function CommunityPage() {
                                   <span className="text-[11px] font-bold text-white/60">{msg.displayName || msg.username}</span>
                                   {msg.createdAt && (
                                     <span className="text-[10px] text-white/25">
-                                      {new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                      {formatTime(msg.createdAt)}
                                     </span>
                                   )}
                                 </div>
@@ -842,7 +852,7 @@ export default function CommunityPage() {
                                     ? "bg-indigo-600 text-white rounded-br-sm shadow-md shadow-indigo-500/20"
                                     : "bg-white/[0.07] text-white/85 border border-white/[0.08] rounded-bl-sm"
                                 )}>
-                                  {msg.text}
+                                  {renderDevosEmojiText(msg.text)}
                                 </div>
 
                                 {/* Meta (time + delete) — shown on hover */}
@@ -852,7 +862,7 @@ export default function CommunityPage() {
                                 )}>
                                   {isOwn && msg.createdAt && (
                                     <span className="text-[10px] text-white/25">
-                                      {new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                      {formatTime(msg.createdAt)}
                                     </span>
                                   )}
                                   {(user?.uid === msg.userId || memberRole === "admin" || memberRole === "moderator") && (
@@ -875,6 +885,17 @@ export default function CommunityPage() {
                   </div>
 
                   {/* Chat input */}
+                  {(community.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls && (
+                    <div className="mb-2">
+                      <button
+                        onClick={() => toast.info("Voice calling UI is enabled. Real-time call transport will be connected next.")}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/25 transition-colors flex items-center gap-1.5"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        Start Voice Call
+                      </button>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 pt-3 border-t border-white/[0.07]">
                     <img
                       src={resolveAvatar(userSettings?.avatarUrl)}
@@ -889,6 +910,13 @@ export default function CommunityPage() {
                       maxLength={2000}
                       className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/40 focus:bg-white/[0.08] transition-all"
                     />
+                    <div className="hidden md:flex items-center gap-1 px-2">
+                      {DEVOS_EMOJI_LIST.slice(0, 4).map(({ code, value }) => (
+                        <button key={code} type="button" title={code} onClick={() => setChatText((t) => `${t} ${code}`.trim())} className="text-sm hover:scale-110 transition-transform">
+                          {value}
+                        </button>
+                      ))}
+                    </div>
                     <button
                       onClick={handleSendChat}
                       disabled={sendingChat || !chatText.trim()}
@@ -946,6 +974,34 @@ export default function CommunityPage() {
                     maxLength={50}
                     placeholder="e.g. Web Dev, AI/ML, Gaming…"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-3 border-t border-white/10 pt-4">
+                  <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest">Realtime</h3>
+                  <ToggleRow
+                    label="Group chat"
+                    description={(community.chatEnabled ?? true) ? "Members can chat in this community." : "Community chat is disabled."}
+                    enabled={community.chatEnabled ?? true}
+                    onToggle={async () => {
+                      try {
+                        await updateCommunity(community.id, { chatEnabled: !(community.chatEnabled ?? true) });
+                      } catch {
+                        toast.error("Failed to update chat setting.");
+                      }
+                    }}
+                  />
+                  <ToggleRow
+                    label="Voice calls"
+                    description={(community.voiceCallsEnabled ?? true) ? "Members can start voice calls." : "Voice calls are disabled for this community."}
+                    enabled={community.voiceCallsEnabled ?? true}
+                    onToggle={async () => {
+                      try {
+                        await updateCommunity(community.id, { voiceCallsEnabled: !(community.voiceCallsEnabled ?? true) });
+                      } catch {
+                        toast.error("Failed to update voice call setting.");
+                      }
+                    }}
                   />
                 </div>
 
@@ -1013,6 +1069,20 @@ export default function CommunityPage() {
 
       <Footer />
       <MobileBottomNav />
+    </div>
+  );
+}
+
+function ToggleRow({ label, description, enabled, onToggle }: { label: string; description: string; enabled: boolean; onToggle: () => void; }) {
+  return (
+    <div className="flex items-center justify-between py-3.5 px-4 bg-white/[0.03] border border-white/[0.07] rounded-xl">
+      <div>
+        <p className="text-sm font-semibold text-white">{label}</p>
+        <p className="text-xs text-white/30 mt-0.5">{description}</p>
+      </div>
+      <button type="button" onClick={onToggle} className="text-white/60 hover:text-white transition-colors">
+        {enabled ? <ToggleRight className="w-7 h-7 text-indigo-400" /> : <ToggleLeft className="w-7 h-7 text-white/30" />}
+      </button>
     </div>
   );
 }

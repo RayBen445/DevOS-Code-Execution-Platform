@@ -132,6 +132,8 @@ export async function createCommunity(params: {
     createdBy: params.createdBy,
     memberCount: 1,
     isPublic: params.isPublic ?? true,
+    chatEnabled: true,
+    voiceCallsEnabled: true,
     createdAt: serverTimestamp(),
   });
 
@@ -174,7 +176,7 @@ export async function leaveCommunity(communityId: string, userId: string): Promi
 /** Update community metadata (community admin or platform admin — enforced by Firestore rules) */
 export async function updateCommunity(
   communityId: string,
-  updates: Partial<Pick<Community, "name" | "description" | "avatar" | "banner" | "category" | "isPublic">>
+  updates: Partial<Pick<Community, "name" | "description" | "avatar" | "banner" | "category" | "isPublic" | "chatEnabled" | "voiceCallsEnabled">>
 ): Promise<void> {
   if (!communityId) throw new Error("communityId is required");
   if (Object.keys(updates).length === 0) return;
