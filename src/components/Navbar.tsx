@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2 } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -32,8 +32,10 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const [savedAccounts, setSavedAccounts] = useState<Array<{ uid: string; username: string; displayName: string; avatarUrl: string; email: string }>>([]);
   const [isSwitchAccountOpen, setIsSwitchAccountOpen] = useState(false);
   const [userOrgs, setUserOrgs] = useState<Organization[]>([]);
+  const [isOrgsOpen, setIsOrgsOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const creditsPanelRef = useRef<HTMLDivElement>(null);
+  const orgsDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -99,6 +101,9 @@ export default function Navbar({ onSignIn }: NavbarProps) {
       }
       if (creditsPanelRef.current && !creditsPanelRef.current.contains(e.target as Node)) {
         setIsCreditsPanelOpen(false);
+      }
+      if (orgsDropdownRef.current && !orgsDropdownRef.current.contains(e.target as Node)) {
+        setIsOrgsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -166,6 +171,57 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               <FolderCode className="w-4 h-4" />
               My Projects
             </Link>
+            {/* Organisations dropdown */}
+            <div className="relative" ref={orgsDropdownRef}>
+              <button
+                onClick={() => setIsOrgsOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+              >
+                <Building2 className="w-4 h-4" />
+                Organisations
+                <ChevronDown className={cn("w-3 h-3 transition-transform", isOrgsOpen && "rotate-180")} />
+              </button>
+              <AnimatePresence>
+                {isOrgsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                    transition={{ duration: 0.13 }}
+                    className="absolute left-0 top-full mt-2 w-52 bg-[#111] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50"
+                  >
+                    {userOrgs.length > 0 ? (
+                      <>
+                        {userOrgs.map((org) => (
+                          <Link
+                            key={org.id}
+                            to={`/org/${org.slug}`}
+                            onClick={() => setIsOrgsOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <Building2 className="w-4 h-4 text-blue-400/70" />
+                            <span className="truncate">{org.name}</span>
+                          </Link>
+                        ))}
+                        <div className="border-t border-white/5" />
+                      </>
+                    ) : (
+                      <div className="px-4 py-3">
+                        <p className="text-xs text-white/30">No organisations yet</p>
+                      </div>
+                    )}
+                    <Link
+                      to="/projects"
+                      onClick={() => setIsOrgsOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-blue-400/70 hover:text-blue-400 hover:bg-blue-500/5 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Organisation
+                    </Link>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             {isAdmin && (
               <Link
                 to="/admin"

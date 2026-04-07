@@ -17,7 +17,7 @@ export default function Footer() {
     { icon: Github, href: config.githubUrl, label: "GitHub" },
     { icon: Twitter, href: config.twitterUrl, label: "Twitter" },
     { icon: Globe, href: config.websiteUrl, label: "Website" },
-  ];
+  ].filter(({ href }) => !!href);
 
   return (
     <footer className="relative border-t border-white/[0.06] bg-[#0a0a0a] mt-auto overflow-hidden">

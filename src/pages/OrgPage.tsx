@@ -69,6 +69,8 @@ export default function OrgPage() {
       setLinkCopied(true);
       toast.success("Link copied!");
       setTimeout(() => setLinkCopied(false), 2000);
+    }).catch(() => {
+      toast.error("Failed to copy link");
     });
   };
 
@@ -88,6 +90,9 @@ export default function OrgPage() {
       }
       setOrg(found);
       setLoading(false);
+    }).catch(() => {
+      toast.error("Failed to load organisation");
+      setLoading(false);
     });
   }, [slug, navigate]);
 
@@ -104,7 +109,9 @@ export default function OrgPage() {
   // Check if current user is a member
   useEffect(() => {
     if (!org?.id || !user) { setMyMember(null); return; }
-    getOrgMember(org.id, user.uid).then(setMyMember);
+    getOrgMember(org.id, user.uid).then(setMyMember).catch(() => {
+      setMyMember(null);
+    });
   }, [org?.id, user, members]);
 
   // Subscribe to join requests (admin only)
