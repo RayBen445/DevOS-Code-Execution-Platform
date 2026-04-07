@@ -825,6 +825,57 @@ if (process.env.VERCEL !== "1") {
       if (!payload?.projectId) return;
       socket.to(payload.projectId).emit("cursor-update", payload);
     });
+
+    // ── Voice calling signaling (WebRTC) ─────────────────────────────────────
+    socket.on("join-voice-room", ({ roomId, userId, name }: { roomId: string; userId: string; name?: string }) => {
+      if (!roomId || !userId) return;
+      socket.join(roomId);
+      socket.data.voice = { roomId, userId };
+      socket.to(roomId).emit("voice-user-joined", { userId, name });
+    });
+
+    socket.on("voice-offer", ({ roomId, targetUserId, fromUserId, offer }: any) => {
+      if (!roomId || !targetUserId || !fromUserId || !offer) return;
+      for (const [, s] of io.of("/").sockets) {
+        if (s.data?.voice?.roomId === roomId && s.data?.voice?.userId === targetUserId) {
+          s.emit("voice-offer", { fromUserId, offer });
+          break;
+        }
+      }
+    });
+
+    socket.on("voice-answer", ({ roomId, targetUserId, fromUserId, answer }: any) => {
+      if (!roomId || !targetUserId || !fromUserId || !answer) return;
+      for (const [, s] of io.of("/").sockets) {
+        if (s.data?.voice?.roomId === roomId && s.data?.voice?.userId === targetUserId) {
+          s.emit("voice-answer", { fromUserId, answer });
+          break;
+        }
+      }
+    });
+
+    socket.on("voice-ice-candidate", ({ roomId, targetUserId, fromUserId, candidate }: any) => {
+      if (!roomId || !targetUserId || !fromUserId || !candidate) return;
+      for (const [, s] of io.of("/").sockets) {
+        if (s.data?.voice?.roomId === roomId && s.data?.voice?.userId === targetUserId) {
+          s.emit("voice-ice-candidate", { fromUserId, candidate });
+          break;
+        }
+      }
+    });
+
+    socket.on("leave-voice-room", ({ roomId, userId }: { roomId: string; userId: string }) => {
+      if (!roomId || !userId) return;
+      socket.leave(roomId);
+      socket.to(roomId).emit("voice-user-left", { userId });
+    });
+
+    socket.on("disconnect", () => {
+      const voice = socket.data?.voice;
+      if (voice?.roomId && voice?.userId) {
+        socket.to(voice.roomId).emit("voice-user-left", { userId: voice.userId });
+      }
+    });
   });
 
   const PORT = Number(process.env.PORT) || 3000;

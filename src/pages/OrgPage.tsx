@@ -66,6 +66,7 @@ import { formatRelativeTime, formatTime } from "../lib/utils";
 import { cn } from "../lib/utils";
 import { DEVOS_EMOJI_LIST, renderDevosEmojiText } from "../lib/devosEmoji";
 import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
+import socket from "../lib/socket";
 
 type OrgTab = "overview" | "posts" | "chat" | "members" | "settings";
 
@@ -98,6 +99,11 @@ export default function OrgPage() {
   const [togglingChat, setTogglingChat] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
+  const [inVoiceCall, setInVoiceCall] = useState(false);
+  const [voicePeers, setVoicePeers] = useState<string[]>([]);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const peerMapRef = useRef<Record<string, RTCPeerConnection>>({});
+  const remoteAudioRef = useRef<Record<string, HTMLAudioElement>>({});
 
   const copyOrgLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}/org/${slug}`).then(() => {
@@ -185,6 +191,114 @@ export default function OrgPage() {
   useEffect(() => {
     getSiteConfig().then(setSiteConfig).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (org?.chatEnabled === false && activeTab === "chat") {
+      setActiveTab("posts");
+    }
+  }, [org?.chatEnabled, activeTab]);
+
+  const roomId = org?.id ? `org-${org.id}` : "";
+
+  const cleanupVoiceCall = () => {
+    Object.values(peerMapRef.current).forEach((pc) => pc.close());
+    peerMapRef.current = {};
+    Object.values(remoteAudioRef.current).forEach((el) => {
+      el.srcObject = null;
+      el.remove();
+    });
+    remoteAudioRef.current = {};
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = null;
+    }
+    setVoicePeers([]);
+    setInVoiceCall(false);
+  };
+
+  const buildPeer = (targetUserId: string, meId: string, initiator: boolean) => {
+    if (peerMapRef.current[targetUserId]) return peerMapRef.current[targetUserId];
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    localStreamRef.current?.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current!));
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("voice-ice-candidate", { roomId, targetUserId, fromUserId: meId, candidate: event.candidate });
+      }
+    };
+    pc.ontrack = (event) => {
+      let audio = remoteAudioRef.current[targetUserId];
+      if (!audio) {
+        audio = new Audio();
+        audio.autoplay = true;
+        remoteAudioRef.current[targetUserId] = audio;
+      }
+      audio.srcObject = event.streams[0];
+    };
+    peerMapRef.current[targetUserId] = pc;
+    if (initiator) {
+      pc.createOffer()
+        .then((offer) => pc.setLocalDescription(offer).then(() => offer))
+        .then((offer) => socket.emit("voice-offer", { roomId, targetUserId, fromUserId: meId, offer }))
+        .catch(() => {});
+    }
+    return pc;
+  };
+
+  const startVoiceCall = async () => {
+    if (!user || !roomId || inVoiceCall) return;
+    try {
+      localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      socket.connect();
+      const meId = user.uid;
+      socket.emit("join-voice-room", { roomId, userId: meId, name: userSettings?.displayName || userSettings?.username || "User" });
+      setInVoiceCall(true);
+      socket.on("voice-user-joined", ({ userId }: { userId: string }) => {
+        if (!userId || userId === meId) return;
+        setVoicePeers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+        buildPeer(userId, meId, true);
+      });
+      socket.on("voice-offer", async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
+        const pc = buildPeer(fromUserId, meId, false);
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit("voice-answer", { roomId, targetUserId: fromUserId, fromUserId: meId, answer });
+        setVoicePeers((prev) => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
+      });
+      socket.on("voice-answer", async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
+        const pc = peerMapRef.current[fromUserId];
+        if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      });
+      socket.on("voice-ice-candidate", async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
+        const pc = peerMapRef.current[fromUserId];
+        if (!pc) return;
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      });
+      socket.on("voice-user-left", ({ userId }: { userId: string }) => {
+        peerMapRef.current[userId]?.close();
+        delete peerMapRef.current[userId];
+        remoteAudioRef.current[userId]?.remove();
+        delete remoteAudioRef.current[userId];
+        setVoicePeers((prev) => prev.filter((p) => p !== userId));
+      });
+    } catch {
+      toast.error("Could not start voice call. Microphone permission may be blocked.");
+      cleanupVoiceCall();
+    }
+  };
+
+  const endVoiceCall = () => {
+    if (user && roomId) socket.emit("leave-voice-room", { roomId, userId: user.uid });
+    socket.off("voice-user-joined");
+    socket.off("voice-offer");
+    socket.off("voice-answer");
+    socket.off("voice-ice-candidate");
+    socket.off("voice-user-left");
+    cleanupVoiceCall();
+  };
+
+  useEffect(() => () => endVoiceCall(), [roomId, user?.uid]);
 
   const handleJoin = async () => {
     if (!user || !org) return;
@@ -292,7 +406,7 @@ export default function OrgPage() {
   };
 
   const handleSendChat = async () => {
-    if (!user || !chatText.trim() || !org?.id) return;
+    if (!user || !chatText.trim() || !org?.id || org.chatEnabled === false) return;
     setSendingChat(true);
     const text = chatText.trim();
     setChatText("");
@@ -526,7 +640,7 @@ export default function OrgPage() {
         )}
 
         {/* Chat tab */}
-        {activeTab === "chat" && (
+        {activeTab === "chat" && org.chatEnabled !== false && (
           <div className="flex flex-col h-[540px]">
             {!myMember ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-3">
@@ -603,11 +717,11 @@ export default function OrgPage() {
                 {(org.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls && (
                   <div className="mb-2">
                     <button
-                      onClick={() => toast.info("Voice calling UI is enabled. Real-time call transport will be connected next.")}
+                      onClick={inVoiceCall ? endVoiceCall : startVoiceCall}
                       className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/25 transition-colors flex items-center gap-1.5"
                     >
                       <Phone className="w-3.5 h-3.5" />
-                      Start Voice Call
+                      {inVoiceCall ? `End Voice Call (${voicePeers.length + 1})` : "Start Voice Call"}
                     </button>
                   </div>
                 )}
