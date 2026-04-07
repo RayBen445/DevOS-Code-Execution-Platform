@@ -486,8 +486,11 @@ app.post("/api/admin/send-email", async (req, res) => {
   let userDoc: FirebaseFirestore.DocumentSnapshot;
   try {
     userDoc = await db.collection("users").doc(uid).get();
-  } catch (err) {
-    console.error("Firestore lookup error in send-email:", err);
+  } catch (err: any) {
+    const hint = !process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+      ? " (FIREBASE_SERVICE_ACCOUNT_JSON is not set — server may be using applicationDefault credentials)"
+      : "";
+    console.error(`Firestore lookup error in send-email${hint}:`, err?.message ?? err);
     return res
       .status(500)
       .json({ error: "Server configuration error. Please try again later." });

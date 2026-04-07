@@ -7,17 +7,19 @@ import { UITheme, applyTheme } from "../lib/themes";
 
 const STORAGE_KEY = "devos_ui_theme";
 
+// Apply saved theme synchronously before the first React render so there is
+// no flash of the default dark background when a non-dark theme is active.
+(function initTheme() {
+  const saved = localStorage.getItem(STORAGE_KEY) as UITheme | null;
+  applyTheme(saved ?? "dark");
+})();
+
 /** Reads, persists, and applies the user's chosen UI theme. */
 export function useUITheme() {
   const [user] = useAuthState(auth);
   const [theme, setThemeState] = useState<UITheme>(() => {
     return (localStorage.getItem(STORAGE_KEY) as UITheme) ?? "dark";
   });
-
-  // Apply saved theme immediately on mount (before Firestore loads)
-  useEffect(() => {
-    applyTheme(theme);
-  }, []);
 
   // Sync from Firestore once user is known
   useEffect(() => {

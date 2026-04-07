@@ -285,7 +285,8 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                     </button>
                     <button
                       onClick={() => handleDeploy("internal", selectedEntry)}
-                      className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+                      disabled={!selectedEntry}
+                      className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Confirm & Deploy
                     </button>

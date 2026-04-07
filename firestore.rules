@@ -68,7 +68,11 @@ service cloud.firestore {
              (projectData.get('isSystem', false) == true && projectData.get('systemType', '') == 'portfolio') || (
         isAuthenticated() && (
           isAdmin() ||
-          isProjectCollaborator(projectData)
+          isProjectCollaborator(projectData) ||
+          // Org project: any member of the owning org can read
+          (projectData.get('ownerType', '') == 'organization' &&
+           projectData.get('ownerOrgId', '') != '' &&
+           exists(/databases/$(database)/documents/organizations/$(projectData.get('ownerOrgId', ''))/members/$(request.auth.uid)))
         )
       );
     }
@@ -76,7 +80,11 @@ service cloud.firestore {
     function canWriteProject(projectId, projectData) {
       return isAuthenticated() && (
         isAdmin() ||
-        isProjectCollaborator(projectData)
+        isProjectCollaborator(projectData) ||
+        // Org project: any member of the owning org can write
+        (projectData.get('ownerType', '') == 'organization' &&
+         projectData.get('ownerOrgId', '') != '' &&
+         exists(/databases/$(database)/documents/organizations/$(projectData.get('ownerOrgId', ''))/members/$(request.auth.uid)))
       );
     }
 
@@ -104,7 +112,7 @@ service cloud.firestore {
 
     function isValidProject(data) {
       let requiredFields = ['name', 'ownerId', 'createdAt', 'updatedAt', 'isPublic', 'isTemplate', 'forksCount', 'collaborators'];
-      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'parentTemplateId', 'forkedFrom', 'forkedFromOwner', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'savedAt', 'env']);
+      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'parentTemplateId', 'forkedFrom', 'forkedFromOwner', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'savedAt', 'env', 'ownerType', 'ownerOrgId']);
       return data.keys().hasAll(requiredFields) &&
              data.keys().hasOnly(allowedFields) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
@@ -137,6 +145,8 @@ service cloud.firestore {
              (!('deployStatus' in data) || data.deployStatus in ['idle', 'building', 'success', 'failed']) &&
              (!('lastDeployedAt' in data) || data.lastDeployedAt is timestamp) &&
              (!('deployError' in data) || data.deployError is string) &&
+             (!('ownerType' in data) || data.ownerType in ['user', 'organization']) &&
+             (!('ownerOrgId' in data) || data.ownerOrgId is string) &&
              data.createdAt is timestamp &&
              data.updatedAt is timestamp &&
              data.collaborators is list;
@@ -209,7 +219,14 @@ service cloud.firestore {
 
     match /projects/{projectId} {
       allow read: if canReadProject(projectId, resource.data);
-      allow create: if isAuthenticated() && isValidProject(request.resource.data) && (request.resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidProject(request.resource.data) && (
+        request.resource.data.ownerId == request.auth.uid ||
+        isAdmin() ||
+        // Org member creating a project under their organization
+        (request.resource.data.get('ownerType', '') == 'organization' &&
+         request.resource.data.get('ownerOrgId', '') != '' &&
+         exists(/databases/$(database)/documents/organizations/$(request.resource.data.ownerOrgId)/members/$(request.auth.uid)))
+      );
       allow update: if canWriteProject(projectId, resource.data) && isValidProject(request.resource.data);
       allow delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin()) && resource.data.get('isDeletable', true) == true;
 
@@ -316,10 +333,13 @@ service cloud.firestore {
     match /feed/{postId} {
       allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
       allow create: if isAuthenticated() && (
-        // Community posts may only be created by community members
+        // Posts without a communityId are always allowed for authenticated users
         !('communityId' in request.resource.data) ||
         request.resource.data.communityId == null ||
-        exists(/databases/$(database)/documents/communities/$(request.resource.data.communityId)/members/$(request.auth.uid))
+        // Community posts — must be a community member
+        exists(/databases/$(database)/documents/communities/$(request.resource.data.communityId)/members/$(request.auth.uid)) ||
+        // Org posts — communityId stores the org's id; must be an org member
+        exists(/databases/$(database)/documents/organizations/$(request.resource.data.communityId)/members/$(request.auth.uid))
       );
       allow update: if isAuthenticated() && (
         // Post owner and admins may update any field
@@ -588,6 +608,53 @@ service cloud.firestore {
             exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
             get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
           )
+        );
+      }
+
+      // Chat subcollection — org members only
+      match /chat/{messageId} {
+        // Any org member can read messages
+        allow read: if isAuthenticated() &&
+          exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid));
+        // Org members can send messages as themselves
+        allow create: if isAuthenticated() &&
+          exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 2000;
+        // Message owner, org admin, or platform admin can delete
+        allow delete: if isAuthenticated() && (
+          resource.data.userId == request.auth.uid ||
+          (exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin') ||
+          isAdmin()
+        );
+      }
+
+      // Join-request subcollection — keyed by the requesting user's uid
+      match /joinRequests/{userId} {
+        // Requester sees their own; org admins see all
+        allow read: if isAuthenticated() && (
+          request.auth.uid == userId ||
+          isAdmin() ||
+          (exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin')
+        );
+        // Any authenticated user can create their own request
+        allow create: if isAuthenticated() && request.auth.uid == userId;
+        // Org admins or platform admins can approve/reject (update status)
+        allow update: if isAdmin() || (
+          isAuthenticated() &&
+          exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
+        );
+        // Requester can withdraw; org admins can delete
+        allow delete: if isAuthenticated() && (
+          request.auth.uid == userId ||
+          isAdmin() ||
+          (exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin')
         );
       }
     }

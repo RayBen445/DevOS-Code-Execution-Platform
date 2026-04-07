@@ -24,7 +24,8 @@ import { createAdminPost } from "../lib/feedService";
 import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable, setUserOfficial, getUsernameChangeRequests, resolveUsernameChangeRequest, createPortfolioProject } from "../lib/userService";
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
 import { updateCommunity, deleteCommunity } from "../lib/communityService";
-import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community } from "../types";
+import { getAllOrgs, deleteOrg, updateOrg } from "../lib/orgService";
+import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -76,13 +77,14 @@ import {
   Users2,
   Save,
   Link2,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "site";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "site";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -304,6 +306,17 @@ export default function AdminDashboard() {
   const [loadingSiteConfig, setLoadingSiteConfig] = useState(false);
   const [savingSiteConfig, setSavingSiteConfig] = useState(false);
 
+  // Organizations management state
+  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
+  const [orgEditName, setOrgEditName] = useState("");
+  const [orgEditDesc, setOrgEditDesc] = useState("");
+  const [orgEditPublic, setOrgEditPublic] = useState(true);
+  const [savingOrg, setSavingOrg] = useState(false);
+  const [deleteOrgConfirm, setDeleteOrgConfirm] = useState<string | null>(null);
+  const [deletingOrg, setDeletingOrg] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     const checkAdmin = async () => {
@@ -340,6 +353,9 @@ export default function AdminDashboard() {
     }
     if (activeTab === "communities" && isAdmin) {
       loadCommunities();
+    }
+    if (activeTab === "organizations" && isAdmin) {
+      loadOrgs();
     }
     if (activeTab === "site" && isAdmin) {
       loadSiteConfig();
@@ -1314,6 +1330,63 @@ export default function AdminDashboard() {
 
   // ── Site settings handlers ─────────────────────────────────────────────────
 
+  // ── Organizations management handlers ─────────────────────────────────────
+
+  const loadOrgs = async () => {
+    setLoadingOrgs(true);
+    try {
+      const data = await getAllOrgs();
+      setOrgs(data.sort((a, b) => (b.memberCount ?? 0) - (a.memberCount ?? 0)));
+    } catch {
+      toast.error("Failed to load organizations.");
+    } finally {
+      setLoadingOrgs(false);
+    }
+  };
+
+  const handleEditOrg = (org: Organization) => {
+    setEditingOrg(org);
+    setOrgEditName(org.name);
+    setOrgEditDesc(org.description ?? "");
+    setOrgEditPublic(org.isPublic);
+  };
+
+  const handleSaveOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOrg) return;
+    if (!orgEditName.trim()) { toast.error("Name is required."); return; }
+    setSavingOrg(true);
+    try {
+      await updateOrg(editingOrg.id, { name: orgEditName.trim(), description: orgEditDesc.trim(), isPublic: orgEditPublic });
+      setOrgs((prev) => prev.map((o) =>
+        o.id === editingOrg.id
+          ? { ...o, name: orgEditName.trim(), description: orgEditDesc.trim(), isPublic: orgEditPublic }
+          : o
+      ));
+      toast.success("Organization updated.");
+      setEditingOrg(null);
+    } catch {
+      toast.error("Failed to update organization.");
+    } finally {
+      setSavingOrg(false);
+    }
+  };
+
+  const confirmDeleteOrg = async () => {
+    if (!deleteOrgConfirm) return;
+    setDeletingOrg(true);
+    try {
+      await deleteOrg(deleteOrgConfirm);
+      setOrgs((prev) => prev.filter((o) => o.id !== deleteOrgConfirm));
+      toast.success("Organization deleted.");
+      setDeleteOrgConfirm(null);
+    } catch {
+      toast.error("Failed to delete organization.");
+    } finally {
+      setDeletingOrg(false);
+    }
+  };
+
   const loadSiteConfig = () => {
     setLoadingSiteConfig(true);
     getSiteConfig()
@@ -1381,6 +1454,7 @@ export default function AdminDashboard() {
     { id: "maintenance", label: "Maintenance", icon: <Wrench className="w-4 h-4" /> },
     { id: "email", label: "Send Email", icon: <Send className="w-4 h-4" /> },
     { id: "communities", label: "Communities", icon: <Users2 className="w-4 h-4" /> },
+    { id: "organizations", label: "Organizations", icon: <Building2 className="w-4 h-4" /> },
     { id: "site", label: "Site Settings", icon: <Globe className="w-4 h-4" /> },
   ];
 
@@ -1524,6 +1598,7 @@ export default function AdminDashboard() {
                   {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
                   {activeTab === "email" && "Send a custom email to any user via Gmail SMTP"}
                   {activeTab === "communities" && "View, edit and delete all platform communities"}
+                  {activeTab === "organizations" && "View, edit and delete all platform organizations"}
                   {activeTab === "site" && "Edit platform name, tagline, social links and footer text"}
                 </p>
               </div>
@@ -3365,6 +3440,125 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
+                {/* Organizations Tab */}
+                {activeTab === "organizations" && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-white/40">{orgs.length} organization{orgs.length !== 1 ? "s" : ""} total</p>
+                      <button
+                        onClick={loadOrgs}
+                        disabled={loadingOrgs}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${loadingOrgs ? "animate-spin" : ""}`} />
+                        Refresh
+                      </button>
+                    </div>
+                    {loadingOrgs ? (
+                      <div className="flex items-center gap-2 text-white/40 py-8 justify-center">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Loading organizations…
+                      </div>
+                    ) : orgs.length === 0 ? (
+                      <div className="text-center py-12 text-white/30">
+                        <Building2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">No organizations yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {orgs.map((org) => (
+                          <div key={org.id} className="bg-[#111827] border border-white/10 rounded-2xl p-5">
+                            {editingOrg?.id === org.id ? (
+                              <form onSubmit={handleSaveOrg} className="space-y-3">
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Name</label>
+                                  <input
+                                    value={orgEditName}
+                                    onChange={(e) => setOrgEditName(e.target.value)}
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Description</label>
+                                  <textarea
+                                    value={orgEditDesc}
+                                    onChange={(e) => setOrgEditDesc(e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setOrgEditPublic(v => !v)}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${orgEditPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}
+                                  >
+                                    {orgEditPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                                    {orgEditPublic ? "Public" : "Private"}
+                                  </button>
+                                  <div className="flex-1" />
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingOrg(null)}
+                                    className="px-4 py-1.5 rounded-xl text-xs font-bold bg-white/5 text-white/50 hover:bg-white/10 transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    disabled={savingOrg}
+                                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                  >
+                                    {savingOrg ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                    Save
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-bold text-white text-sm">{org.name}</p>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/40 font-mono">/{org.slug}</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${org.isPublic ? "bg-green-600/10 text-green-400" : "bg-orange-600/10 text-orange-400"}`}>
+                                      {org.isPublic ? "Public" : "Private"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-white/40 mt-1 line-clamp-2">{org.description || <span className="italic opacity-50">No description</span>}</p>
+                                  <p className="text-[10px] text-white/25 mt-1">
+                                    {org.memberCount ?? 0} member{(org.memberCount ?? 0) !== 1 ? "s" : ""}
+                                    {" · "}
+                                    <a href={`/org/${org.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400/60 hover:text-blue-400 transition-colors">
+                                      View page ↗
+                                    </a>
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <button
+                                    onClick={() => handleEditOrg(org)}
+                                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteOrgConfirm(org.id)}
+                                    className="p-1.5 rounded-lg bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Site Settings Tab */}
                 {activeTab === "site" && (
                   <div className="space-y-6 max-w-2xl">
@@ -3517,6 +3711,17 @@ export default function AdminDashboard() {
       loading={deletingCommunity}
       onConfirm={confirmDeleteCommunity}
       onCancel={() => setDeleteCommunityConfirm(null)}
+    />
+
+    <ConfirmModal
+      open={!!deleteOrgConfirm}
+      title="Delete Organization"
+      description="Delete this organization? The organization document will be permanently removed."
+      warning="This action cannot be undone."
+      confirmLabel="Delete Organization"
+      loading={deletingOrg}
+      onConfirm={confirmDeleteOrg}
+      onCancel={() => setDeleteOrgConfirm(null)}
     />
 
     <ConfirmModal

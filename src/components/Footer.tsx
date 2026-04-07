@@ -17,7 +17,7 @@ export default function Footer() {
     { icon: Github, href: config.githubUrl, label: "GitHub" },
     { icon: Twitter, href: config.twitterUrl, label: "Twitter" },
     { icon: Globe, href: config.websiteUrl, label: "Website" },
-  ];
+  ].filter(({ href }) => !!href);
 
   return (
     <footer className="relative border-t border-white/[0.06] bg-[#0a0a0a] mt-auto overflow-hidden">
@@ -60,6 +60,7 @@ export default function Footer() {
             <FooterLink to="/">Explore</FooterLink>
             <FooterLink to="/templates">Templates</FooterLink>
             <FooterLink to="/communities">Communities</FooterLink>
+            <FooterLink to="/orgs">Organizations</FooterLink>
             <FooterLink to="/docs">Docs</FooterLink>
           </div>
 
@@ -74,6 +75,8 @@ export default function Footer() {
           {/* Contact & Legal */}
           <div className="flex flex-col gap-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Contact &amp; Legal</p>
+            <FooterLink to="/about">About</FooterLink>
+            <FooterLink to="/contact">Contact Us</FooterLink>
             <a
               href={`mailto:${config.contactEmail}`}
               className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors w-fit"

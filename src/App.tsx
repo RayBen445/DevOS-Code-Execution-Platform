@@ -35,6 +35,10 @@ import PageMaintenanceBanner from "./components/PageMaintenanceBanner";
 import CommunitiesPage from "./pages/CommunitiesPage";
 import CommunityPage from "./pages/CommunityPage";
 import OrgPage from "./pages/OrgPage";
+import OrgsPage from "./pages/OrgsPage";
+import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
+import NotFoundPage from "./pages/NotFoundPage";
 import { Zap, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
@@ -337,6 +341,9 @@ export default function App() {
             <Route path="/communities" element={withPageMaintenance("/communities", <CommunitiesPage />)} />
             <Route path="/c/:slug" element={withPageMaintenance("/communities", <CommunityPage />)} />
             <Route path="/org/:slug" element={withPageMaintenance("/org", <OrgPage />)} />
+            <Route path="/orgs" element={withPageMaintenance("/orgs", <OrgsPage />)} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/u/:username" element={withPageMaintenance("/u", <Portfolio />)} />
             <Route path="/u/:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
             {/* /projects — full dashboard & project management */}
@@ -374,6 +381,8 @@ export default function App() {
                 )
               }
             />
+            {/* 404 catch-all */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </AnimatePresence>
       </ConfigGuard>

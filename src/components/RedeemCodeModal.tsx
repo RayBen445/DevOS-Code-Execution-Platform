@@ -40,7 +40,8 @@ export default function RedeemCodeModal({ isOpen, onClose }: RedeemCodeModalProp
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
+          <div className="flex min-h-full items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -100,6 +101,7 @@ export default function RedeemCodeModal({ isOpen, onClose }: RedeemCodeModalProp
               </div>
             </form>
           </motion.div>
+          </div>
         </div>
       )}
     </AnimatePresence>

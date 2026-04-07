@@ -1,11 +1,19 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Globe, RefreshCw, ExternalLink, Loader2, AlertCircle, Zap } from "lucide-react";
+import { Globe, RefreshCw, ExternalLink, Loader2, AlertCircle, Zap, Monitor, Smartphone, Tablet } from "lucide-react";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Babel from "@babel/standalone";
 import { db } from "../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+
+type DeviceMode = "desktop" | "tablet" | "mobile";
+
+const DEVICE_WIDTHS: Record<DeviceMode, string> = {
+  desktop: "100%",
+  tablet:  "768px",
+  mobile:  "390px",
+};
 
 interface PreviewPanelProps {
   projectId: string;
@@ -20,6 +28,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
   const [error, setError] = useState<string | null>(null);
   const [iframeLoading, setIframeLoading] = useState(true);
   const [projectEnv, setProjectEnv] = useState<Record<string, string>>({});
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -219,6 +228,25 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
           <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Preview</span>
         </div>
         <div className="flex items-center gap-1">
+          {/* Device mode switcher */}
+          {([
+            { mode: "desktop" as DeviceMode, icon: Monitor,    title: "Desktop" },
+            { mode: "tablet"  as DeviceMode, icon: Tablet,     title: "Tablet (768px)" },
+            { mode: "mobile"  as DeviceMode, icon: Smartphone, title: "Mobile (390px)" },
+          ]).map(({ mode, icon: Icon, title }) => (
+            <button
+              key={mode}
+              onClick={() => setDeviceMode(mode)}
+              title={title}
+              className={cn(
+                "p-1 rounded text-white/40 hover:text-white transition-colors",
+                deviceMode === mode && "bg-white/10 text-white"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+          <div className="w-px h-4 bg-white/10 mx-0.5" />
           <button 
             onClick={generatePreview}
             disabled={isGenerating}
@@ -238,74 +266,94 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
         </div>
       </div>
 
-      <div className="flex-1 bg-white m-4 rounded-xl overflow-hidden shadow-2xl relative group border border-white/5">
-        <AnimatePresence mode="wait">
-          {error ? (
-            <motion.div 
-              key="error"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-white flex flex-col items-center justify-center p-6 text-center"
-            >
-              <AlertCircle className="w-10 h-10 text-red-500 mb-4" />
-              <h3 className="text-base font-bold text-black mb-2">Preview Error</h3>
-              <p className="text-xs text-black/40 max-w-[200px]">{error}</p>
-              <button 
-                onClick={generatePreview}
-                className="mt-6 px-4 py-2 bg-black text-white rounded-lg text-xs font-bold hover:bg-black/80 transition-all"
+      {/* Viewport wrapper — centres the iframe when in tablet/mobile mode */}
+      <div className="flex-1 bg-[#0d0d0d] flex flex-col items-center overflow-auto p-2 gap-2 min-h-0">
+        {deviceMode !== "desktop" && (
+          <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest pt-1 flex-shrink-0">
+            {deviceMode === "tablet" ? "Tablet — 768px" : "Mobile — 390px"}
+          </p>
+        )}
+        {/* Device frame */}
+        <div
+          className={cn(
+            "relative bg-white shadow-2xl overflow-hidden flex-shrink-0",
+            deviceMode === "desktop" ? "w-full flex-1 rounded-xl" : "rounded-2xl border-2 border-white/10"
+          )}
+          style={
+            deviceMode !== "desktop"
+              ? { width: DEVICE_WIDTHS[deviceMode], height: "600px", maxWidth: "100%" }
+              : undefined
+          }
+        >
+          <AnimatePresence mode="wait">
+            {error ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-white flex flex-col items-center justify-center p-6 text-center"
               >
-                Try Again
-              </button>
-            </motion.div>
-          ) : (isGenerating || (previewUrl && iframeLoading)) ? (
-            <motion.div 
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-[#f8f9fa] flex flex-col items-center justify-center"
-            >
-              <div className="relative mb-4">
-                <div className="w-12 h-12 rounded-full border-2 border-blue-500/10 border-t-blue-500 animate-spin" />
-                <Globe className="absolute inset-0 m-auto w-5 h-5 text-blue-500/40" />
-              </div>
-              <p className="text-[10px] font-bold text-blue-500/60 uppercase tracking-widest animate-pulse">
-                Rendering Preview...
-              </p>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+                <AlertCircle className="w-10 h-10 text-red-500 mb-4" />
+                <h3 className="text-base font-bold text-black mb-2">Preview Error</h3>
+                <p className="text-xs text-black/40 max-w-[200px]">{error}</p>
+                <button
+                  onClick={generatePreview}
+                  className="mt-6 px-4 py-2 bg-black text-white rounded-lg text-xs font-bold hover:bg-black/80 transition-all"
+                >
+                  Try Again
+                </button>
+              </motion.div>
+            ) : (isGenerating || (previewUrl && iframeLoading)) ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-[#f8f9fa] flex flex-col items-center justify-center"
+              >
+                <div className="relative mb-4">
+                  <div className="w-12 h-12 rounded-full border-2 border-blue-500/10 border-t-blue-500 animate-spin" />
+                  <Globe className="absolute inset-0 m-auto w-5 h-5 text-blue-500/40" />
+                </div>
+                <p className="text-[10px] font-bold text-blue-500/60 uppercase tracking-widest animate-pulse">
+                  Rendering Preview...
+                </p>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
-        {previewUrl && !error && (
-          <iframe 
-            ref={iframeRef}
-            src={previewUrl} 
-            className={cn(
-              "w-full h-full border-none transition-opacity duration-500",
-              iframeLoading ? "opacity-0" : "opacity-100"
-            )}
-            onLoad={() => setIframeLoading(false)}
-            title="Project Preview"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
-          />
-        )}
+          {previewUrl && !error && (
+            <iframe
+              ref={iframeRef}
+              src={previewUrl}
+              className={cn(
+                "w-full h-full border-none transition-opacity duration-500",
+                iframeLoading ? "opacity-0" : "opacity-100"
+              )}
+              onLoad={() => setIframeLoading(false)}
+              title="Project Preview"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
+            />
+          )}
 
-        {!previewUrl && !isGenerating && !error && (
-          <div className="absolute inset-0 bg-[#f8f9fa] flex items-center justify-center pointer-events-none">
-            <div className="text-center p-6">
-              <div className="w-16 h-16 rounded-2xl bg-blue-500/5 flex items-center justify-center mx-auto mb-6">
-                <Globe className="w-8 h-8 text-blue-500/20" />
+          {!previewUrl && !isGenerating && !error && (
+            <div className="absolute inset-0 bg-[#f8f9fa] flex items-center justify-center pointer-events-none">
+              <div className="text-center p-6">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/5 flex items-center justify-center mx-auto mb-6">
+                  <Globe className="w-8 h-8 text-blue-500/20" />
+                </div>
+                <h3 className="text-sm font-bold text-black/60 mb-1">Live Preview</h3>
+                <p className="text-[10px] text-black/40">Your application will render here</p>
               </div>
-              <h3 className="text-sm font-bold text-black/60 mb-1">Live Preview</h3>
-              <p className="text-[10px] text-black/40">Your application will render here</p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      <div className="p-4 border-t border-white/5 bg-black/20">
-        <div className="flex items-center justify-between mb-2">
+      {/* Status bar */}
+      <div className="p-4 border-t border-white/5 bg-black/20 flex-shrink-0">
+        <div className="flex items-center justify-between mb-1">
           <span className="text-[10px] font-bold text-white/20 uppercase tracking-tighter">Status</span>
           <span className="flex items-center gap-1.5 text-[10px] text-green-500 font-bold">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -313,7 +361,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
           </span>
         </div>
         <div className="text-[10px] text-white/40 leading-relaxed">
-          Preview is synchronized with your latest changes in the editor.
+          {deviceMode === "desktop" ? "Full width" : deviceMode === "tablet" ? "768 px viewport" : "390 px viewport"} · synchronized with your latest save.
         </div>
       </div>
     </div>
