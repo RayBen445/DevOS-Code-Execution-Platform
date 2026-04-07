@@ -45,6 +45,7 @@ import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "./lib/firebase";
 import { signOut } from "firebase/auth";
+import { initializeDefaultBots, emitBotEventWithToast } from "./lib/botEngine";
 
 import { Toaster } from "sonner";
 
@@ -162,6 +163,15 @@ export default function App() {
     if (ref && !sessionStorage.getItem("devos_pending_ref")) {
       sessionStorage.setItem("devos_pending_ref", ref);
     }
+  }, []);
+
+  // Boot bot system once per app session
+  useEffect(() => {
+    initializeDefaultBots();
+    emitBotEventWithToast({
+      name: "system_boot",
+      payload: { firebaseReady: true },
+    }).catch(() => {});
   }, []);
 
   // Handle subdomain redirects for backward compatibility

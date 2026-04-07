@@ -18,6 +18,7 @@ import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
 import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { emitBotEvent } from "../lib/botEngine";
 
 interface IDEProps {
   projectId: string;
@@ -93,6 +94,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const orgMembersRef = useRef<OrgMember[]>([]); // stable ref for use in closures
   const notifiedActivityIds = useRef<Set<string>>(new Set()); // prevents duplicate toasts
   const editDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const botDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [botSuggestions, setBotSuggestions] = useState<string[]>([]);
 
   // Persist active file and panel to localStorage (per-project key)
   useEffect(() => {
@@ -487,6 +490,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       socket.disconnect();
       Object.values(editDebounceRef.current).forEach((t) => clearTimeout(t));
       editDebounceRef.current = {};
+      if (botDebounceRef.current) clearTimeout(botDebounceRef.current);
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, [user, projectId]);
@@ -650,6 +654,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     editDebounceRef.current[activeFileId] = setTimeout(() => {
       handleUpdateFile(activeFileId, content);
     }, 120);
+
+    if (botDebounceRef.current) clearTimeout(botDebounceRef.current);
+    botDebounceRef.current = setTimeout(async () => {
+      const messages = await emitBotEvent({
+        name: "file_changed",
+        payload: { projectId, fileId: activeFileId, content },
+      });
+      setBotSuggestions(messages.map((m) => m.text).slice(0, 3));
+    }, 250);
 
     // Schedule auto-save after 2.5s of idle
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -1769,6 +1782,11 @@ export default function IDE({ projectId, onBack }: IDEProps) {
             <span className="text-orange-400/70 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
               Unsaved changes
+            </span>
+          )}
+          {botSuggestions.length > 0 && (
+            <span className="text-blue-300/70 truncate max-w-[360px]">
+              🤖 {botSuggestions[0]}
             </span>
           )}
         </div>

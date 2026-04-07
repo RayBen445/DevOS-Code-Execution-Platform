@@ -54,6 +54,7 @@ import MobileBottomNav from "./MobileBottomNav";
 import Avatar from "./Avatar";
 import ConfirmModal from "./ConfirmModal";
 import { useSEO } from "../hooks/useSEO";
+import { emitBotEventWithToast } from "../lib/botEngine";
 import { toast } from "sonner";
 import { FeedPostShareCard, useShareAsImage } from "./ShareAsImageCard";
 import MentionInput, { extractMentions } from "./MentionInput";
@@ -331,6 +332,10 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         mentions,
         isOfficial: settings?.isOfficial ?? false,
       });
+      emitBotEventWithToast({
+        name: "post_created",
+        payload: { postId, content: postText.trim(), userId: user.uid },
+      }).catch(() => {});
       // Notify mentioned users
       if (mentions.length) {
         const { getDocs: _getDocs, query: _query, collection: _col, where: _where } = await import("firebase/firestore");

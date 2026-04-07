@@ -17,6 +17,7 @@ import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import { useNavigate } from "react-router-dom";
 import { ProjectShareCard, useShareAsImage } from "./ShareAsImageCard";
+import { emitBotEventWithToast } from "../lib/botEngine";
 import CreateOrgModal from "./CreateOrgModal";
 
 interface DashboardProps {
@@ -232,6 +233,10 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
       setIsCreating(false);
       
       toast.success("Project created successfully", { id: toastId });
+      emitBotEventWithToast({
+        name: "project_created",
+        payload: { projectId: docRef.id, projectName: newProjectName, userId: user.uid },
+      }).catch(() => {});
       onSelectProject(docRef.id);
     } catch (error) {
       console.error("Error creating project:", error);
