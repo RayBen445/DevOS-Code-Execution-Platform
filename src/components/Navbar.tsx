@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -153,13 +153,6 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               Explore
             </Link>
             <Link
-              to="/communities"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
-            >
-              <Users className="w-4 h-4" />
-              Communities
-            </Link>
-            <Link
               to="/templates"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
             >
@@ -172,6 +165,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             >
               <FolderCode className="w-4 h-4" />
               My Projects
+            </Link>
+            <Link
+              to="/bots"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <Bot className="w-4 h-4" />
+              Bots
             </Link>
             {/* Organisations dropdown */}
             <div className="relative" ref={orgsDropdownRef}>
@@ -626,12 +626,12 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   Explore
                 </Link>
                 <Link
-                  to="/communities"
+                  to="/orgs"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
                 >
-                  <Users className="w-4 h-4" />
-                  Communities
+                  <Building2 className="w-4 h-4" />
+                  Organizations
                 </Link>
                 <Link
                   to="/templates"
@@ -648,6 +648,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 >
                   <FolderCode className="w-4 h-4" />
                   My Projects
+                </Link>
+                <Link
+                  to="/bots"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <Bot className="w-4 h-4" />
+                  Bots
                 </Link>
                 {isAdmin && (
                   <Link

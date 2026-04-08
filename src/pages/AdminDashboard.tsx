@@ -10,6 +10,8 @@ import {
   setDoc,
   deleteDoc,
   updateDoc,
+  addDoc,
+  serverTimestamp,
   query,
   limit,
   where,
@@ -23,9 +25,9 @@ import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/red
 import { createAdminPost } from "../lib/feedService";
 import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsernameAvailable, setUserOfficial, getUsernameChangeRequests, resolveUsernameChangeRequest, createPortfolioProject } from "../lib/userService";
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
-import { updateCommunity, deleteCommunity } from "../lib/communityService";
-import { getAllOrgs, deleteOrg, updateOrg } from "../lib/orgService";
-import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization } from "../types";
+import { updateCommunity, deleteCommunity, createCommunity, batchAddAllUsersToCommunity } from "../lib/communityService";
+import { getAllOrgs, deleteOrg, updateOrg, createOrg, batchAddAllUsersToOrg } from "../lib/orgService";
+import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization, Project } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -78,13 +80,14 @@ import {
   Save,
   Link2,
   Building2,
+  FolderPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "site";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -317,6 +320,33 @@ export default function AdminDashboard() {
   const [deleteOrgConfirm, setDeleteOrgConfirm] = useState<string | null>(null);
   const [deletingOrg, setDeletingOrg] = useState(false);
 
+  // Create-community form state (admin)
+  const [showCreateCommunity, setShowCreateCommunity] = useState(false);
+  const [newCommunityName, setNewCommunityName] = useState("");
+  const [newCommunityDesc, setNewCommunityDesc] = useState("");
+  const [newCommunityCategory, setNewCommunityCategory] = useState("general");
+  const [newCommunityPublic, setNewCommunityPublic] = useState(true);
+  const [newCommunityOfficial, setNewCommunityOfficial] = useState(false);
+  const [creatingCommunity, setCreatingCommunity] = useState(false);
+
+  // Create-org form state (admin)
+  const [showCreateOrg, setShowCreateOrg] = useState(false);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [newOrgDesc, setNewOrgDesc] = useState("");
+  const [newOrgPublic, setNewOrgPublic] = useState(true);
+  const [newOrgOfficial, setNewOrgOfficial] = useState(false);
+  const [creatingOrg, setCreatingOrg] = useState(false);
+
+  // Admin projects state
+  const [adminProjects, setAdminProjects] = useState<Project[]>([]);
+  const [loadingAdminProjects, setLoadingAdminProjects] = useState(false);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectDesc, setNewProjectDesc] = useState("");
+  const [newProjectPublic, setNewProjectPublic] = useState(true);
+  const [newProjectOfficial, setNewProjectOfficial] = useState(true);
+  const [creatingAdminProject, setCreatingAdminProject] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     const checkAdmin = async () => {
@@ -356,6 +386,9 @@ export default function AdminDashboard() {
     }
     if (activeTab === "organizations" && isAdmin) {
       loadOrgs();
+    }
+    if (activeTab === "projects" && isAdmin) {
+      loadAdminProjects();
     }
     if (activeTab === "site" && isAdmin) {
       loadSiteConfig();
@@ -1328,6 +1361,125 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAdminCreateCommunity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !newCommunityName.trim()) return;
+    setCreatingCommunity(true);
+    try {
+      const slug = newCommunityName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const { id } = await createCommunity({
+        name: newCommunityName.trim(),
+        slug,
+        description: newCommunityDesc.trim(),
+        category: newCommunityCategory.trim() || "general",
+        isPublic: newCommunityPublic,
+        isOfficial: newCommunityOfficial,
+        createdBy: user.uid,
+      });
+      if (newCommunityOfficial) {
+        toast.info("Adding all existing users to official community…");
+        await batchAddAllUsersToCommunity(id);
+      }
+      toast.success("Community created!");
+      setShowCreateCommunity(false);
+      setNewCommunityName(""); setNewCommunityDesc(""); setNewCommunityCategory("general");
+      setNewCommunityPublic(true); setNewCommunityOfficial(false);
+      await loadCommunities();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create community.");
+    } finally {
+      setCreatingCommunity(false);
+    }
+  };
+
+  const handleAdminCreateOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !newOrgName.trim()) return;
+    setCreatingOrg(true);
+    try {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const username = userDoc.exists() ? (userDoc.data().username ?? "admin") : "admin";
+      const slug = newOrgName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const orgId = await createOrg({
+        name: newOrgName.trim(),
+        slug,
+        description: newOrgDesc.trim(),
+        isPublic: newOrgPublic,
+        isOfficial: newOrgOfficial,
+        createdBy: user.uid,
+        createdByUsername: username,
+      });
+      if (newOrgOfficial) {
+        toast.info("Adding all existing users to official organization…");
+        await batchAddAllUsersToOrg(orgId);
+      }
+      toast.success("Organization created!");
+      setShowCreateOrg(false);
+      setNewOrgName(""); setNewOrgDesc(""); setNewOrgPublic(true); setNewOrgOfficial(false);
+      await loadOrgs();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create organization.");
+    } finally {
+      setCreatingOrg(false);
+    }
+  };
+
+  const loadAdminProjects = async () => {
+    setLoadingAdminProjects(true);
+    try {
+      const snap = await getDocs(query(collection(db, "projects"), orderBy("createdAt", "desc"), limit(100)));
+      setAdminProjects(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Project)));
+    } catch {
+      toast.error("Failed to load projects.");
+    } finally {
+      setLoadingAdminProjects(false);
+    }
+  };
+
+  const handleAdminCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !newProjectName.trim()) return;
+    setCreatingAdminProject(true);
+    try {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const username = userDoc.exists() ? (userDoc.data().username ?? "admin") : "admin";
+      const slug = newProjectName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const ref = await addDoc(collection(db, "projects"), {
+        name: newProjectName.trim(),
+        description: newProjectDesc.trim(),
+        projectSlug: slug,
+        ownerId: user.uid,
+        ownerUsername: username,
+        ownerType: "user",
+        isPublic: newProjectPublic,
+        isOfficial: newProjectOfficial,
+        isTemplate: false,
+        collaborators: [],
+        forksCount: 0,
+        views: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      // Seed with an empty README
+      await addDoc(collection(db, "projects", ref.id, "files"), {
+        projectId: ref.id,
+        name: "README.md",
+        path: "/README.md",
+        content: `# ${newProjectName.trim()}\n\n${newProjectDesc.trim() || "An official DevOS project."}\n`,
+        language: "markdown",
+        updatedAt: serverTimestamp(),
+      });
+      toast.success("Project created!");
+      setShowCreateProject(false);
+      setNewProjectName(""); setNewProjectDesc(""); setNewProjectPublic(true); setNewProjectOfficial(true);
+      await loadAdminProjects();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create project.");
+    } finally {
+      setCreatingAdminProject(false);
+    }
+  };
+
   // ── Site settings handlers ─────────────────────────────────────────────────
 
   // ── Organizations management handlers ─────────────────────────────────────
@@ -1455,6 +1607,7 @@ export default function AdminDashboard() {
     { id: "email", label: "Send Email", icon: <Send className="w-4 h-4" /> },
     { id: "communities", label: "Communities", icon: <Users2 className="w-4 h-4" /> },
     { id: "organizations", label: "Organizations", icon: <Building2 className="w-4 h-4" /> },
+    { id: "projects", label: "Projects", icon: <FolderPlus className="w-4 h-4" /> },
     { id: "site", label: "Site Settings", icon: <Globe className="w-4 h-4" /> },
   ];
 
@@ -1597,9 +1750,10 @@ export default function AdminDashboard() {
                   {activeTab === "deletions" && "Users who have requested account deletion"}
                   {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
                   {activeTab === "email" && "Send a custom email to any user via Gmail SMTP"}
-                  {activeTab === "communities" && "View, edit and delete all platform communities"}
-                  {activeTab === "organizations" && "View, edit and delete all platform organizations"}
-                  {activeTab === "site" && "Edit platform name, tagline, social links and footer text"}
+                  {activeTab === "communities" && "View, create, edit and delete all platform communities"}
+                  {activeTab === "organizations" && "View, create, edit and delete all platform organizations"}
+                  {activeTab === "projects" && "Create and manage official DevOS projects"}
+                  {activeTab === "site" && "Edit branding, links, footer text, and global voice-call availability"}
                 </p>
               </div>
 
@@ -3325,6 +3479,58 @@ export default function AdminDashboard() {
                 {/* Communities Tab */}
                 {activeTab === "communities" && (
                   <div className="space-y-6">
+                    {/* Header row */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-white/40">{communities.length} community{communities.length !== 1 ? "ies" : ""} total</p>
+                      <div className="flex items-center gap-2">
+                        <button onClick={loadCommunities} disabled={loadingCommunities} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+                          <RefreshCw className={`w-3.5 h-3.5 ${loadingCommunities ? "animate-spin" : ""}`} />
+                          Refresh
+                        </button>
+                        <button onClick={() => setShowCreateCommunity((v) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+                          <Plus className="w-3.5 h-3.5" />
+                          New Community
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Create-community form */}
+                    {showCreateCommunity && (
+                      <form onSubmit={handleAdminCreateCommunity} className="bg-[#111827] border border-blue-500/30 rounded-2xl p-5 space-y-3">
+                        <p className="text-sm font-bold text-white mb-1 flex items-center gap-2"><Plus className="w-4 h-4 text-blue-400" />Create New Community</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Name *</label>
+                            <input value={newCommunityName} onChange={(e) => setNewCommunityName(e.target.value)} placeholder="DevOS Community" required className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Category</label>
+                            <input value={newCommunityCategory} onChange={(e) => setNewCommunityCategory(e.target.value)} placeholder="general" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Description</label>
+                          <textarea value={newCommunityDesc} onChange={(e) => setNewCommunityDesc(e.target.value)} rows={2} placeholder="What is this community about?" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none" />
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button type="button" onClick={() => setNewCommunityPublic((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newCommunityPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                            {newCommunityPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                            {newCommunityPublic ? "Public" : "Private"}
+                          </button>
+                          <button type="button" onClick={() => setNewCommunityOfficial((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newCommunityOfficial ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                            <BadgeCheck className="w-4 h-4" />
+                            {newCommunityOfficial ? "Official ✓" : "Mark Official"}
+                          </button>
+                          <div className="flex-1" />
+                          <button type="button" onClick={() => setShowCreateCommunity(false)} className="px-4 py-1.5 rounded-xl text-xs font-bold bg-white/5 text-white/50 hover:bg-white/10 transition-colors">Cancel</button>
+                          <button type="submit" disabled={creatingCommunity || !newCommunityName.trim()} className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                            {creatingCommunity ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                            Create
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
                     {loadingCommunities ? (
                       <div className="flex items-center gap-2 text-white/40 py-8 justify-center">
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -3409,10 +3615,17 @@ export default function AdminDashboard() {
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${c.isPublic ? "bg-green-600/10 text-green-400" : "bg-orange-600/10 text-orange-400"}`}>
                                       {c.isPublic ? "Public" : "Private"}
                                     </span>
+                                    {c.isOfficial && (
+                                      <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-bold">
+                                        <BadgeCheck className="w-3 h-3" /> Official
+                                      </span>
+                                    )}
                                   </div>
                                   <p className="text-xs text-white/40 mt-1 line-clamp-2">{c.description || <span className="italic opacity-50">No description</span>}</p>
                                   <p className="text-[10px] text-white/25 mt-1">
                                     {c.memberCount ?? 0} member{(c.memberCount ?? 0) !== 1 ? "s" : ""}
+                                    {" · "}
+                                    <a href={`/c/${c.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400/60 hover:text-blue-400 transition-colors">View ↗</a>
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -3445,15 +3658,49 @@ export default function AdminDashboard() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-white/40">{orgs.length} organization{orgs.length !== 1 ? "s" : ""} total</p>
-                      <button
-                        onClick={loadOrgs}
-                        disabled={loadingOrgs}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${loadingOrgs ? "animate-spin" : ""}`} />
-                        Refresh
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={loadOrgs} disabled={loadingOrgs} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+                          <RefreshCw className={`w-3.5 h-3.5 ${loadingOrgs ? "animate-spin" : ""}`} />
+                          Refresh
+                        </button>
+                        <button onClick={() => setShowCreateOrg((v) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+                          <Plus className="w-3.5 h-3.5" />
+                          New Org
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Create-org form */}
+                    {showCreateOrg && (
+                      <form onSubmit={handleAdminCreateOrg} className="bg-[#111827] border border-blue-500/30 rounded-2xl p-5 space-y-3">
+                        <p className="text-sm font-bold text-white mb-1 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-400" />Create New Organization</p>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Name *</label>
+                          <input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} placeholder="DevOS HQ" required className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Description</label>
+                          <textarea value={newOrgDesc} onChange={(e) => setNewOrgDesc(e.target.value)} rows={2} placeholder="What does this org do?" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none" />
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button type="button" onClick={() => setNewOrgPublic((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newOrgPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                            {newOrgPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                            {newOrgPublic ? "Public" : "Private"}
+                          </button>
+                          <button type="button" onClick={() => setNewOrgOfficial((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newOrgOfficial ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                            <BadgeCheck className="w-4 h-4" />
+                            {newOrgOfficial ? "Official ✓ (auto-joins everyone)" : "Mark Official"}
+                          </button>
+                          <div className="flex-1" />
+                          <button type="button" onClick={() => setShowCreateOrg(false)} className="px-4 py-1.5 rounded-xl text-xs font-bold bg-white/5 text-white/50 hover:bg-white/10 transition-colors">Cancel</button>
+                          <button type="submit" disabled={creatingOrg || !newOrgName.trim()} className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                            {creatingOrg ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                            Create
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
                     {loadingOrgs ? (
                       <div className="flex items-center gap-2 text-white/40 py-8 justify-center">
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -3524,6 +3771,11 @@ export default function AdminDashboard() {
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${org.isPublic ? "bg-green-600/10 text-green-400" : "bg-orange-600/10 text-orange-400"}`}>
                                       {org.isPublic ? "Public" : "Private"}
                                     </span>
+                                    {org.isOfficial && (
+                                      <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-bold">
+                                        <BadgeCheck className="w-3 h-3" /> Official
+                                      </span>
+                                    )}
                                   </div>
                                   <p className="text-xs text-white/40 mt-1 line-clamp-2">{org.description || <span className="italic opacity-50">No description</span>}</p>
                                   <p className="text-[10px] text-white/25 mt-1">
@@ -3552,6 +3804,94 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                             )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Projects Tab */}
+                {activeTab === "projects" && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-white/40">{adminProjects.length} project{adminProjects.length !== 1 ? "s" : ""} total</p>
+                      <div className="flex items-center gap-2">
+                        <button onClick={loadAdminProjects} disabled={loadingAdminProjects} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+                          <RefreshCw className={`w-3.5 h-3.5 ${loadingAdminProjects ? "animate-spin" : ""}`} />
+                          Refresh
+                        </button>
+                        <button onClick={() => setShowCreateProject((v) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+                          <Plus className="w-3.5 h-3.5" />
+                          New Project
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Create project form */}
+                    {showCreateProject && (
+                      <form onSubmit={handleAdminCreateProject} className="bg-[#111827] border border-blue-500/30 rounded-2xl p-5 space-y-3">
+                        <p className="text-sm font-bold text-white mb-1 flex items-center gap-2"><FolderPlus className="w-4 h-4 text-blue-400" />Create Official DevOS Project</p>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Project Name *</label>
+                          <input value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} placeholder="DevOS Starter Kit" required className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Description</label>
+                          <textarea value={newProjectDesc} onChange={(e) => setNewProjectDesc(e.target.value)} rows={2} placeholder="Brief description of the project" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none" />
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button type="button" onClick={() => setNewProjectPublic((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newProjectPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                            {newProjectPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                            {newProjectPublic ? "Public" : "Private"}
+                          </button>
+                          <button type="button" onClick={() => setNewProjectOfficial((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newProjectOfficial ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                            <BadgeCheck className="w-4 h-4" />
+                            {newProjectOfficial ? "Official ✓" : "Mark Official"}
+                          </button>
+                          <div className="flex-1" />
+                          <button type="button" onClick={() => setShowCreateProject(false)} className="px-4 py-1.5 rounded-xl text-xs font-bold bg-white/5 text-white/50 hover:bg-white/10 transition-colors">Cancel</button>
+                          <button type="submit" disabled={creatingAdminProject || !newProjectName.trim()} className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                            {creatingAdminProject ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                            Create
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {loadingAdminProjects ? (
+                      <div className="flex items-center gap-2 text-white/40 py-8 justify-center">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Loading projects…
+                      </div>
+                    ) : adminProjects.length === 0 ? (
+                      <div className="text-center py-12 text-white/30">
+                        <FolderPlus className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">No projects yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {adminProjects.map((proj) => (
+                          <div key={proj.id} className="bg-[#111827] border border-white/10 rounded-2xl p-4 flex items-start justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-bold text-white text-sm">{proj.name}</p>
+                                {proj.isOfficial && (
+                                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-bold">
+                                    <BadgeCheck className="w-3 h-3" /> Official
+                                  </span>
+                                )}
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${proj.isPublic ? "bg-green-600/10 text-green-400" : "bg-orange-600/10 text-orange-400"}`}>
+                                  {proj.isPublic ? "Public" : "Private"}
+                                </span>
+                              </div>
+                              <p className="text-xs text-white/40 mt-1 line-clamp-1">{proj.description || <span className="italic opacity-50">No description</span>}</p>
+                              <p className="text-[10px] text-white/25 mt-1">
+                                by @{proj.ownerUsername ?? "—"}
+                                {" · "}
+                                <a href={`/project/${proj.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-400/60 hover:text-blue-400 transition-colors">Open in IDE ↗</a>
+                              </p>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -3624,6 +3964,19 @@ export default function AdminDashboard() {
                               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                               required
                             />
+                          </div>
+                          <div className="flex items-center justify-between py-3.5 px-4 bg-black/30 border border-white/10 rounded-xl">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Allow voice calls platform-wide</p>
+                              <p className="text-xs text-white/35 mt-0.5">If disabled, community and organization voice call buttons are hidden.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSiteConfig((s) => ({ ...s, allowVoiceCalls: !s.allowVoiceCalls }))}
+                              className="text-white/70 hover:text-white transition-colors"
+                            >
+                              {siteConfig.allowVoiceCalls ? <ToggleRight className="w-8 h-8 text-blue-400" /> : <ToggleLeft className="w-8 h-8 text-white/35" />}
+                            </button>
                           </div>
                         </div>
 

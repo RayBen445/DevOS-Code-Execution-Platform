@@ -17,13 +17,15 @@ import {
   rejectJoinRequest,
   subscribeJoinRequests,
   updateOrgJoinPolicy,
+  updateOrg,
   subscribeOrgChatMessages,
   sendOrgChatMessage,
   deleteOrgChatMessage,
   setOrgChatEnabled,
 } from "../lib/orgService";
 import { getUserSettings } from "../lib/userService";
-import { Organization, OrgMember, OrgJoinRequest, OrgChatMessage } from "../types";
+import GroupChat from "../components/GroupChat";
+import { Organization, OrgMember, OrgJoinRequest, OrgChatMessage, Project } from "../types";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
@@ -59,26 +61,21 @@ import {
   Loader2,
   FolderPlus,
   FolderCode,
+  Phone,
 } from "lucide-react";
-import { formatRelativeTime } from "../lib/utils";
+import { formatRelativeTime, formatTime } from "../lib/utils";
 import { cn } from "../lib/utils";
+import { DEVOS_EMOJI_LIST, renderDevosEmojiText } from "../lib/devosEmoji";
+import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
+import socket from "../lib/socket";
 
-type OrgTab = "overview" | "posts" | "chat" | "members" | "settings";
+type OrgTab = "overview" | "posts" | "chat" | "members" | "projects" | "settings";
 
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-blue-500/20 text-blue-400 border border-blue-500/30",
   moderator: "bg-purple-500/20 text-purple-400 border border-purple-500/30",
   member: "bg-gray-700 text-gray-400 border border-gray-600",
 };
-
-/** Format a Firestore timestamp as a short HH:MM string. */
-function formatChatTime(ts: any): string {
-  try {
-    return new Date(ts.toDate?.() ?? ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return "";
-  }
-}
 
 export default function OrgPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -102,6 +99,14 @@ export default function OrgPage() {
   const [togglingPolicy, setTogglingPolicy] = useState(false);
   const [togglingChat, setTogglingChat] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [orgProjects, setOrgProjects] = useState<Project[]>([]);
+  const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
+  const [inVoiceCall, setInVoiceCall] = useState(false);
+  const [voicePeers, setVoicePeers] = useState<string[]>([]);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const peerMapRef = useRef<Record<string, RTCPeerConnection>>({});
+  const remoteAudioRef = useRef<Record<string, HTMLAudioElement>>({});
+  const voiceHandlersRef = useRef<Partial<Record<string, (...args: any[]) => void>>>({});
 
   const copyOrgLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}/org/${slug}`).then(() => {
@@ -185,6 +190,145 @@ export default function OrgPage() {
     });
     return unsub;
   }, [user]);
+
+  useEffect(() => {
+    getSiteConfig().then(setSiteConfig).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (org?.chatEnabled === false && activeTab === "chat") {
+      setActiveTab("posts");
+    }
+  }, [org?.chatEnabled, activeTab]);
+
+  // Subscribe to org projects when on the projects tab
+  useEffect(() => {
+    if (!org?.id || activeTab !== "projects") return;
+    const q = query(collection(db, "projects"), where("ownerOrgId", "==", org.id));
+    return onSnapshot(q, (snap) => {
+      const projs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Project));
+      projs.sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0));
+      setOrgProjects(projs);
+    });
+  }, [org?.id, activeTab]);
+
+  const roomId = org?.id ? `org-${org.id}` : "";
+
+  const cleanupVoiceCall = () => {
+    Object.values(peerMapRef.current).forEach((pc) => pc.close());
+    peerMapRef.current = {};
+    Object.values(remoteAudioRef.current).forEach((el) => {
+      el.srcObject = null;
+      el.remove();
+    });
+    remoteAudioRef.current = {};
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = null;
+    }
+    setVoicePeers([]);
+    setInVoiceCall(false);
+  };
+
+  const buildPeer = (targetUserId: string, meId: string, initiator: boolean) => {
+    if (peerMapRef.current[targetUserId]) return peerMapRef.current[targetUserId];
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    localStreamRef.current?.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current!));
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("voice-ice-candidate", { roomId, targetUserId, fromUserId: meId, candidate: event.candidate });
+      }
+    };
+    pc.ontrack = (event) => {
+      let audio = remoteAudioRef.current[targetUserId];
+      if (!audio) {
+        audio = new Audio();
+        audio.autoplay = true;
+        remoteAudioRef.current[targetUserId] = audio;
+      }
+      audio.srcObject = event.streams[0];
+    };
+    peerMapRef.current[targetUserId] = pc;
+    if (initiator) {
+      pc.createOffer()
+        .then((offer) => pc.setLocalDescription(offer).then(() => offer))
+        .then((offer) => socket.emit("voice-offer", { roomId, targetUserId, fromUserId: meId, offer }))
+        .catch(() => {});
+    }
+    return pc;
+  };
+
+  const startVoiceCall = async () => {
+    if (!user || !roomId || inVoiceCall) return;
+    try {
+      localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      socket.connect();
+      const meId = user.uid;
+      socket.emit("join-voice-room", { roomId, userId: meId, name: userSettings?.displayName || userSettings?.username || "User" });
+      setInVoiceCall(true);
+
+      const onVoiceUserJoined = ({ userId }: { userId: string }) => {
+        if (!userId || userId === meId) return;
+        setVoicePeers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+        buildPeer(userId, meId, true);
+      };
+      const onVoiceOffer = async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
+        const pc = buildPeer(fromUserId, meId, false);
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit("voice-answer", { roomId, targetUserId: fromUserId, fromUserId: meId, answer });
+        setVoicePeers((prev) => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
+      };
+      const onVoiceAnswer = async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
+        const pc = peerMapRef.current[fromUserId];
+        if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      };
+      const onVoiceIceCandidate = async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
+        const pc = peerMapRef.current[fromUserId];
+        if (!pc) return;
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      };
+      const onVoiceUserLeft = ({ userId }: { userId: string }) => {
+        peerMapRef.current[userId]?.close();
+        delete peerMapRef.current[userId];
+        remoteAudioRef.current[userId]?.remove();
+        delete remoteAudioRef.current[userId];
+        setVoicePeers((prev) => prev.filter((p) => p !== userId));
+      };
+
+      voiceHandlersRef.current = {
+        "voice-user-joined": onVoiceUserJoined,
+        "voice-offer": onVoiceOffer,
+        "voice-answer": onVoiceAnswer,
+        "voice-ice-candidate": onVoiceIceCandidate,
+        "voice-user-left": onVoiceUserLeft,
+      };
+      socket.on("voice-user-joined", onVoiceUserJoined);
+      socket.on("voice-offer", onVoiceOffer);
+      socket.on("voice-answer", onVoiceAnswer);
+      socket.on("voice-ice-candidate", onVoiceIceCandidate);
+      socket.on("voice-user-left", onVoiceUserLeft);
+    } catch {
+      toast.error("Could not start voice call. Microphone permission may be blocked.");
+      cleanupVoiceCall();
+    }
+  };
+
+  const endVoiceCall = () => {
+    if (user && roomId) socket.emit("leave-voice-room", { roomId, userId: user.uid });
+    const handlers = voiceHandlersRef.current;
+    if (handlers["voice-user-joined"]) socket.off("voice-user-joined", handlers["voice-user-joined"]);
+    if (handlers["voice-offer"]) socket.off("voice-offer", handlers["voice-offer"]);
+    if (handlers["voice-answer"]) socket.off("voice-answer", handlers["voice-answer"]);
+    if (handlers["voice-ice-candidate"]) socket.off("voice-ice-candidate", handlers["voice-ice-candidate"]);
+    if (handlers["voice-user-left"]) socket.off("voice-user-left", handlers["voice-user-left"]);
+    voiceHandlersRef.current = {};
+    cleanupVoiceCall();
+  };
+
+  useEffect(() => () => endVoiceCall(), [roomId, user?.uid]);
 
   const handleJoin = async () => {
     if (!user || !org) return;
@@ -291,11 +435,8 @@ export default function OrgPage() {
     });
   };
 
-  const handleSendChat = async () => {
-    if (!user || !chatText.trim() || !org?.id) return;
-    setSendingChat(true);
-    const text = chatText.trim();
-    setChatText("");
+  const handleSendChat = async (text: string, replyToId?: string, replyToText?: string, replyToUsername?: string) => {
+    if (!user || !org?.id || org.chatEnabled === false) return;
     try {
       await sendOrgChatMessage({
         orgId: org.id,
@@ -304,12 +445,12 @@ export default function OrgPage() {
         displayName: userSettings?.displayName || user.displayName || undefined,
         avatarUrl: userSettings?.avatarUrl || user.photoURL || undefined,
         text,
+        replyToId,
+        replyToText,
+        replyToUsername,
       });
     } catch {
       toast.error("Failed to send message.");
-      setChatText(text);
-    } finally {
-      setSendingChat(false);
     }
   };
 
@@ -360,9 +501,8 @@ export default function OrgPage() {
       });
       toast.success("Project created!", { id: toastId });
       setShowCreateProject(false);
-      // Open the new project in the IDE
-      sessionStorage.setItem("devos_active_project", docRef.id);
-      navigate("/projects");
+      // Switch to the Projects tab so the user sees the new project in the org
+      setActiveTab("projects");
     } catch {
       toast.error("Failed to create project", { id: toastId });
     }
@@ -464,7 +604,7 @@ export default function OrgPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 mb-6 border-b border-gray-800 overflow-x-auto">
-          {(["overview", "posts", ...(org.chatEnabled !== false ? ["chat"] : []), "members", ...(isAdmin ? ["settings"] : [])] as OrgTab[]).map((tab) => (
+          {(["overview", "posts", ...(org.chatEnabled !== false ? ["chat"] : []), "members", "projects", ...(isAdmin ? ["settings"] : [])] as OrgTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as OrgTab)}
@@ -475,7 +615,7 @@ export default function OrgPage() {
                   : "border-transparent text-gray-500 hover:text-gray-300"
               )}
             >
-              {tab === "members" ? `Members (${members.length})` : tab === "posts" ? `Posts (${posts.length})` : tab}
+              {tab === "members" ? `Members (${members.length})` : tab === "posts" ? `Posts (${posts.length})` : tab === "projects" ? `Projects (${orgProjects.length})` : tab}
               {tab === "settings" && joinRequests.length > 0 && (
                 <span className="ml-1 text-xs bg-orange-500 text-white rounded-full px-1.5 py-0.5">{joinRequests.length}</span>
               )}
@@ -526,105 +666,26 @@ export default function OrgPage() {
         )}
 
         {/* Chat tab */}
-        {activeTab === "chat" && (
-          <div className="flex flex-col h-[540px]">
-            {!myMember ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                <MessageCircle className="w-10 h-10 text-white/10" />
-                <p className="text-white/40 text-sm">Join this organization to chat.</p>
-              </div>
-            ) : (
-              <>
-                {/* Messages area */}
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 min-h-0 px-1">
-                  {chatMessages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-3">
-                      <MessageCircle className="w-10 h-10 text-white/10" />
-                      <p className="text-white/30 text-sm">No messages yet. Say hello! 👋</p>
-                    </div>
-                  ) : (
-                    chatMessages.map((msg) => {
-                      const isOwn = msg.userId === user?.uid;
-                      return (
-                        <div key={msg.id} className={cn("flex items-end gap-2 group", isOwn ? "flex-row-reverse" : "flex-row")}>
-                          {!isOwn && (
-                            <img
-                              src={resolveAvatar(msg.avatarUrl)}
-                              alt=""
-                              className="w-7 h-7 rounded-full object-cover flex-shrink-0 mb-0.5"
-                              referrerPolicy="no-referrer"
-                            />
-                          )}
-                          <div className={cn("max-w-[72%] flex flex-col gap-0.5", isOwn ? "items-end" : "items-start")}>
-                            {!isOwn && (
-                              <div className="flex items-baseline gap-1.5 px-1">
-                                <span className="text-[11px] font-bold text-white/60">{msg.displayName || msg.username}</span>
-                                {msg.createdAt && (
-                                  <span className="text-[10px] text-white/25">
-                                    {(() => { try { return new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch { return ""; } })()}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            <div className={cn("flex items-end gap-1.5", isOwn ? "flex-row-reverse" : "flex-row")}>
-                              <div className={cn(
-                                "px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
-                                isOwn
-                                  ? "bg-blue-600 text-white rounded-br-sm shadow-md shadow-blue-500/20"
-                                  : "bg-white/[0.07] text-white/85 border border-white/[0.08] rounded-bl-sm"
-                              )}>
-                                {msg.text}
-                              </div>
-                              <div className={cn("flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0", isOwn ? "items-end" : "items-start")}>
-                                {isOwn && msg.createdAt && (
-                                  <span className="text-[10px] text-white/25">
-                                    {(() => { try { return new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch { return ""; } })()}
-                                  </span>
-                                )}
-                                {(user?.uid === msg.userId || isAdmin) && (
-                                  <button
-                                    onClick={() => org?.id && deleteOrgChatMessage(org.id, msg.id)}
-                                    className="p-1 rounded-lg hover:bg-red-500/10 text-red-400/50 hover:text-red-400 transition-all"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-
-                {/* Chat input */}
-                <div className="flex items-center gap-2 pt-3 border-t border-white/[0.07]">
-                  <img
-                    src={resolveAvatar(userSettings?.avatarUrl)}
-                    alt=""
-                    className="w-8 h-8 rounded-full object-cover shrink-0 ring-2 ring-white/10"
-                  />
-                  <input
-                    type="text"
-                    value={chatText}
-                    onChange={(e) => setChatText(e.target.value)}
-                    placeholder="Send a message…"
-                    maxLength={2000}
-                    className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500/40 focus:bg-white/[0.08] transition-all"
-                  />
-                  <button
-                    onClick={handleSendChat}
-                    disabled={sendingChat || !chatText.trim()}
-                    className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all shadow-md shadow-blue-500/20"
-                  >
-                    {sendingChat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+        {activeTab === "chat" && org.chatEnabled !== false && (
+          <GroupChat
+            messages={chatMessages}
+            currentUserId={user?.uid}
+            currentAvatarUrl={userSettings?.avatarUrl}
+            accentColor="blue"
+            onSend={handleSendChat}
+            onDelete={(msgId) => org?.id && deleteOrgChatMessage(org.id, msgId)}
+            canDelete={(msg) => msg.userId === user?.uid || isAdmin}
+            voiceCallEnabled={(org.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls}
+            inVoiceCall={inVoiceCall}
+            voicePeerCount={voicePeers.length}
+            onStartVoiceCall={startVoiceCall}
+            onEndVoiceCall={endVoiceCall}
+            emptyLabel="No messages yet. Say hello! 👋"
+            notMemberLabel="Join this organization to chat."
+            isMember={!!myMember}
+            onJoin={handleJoin}
+            joining={joining}
+          />
         )}
 
         {/* Overview tab */}
@@ -729,6 +790,65 @@ export default function OrgPage() {
           </div>
         )}
 
+        {/* Projects tab */}
+        {activeTab === "projects" && (
+          <div>
+            {isAdmin && (
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setShowCreateProject(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-blue-500/20"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                  New Project
+                </button>
+              </div>
+            )}
+            {orgProjects.length === 0 ? (
+              <div className="text-center py-16">
+                <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-3" />
+                <p className="text-white/40 font-semibold mb-1">No projects yet</p>
+                {isAdmin && (
+                  <p className="text-white/25 text-sm">Create the first project for this organization.</p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {orgProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="bg-[#111] border border-gray-800 hover:border-blue-500/40 rounded-xl p-4 flex flex-col gap-3 transition-all group"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{project.name}</p>
+                        {project.description && (
+                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{project.description}</p>
+                        )}
+                      </div>
+                      {project.isPublic ? (
+                        <Globe className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
+                      ) : (
+                        <Lock className="w-3.5 h-3.5 text-gray-500 shrink-0 mt-0.5" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-600">
+                      <span>Updated {project.updatedAt?.seconds ? formatRelativeTime({ seconds: project.updatedAt.seconds, nanoseconds: 0 } as any) : "—"}</span>
+                    </div>
+                    <button
+                      onClick={() => navigate('/project/' + project.id)}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 transition-all text-xs font-bold"
+                    >
+                      <FolderCode className="w-3.5 h-3.5" />
+                      Open in IDE
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Settings tab (admin only) */}
         {activeTab === "settings" && isAdmin && (
           <div className="space-y-6">
@@ -782,6 +902,40 @@ export default function OrgPage() {
                   className="flex items-center gap-1 transition-colors disabled:opacity-50"
                 >
                   {(org.chatEnabled ?? true) ? (
+                    <ToggleRight className="w-8 h-8 text-blue-500" />
+                  ) : (
+                    <ToggleLeft className="w-8 h-8 text-gray-600" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-[#111] border border-gray-800 rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
+                <Phone className="w-4 h-4 text-blue-400" />
+                Voice Calls
+              </h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-white">Enable voice calls</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {(org.voiceCallsEnabled ?? true)
+                      ? "Members can start voice calls in chat"
+                      : "Voice calls are disabled for this organization"}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!org) return;
+                    try {
+                      await updateOrg(org.id, { voiceCallsEnabled: !(org.voiceCallsEnabled ?? true) });
+                    } catch {
+                      toast.error("Failed to toggle voice calls");
+                    }
+                  }}
+                  className="flex items-center gap-1 transition-colors disabled:opacity-50"
+                >
+                  {(org.voiceCallsEnabled ?? true) ? (
                     <ToggleRight className="w-8 h-8 text-blue-500" />
                   ) : (
                     <ToggleLeft className="w-8 h-8 text-gray-600" />

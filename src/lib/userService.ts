@@ -17,6 +17,8 @@ import { Project, UsernameChangeRequest } from "../types";
 import { initializeCredits } from "./creditsService";
 import { DEFAULT_USER_AVATAR } from "./avatars";
 import { getOrCreateReferralCode, processReferral } from "./referralService";
+import { joinOfficialCommunities } from "./communityService";
+import { joinOfficialOrgs } from "./orgService";
 
 const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "oladoyeheritage445@gmail.com";
 
@@ -65,6 +67,10 @@ export const registerUserProfile = async (
 
   await initializeCredits(user.uid);
   await createPortfolioProject(user.uid, profile.username);
+
+  // Auto-join all official communities and orgs
+  await joinOfficialCommunities(user.uid).catch(() => {});
+  await joinOfficialOrgs(user.uid, profile.username).catch(() => {});
 
   // Generate referral code for the new user
   await getOrCreateReferralCode(user.uid).catch(() => {});
@@ -130,6 +136,10 @@ export const initializeUser = async (user: any) => {
 
     // Create initial portfolio project
     await createPortfolioProject(user.uid, username);
+
+    // Auto-join all official communities and orgs
+    await joinOfficialCommunities(user.uid).catch(() => {});
+    await joinOfficialOrgs(user.uid, username).catch(() => {});
 
     // Generate referral code for this new user
     await getOrCreateReferralCode(user.uid).catch(() => {});

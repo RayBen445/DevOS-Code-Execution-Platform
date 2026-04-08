@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { getFollowerProfiles } from "../lib/followService";
+import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { db } from "../lib/firebase";
 import { resolveAvatar } from "../lib/avatars";
 import { cn } from "../lib/utils";
 
@@ -46,31 +47,34 @@ export default function MentionInput({
   const internalRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const inputEl = (externalRef as any) || internalRef;
 
-  const [followers, setFollowers] = useState<MentionUser[]>([]);
-  const [followersFetched, setFollowersFetched] = useState(false);
+  const [suggestions, setSuggestions] = useState<MentionUser[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null); // null = not in mention mode
   const [mentionStart, setMentionStart] = useState(0);
   const [dropdownIndex, setDropdownIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Lazily fetch followers the first time @ is typed
-  const ensureFollowers = useCallback(async () => {
-    if (followersFetched || !currentUserId) return;
-    setFollowersFetched(true);
+  const searchUsers = useCallback(async (q: string) => {
+    if (!q) { setSuggestions([]); return; }
     try {
-      const profiles = await getFollowerProfiles(currentUserId);
-      setFollowers(profiles);
+      const snap = await getDocs(
+        query(
+          collection(db, "users"),
+          where("username", ">=", q.toLowerCase()),
+          where("username", "<", q.toLowerCase() + "\uf8ff"),
+          orderBy("username"),
+          limit(10)
+        )
+      );
+      setSuggestions(snap.docs.map((d) => {
+        const data = d.data();
+        return { uid: data.uid ?? d.id, username: data.username, displayName: data.displayName, avatarUrl: data.avatarUrl };
+      }));
     } catch {
-      // non-fatal
+      setSuggestions([]);
     }
-  }, [followersFetched, currentUserId]);
+  }, []);
 
-  const filtered = mentionQuery !== null
-    ? followers.filter((f) =>
-        f.username.toLowerCase().startsWith(mentionQuery.toLowerCase()) ||
-        (f.displayName ?? "").toLowerCase().startsWith(mentionQuery.toLowerCase())
-      ).slice(0, 6)
-    : [];
+  const filtered = mentionQuery !== null ? suggestions.slice(0, 6) : [];
 
   // Detect @query as the user types
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
@@ -89,7 +93,7 @@ export default function MentionInput({
         setMentionQuery(fragment);
         setMentionStart(atIdx);
         setDropdownIndex(0);
-        ensureFollowers();
+        searchUsers(fragment);
         return;
       }
     }

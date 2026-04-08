@@ -386,7 +386,8 @@ service cloud.firestore {
     match /system_config/{configId} {
       // Maintenance doc must be readable by unauthenticated users so the app
       // can show the maintenance screen before login.
-      allow read: if configId == "maintenance" || isAuthenticated();
+      // Site doc is also public (footer/contact/branding + allowVoiceCalls toggle).
+      allow read: if configId in ["maintenance", "site"] || isAuthenticated();
       allow write: if isAdmin();
     }
 

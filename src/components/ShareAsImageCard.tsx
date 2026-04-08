@@ -1,19 +1,36 @@
-/**
- * ShareAsImageCard — DOM-based cards captured by html2canvas and downloaded as PNG.
- *
- * Exports:
- *   - FeedPostShareCard   — styled card for a feed post
- *   - ProjectShareCard    — styled card for a project
- *   - useShareAsImage     — hook that triggers the html2canvas capture + download
- */
 import { useRef, useCallback, useState, RefObject } from "react";
 import html2canvas from "html2canvas";
-import { toast } from "sonner";
 import { FeedPost, Project } from "../types";
 import { resolveAvatar } from "../lib/avatars";
 import { formatRelativeTime } from "../lib/utils";
 
-/* ─── Hook ─── */
+type ExportStyle = "default" | "gradient" | "minimal";
+
+const OG_WIDTH = 1200;
+const OG_HEIGHT = 630;
+
+const STYLE_MAP: Record<ExportStyle, { bg: string; cardBg: string; border: string }> = {
+  default: {
+    bg: "radial-gradient(circle at 20% 20%, #1f2937 0%, transparent 45%), radial-gradient(circle at 80% 80%, #111827 0%, transparent 45%), #0b0f17",
+    cardBg: "rgba(12,17,26,0.85)",
+    border: "1px solid rgba(255,255,255,0.05)",
+  },
+  gradient: {
+    bg: "linear-gradient(135deg,#0b1020,#1e1b4b,#0f172a)",
+    cardBg: "rgba(15,18,33,0.82)",
+    border: "1px solid rgba(99,102,241,0.3)",
+  },
+  minimal: {
+    bg: "#0b0f17",
+    cardBg: "#111827",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+};
+
+function clampText(text: string, max = 200): string {
+  const t = (text || "").trim();
+  return t.length > max ? `${t.slice(0, max).trimEnd()}...` : t;
+}
 
 export function useShareAsImage(
   cardRef: RefObject<HTMLDivElement | null>,
@@ -31,25 +48,14 @@ export function useShareAsImage(
         scale: 2,
         logging: false,
         allowTaint: false,
-        foreignObjectRendering: false,
       });
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-      }, "image/png");
+      const link = document.createElement("a");
+      link.download = filename;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
     } catch {
-      // Show a user-friendly message — common cause is CORS on avatar images
-      try {
-        const { toast } = await import("sonner");
-        toast.error("Could not generate image. Try again.");
-      } catch {
-        // toast unavailable — fail silently
-      }
+      const { toast } = await import("sonner");
+      toast.error("Could not generate image. Try again.");
     } finally {
       setCapturing(false);
     }
@@ -58,395 +64,179 @@ export function useShareAsImage(
   return { capture, capturing };
 }
 
-/* ─── Shared style tokens (inline — html2canvas cannot read Tailwind classes reliably) ─── */
-
-const CARD_STYLE: React.CSSProperties = {
-  width: 600,
-  background: "#0f0f11",
-  borderRadius: 20,
-  overflow: "hidden",
-  fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
-  color: "#ffffff",
-  position: "relative",
-};
-
-const ACCENT_STYLE: React.CSSProperties = {
-  height: 4,
-  background: "linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)",
-};
-
-const BRANDING_STYLE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  gap: 6,
-  padding: "10px 24px",
-  borderTop: "1px solid rgba(255,255,255,0.06)",
-};
-
-const BRAND_DOT: React.CSSProperties = {
-  width: 18,
-  height: 18,
-  borderRadius: 5,
-  background: "linear-gradient(135deg,#3b82f6,#8b5cf6)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-function Branding() {
+function ExportShell({
+  cardRef,
+  children,
+  styleVariant = "default",
+}: {
+  cardRef: RefObject<HTMLDivElement | null>;
+  children: React.ReactNode;
+  styleVariant?: ExportStyle;
+}) {
+  const style = STYLE_MAP[styleVariant];
   return (
-    <div style={BRANDING_STYLE}>
-      <div style={BRAND_DOT}>
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <circle cx="5" cy="5" r="4" stroke="white" strokeWidth="1.5" />
-          <path d="M3.5 5h3M5 3.5v3" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
+    <div
+      ref={cardRef}
+      id="export-card"
+      style={{
+        width: OG_WIDTH,
+        height: OG_HEIGHT,
+        position: "fixed",
+        top: -9999,
+        left: 0,
+        zIndex: -1,
+        background: style.bg,
+        borderRadius: 24,
+        overflow: "hidden",
+        fontFamily: "'Inter','Segoe UI',system-ui,sans-serif",
+        color: "#fff",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          padding: 40,
+          background: style.cardBg,
+          border: style.border,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        {children}
       </div>
-      <span style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6", letterSpacing: "0.04em" }}>
-        DevOS
-      </span>
-      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginLeft: 2 }}>
-        devos.io
-      </span>
     </div>
   );
 }
 
-function Avatar({ src, name, size = 40 }: { src?: string | null; name?: string | null; size?: number }) {
-  const initial = (name ?? "U")[0].toUpperCase();
+function Avatar({ src, name }: { src?: string | null; name?: string | null }) {
   const resolved = resolveAvatar(src ?? null);
-  const isDefault = !src || src.startsWith("data:");
-
   return (
     <div
       style={{
-        width: size,
-        height: size,
+        width: 56,
+        height: 56,
         borderRadius: "50%",
-        background: "#1e3a5f",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
         overflow: "hidden",
+        boxShadow: "0 0 0 2px rgba(59,130,246,0.4)",
+        flexShrink: 0,
       }}
     >
-      {!isDefault ? (
-        // Use img for real avatars; html2canvas + useCORS will handle it
-        <img
-          src={resolved}
-          alt={name ?? "avatar"}
-          crossOrigin="anonymous"
-          style={{ width: size, height: size, objectFit: "cover" }}
-        />
-      ) : (
-        <span style={{ fontSize: size * 0.4, fontWeight: 700, color: "#93c5fd" }}>{initial}</span>
-      )}
+      <img
+        src={resolved}
+        alt={name ?? "avatar"}
+        crossOrigin="anonymous"
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      />
     </div>
   );
 }
 
-/* ─── Feed Post Card ─── */
+function Branding() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "flex-end", opacity: 0.6 }}>
+      <div style={{ width: 18, height: 18, borderRadius: 6, background: "linear-gradient(135deg,#3b82f6,#8b5cf6)" }} />
+      <span style={{ fontSize: 16, fontWeight: 700 }}>DevOS</span>
+      <span style={{ fontSize: 14, color: "#9CA3AF" }}>devos.zone.id</span>
+    </div>
+  );
+}
 
 interface FeedPostShareCardProps {
   post: FeedPost;
   cardRef: RefObject<HTMLDivElement | null>;
+  styleVariant?: ExportStyle;
 }
 
-const POST_TYPE_COLOR: Record<string, string> = {
-  deployment: "#22c55e",
-  announcement: "#3b82f6",
-  feature: "#a855f7",
-  update: "#eab308",
-  snippet: "#f97316",
-  repost: "#14b8a6",
-};
-
-const POST_TYPE_LABEL: Record<string, string> = {
-  deployment: "Deployment",
-  announcement: "Announcement",
-  feature: "Feature",
-  update: "Update",
-  snippet: "Snippet",
-  repost: "Repost",
-};
-
-export function FeedPostShareCard({ post, cardRef }: FeedPostShareCardProps) {
-  const typeColor = POST_TYPE_COLOR[post.type] ?? "#6b7280";
-  const typeLabel = POST_TYPE_LABEL[post.type] ?? post.type;
-
+export function FeedPostShareCard({ post, cardRef, styleVariant = "default" }: FeedPostShareCardProps) {
   return (
-    <div
-      ref={cardRef}
-      style={{
-        ...CARD_STYLE,
-        position: "fixed",
-        left: -9999,
-        top: 0,
-        zIndex: -1,
-      }}
-    >
-      {/* Gradient accent bar */}
-      <div style={ACCENT_STYLE} />
-
-      {/* Body */}
-      <div style={{ padding: "24px 24px 20px" }}>
-        {/* Author row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <Avatar src={post.avatarUrl} name={post.displayName || post.username} size={44} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "#fff", marginBottom: 2 }}>
-              {post.displayName || post.username}
-              {post.isOfficial && (
-                <span style={{
-                  marginLeft: 8,
-                  fontSize: 10,
-                  background: "rgba(59,130,246,0.2)",
-                  color: "#93c5fd",
-                  padding: "2px 7px",
-                  borderRadius: 100,
-                  fontWeight: 700,
-                  verticalAlign: "middle",
-                }}>
-                  Official
-                </span>
-              )}
-            </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-              @{post.username}
-              {post.createdAt && <> · {formatRelativeTime(post.createdAt)}</>}
-            </div>
+    <ExportShell cardRef={cardRef} styleVariant={styleVariant}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Avatar src={post.avatarUrl} name={post.displayName || post.username} />
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{post.displayName || post.username}</div>
+            <div style={{ fontSize: 16, color: "#9CA3AF" }}>@{post.username} · {post.createdAt ? formatRelativeTime(post.createdAt) : "just now"}</div>
           </div>
-          {/* Type pill */}
-          <div style={{
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "4px 10px",
-            borderRadius: 100,
-            background: `${typeColor}18`,
-            color: typeColor,
-            border: `1px solid ${typeColor}30`,
-            flexShrink: 0,
-          }}>
-            {typeLabel}
-          </div>
-        </div>
-
-        {/* Content */}
-        <p style={{
-          fontSize: 15,
-          color: "rgba(255,255,255,0.82)",
-          lineHeight: 1.65,
-          marginBottom: 16,
-          wordBreak: "break-word",
-          maxHeight: 120,
-          overflow: "hidden",
-        }}>
-          {post.content}
-        </p>
-
-        {/* Embedded repost */}
-        {post.type === "repost" && post.originalPost && (
-          <div style={{
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 12,
-            background: "rgba(255,255,255,0.03)",
-            padding: "12px 14px",
-            marginBottom: 16,
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>
-              @{post.originalPost.username}
-            </div>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
-              {post.originalPost.content}
-            </p>
-          </div>
-        )}
-
-        {/* Project chip */}
-        {post.projectName && (
-          <div style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "5px 10px",
-            borderRadius: 8,
-            background: "rgba(59,130,246,0.08)",
-            border: "1px solid rgba(59,130,246,0.2)",
-            fontSize: 12,
-            color: "#93c5fd",
-            marginBottom: 16,
-          }}>
-            {post.projectName}
-          </div>
-        )}
-
-        {/* Metrics */}
-        <div style={{
-          display: "flex",
-          gap: 20,
-          paddingTop: 14,
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          fontSize: 13,
-          color: "rgba(255,255,255,0.35)",
-        }}>
-          <span>{post.likes ?? 0} likes</span>
-          <span>{post.commentsCount ?? 0} comments</span>
-          <span>{post.repostCount ?? 0} reposts</span>
-          {(post.viewsCount ?? 0) > 0 && <span>{post.viewsCount} views</span>}
         </div>
       </div>
 
-      <Branding />
-    </div>
+      <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+        <p style={{ fontSize: 32, lineHeight: 1.4, fontWeight: 600, margin: 0, whiteSpace: "pre-wrap", color: "#f8fafc" }}>
+          {clampText(post.content)}
+        </p>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 24 }}>
+        <div>
+          {post.projectName && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "8px 16px",
+                borderRadius: 999,
+                background: "rgba(59,130,246,0.1)",
+                border: "1px solid #3B82F6",
+                color: "#93c5fd",
+                fontSize: 16,
+                fontWeight: 600,
+              }}
+            >
+              {post.projectName}
+            </span>
+          )}
+        </div>
+        <Branding />
+      </div>
+    </ExportShell>
   );
 }
-
-/* ─── Project Card ─── */
 
 interface ProjectShareCardProps {
   project: Project;
   username?: string | null;
   avatarUrl?: string | null;
   cardRef: RefObject<HTMLDivElement | null>;
+  styleVariant?: ExportStyle;
 }
 
-const DEPLOY_STATUS_COLOR: Record<string, string> = {
-  success: "#22c55e",
-  building: "#f59e0b",
-  failed: "#ef4444",
-  idle: "#6b7280",
-};
-
-export function ProjectShareCard({ project, username, avatarUrl, cardRef }: ProjectShareCardProps) {
-  const statusColor = DEPLOY_STATUS_COLOR[project.deployStatus ?? "idle"];
-
+export function ProjectShareCard({ project, username, avatarUrl, cardRef, styleVariant = "gradient" }: ProjectShareCardProps) {
   return (
-    <div
-      ref={cardRef}
-      style={{
-        ...CARD_STYLE,
-        position: "fixed",
-        left: -9999,
-        top: 0,
-        zIndex: -1,
-      }}
-    >
-      {/* Gradient accent bar */}
-      <div style={ACCENT_STYLE} />
-
-      {/* Body */}
-      <div style={{ padding: "24px 24px 20px" }}>
-        {/* Author row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-          <Avatar src={avatarUrl} name={username} size={40} />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 13, color: "#fff" }}>{username ?? "Developer"}</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>on DevOS</div>
-          </div>
-          {/* Visibility badge */}
-          <div style={{ marginLeft: "auto" }}>
-            <span style={{
-              fontSize: 10,
-              fontWeight: 700,
-              padding: "3px 8px",
-              borderRadius: 6,
-              background: project.isPublic ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.05)",
-              color: project.isPublic ? "#4ade80" : "rgba(255,255,255,0.3)",
-              textTransform: "uppercase",
-            }}>
-              {project.isPublic ? "Public" : "Private"}
-            </span>
-          </div>
+    <ExportShell cardRef={cardRef} styleVariant={styleVariant}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+        <Avatar src={avatarUrl} name={username} />
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>{username ?? "Developer"}</div>
+          <div style={{ fontSize: 16, color: "#9CA3AF" }}>Project highlight</div>
         </div>
-
-        {/* Project icon + name */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
-          <div style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            background: "rgba(59,130,246,0.15)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            fontSize: 13,
-            fontWeight: 800,
-            color: "#60a5fa",
-            letterSpacing: 1,
-          }}>
-            IDE
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 20, color: "#fff", marginBottom: 4 }}>
-              {project.name}
-            </div>
-            {project.description && (
-              <p style={{
-                fontSize: 13,
-                color: "rgba(255,255,255,0.5)",
-                lineHeight: 1.5,
-                overflow: "hidden",
-                display: "-webkit-box",
-                WebkitBoxOrient: "vertical",
-                WebkitLineClamp: 2,
-              } as React.CSSProperties}>
-                {project.description}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div style={{
-          display: "flex",
-          gap: 16,
-          padding: "12px 16px",
-          borderRadius: 12,
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.06)",
-          marginBottom: 16,
-          fontSize: 13,
-        }}>
-          <div style={{ textAlign: "center", flex: 1 }}>
-            <div style={{ fontWeight: 700, color: "#fff", fontSize: 16 }}>{project.forksCount ?? 0}</div>
-            <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>Forks</div>
-          </div>
-          <div style={{ width: 1, background: "rgba(255,255,255,0.08)" }} />
-          <div style={{ textAlign: "center", flex: 1 }}>
-            <div style={{ fontWeight: 700, color: "#fff", fontSize: 16 }}>{project.views ?? 0}</div>
-            <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>Views</div>
-          </div>
-          <div style={{ width: 1, background: "rgba(255,255,255,0.08)" }} />
-          <div style={{ textAlign: "center", flex: 1 }}>
-            <div style={{ fontWeight: 700, color: statusColor, fontSize: 13, textTransform: "capitalize" }}>
-              {project.deployStatus ?? "idle"}
-            </div>
-            <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>Deploy</div>
-          </div>
-        </div>
-
-        {/* Live URL */}
-        {(project.liveUrl || project.deployUrl) && (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 14px",
-            borderRadius: 8,
-            background: "rgba(34,197,94,0.08)",
-            border: "1px solid rgba(34,197,94,0.2)",
-            fontSize: 12,
-            color: "#4ade80",
-          }}>
-            🌐 {project.liveUrl ?? project.deployUrl}
-          </div>
-        )}
       </div>
 
-      <Branding />
-    </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
+        <h2 style={{ margin: 0, fontSize: 44, lineHeight: 1.15 }}>{project.name}</h2>
+        <p style={{ margin: 0, fontSize: 28, lineHeight: 1.35, color: "#d1d5db", fontWeight: 600 }}>
+          {clampText(project.description || "Built with DevOS")}
+        </p>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20 }}>
+        <span
+          style={{
+            display: "inline-flex",
+            padding: "8px 16px",
+            borderRadius: 999,
+            border: "1px solid #3B82F6",
+            background: "rgba(59,130,246,0.1)",
+            color: "#93c5fd",
+            fontSize: 16,
+            fontWeight: 700,
+          }}
+        >
+          {project.isPublic ? "Public Project" : "Private Project"}
+        </span>
+        <Branding />
+      </div>
+    </ExportShell>
   );
 }

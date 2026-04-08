@@ -17,11 +17,14 @@ export interface Project {
   ownerOrgSlug?: string;
   ownerOrgName?: string;
   projectSlug?: string;
+  slug?: string;
+  deployed?: boolean;
   createdAt: any;
   updatedAt: any;
   collaborators: string[];
   isPublic: boolean;
   isTemplate: boolean;
+  isOfficial?: boolean;
   forksCount: number;
   views?: number;
   deployUrl?: string;
@@ -117,7 +120,7 @@ export interface UserSettings {
   preferences?: {
     fontSize?: number;
     tabSize?: number;
-    uiTheme?: 'dark' | 'midnight' | 'ocean' | 'light';
+    uiTheme?: 'system' | 'dark' | 'midnight' | 'ocean' | 'light' | 'sunset';
   };
   birthday?: string;  // ISO date YYYY-MM-DD
   notifications?: {
@@ -125,6 +128,7 @@ export interface UserSettings {
     adminAnnouncements?: boolean;
   };
   updatedAt?: any;
+  isOfficial?: boolean;
 }
 
 export interface CursorPosition {
@@ -206,7 +210,11 @@ export type NotificationType =
   | 'post_comment'
   | 'post_repost'
   | 'post_like'
-  | 'post_mention';
+  | 'post_mention'
+  | 'like'
+  | 'community_join'
+  | 'org_join'
+  | 'mention';
 
 export interface Notification {
   id: string;
@@ -313,8 +321,10 @@ export interface Organization {
   description: string;
   avatar?: string;
   isPublic: boolean;
+  isOfficial?: boolean;
   joinPolicy?: "open" | "request";
   chatEnabled?: boolean;
+  voiceCallsEnabled?: boolean;
   createdBy: string;
   memberCount: number;
   createdAt: any;
@@ -347,6 +357,9 @@ export interface OrgChatMessage {
   avatarUrl?: string;
   text: string;
   createdAt: any;
+  replyToId?: string;
+  replyToText?: string;
+  replyToUsername?: string;
 }
 
 // ── Community System ────────────────────────────────────────────────────────
@@ -363,7 +376,10 @@ export interface Community {
   createdBy: string;
   memberCount: number;
   isPublic: boolean;
+  isOfficial?: boolean;
   category?: string;
+  chatEnabled?: boolean;
+  voiceCallsEnabled?: boolean;
   createdAt: any;
 }
 
@@ -381,6 +397,9 @@ export interface CommunityChatMessage {
   avatarUrl?: string;
   text: string;
   createdAt: any;
+  replyToId?: string;
+  replyToText?: string;
+  replyToUsername?: string;
 }
 
 // ── Polls ───────────────────────────────────────────────────────────────────
@@ -419,6 +438,7 @@ export interface PresenceUser {
   name: string;
   avatar: string;
   lastSeen: any;             // Firestore Timestamp
+  active?: boolean;
   currentFile: string | null;
 }
 

@@ -4,7 +4,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, writeB
 import { useAuthState } from "react-firebase-hooks/auth";
 import { GitBranch, GitCommit, GitPullRequest, History, Check, X, Loader2, ArrowUp, ArrowDown, Github, Plus } from "lucide-react";
 import { FileData, Commit, PullRequest } from "../types";
-import { cn } from "../lib/utils";
+import { cn, toValidDate } from "../lib/utils";
 import ConfirmModal from "./ConfirmModal";
 
 interface GitPanelProps {
@@ -191,7 +191,7 @@ export default function GitPanel({ projectId, files }: GitPanelProps) {
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-white/30">
                     <span>{commit.authorName}</span>
-                    <span>{commit.timestamp?.toDate().toLocaleDateString()}</span>
+                    <span>{toValidDate(commit.timestamp)?.toLocaleDateString() ?? "—"}</span>
                   </div>
                 </div>
               ))}

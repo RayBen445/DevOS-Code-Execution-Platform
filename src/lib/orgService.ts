@@ -15,6 +15,7 @@ import {
   serverTimestamp,
   increment,
   collectionGroup,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { OrgMemberRole, Organization, OrgMember, OrgJoinRequest, OrgChatMessage } from "../types";
@@ -25,6 +26,7 @@ export async function createOrg(params: {
   description: string;
   avatar?: string;
   isPublic: boolean;
+  isOfficial?: boolean;
   createdBy: string;
   createdByUsername: string;
 }): Promise<string> {
@@ -34,6 +36,9 @@ export async function createOrg(params: {
     description: params.description,
     avatar: params.avatar ?? "",
     isPublic: params.isPublic,
+    isOfficial: params.isOfficial ?? false,
+    chatEnabled: true,
+    voiceCallsEnabled: true,
     createdBy: params.createdBy,
     memberCount: 1,
     createdAt: serverTimestamp(),
@@ -111,7 +116,7 @@ export async function updateMemberRole(
 
 export async function updateOrg(
   orgId: string,
-  data: Partial<Pick<Organization, "name" | "description" | "avatar" | "isPublic">>
+  data: Partial<Pick<Organization, "name" | "description" | "avatar" | "isPublic" | "voiceCallsEnabled">>
 ): Promise<void> {
   await updateDoc(doc(db, "organizations", orgId), { ...data, updatedAt: serverTimestamp() });
 }
@@ -254,6 +259,9 @@ export async function sendOrgChatMessage(params: {
   displayName?: string;
   avatarUrl?: string;
   text: string;
+  replyToId?: string;
+  replyToText?: string;
+  replyToUsername?: string;
 }): Promise<void> {
   await addDoc(collection(db, "organizations", params.orgId, "chat"), {
     userId: params.userId,
@@ -261,6 +269,7 @@ export async function sendOrgChatMessage(params: {
     displayName: params.displayName ?? "",
     avatarUrl: params.avatarUrl ?? "",
     text: params.text.trim(),
+    ...(params.replyToId ? { replyToId: params.replyToId, replyToText: params.replyToText ?? "", replyToUsername: params.replyToUsername ?? "" } : {}),
     createdAt: serverTimestamp(),
   });
 }
@@ -273,4 +282,65 @@ export async function deleteOrgChatMessage(orgId: string, messageId: string): Pr
 /** Toggle the chatEnabled flag on an organization. */
 export async function setOrgChatEnabled(orgId: string, enabled: boolean): Promise<void> {
   await updateDoc(doc(db, "organizations", orgId), { chatEnabled: enabled, updatedAt: serverTimestamp() });
+}
+
+// ---------------------------------------------------------------------------
+// Official org auto-join helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Auto-join a single user to every official org they are not yet in.
+ * Called on new user registration and first-login init.
+ */
+export async function joinOfficialOrgs(userId: string, username: string): Promise<void> {
+  const snap = await getDocs(query(collection(db, "organizations"), where("isOfficial", "==", true)));
+  for (const orgDoc of snap.docs) {
+    const memberRef = doc(db, "organizations", orgDoc.id, "members", userId);
+    const existing = await getDoc(memberRef);
+    if (!existing.exists()) {
+      await setDoc(memberRef, {
+        userId,
+        username,
+        role: "member" as OrgMemberRole,
+        joinedAt: serverTimestamp(),
+      });
+      await updateDoc(orgDoc.ref, { memberCount: increment(1) });
+    }
+  }
+}
+
+/**
+ * Batch-add ALL existing users to a newly-created official org.
+ * Fires 500-write Firestore batches and updates memberCount once at the end.
+ * Called by the admin dashboard immediately after creating an official org.
+ */
+export async function batchAddAllUsersToOrg(orgId: string): Promise<void> {
+  const usersSnap = await getDocs(collection(db, "users"));
+  const existingSnap = await getDocs(collection(db, "organizations", orgId, "members"));
+  const existing = new Set(existingSnap.docs.map((d) => d.id));
+
+  const toAdd = usersSnap.docs.filter((d) => !existing.has(d.id));
+  if (toAdd.length === 0) return;
+
+  const BATCH_SIZE = 499;
+  for (let i = 0; i < toAdd.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    const chunk = toAdd.slice(i, i + BATCH_SIZE);
+    chunk.forEach((userDoc) => {
+      const data = userDoc.data();
+      const memberRef = doc(db, "organizations", orgId, "members", userDoc.id);
+      batch.set(
+        memberRef,
+        {
+          userId: userDoc.id,
+          username: data.username ?? userDoc.id,
+          role: "member" as OrgMemberRole,
+          joinedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+    await batch.commit();
+  }
+  await updateDoc(doc(db, "organizations", orgId), { memberCount: toAdd.length + existing.size });
 }

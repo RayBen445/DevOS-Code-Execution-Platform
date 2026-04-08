@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, Activity } from "lucide-react";
+import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, Activity, ArrowLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -207,16 +207,12 @@ const sections: DocSection[] = [
           your daily credits are exhausted.
         </Section>
         <Section title="Gifted credits">
-          Admins can gift you bonus credits with an optional expiry date. Gifted credits are drained
+          You may receive bonus credits with an optional expiry date. Gifted credits are drained
           first (oldest first) before your daily and monthly pools.
         </Section>
         <Section title="Unlimited Pass">
-          An admin can grant you a time-limited <strong>Unlimited Pass</strong>. While active, all
+          A time-limited <strong>Unlimited Pass</strong> can be granted to your account. While active, all
           credit costs are bypassed and you see an <strong>∞ Unlimited</strong> badge in the navbar.
-        </Section>
-        <Section title="Admin bypass">
-          Admin accounts always bypass credit deductions. The credits panel shows{" "}
-          <strong>∞ Unlimited</strong> for admins on both desktop and mobile.
         </Section>
         <Section title="Redeem codes">
           DevOS occasionally distributes promo codes that can be redeemed for bonus credits. Use the{" "}
@@ -250,8 +246,8 @@ const sections: DocSection[] = [
           members directly by username.
         </Section>
         <Section title="Roles">
-          Each member has one of three roles: <strong>Owner</strong>, <strong>Admin</strong>, or{" "}
-          <strong>Member</strong>. Owners can promote/demote members and transfer ownership.
+          Each member has one of three roles: <strong>Admin</strong>, <strong>Moderator</strong>, or{" "}
+          <strong>Member</strong>. Organization admins can manage roles and settings.
         </Section>
         <Section title="Guest visibility">
           Org pages are publicly visible. Member lists are only shown to authenticated users.
@@ -285,6 +281,10 @@ const sections: DocSection[] = [
         <Section title="Communities">
           Join topic-based communities for focused discussion. Each community has its own feed
           and member list.
+        </Section>
+        <Section title="Group chat, emoji, and voice">
+          Communities and organizations include member-only chat, DevOS custom emoji shortcuts
+          (like <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">:devos:</code>), and optional voice calls.
         </Section>
         <Section title="Explore &amp; Search">
           Use the <strong>Explore</strong> page to discover public projects and trending developers.
@@ -346,6 +346,10 @@ const sections: DocSection[] = [
         </Section>
         <Section title="Viewing your streaks">
           Your current streaks are visible on your public portfolio page and in your profile settings.
+        </Section>
+        <Section title="Help pages">
+          Need context? Visit <strong>About</strong>, <strong>Contact</strong>, and the built-in{" "}
+          <strong>404 not found</strong> page for fast navigation when links break.
         </Section>
       </div>
     ),
@@ -488,7 +492,11 @@ export default function DocsPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
 
-      <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12 gap-8">
+      <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12 gap-8 relative">
+        <button onClick={() => window.history.back()} className="absolute -top-2 left-4 md:left-6 inline-flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back
+        </button>
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col gap-1 w-52 flex-shrink-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3 px-3">

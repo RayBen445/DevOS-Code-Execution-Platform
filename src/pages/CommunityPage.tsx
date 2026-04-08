@@ -12,10 +12,8 @@ import {
   Loader2,
   UserPlus,
   UserCheck,
-  Send,
   Heart,
   MessageCircle,
-  Trash2,
   ShieldAlert,
   Code2,
   Settings,
@@ -23,6 +21,9 @@ import {
   UserMinus,
   Link2,
   Check,
+  Phone,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import ConfirmModal from "../components/ConfirmModal";
+import GroupChat from "../components/GroupChat";
 import { Community, CommunityMember, FeedPost, CommunityChatMessage } from "../types";
 import {
   getCommunityBySlug,
@@ -56,6 +58,8 @@ import {
   deletePost,
 } from "../lib/feedService";
 import { useSEO } from "../hooks/useSEO";
+import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
+import socket from "../lib/socket";
 
 type CommunityTab = "posts" | "members" | "chat" | "settings";
 
@@ -380,9 +384,13 @@ export default function CommunityPage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [members, setMembers] = useState<CommunityMember[]>([]);
   const [chatMessages, setChatMessages] = useState<CommunityChatMessage[]>([]);
-  const [chatText, setChatText] = useState("");
-  const [sendingChat, setSendingChat] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
+  const [inVoiceCall, setInVoiceCall] = useState(false);
+  const [voicePeers, setVoicePeers] = useState<string[]>([]);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const peerMapRef = useRef<Record<string, RTCPeerConnection>>({});
+  const remoteAudioRef = useRef<Record<string, HTMLAudioElement>>({});
+  const voiceHandlersRef = useRef<Partial<Record<string, (...args: any[]) => void>>>({});
   const [userSettings, setUserSettings] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
   const [loading, setLoading] = useState(true);
@@ -443,14 +451,13 @@ export default function CommunityPage() {
 
   // Subscribe to chat when on chat tab and is a member
   useEffect(() => {
-    if (!community?.id || activeTab !== "chat" || !isMember) return;
+    if (!community?.id || activeTab !== "chat" || !isMember || community.chatEnabled === false) return;
     return subscribeChatMessages(community.id, setChatMessages);
-  }, [community?.id, activeTab, isMember]);
+  }, [community?.id, activeTab, isMember, community?.chatEnabled]);
 
-  // Auto-scroll chat to bottom when new messages arrive
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
+    getSiteConfig().then(setSiteConfig).catch(() => {});
+  }, []);
 
   // Load current user settings
   useEffect(() => {
@@ -471,6 +478,13 @@ export default function CommunityPage() {
     setSettingsBanner(community.banner ?? "");
     setSettingsIsPublic(community.isPublic);
   }, [community, activeTab]);
+
+  // Switch away from the chat tab if chat gets disabled while user is on it
+  useEffect(() => {
+    if (community?.chatEnabled === false && activeTab === "chat") {
+      setActiveTab("posts");
+    }
+  }, [community?.chatEnabled, activeTab]);
 
   const handleSaveSettings = async () => {
     if (!community) return;
@@ -508,7 +522,7 @@ export default function CommunityPage() {
   };
 
   const copyCommunityLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/community/${slug}`).then(() => {
+    navigator.clipboard.writeText(`${window.location.origin}/c/${slug}`).then(() => {
       setLinkCopied(true);
       toast.success("Link copied!");
       setTimeout(() => setLinkCopied(false), 2000);
@@ -528,11 +542,8 @@ export default function CommunityPage() {
     }
   };
 
-  const handleSendChat = async () => {
-    if (!user || !chatText.trim() || !community?.id) return;
-    setSendingChat(true);
-    const text = chatText.trim();
-    setChatText("");
+  const handleSendChat = async (text: string, replyToId?: string, replyToText?: string, replyToUsername?: string) => {
+    if (!user || !community?.id || community.chatEnabled === false) return;
     try {
       await sendChatMessage({
         communityId: community.id,
@@ -541,12 +552,12 @@ export default function CommunityPage() {
         displayName: userSettings?.displayName || user.displayName || undefined,
         avatarUrl: userSettings?.avatarUrl || user.photoURL || undefined,
         text,
+        replyToId,
+        replyToText,
+        replyToUsername,
       });
     } catch {
       toast.error("Failed to send message.");
-      setChatText(text);
-    } finally {
-      setSendingChat(false);
     }
   };
 
@@ -568,10 +579,128 @@ export default function CommunityPage() {
 
   const tabs: { id: CommunityTab; label: string; count?: number; icon?: React.ReactNode }[] = [
     { id: "posts", label: "Posts", count: posts.length },
-    { id: "chat", label: "Chat", count: undefined },
+    ...(community.chatEnabled === false ? [] : [{ id: "chat" as CommunityTab, label: "Chat", count: undefined }]),
     { id: "members", label: "Members", count: community.memberCount },
     ...(memberRole === "admin" ? [{ id: "settings" as CommunityTab, label: "Settings", icon: <Settings className="w-3.5 h-3.5" /> }] : []),
   ];
+
+  const roomId = community?.id ? `community-${community.id}` : "";
+
+  const cleanupVoiceCall = () => {
+    Object.values(peerMapRef.current).forEach((pc) => pc.close());
+    peerMapRef.current = {};
+    Object.values(remoteAudioRef.current).forEach((el) => {
+      el.srcObject = null;
+      el.remove();
+    });
+    remoteAudioRef.current = {};
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = null;
+    }
+    setVoicePeers([]);
+    setInVoiceCall(false);
+  };
+
+  const buildPeer = (targetUserId: string, meId: string, initiator: boolean) => {
+    if (peerMapRef.current[targetUserId]) return peerMapRef.current[targetUserId];
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    localStreamRef.current?.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current!));
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("voice-ice-candidate", { roomId, targetUserId, fromUserId: meId, candidate: event.candidate });
+      }
+    };
+    pc.ontrack = (event) => {
+      let audio = remoteAudioRef.current[targetUserId];
+      if (!audio) {
+        audio = new Audio();
+        audio.autoplay = true;
+        remoteAudioRef.current[targetUserId] = audio;
+      }
+      audio.srcObject = event.streams[0];
+    };
+    peerMapRef.current[targetUserId] = pc;
+    if (initiator) {
+      pc.createOffer()
+        .then((offer) => pc.setLocalDescription(offer).then(() => offer))
+        .then((offer) => socket.emit("voice-offer", { roomId, targetUserId, fromUserId: meId, offer }))
+        .catch(() => {});
+    }
+    return pc;
+  };
+
+  const startVoiceCall = async () => {
+    if (!user || !roomId || inVoiceCall) return;
+    try {
+      localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      socket.connect();
+      const meId = user.uid;
+      socket.emit("join-voice-room", { roomId, userId: meId, name: userSettings?.displayName || userSettings?.username || "User" });
+      setInVoiceCall(true);
+
+      const onVoiceUserJoined = ({ userId }: { userId: string }) => {
+        if (!userId || userId === meId) return;
+        setVoicePeers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+        buildPeer(userId, meId, true);
+      };
+      const onVoiceOffer = async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
+        const pc = buildPeer(fromUserId, meId, false);
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit("voice-answer", { roomId, targetUserId: fromUserId, fromUserId: meId, answer });
+        setVoicePeers((prev) => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
+      };
+      const onVoiceAnswer = async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
+        const pc = peerMapRef.current[fromUserId];
+        if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      };
+      const onVoiceIceCandidate = async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
+        const pc = peerMapRef.current[fromUserId];
+        if (!pc) return;
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      };
+      const onVoiceUserLeft = ({ userId }: { userId: string }) => {
+        peerMapRef.current[userId]?.close();
+        delete peerMapRef.current[userId];
+        remoteAudioRef.current[userId]?.remove();
+        delete remoteAudioRef.current[userId];
+        setVoicePeers((prev) => prev.filter((p) => p !== userId));
+      };
+
+      voiceHandlersRef.current = {
+        "voice-user-joined": onVoiceUserJoined,
+        "voice-offer": onVoiceOffer,
+        "voice-answer": onVoiceAnswer,
+        "voice-ice-candidate": onVoiceIceCandidate,
+        "voice-user-left": onVoiceUserLeft,
+      };
+      socket.on("voice-user-joined", onVoiceUserJoined);
+      socket.on("voice-offer", onVoiceOffer);
+      socket.on("voice-answer", onVoiceAnswer);
+      socket.on("voice-ice-candidate", onVoiceIceCandidate);
+      socket.on("voice-user-left", onVoiceUserLeft);
+    } catch {
+      toast.error("Could not start voice call. Microphone permission may be blocked.");
+      cleanupVoiceCall();
+    }
+  };
+
+  const endVoiceCall = () => {
+    if (user && roomId) socket.emit("leave-voice-room", { roomId, userId: user.uid });
+    const handlers = voiceHandlersRef.current;
+    if (handlers["voice-user-joined"]) socket.off("voice-user-joined", handlers["voice-user-joined"]);
+    if (handlers["voice-offer"]) socket.off("voice-offer", handlers["voice-offer"]);
+    if (handlers["voice-answer"]) socket.off("voice-answer", handlers["voice-answer"]);
+    if (handlers["voice-ice-candidate"]) socket.off("voice-ice-candidate", handlers["voice-ice-candidate"]);
+    if (handlers["voice-user-left"]) socket.off("voice-user-left", handlers["voice-user-left"]);
+    voiceHandlersRef.current = {};
+    cleanupVoiceCall();
+  };
+
+  useEffect(() => () => endVoiceCall(), [roomId, user?.uid]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
@@ -778,128 +907,26 @@ export default function CommunityPage() {
             </motion.div>
           )}
 
-          {activeTab === "chat" && (
-            <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col h-[540px]">
-              {!isMember ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
-                    <MessageCircle className="w-6 h-6 text-white/20" />
-                  </div>
-                  <p className="text-white/40 text-sm">Join the community to chat.</p>
-                  {user && (
-                    <button onClick={handleJoin} disabled={joining} className="text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors">
-                      Join Community →
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {/* Messages area */}
-                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-3 min-h-0 px-1">
-                    {chatMessages.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-full gap-3">
-                        <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
-                          <MessageCircle className="w-6 h-6 text-white/15" />
-                        </div>
-                        <p className="text-white/30 text-sm">No messages yet. Say hello! 👋</p>
-                      </div>
-                    ) : (
-                      chatMessages.map((msg) => {
-                        const isOwn = msg.userId === user?.uid;
-                        return (
-                          <div
-                            key={msg.id}
-                            className={cn("flex items-end gap-2 group", isOwn ? "flex-row-reverse" : "flex-row")}
-                          >
-                            {/* Avatar — others only */}
-                            {!isOwn && (
-                              <img
-                                src={resolveAvatar(msg.avatarUrl)}
-                                alt={msg.displayName || msg.username}
-                                className="w-7 h-7 rounded-full object-cover flex-shrink-0 mb-0.5"
-                                referrerPolicy="no-referrer"
-                              />
-                            )}
-
-                            <div className={cn("max-w-[72%] flex flex-col gap-0.5", isOwn ? "items-end" : "items-start")}>
-                              {/* Sender name — others only */}
-                              {!isOwn && (
-                                <div className="flex items-baseline gap-1.5 px-1">
-                                  <span className="text-[11px] font-bold text-white/60">{msg.displayName || msg.username}</span>
-                                  {msg.createdAt && (
-                                    <span className="text-[10px] text-white/25">
-                                      {new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className={cn("flex items-end gap-1.5", isOwn ? "flex-row-reverse" : "flex-row")}>
-                                {/* Bubble */}
-                                <div className={cn(
-                                  "px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
-                                  isOwn
-                                    ? "bg-indigo-600 text-white rounded-br-sm shadow-md shadow-indigo-500/20"
-                                    : "bg-white/[0.07] text-white/85 border border-white/[0.08] rounded-bl-sm"
-                                )}>
-                                  {msg.text}
-                                </div>
-
-                                {/* Meta (time + delete) — shown on hover */}
-                                <div className={cn(
-                                  "flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0",
-                                  isOwn ? "items-end" : "items-start"
-                                )}>
-                                  {isOwn && msg.createdAt && (
-                                    <span className="text-[10px] text-white/25">
-                                      {new Date(msg.createdAt.toDate?.() ?? msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                    </span>
-                                  )}
-                                  {(user?.uid === msg.userId || memberRole === "admin" || memberRole === "moderator") && (
-                                    <button
-                                      onClick={() => community?.id && deleteChatMessage(community.id, msg.id)}
-                                      className="p-1 rounded-lg hover:bg-red-500/10 text-red-400/50 hover:text-red-400 transition-all"
-                                      title="Delete message"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                    <div ref={chatEndRef} />
-                  </div>
-
-                  {/* Chat input */}
-                  <div className="flex items-center gap-2 pt-3 border-t border-white/[0.07]">
-                    <img
-                      src={resolveAvatar(userSettings?.avatarUrl)}
-                      alt=""
-                      className="w-8 h-8 rounded-full object-cover shrink-0 ring-2 ring-white/10"
-                    />
-                    <input
-                      type="text"
-                      value={chatText}
-                      onChange={(e) => setChatText(e.target.value)}
-                      placeholder="Send a message…"
-                      maxLength={2000}
-                      className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/40 focus:bg-white/[0.08] transition-all"
-                    />
-                    <button
-                      onClick={handleSendChat}
-                      disabled={sendingChat || !chatText.trim()}
-                      className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all shadow-md shadow-indigo-500/20"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </div>
-                </>
-              )}
-            </motion.div>
+          {activeTab === "chat" && community.chatEnabled !== false && (
+            <GroupChat
+              messages={chatMessages}
+              currentUserId={user?.uid}
+              currentAvatarUrl={userSettings?.avatarUrl}
+              accentColor="indigo"
+              onSend={handleSendChat}
+              onDelete={(msgId) => community?.id && deleteChatMessage(community.id, msgId)}
+              canDelete={(msg) => msg.userId === user?.uid || memberRole === "admin" || memberRole === "moderator"}
+              voiceCallEnabled={(community.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls}
+              inVoiceCall={inVoiceCall}
+              voicePeerCount={voicePeers.length}
+              onStartVoiceCall={startVoiceCall}
+              onEndVoiceCall={endVoiceCall}
+              emptyLabel="No messages yet. Say hello! 👋"
+              notMemberLabel="Join the community to chat."
+              isMember={isMember}
+              onJoin={handleJoin}
+              joining={joining}
+            />
           )}
 
           {activeTab === "settings" && memberRole === "admin" && (
@@ -946,6 +973,34 @@ export default function CommunityPage() {
                     maxLength={50}
                     placeholder="e.g. Web Dev, AI/ML, Gaming…"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-3 border-t border-white/10 pt-4">
+                  <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest">Realtime</h3>
+                  <ToggleRow
+                    label="Group chat"
+                    description={(community.chatEnabled ?? true) ? "Members can chat in this community." : "Community chat is disabled."}
+                    enabled={community.chatEnabled ?? true}
+                    onToggle={async () => {
+                      try {
+                        await updateCommunity(community.id, { chatEnabled: !(community.chatEnabled ?? true) });
+                      } catch {
+                        toast.error("Failed to update chat setting.");
+                      }
+                    }}
+                  />
+                  <ToggleRow
+                    label="Voice calls"
+                    description={(community.voiceCallsEnabled ?? true) ? "Members can start voice calls." : "Voice calls are disabled for this community."}
+                    enabled={community.voiceCallsEnabled ?? true}
+                    onToggle={async () => {
+                      try {
+                        await updateCommunity(community.id, { voiceCallsEnabled: !(community.voiceCallsEnabled ?? true) });
+                      } catch {
+                        toast.error("Failed to update voice call setting.");
+                      }
+                    }}
                   />
                 </div>
 
@@ -1013,6 +1068,20 @@ export default function CommunityPage() {
 
       <Footer />
       <MobileBottomNav />
+    </div>
+  );
+}
+
+function ToggleRow({ label, description, enabled, onToggle }: { label: string; description: string; enabled: boolean; onToggle: () => void; }) {
+  return (
+    <div className="flex items-center justify-between py-3.5 px-4 bg-white/[0.03] border border-white/[0.07] rounded-xl">
+      <div>
+        <p className="text-sm font-semibold text-white">{label}</p>
+        <p className="text-xs text-white/30 mt-0.5">{description}</p>
+      </div>
+      <button type="button" onClick={onToggle} className="text-white/60 hover:text-white transition-colors">
+        {enabled ? <ToggleRight className="w-7 h-7 text-indigo-400" /> : <ToggleLeft className="w-7 h-7 text-white/30" />}
+      </button>
     </div>
   );
 }

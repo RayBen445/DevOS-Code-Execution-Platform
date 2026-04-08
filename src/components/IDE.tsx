@@ -18,6 +18,7 @@ import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
 import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { emitBotEvent } from "../lib/botEngine";
 
 interface IDEProps {
   projectId: string;
@@ -68,7 +69,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [openFileIds, setOpenFileIds] = useState<string[]>([]);
   const [previewSaveKey, setPreviewSaveKey] = useState(0);
+  const [buildPreviewFiles, setBuildPreviewFiles] = useState<FileData[] | null>(null);
+  const [fileModes, setFileModes] = useState<Record<string, "read" | "edit">>({});
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runAbortRef = useRef<AbortController | null>(null);
   const [terminalHeight, setTerminalHeight] = useState(240);
   const terminalResizeRef = useRef<boolean>(false);
   const terminalDragStartY = useRef<number>(0);
@@ -89,8 +93,12 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   // Real-time collaboration state (org projects only)
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
+  const [realtimeConnected, setRealtimeConnected] = useState(true);
   const orgMembersRef = useRef<OrgMember[]>([]); // stable ref for use in closures
   const notifiedActivityIds = useRef<Set<string>>(new Set()); // prevents duplicate toasts
+  const editDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const botDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [botSuggestions, setBotSuggestions] = useState<string[]>([]);
 
   // Persist active file and panel to localStorage (per-project key)
   useEffect(() => {
@@ -238,35 +246,21 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     // help
     if (cmd === "help") {
       addLog("info", "Available commands:");
-      addLog("output", "  save      Save project and refresh preview");
-      addLog("output", "  deploy    Deploy project to DevOS (live URL)");
-      addLog("output", "  sync      Sync and deploy project");
-      addLog("output", "  run       Run active file in terminal");
-      addLog("output", "  clear     Clear terminal output");
-      addLog("output", "  help      Show this help");
+      addLog("output", "  save              Save project and refresh preview");
+      addLog("output", "  deploy            Deploy project to DevOS (live URL)");
+      addLog("output", "  sync              Sync and deploy project");
+      addLog("output", "  run               Run active file in terminal");
+      addLog("output", "  clear             Clear terminal output");
+      addLog("output", "  help              Show this help");
+      addLog("info", "npm / node:");
+      addLog("output", "  npm install       Install packages from package.json");
+      addLog("output", "  npm install <pkg> Install a specific package");
+      addLog("output", "  npm run <script>  Run a package.json script");
+      addLog("output", "  node <file>       Run a Node.js file");
       addLog("info", "Tips:");
       addLog("output", "  • Use Preview panel for instant live rendering");
       addLog("output", "  • Use 'save' then 'deploy' to publish your project");
       addLog("output", "  • Use ZIP upload to import entire projects");
-      setIsExecRunning(false);
-      setTimeout(() => terminalInputRef.current?.focus(), 0);
-      return;
-    }
-
-    // Block npm/yarn/pnpm package manager commands
-    const npmBlocked = [
-      /^npm\s+install\b/i,
-      /^npm\s+run\b/i,
-      /^npm\s+start\b/i,
-      /^yarn\b/i,
-      /^pnpm\b/i,
-    ];
-    if (npmBlocked.some(p => p.test(cmd))) {
-      addLog("error", "npm commands are not supported in DevOS.");
-      addLog("warning", "Suggestions:");
-      addLog("output", "  • Use Preview panel for instant rendering");
-      addLog("output", "  • Use 'deploy' command for a live URL");
-      addLog("output", "  • Use Templates or ZIP upload to import projects");
       setIsExecRunning(false);
       setTimeout(() => terminalInputRef.current?.focus(), 0);
       return;
@@ -428,6 +422,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     // Join socket room
     socket.connect();
     socket.emit("join-project", projectId);
+    socket.emit("joinProject", projectId);
+
+    const onConnect = () => setRealtimeConnected(true);
+    const onDisconnect = () => setRealtimeConnected(false);
+    const onConnectError = () => setRealtimeConnected(false);
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
 
     // Fetch project metadata
     const projectRef = doc(db, "projects", projectId);
@@ -460,7 +462,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         return null;
       });
       setOpenFileIds(prev => {
-        if (prev.length > 0) return prev;
+        const validOpen = prev.filter((id) => fileList.some((f) => f.id === id));
+        if (validOpen.length > 0) return validOpen;
         return fileList.length > 0 ? [fileList[0].id] : [];
       });
       setLoading(false);
@@ -471,7 +474,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     return () => {
       unsubProject();
       unsubFiles();
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
       socket.disconnect();
+      Object.values(editDebounceRef.current).forEach((t) => clearTimeout(t));
+      editDebounceRef.current = {};
+      if (botDebounceRef.current) clearTimeout(botDebounceRef.current);
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, [user, projectId]);
@@ -508,6 +517,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       name: user.displayName || user.email?.split("@")[0] || "User",
       avatar: user.photoURL || "",
       lastSeen: serverTimestamp(),
+      active: true,
       currentFile: null,
     }).catch(() => {});
     const heartbeat = setInterval(() => {
@@ -515,6 +525,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }, 30_000);
     return () => {
       clearInterval(heartbeat);
+      updateDoc(presenceRef, { active: false, lastSeen: serverTimestamp() }).catch(() => {});
       deleteDoc(presenceRef).catch(() => {});
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -527,6 +538,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     const currentFileName = files.find(f => f.id === activeFileId)?.name ?? null;
     setDoc(presenceRef, {
       currentFile: currentFileName,
+      active: true,
       lastSeen: serverTimestamp(),
     }, { merge: true }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -579,6 +591,8 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   }, [isOrgProject, projectId, user?.uid]);
 
   const activeFile = files.find(f => f.id === activeFileId);
+  const activeFileMode: "read" | "edit" = activeFileId ? (fileModes[activeFileId] ?? "edit") : "edit";
+  const editorReadOnly = isReadOnly || activeFileMode === "read";
 
   const handleUpdateFile = async (fileId: string, content: string) => {
     if (!fileId || !projectId || isReadOnly) return;
@@ -619,10 +633,30 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     });
   };
 
-  const handleCodeChange = async (content: string) => {
+  const handleCodeChange = (content: string) => {
     if (!activeFileId) return;
+    if (editorReadOnly) return;
+    if (buildPreviewFiles) setBuildPreviewFiles(null);
     setIsSaved(false);
-    await handleUpdateFile(activeFileId, content);
+    // Local optimistic update for smooth typing
+    setFiles((prev) => prev.map((f) => (f.id === activeFileId ? { ...f, content } : f)));
+
+    // Debounced sync (last-write-wins)
+    if (editDebounceRef.current[activeFileId]) {
+      clearTimeout(editDebounceRef.current[activeFileId]);
+    }
+    editDebounceRef.current[activeFileId] = setTimeout(() => {
+      handleUpdateFile(activeFileId, content);
+    }, 120);
+
+    if (botDebounceRef.current) clearTimeout(botDebounceRef.current);
+    botDebounceRef.current = setTimeout(async () => {
+      const messages = await emitBotEvent({
+        name: "file_changed",
+        payload: { projectId, fileId: activeFileId, content },
+      });
+      setBotSuggestions(messages.map((m) => m.text).slice(0, 3));
+    }, 250);
 
     // Schedule auto-save after 2.5s of idle
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -703,6 +737,72 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     setActivePanel("terminal");
     addLog("system", `devos ▶ ${project?.name || "project"} $ run`);
 
+    const packageFile = files.find((f) => f.name === "package.json" || f.path === "/package.json");
+    if (packageFile) {
+      try {
+        const idToken = await auth.currentUser?.getIdToken();
+        const controller = new AbortController();
+        runAbortRef.current = controller;
+        const response = await fetch("/api/run-project", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            mode: "build",
+            files: files.map((f) => ({
+              name: (f.path || f.name || "").replace(/^\/+/, ""),
+              content: f.content ?? "",
+            })),
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.success) {
+          addLog("error", "✖ Build failed");
+          addLog("error", data?.stderr || data?.error || "Build request failed");
+          setIsRunning(false);
+          return;
+        }
+
+        addLog("output", data.stdout || "Build completed.");
+        if (data.stderr) addLog("output", data.stderr);
+
+        const generatedFiles: FileData[] = (data.outputFiles || []).map((f: any, index: number) => ({
+          id: `build-${index}-${f.path}`,
+          projectId,
+          name: String(f.path).split("/").pop() || f.path,
+          path: `/${String(f.path).replace(/^\/+/, "")}`,
+          content: String(f.content ?? ""),
+          language: f.path.endsWith(".css")
+            ? "css"
+            : f.path.endsWith(".js")
+              ? "javascript"
+              : f.path.endsWith(".html")
+                ? "html"
+                : "plaintext",
+          updatedAt: new Date().toISOString(),
+        }));
+        setBuildPreviewFiles(generatedFiles);
+        setPreviewSaveKey((k) => k + 1);
+        setActivePanel("preview");
+        setMobileTab("preview");
+        addLog("success", "✔ Build output loaded into Preview.");
+      } catch (error: any) {
+        if (error?.name === "AbortError") {
+          addLog("error", "Execution stopped by user.");
+        } else {
+          addLog("error", "✖ Build pipeline failed");
+          addLog("error", error.message || "Unknown build error");
+        }
+      } finally {
+        runAbortRef.current = null;
+        setIsRunning(false);
+      }
+      return;
+    }
+
     // Block unsupported file types — .tsx/.jsx are React components; use Preview instead
     const blockedExtensions = [".tsx", ".jsx"];
     const fileExt = activeFile.name.includes(".") ? `.${activeFile.name.split(".").pop()?.toLowerCase()}` : "";
@@ -758,8 +858,24 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       addLog("error", "✖ Execution failed");
       addLog("error", error.message);
     } finally {
+      runAbortRef.current = null;
       setIsRunning(false);
     }
+  };
+
+  const handleStopExecution = () => {
+    if (runAbortRef.current) {
+      runAbortRef.current.abort();
+      runAbortRef.current = null;
+    }
+  };
+
+  const toggleActiveFileMode = () => {
+    if (!activeFileId) return;
+    setFileModes((prev) => ({
+      ...prev,
+      [activeFileId]: (prev[activeFileId] ?? "edit") === "edit" ? "read" : "edit",
+    }));
   };
 
   const togglePanel = (panel: PanelType) => {
@@ -1118,6 +1234,11 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               <span className="hidden sm:inline">Fork to Edit</span>
             </button>
           )}
+          {!realtimeConnected && (
+            <span className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 text-amber-300 text-[10px] font-bold border border-amber-500/25">
+              Realtime disabled
+            </span>
+          )}
           {project?.systemType !== 'portfolio' && (
             <>
               <button 
@@ -1131,6 +1252,29 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                 <span className="hidden sm:inline">{isRunning ? "Running..." : "Run"}</span>
               </button>
+              {isRunning && (
+                <button
+                  onClick={handleStopExecution}
+                  className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white text-xs font-bold transition-all"
+                >
+                  <X className="w-3 h-3" />
+                  <span className="hidden sm:inline">Stop Execution</span>
+                </button>
+              )}
+              {!isReadOnly && (
+                <button
+                  onClick={toggleActiveFileMode}
+                  className={cn(
+                    "flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    activeFileMode === "read"
+                      ? "bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25"
+                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                  )}
+                  title={activeFileMode === "read" ? "Switch active file to edit mode" : "Switch active file to read mode"}
+                >
+                  {activeFileMode === "read" ? "Read mode" : "Edit mode"}
+                </button>
+              )}
               {!isReadOnly && (
                 <button
                   onClick={() => handleSave()}
@@ -1255,7 +1399,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     activeFileId={activeFileId}
                     onSelectFile={(id) => { openFileInTab(id); setMobileTab("editor"); }}
                     projectId={projectId}
-                    readOnly={isReadOnly}
+                    readOnly={editorReadOnly}
                   />
                 </div>
               )}
@@ -1287,7 +1431,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     )}
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <PreviewPanel projectId={projectId} files={files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
+                    <PreviewPanel projectId={projectId} files={buildPreviewFiles ?? files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
                   </div>
                 </div>
               )}
@@ -1412,7 +1556,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     activeFileId={activeFileId}
                     onSelectFile={openFileInTab}
                     projectId={projectId}
-                    readOnly={isReadOnly}
+                    readOnly={editorReadOnly}
                   />
                 </div>
               )}
@@ -1522,7 +1666,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       file={activeFile}
                       onChange={handleCodeChange}
                       projectId={projectId}
-                      readOnly={isReadOnly}
+                      readOnly={editorReadOnly}
                       onCursorChange={(line, col) => { setCursorLine(line); setCursorCol(col); }}
                     />
                   ) : (
@@ -1716,7 +1860,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 </div>
               </div>
               <div className="flex-1">
-                <PreviewPanel projectId={projectId} files={files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
+                <PreviewPanel projectId={projectId} files={buildPreviewFiles ?? files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
               </div>
             </div>
           )}
@@ -1733,10 +1877,20 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           {activeFile && (
             <span className="text-white/20">{activeFile.language ?? "text"}</span>
           )}
+          {activeFile && (
+            <span className={cn("px-1.5 py-0.5 rounded", activeFileMode === "read" ? "bg-indigo-500/20 text-indigo-300" : "bg-white/10 text-white/40")}>
+              {activeFileMode === "read" ? "READ" : "EDIT"}
+            </span>
+          )}
           {!isSaved && (
             <span className="text-orange-400/70 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
               Unsaved changes
+            </span>
+          )}
+          {botSuggestions.length > 0 && (
+            <span className="text-blue-300/70 truncate max-w-[360px]">
+              🤖 {botSuggestions[0]}
             </span>
           )}
         </div>

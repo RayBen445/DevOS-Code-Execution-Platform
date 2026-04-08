@@ -104,12 +104,225 @@ const terminalRateLimit = new Map<string, { count: number; resetAt: number }>();
 const TERMINAL_RATE_MAX = 30;
 const TERMINAL_RATE_WINDOW_MS = 60_000;
 
+const runProjectRateLimit = new Map<string, { count: number; resetAt: number }>();
+const RUN_PROJECT_RATE_MAX = 5;
+const RUN_PROJECT_RATE_WINDOW_MS = 60_000;
+
+// Per-user persistent workspace directories for the terminal (lives for the process lifetime).
+// This lets successive commands (e.g. `npm install` then `node index.js`) share state.
+const userWorkspaceDirs = new Map<string, string>();
+
+const getUserWorkspaceDir = (uid: string): string => {
+  const existing = userWorkspaceDirs.get(uid);
+  if (existing && fs.existsSync(existing)) return existing;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `devos-ws-${uid.slice(0, 8)}-`));
+  userWorkspaceDirs.set(uid, dir);
+  return dir;
+};
+
+type ProjectInputFile = { name: string; content: string };
+
+const sanitizeRelativePath = (rawPath: string): string => {
+  const normalized = path.posix.normalize(String(rawPath || "").replace(/\\/g, "/"));
+  const trimmed = normalized.replace(/^\/+/, "");
+  if (!trimmed || trimmed.startsWith("..") || trimmed.includes("\0")) {
+    throw new Error(`Invalid file path: ${rawPath}`);
+  }
+  return trimmed;
+};
+
+const runCommand = async (
+  executable: string,
+  args: string[],
+  cwd: string,
+  timeoutMs: number
+): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
+  const { execFile } = await import("child_process");
+  return await new Promise((resolve, reject) => {
+    execFile(
+      executable,
+      args,
+      {
+        cwd,
+        timeout: timeoutMs,
+        env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=256" },
+        maxBuffer: 1024 * 1024 * 10,
+      },
+      (error, stdout, stderr) => {
+        const timedOut = Boolean((error as any)?.killed || (error as any)?.code === "ETIMEDOUT");
+        const exitCode = (error as any)?.code ?? (error ? 1 : 0);
+        if (timedOut) {
+          reject(new Error("Execution timeout exceeded."));
+          return;
+        }
+        resolve({ stdout: stdout || "", stderr: stderr || "", exitCode });
+      }
+    );
+  });
+};
+
+const walkFiles = (dir: string): string[] => {
+  const output: string[] = [];
+  const stack = [dir];
+  while (stack.length) {
+    const current = stack.pop()!;
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (entry.isFile()) {
+        output.push(full);
+      }
+    }
+  }
+  return output;
+};
+
 // ---------------------------------------------------------------------------
 // API Routes
 // ---------------------------------------------------------------------------
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+app.post("/api/run-project", async (req, res) => {
+  // Guard: untrusted project builds must be explicitly enabled in non-production environments
+  const allowUntrustedProjectBuilds =
+    process.env.ALLOW_UNTRUSTED_PROJECT_BUILDS === "true" &&
+    process.env.NODE_ENV !== "production";
+  if (!allowUntrustedProjectBuilds) {
+    return res.status(403).json({
+      success: false,
+      error: "untrusted_build_disabled",
+      stderr:
+        "Building uploaded projects is disabled unless ALLOW_UNTRUSTED_PROJECT_BUILDS=true is set in a non-production environment.",
+    });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer "))
+    return res.status(401).json({ error: "Unauthorized" });
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let uid: string;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid = decoded.uid;
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  // Per-user rate limit for expensive project builds
+  const nowRp = Date.now();
+  const rpEntry = runProjectRateLimit.get(uid);
+  if (rpEntry && nowRp < rpEntry.resetAt) {
+    if (rpEntry.count >= RUN_PROJECT_RATE_MAX)
+      return res.status(429).json({ success: false, error: "Rate limit exceeded. Try again in a moment." });
+    rpEntry.count++;
+  } else {
+    runProjectRateLimit.set(uid, { count: 1, resetAt: nowRp + RUN_PROJECT_RATE_WINDOW_MS });
+  }
+
+  const { files, mode } = req.body as { files?: ProjectInputFile[]; mode?: string };
+  if (!Array.isArray(files) || files.length === 0) {
+    return res.status(400).json({ success: false, error: "Missing files payload." });
+  }
+  if (mode && mode !== "build") {
+    return res.status(400).json({ success: false, error: "Unsupported mode." });
+  }
+
+  const startedAt = Date.now();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `devos-${uid.slice(0, 8)}-`));
+
+  try {
+    for (const file of files) {
+      const rel = sanitizeRelativePath(file.name);
+      const destination = path.join(tmpDir, rel);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.writeFileSync(destination, String(file.content ?? ""), "utf-8");
+    }
+
+    const packagePath = path.join(tmpDir, "package.json");
+    if (!fs.existsSync(packagePath)) {
+      return res.status(400).json({ success: false, error: "missing_package_json", stderr: "package.json is required." });
+    }
+
+    const pkg = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
+    const scripts = pkg?.scripts ?? {};
+    if (!scripts?.build) {
+      return res.status(400).json({ success: false, error: "missing_build_script", stderr: "No build script found in package.json." });
+    }
+    if (scripts?.dev) {
+      // explicit policy: do not run dev servers in execution env
+    }
+
+    const installResult = await runCommand("npm", ["install", "--ignore-scripts"], tmpDir, 15_000);
+    const buildResult = await runCommand("npm", ["run", "build"], tmpDir, 15_000);
+
+    // Next.js static-export path
+    const nextConfigPath = path.join(tmpDir, "next.config.js");
+    if (fs.existsSync(nextConfigPath)) {
+      const nextConfigContent = fs.readFileSync(nextConfigPath, "utf-8");
+      if (nextConfigContent.includes("output: 'export'") || nextConfigContent.includes('output: "export"')) {
+        try {
+          await runCommand("npm", ["run", "export"], tmpDir, 15_000);
+        } catch {
+          // keep build logs; output detection below will decide if preview is possible
+        }
+      }
+    }
+
+    const outputCandidates = ["dist", "build", ".next", "out"];
+    const outputDirName = outputCandidates.find((dirName) => fs.existsSync(path.join(tmpDir, dirName)));
+    if (!outputDirName) {
+      return res.status(400).json({
+        success: false,
+        error: "unsupported_preview",
+        stdout: `${installResult.stdout}\n${buildResult.stdout}`.trim(),
+        stderr: `${installResult.stderr}\n${buildResult.stderr}`.trim(),
+        duration: Date.now() - startedAt,
+      });
+    }
+
+    const outputDir = path.join(tmpDir, outputDirName);
+    const outputFiles = walkFiles(outputDir)
+      .filter((fullPath) => fs.statSync(fullPath).size <= 1024 * 1024)
+      .slice(0, 300)
+      .map((fullPath) => {
+        const rel = path.relative(outputDir, fullPath).replace(/\\/g, "/");
+        return {
+          path: rel,
+          content: fs.readFileSync(fullPath, "utf-8"),
+        };
+      });
+
+    return res.json({
+      success: true,
+      stdout: `${installResult.stdout}\n${buildResult.stdout}`.trim(),
+      stderr: `${installResult.stderr}\n${buildResult.stderr}`.trim(),
+      previewPath: `/tmp/${path.basename(tmpDir)}/${outputDirName}`,
+      outputDir: outputDirName,
+      outputFiles,
+      duration: Date.now() - startedAt,
+    });
+  } catch (error: any) {
+    const message = String(error?.message || "Execution failed");
+    const timedOut = message.toLowerCase().includes("timeout");
+    return res.status(timedOut ? 408 : 500).json({
+      success: false,
+      error: timedOut ? "timeout_exceeded" : "execution_failed",
+      stderr: message,
+      duration: Date.now() - startedAt,
+    });
+  } finally {
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // noop cleanup best effort
+    }
+  }
 });
 
 // Link GitHub Installation ID to User
@@ -599,7 +812,7 @@ app.post("/api/terminal", async (req, res) => {
     });
   }
 
-  const { command } = req.body;
+  const { command, packageJson } = req.body;
   if (!command || typeof command !== "string")
     return res.status(400).json({ error: "No command provided" });
 
@@ -629,7 +842,7 @@ app.post("/api/terminal", async (req, res) => {
   if (!ALLOWED_COMMANDS.has(firstWord))
     return res.json({
       stdout: "",
-      stderr: `Command not permitted: '${firstWord}'. Allowed tools: node, npm, git, ls, pwd, echo, cat, and common dev utilities.`,
+      stderr: `Command not permitted: '${firstWord}'. Allowed tools: node, npm, npx, git, ls, pwd, echo, cat, and common dev utilities.`,
       exitCode: 1,
     });
 
@@ -649,16 +862,40 @@ app.post("/api/terminal", async (req, res) => {
       exitCode: 1,
     });
 
+  // Use a per-user persistent workspace so state carries across commands
+  // (e.g. `npm install express` then `node -e "require('express')"` both work).
+  const workspaceDir = getUserWorkspaceDir(uid);
+
+  // If the caller provided a package.json, write/refresh it in the workspace
+  // before running the command so npm install uses the project's dependencies.
+  if (packageJson && typeof packageJson === "string") {
+    try {
+      const parsed = JSON.parse(packageJson);
+      fs.writeFileSync(
+        path.join(workspaceDir, "package.json"),
+        JSON.stringify(parsed, null, 2),
+        "utf-8"
+      );
+    } catch {
+      // Ignore malformed package.json — don't abort the command
+    }
+  }
+
   const parts =
     cmd.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
   const executable = parts[0];
   const args = parts.slice(1).map((a) => a.replace(/^['"]|['"]$/g, ""));
 
+  // npm install / npx can be slow — give them up to 60 s
+  const isNpmInstall = /^(npm|npx|yarn|pnpm)/.test(firstWord) &&
+    /\binstall\b|\bi\b|\badd\b/.test(cmd);
+  const timeoutMs = isNpmInstall ? 60_000 : 15_000;
+
   const { execFile } = await import("child_process");
   execFile(
     executable,
     args,
-    { timeout: 10_000, cwd: process.cwd() },
+    { timeout: timeoutMs, cwd: workspaceDir },
     (error, stdout, stderr) => {
       res.json({
         stdout: stdout || "",
@@ -796,7 +1033,105 @@ if (process.env.VERCEL !== "1") {
   const { Server } = await import("socket.io");
 
   const httpServer = createServer(app);
-  new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
+  const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
+
+  io.on("connection", (socket) => {
+    socket.on("join-project", (projectId: string) => {
+      if (!projectId) return;
+      socket.join(projectId);
+    });
+
+    // Alias used by some clients/specs
+    socket.on("joinProject", (projectId: string) => {
+      if (!projectId) return;
+      socket.join(projectId);
+    });
+
+    socket.on("code-change", (payload: { projectId: string; fileId: string; content: string; userId?: string }) => {
+      if (!payload?.projectId) return;
+      // Last-write-wins strategy: broadcast latest payload to room except sender
+      socket.to(payload.projectId).emit("code-update", payload);
+    });
+
+    socket.on("fileChange", (payload: { projectId: string; fileName: string; content: string; userId?: string }) => {
+      if (!payload?.projectId) return;
+      socket.to(payload.projectId).emit("fileChange", payload);
+    });
+
+    socket.on("cursor-move", (payload: { projectId: string; userId?: string; userName?: string; cursor?: any }) => {
+      if (!payload?.projectId) return;
+      socket.to(payload.projectId).emit("cursor-update", payload);
+    });
+
+    // ── Voice calling signaling (WebRTC) ─────────────────────────────────────
+    // Per-socket per-event rate limiter to prevent signaling abuse
+    const voiceRateLimit: Record<string, { count: number; resetAt: number }> = {};
+    const consumeVoiceQuota = (event: string, limit: number, windowMs: number): boolean => {
+      const now = Date.now();
+      const cur = voiceRateLimit[event];
+      if (!cur || now >= cur.resetAt) {
+        voiceRateLimit[event] = { count: 1, resetAt: now + windowMs };
+        return true;
+      }
+      if (cur.count >= limit) return false;
+      cur.count++;
+      return true;
+    };
+
+    socket.on("join-voice-room", ({ roomId, userId, name }: { roomId: string; userId: string; name?: string }) => {
+      if (!roomId || !userId) return;
+      if (!consumeVoiceQuota("join-voice-room", 5, 60_000)) return;
+      socket.join(roomId);
+      socket.data.voice = { roomId, userId };
+      socket.to(roomId).emit("voice-user-joined", { userId, name });
+    });
+
+    socket.on("voice-offer", ({ roomId, targetUserId, fromUserId, offer }: any) => {
+      if (!roomId || !targetUserId || !fromUserId || !offer) return;
+      if (!consumeVoiceQuota("voice-offer", 60, 60_000)) return;
+      for (const [, s] of io.of("/").sockets) {
+        if (s.data?.voice?.roomId === roomId && s.data?.voice?.userId === targetUserId) {
+          s.emit("voice-offer", { fromUserId, offer });
+          break;
+        }
+      }
+    });
+
+    socket.on("voice-answer", ({ roomId, targetUserId, fromUserId, answer }: any) => {
+      if (!roomId || !targetUserId || !fromUserId || !answer) return;
+      if (!consumeVoiceQuota("voice-answer", 60, 60_000)) return;
+      for (const [, s] of io.of("/").sockets) {
+        if (s.data?.voice?.roomId === roomId && s.data?.voice?.userId === targetUserId) {
+          s.emit("voice-answer", { fromUserId, answer });
+          break;
+        }
+      }
+    });
+
+    socket.on("voice-ice-candidate", ({ roomId, targetUserId, fromUserId, candidate }: any) => {
+      if (!roomId || !targetUserId || !fromUserId || !candidate) return;
+      if (!consumeVoiceQuota("voice-ice-candidate", 180, 60_000)) return;
+      for (const [, s] of io.of("/").sockets) {
+        if (s.data?.voice?.roomId === roomId && s.data?.voice?.userId === targetUserId) {
+          s.emit("voice-ice-candidate", { fromUserId, candidate });
+          break;
+        }
+      }
+    });
+
+    socket.on("leave-voice-room", ({ roomId, userId }: { roomId: string; userId: string }) => {
+      if (!roomId || !userId) return;
+      socket.leave(roomId);
+      socket.to(roomId).emit("voice-user-left", { userId });
+    });
+
+    socket.on("disconnect", () => {
+      const voice = socket.data?.voice;
+      if (voice?.roomId && voice?.userId) {
+        socket.to(voice.roomId).emit("voice-user-left", { userId: voice.userId });
+      }
+    });
+  });
 
   const PORT = Number(process.env.PORT) || 3000;
   httpServer.listen(PORT, "0.0.0.0", () => {

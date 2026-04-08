@@ -17,6 +17,7 @@ import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import { useNavigate } from "react-router-dom";
 import { ProjectShareCard, useShareAsImage } from "./ShareAsImageCard";
+import { emitBotEventWithToast } from "../lib/botEngine";
 import CreateOrgModal from "./CreateOrgModal";
 
 interface DashboardProps {
@@ -91,9 +92,12 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         id: doc.id,
         ...doc.data()
       })) as Project[];
+
+      // Exclude org-owned projects – they live on the org page, not the personal dashboard
+      const personalProjs = projs.filter(p => p.ownerType !== "organization");
       
       // Sort: Portfolio first, then by updatedAt
-      projs.sort((a, b) => {
+      personalProjs.sort((a, b) => {
         if (a.systemType === 'portfolio') return -1;
         if (b.systemType === 'portfolio') return 1;
         const timeA = a.updatedAt?.seconds || 0;
@@ -101,7 +105,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         return timeB - timeA;
       });
       
-      setProjects(projs);
+      setProjects(personalProjs);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "projects");
     });
@@ -232,6 +236,10 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
       setIsCreating(false);
       
       toast.success("Project created successfully", { id: toastId });
+      emitBotEventWithToast({
+        name: "project.created",
+        payload: { projectId: docRef.id, projectName: newProjectName, userId: user.uid },
+      }).catch(() => {});
       onSelectProject(docRef.id);
     } catch (error) {
       console.error("Error creating project:", error);
@@ -718,7 +726,7 @@ p {
               >
                 <Settings className="w-3.5 h-3.5" />
               </button>
-              {!['portfolio' as string].includes(project.systemType ?? '') && !project.isTemplate && (
+              {!project.isTemplate && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setPublishTemplateProject(project); }}
                   className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-purple-500/10 hover:text-purple-400 transition-all"
@@ -727,7 +735,7 @@ p {
                   <Upload className="w-3.5 h-3.5" />
                 </button>
               )}
-              {!['portfolio' as string].includes(project.systemType ?? '') && (
+              {(
                 <button
                   onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
@@ -737,7 +745,7 @@ p {
                 </button>
               )}
               {/* ── Group button + popover ── */}
-              {project.systemType !== 'portfolio' && (
+              {(
                 <div className="relative">
                   <button
                     onClick={(e) => {
@@ -1400,19 +1408,27 @@ function ProjectShareButton({
   avatarUrl?: string | null;
 }) {
   const shareCardRef = useRef<HTMLDivElement>(null);
+  const [showShareCard, setShowShareCard] = useState(false);
   const filename = `devos-${project.name.replace(/\s+/g, "-").toLowerCase().slice(0, 40)}.png`;
   const { capture, capturing } = useShareAsImage(shareCardRef, filename);
 
+  const handleCapture = async () => {
+    setShowShareCard(true);
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await capture();
+    setShowShareCard(false);
+  };
+
   return (
     <>
-      <ProjectShareCard
+      {(showShareCard || capturing) && <ProjectShareCard
         project={project}
         username={username}
         avatarUrl={avatarUrl}
         cardRef={shareCardRef}
-      />
+      />}
       <button
-        onClick={(e) => { e.stopPropagation(); capture(); }}
+        onClick={(e) => { e.stopPropagation(); handleCapture(); }}
         disabled={capturing}
         className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-blue-500/10 hover:text-blue-400 transition-all disabled:opacity-50"
         title="Share as Image"

@@ -11,14 +11,14 @@ const STORAGE_KEY = "devos_ui_theme";
 // no flash of the default dark background when a non-dark theme is active.
 (function initTheme() {
   const saved = localStorage.getItem(STORAGE_KEY) as UITheme | null;
-  applyTheme(saved ?? "dark");
+  applyTheme(saved ?? "system");
 })();
 
 /** Reads, persists, and applies the user's chosen UI theme. */
 export function useUITheme() {
   const [user] = useAuthState(auth);
   const [theme, setThemeState] = useState<UITheme>(() => {
-    return (localStorage.getItem(STORAGE_KEY) as UITheme) ?? "dark";
+    return (localStorage.getItem(STORAGE_KEY) as UITheme) ?? "system";
   });
 
   // Sync from Firestore once user is known
@@ -34,6 +34,15 @@ export function useUITheme() {
       }
     }).catch(() => {});
   }, [user?.uid]);
+
+  // If user selected system theme, react to OS color-scheme changes.
+  useEffect(() => {
+    if (theme !== "system" || !window.matchMedia) return;
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    const handler = () => applyTheme("system");
+    media.addEventListener?.("change", handler);
+    return () => media.removeEventListener?.("change", handler);
+  }, [theme]);
 
   const changeTheme = async (newTheme: UITheme) => {
     setThemeState(newTheme);

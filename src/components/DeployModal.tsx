@@ -6,6 +6,7 @@ import { db, auth } from "../lib/firebase";
 import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { deductCredits, CREDIT_COSTS } from "../lib/creditsService";
+import { emitBotEventWithToast } from "../lib/botEngine";
 
 import { FileData } from "../types";
 
@@ -162,6 +163,10 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       setDeployedUrl(url);
       setStep("success");
       toast.success("Your project is live!");
+      emitBotEventWithToast({
+        name: "deploy.triggered",
+        payload: { projectId, projectName, deployUrl: url, userId: auth.currentUser.uid },
+      }).catch(() => {});
       onDeployed?.();
     } catch (error: any) {
       console.error("Deployment error:", error);

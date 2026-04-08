@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Code2, Zap, Users, Globe, Rocket, Shield, Heart, Star, Building2, GitBranch } from "lucide-react";
+import { Code2, Zap, Users, Globe, Rocket, Shield, Heart, Star, Building2, GitBranch, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -52,7 +52,7 @@ const STATS = [
 ];
 
 const TEAM = [
-  { name: "RayBen445", role: "Founder & Lead Engineer", avatar: "https://github.com/RayBen445.png" },
+  { name: "RayBen445", role: "Founder & Lead Engineer", avatar: "https://github.com/rayben445.png?size=200" },
 ];
 
 export default function AboutPage() {
@@ -72,6 +72,12 @@ export default function AboutPage() {
           <div className="absolute bottom-0 right-0 w-[400px] h-[300px] bg-purple-600/8 rounded-full blur-[100px]" />
         </div>
         <div className="relative max-w-4xl mx-auto text-center">
+          <div className="mb-6 text-left">
+            <button onClick={() => window.history.back()} className="inline-flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back
+            </button>
+          </div>
           <motion.div {...fadeUp}>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest mb-8">
               <Star className="w-3.5 h-3.5" />

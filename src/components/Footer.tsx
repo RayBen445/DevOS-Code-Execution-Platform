@@ -62,6 +62,8 @@ export default function Footer() {
             <FooterLink to="/communities">Communities</FooterLink>
             <FooterLink to="/orgs">Organizations</FooterLink>
             <FooterLink to="/docs">Docs</FooterLink>
+            <FooterLink to="/about">About</FooterLink>
+            <FooterLink to="/contact">Contact</FooterLink>
           </div>
 
           {/* Developers */}
@@ -89,6 +91,7 @@ export default function Footer() {
             <FooterLink to="/cookies">Cookie Policy</FooterLink>
             <FooterLink to="/acceptable-use">Acceptable Use</FooterLink>
             <FooterLink to="/copyright">Copyright &amp; DMCA</FooterLink>
+            <FooterLink to="/not-found">Not Found Page</FooterLink>
           </div>
         </div>
 

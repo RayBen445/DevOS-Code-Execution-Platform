@@ -72,6 +72,21 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
       const basePath = htmlFile.path;
       let content = htmlFile.content;
 
+      const normalizeProjectPath = (value: string) => {
+        const trimmed = (value || "").trim();
+        if (!trimmed) return "";
+        return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+      };
+
+      const findFileByPath = (candidatePath: string, predicate?: (file: FileData) => boolean) => {
+        const normalized = normalizeProjectPath(candidatePath);
+        return files.find((f) => {
+          const samePath = normalizeProjectPath(f.path) === normalized;
+          if (!samePath) return false;
+          return predicate ? predicate(f) : true;
+        });
+      };
+
       // Helper to resolve paths relative to the current HTML file
       const resolveRelativePath = (relPath: string) => {
         if (relPath.startsWith('http') || relPath.startsWith('//') || relPath.startsWith('data:')) return null;
@@ -124,7 +139,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
       const linkRegex = /<link[^>]*href=["']([^"']+)["'][^>]*>/gi;
       content = content.replace(linkRegex, (match, href) => {
         const resolvedPath = resolveRelativePath(href);
-        const file = files.find(f => f.path === resolvedPath && f.language === "css");
+        const file = resolvedPath ? findFileByPath(resolvedPath, (f) => f.language === "css") : undefined;
         if (file) {
           return `<style data-filename="${file.path}">${file.content}</style>`;
         }
@@ -135,7 +150,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
       const scriptRegex = /<script[^>]*src=["']([^"']+)["'][^>]*><\/script>/gi;
       content = content.replace(scriptRegex, (match, src) => {
         const resolvedPath = resolveRelativePath(src);
-        const file = files.find(f => f.path === resolvedPath);
+        const file = resolvedPath ? findFileByPath(resolvedPath) : undefined;
         
         if (file) {
           let scriptContent = file.content;
@@ -174,7 +189,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
       const imgRegex = /src=["']([^"']+)["']/gi;
       content = content.replace(imgRegex, (match, src) => {
         const resolvedPath = resolveRelativePath(src);
-        const file = files.find(f => f.path === resolvedPath && f.language === "image");
+        const file = resolvedPath ? findFileByPath(resolvedPath, (f) => f.language === "image") : undefined;
         if (file) {
           return `src="${file.content}"`;
         }
@@ -185,7 +200,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
       const urlRegex = /url\(["']?([^"'\)]+)["']?\)/gi;
       content = content.replace(urlRegex, (match, url) => {
         const resolvedPath = resolveRelativePath(url);
-        const file = files.find(f => f.path === resolvedPath && f.language === "image");
+        const file = resolvedPath ? findFileByPath(resolvedPath, (f) => f.language === "image") : undefined;
         if (file) {
           return `url("${file.content}")`;
         }

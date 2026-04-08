@@ -262,3 +262,57 @@ export async function notifyMention(params: {
     createdBy: params.mentionerUserId,
   });
 }
+
+export async function notifyLike(toUserId: string, fromUsername: string, postId: string): Promise<void> {
+  await addDoc(collection(db, "notifications"), {
+    userId: toUserId,
+    type: "like" as NotificationType,
+    title: "New like",
+    message: `@${fromUsername} liked your post.`,
+    link: `/?post=${postId}`,
+    isRead: false,
+    readBy: [],
+    createdAt: serverTimestamp(),
+    createdBy: fromUsername,
+  });
+}
+
+export async function notifyCommunityJoin(toUserId: string, fromUsername: string, communityName: string): Promise<void> {
+  await addDoc(collection(db, "notifications"), {
+    userId: toUserId,
+    type: "community_join" as NotificationType,
+    title: "New community member",
+    message: `@${fromUsername} joined ${communityName}.`,
+    isRead: false,
+    readBy: [],
+    createdAt: serverTimestamp(),
+    createdBy: fromUsername,
+  });
+}
+
+export async function notifyOrgJoin(toUserId: string, fromUsername: string, orgName: string): Promise<void> {
+  await addDoc(collection(db, "notifications"), {
+    userId: toUserId,
+    type: "org_join" as NotificationType,
+    title: "New organization member",
+    message: `@${fromUsername} joined ${orgName}.`,
+    isRead: false,
+    readBy: [],
+    createdAt: serverTimestamp(),
+    createdBy: fromUsername,
+  });
+}
+
+export async function notifyMentionInChat(toUserId: string, fromUsername: string, context: string, linkPath: string): Promise<void> {
+  await addDoc(collection(db, "notifications"), {
+    userId: toUserId,
+    type: "mention" as NotificationType,
+    title: "You were mentioned",
+    message: `@${fromUsername} mentioned you in ${context}.`,
+    link: linkPath,
+    isRead: false,
+    readBy: [],
+    createdAt: serverTimestamp(),
+    createdBy: fromUsername,
+  });
+}

@@ -54,6 +54,7 @@ import MobileBottomNav from "./MobileBottomNav";
 import Avatar from "./Avatar";
 import ConfirmModal from "./ConfirmModal";
 import { useSEO } from "../hooks/useSEO";
+import { emitBotEventWithToast } from "../lib/botEngine";
 import { toast } from "sonner";
 import { FeedPostShareCard, useShareAsImage } from "./ShareAsImageCard";
 import MentionInput, { extractMentions } from "./MentionInput";
@@ -200,8 +201,33 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     }
     try {
       const liked = post.likedBy?.includes(user.uid) ?? false;
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id !== post.id
+            ? p
+            : {
+                ...p,
+                likes: Math.max(0, (p.likes ?? 0) + (liked ? -1 : 1)),
+                likedBy: liked
+                  ? (p.likedBy ?? []).filter((id) => id !== user.uid)
+                  : [...(p.likedBy ?? []), user.uid],
+              }
+        )
+      );
       await toggleLike(post.id, user.uid, liked);
     } catch (err: any) {
+      // Rollback snapshot from server subscription shortly; force local correction now too.
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id !== post.id
+            ? p
+            : {
+                ...p,
+                likes: post.likes ?? 0,
+                likedBy: post.likedBy ?? [],
+              }
+        )
+      );
       toast.error(
         isPermissionError(err)
           ? "Permission denied. Firebase rules may need updating."
@@ -216,6 +242,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       return;
     }
     try {
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id === originalPost.id ? { ...p, repostCount: (p.repostCount ?? 0) + 1 } : p
+        )
+      );
       await repostPost({
         originalPost,
         userId: user.uid,
@@ -232,6 +263,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       });
       toast.success("Reposted!");
     } catch (err: any) {
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id === originalPost.id ? { ...p, repostCount: Math.max(0, (p.repostCount ?? 1) - 1) } : p
+        )
+      );
       toast.error(
         isPermissionError(err)
           ? "Permission denied. Firebase rules may need updating."
@@ -244,6 +280,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     if (!user || !content.trim()) return;
     const commenterUsername = settings?.username || user.email?.split("@")[0] || "user";
     const mentions = extractMentions(content.trim());
+    setFeed((prev) =>
+      prev.map((p) =>
+        p.id === post.id ? { ...p, commentsCount: (p.commentsCount ?? 0) + 1 } : p
+      )
+    );
     try {
       const commentId = await addComment({
         postId: post.id,
@@ -281,6 +322,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       }
       void commentId; // suppress unused warning
     } catch (err: any) {
+      setFeed((prev) =>
+        prev.map((p) =>
+          p.id === post.id ? { ...p, commentsCount: Math.max(0, (p.commentsCount ?? 1) - 1) } : p
+        )
+      );
       toast.error(
         isPermissionError(err)
           ? "Permission denied. Firebase rules may need updating."
@@ -331,6 +377,10 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         mentions,
         isOfficial: settings?.isOfficial ?? false,
       });
+      emitBotEventWithToast({
+        name: "post.created",
+        payload: { postId, content: postText.trim(), userId: user.uid },
+      }).catch(() => {});
       // Notify mentioned users
       if (mentions.length) {
         const { getDocs: _getDocs, query: _query, collection: _col, where: _where } = await import("firebase/firestore");
@@ -923,6 +973,7 @@ function FeedItem({
   const [showRepostModal, setShowRepostModal] = useState(false);
   const [repostText, setRepostText] = useState("");
   const [isReposting, setIsReposting] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const shareCardRef = useRef<HTMLDivElement>(null);
   const { capture: captureImage, capturing } = useShareAsImage(
@@ -962,10 +1013,17 @@ function FeedItem({
     setIsReposting(false);
   };
 
+  const handleCaptureImage = async () => {
+    setShowShareCard(true);
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await captureImage();
+    setShowShareCard(false);
+  };
+
   return (
     <>
       {/* Hidden card rendered off-screen for html2canvas capture */}
-      <FeedPostShareCard post={post} cardRef={shareCardRef} />
+      {(showShareCard || capturing) && <FeedPostShareCard post={post} cardRef={shareCardRef} />}
 
       <motion.div
         ref={cardRef}
@@ -1158,7 +1216,7 @@ function FeedItem({
 
         {/* Share as Image */}
         <button
-          onClick={captureImage}
+          onClick={handleCaptureImage}
           disabled={capturing}
           className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-white/40 hover:text-blue-400 hover:bg-blue-500/5 transition-all ml-auto disabled:opacity-50"
           aria-label="Share as image"
