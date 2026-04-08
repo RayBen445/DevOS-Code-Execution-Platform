@@ -27,7 +27,7 @@ export default function MobileBottomNav() {
   const tabs = [
     { href: "/", icon: Home, label: "Home" },
     { href: "/projects", icon: FolderCode, label: "Projects" },
-    { href: "/communities", icon: Users, label: "Communities" },
+    { href: "/explore", icon: Users, label: "Explore" },
     { href: username ? `/u/${username}` : "/settings", icon: User, label: "Profile" },
   ];
 

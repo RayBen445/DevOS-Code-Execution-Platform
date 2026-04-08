@@ -153,13 +153,6 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               Explore
             </Link>
             <Link
-              to="/communities"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
-            >
-              <Users className="w-4 h-4" />
-              Communities
-            </Link>
-            <Link
               to="/templates"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
             >
@@ -631,14 +624,6 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 >
                   <Compass className="w-4 h-4" />
                   Explore
-                </Link>
-                <Link
-                  to="/communities"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <Users className="w-4 h-4" />
-                  Communities
                 </Link>
                 <Link
                   to="/orgs"

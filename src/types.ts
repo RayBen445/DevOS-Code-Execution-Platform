@@ -17,6 +17,8 @@ export interface Project {
   ownerOrgSlug?: string;
   ownerOrgName?: string;
   projectSlug?: string;
+  slug?: string;
+  deployed?: boolean;
   createdAt: any;
   updatedAt: any;
   collaborators: string[];

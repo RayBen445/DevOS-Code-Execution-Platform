@@ -32,14 +32,13 @@ import ScrollToTop from "./components/ScrollToTop";
 import ConfigGuard from "./components/ConfigGuard";
 import MaintenancePage from "./components/MaintenancePage";
 import PageMaintenanceBanner from "./components/PageMaintenanceBanner";
-import CommunitiesPage from "./pages/CommunitiesPage";
-import CommunityPage from "./pages/CommunityPage";
 import OrgPage from "./pages/OrgPage";
 import OrgsPage from "./pages/OrgsPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import BotsPage from "./pages/BotsPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import SubdomainRouter from "./components/SubdomainRouter";
 import { Zap, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
@@ -88,6 +87,15 @@ function RouteTracker({ user }: { user: any }) {
 }
 
 export default function App() {
+  // Subdomain routing: *.devos.name.ng → render SubdomainRouter without full app chrome
+  const hostname = window.location.hostname;
+  const hostParts = hostname.split(".");
+  // devos.name.ng is 3 parts; a subdomain makes it 4+ parts
+  if (hostParts.length >= 4 && hostname.endsWith(".devos.name.ng")) {
+    const subdomain = hostParts[0];
+    return <SubdomainRouter subdomain={subdomain} />;
+  }
+
   const [user, loading] = useAuthState(auth);
   const { } = useUITheme(); // bootstraps theme on mount
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
@@ -349,8 +357,6 @@ export default function App() {
             <Route path="/settings" element={withPageMaintenance("/settings", <SettingsPage />)} />
             <Route path="/search" element={withPageMaintenance("/search", <SearchPage />)} />
             <Route path="/explore" element={withPageMaintenance("/explore", <ExplorePage />)} />
-            <Route path="/communities" element={withPageMaintenance("/communities", <CommunitiesPage />)} />
-            <Route path="/c/:slug" element={withPageMaintenance("/communities", <CommunityPage />)} />
             <Route path="/org/:slug" element={withPageMaintenance("/org", <OrgPage />)} />
             <Route path="/orgs" element={withPageMaintenance("/orgs", <OrgsPage />)} />
             <Route path="/about" element={<AboutPage />} />
