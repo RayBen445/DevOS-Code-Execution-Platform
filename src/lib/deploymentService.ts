@@ -40,6 +40,10 @@ export async function createDeployment(
 /**
  * Fetch the most recent "ready" deployment for a given user.
  * Returns null if the user has not deployed anything yet.
+ *
+ * NOTE: This query requires a composite Firestore index on the `deployments`
+ * collection: (userId ASC, status ASC, createdAt DESC). Create it via the
+ * Firebase Console → Firestore → Indexes or deploy via firestore.indexes.json.
  */
 export async function getLatestUserDeployment(userId: string): Promise<Deployment | null> {
   const q = query(

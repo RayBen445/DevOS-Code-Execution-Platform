@@ -149,9 +149,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
       // Canonical deploy URL: username subdomain on devos.name.ng
       const subdomainUrl = `https://${username.toLowerCase()}.devos.name.ng`;
-      const url = projectSlug
-        ? `${subdomainUrl}/${projectSlug}`
-        : subdomainUrl;
+      const url = `${subdomainUrl}/${projectSlug}`;
       
       const projectRef = doc(db, "projects", projectId);
       await updateDoc(projectRef, {

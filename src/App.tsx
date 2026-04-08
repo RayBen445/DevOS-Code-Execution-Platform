@@ -110,7 +110,7 @@ function AtUsernameRoute() {
 
   // Always redirect /@username → https://username.devos.name.ng
   // (SubdomainRouter on *.devos.name.ng will render the portfolio)
-  window.location.replace(`https://${username}.devos.name.ng`);
+  window.location.replace(`https://${encodeURIComponent(username)}.devos.name.ng`);
   return null;
 }
 

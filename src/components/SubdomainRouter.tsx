@@ -77,7 +77,8 @@ export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
 
         setCachedType(subdomain, "not-found");
         setResolvedType("not-found");
-      } catch {
+      } catch (err) {
+        console.error("[SubdomainRouter] Failed to resolve subdomain:", subdomain, err);
         setResolvedType("not-found");
       }
     };
