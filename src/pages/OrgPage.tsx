@@ -1196,13 +1196,13 @@ function OrgPostItem({ post, currentUserId, isAdmin, onDeleted }: {
   return (
     <div className="bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.14] rounded-2xl p-4 transition-all">
       <div className="flex items-start gap-3">
-        <Link to={`/u/${post.username}`}>
+        <Link to={`/@${post.username}`}>
           <img src={resolveAvatar(post.avatarUrl)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-white/10" />
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-2 min-w-0">
-              <Link to={`/u/${post.username}`} className="text-sm font-bold text-white hover:text-blue-400 transition-colors truncate">
+              <Link to={`/@${post.username}`} className="text-sm font-bold text-white hover:text-blue-400 transition-colors truncate">
                 {post.displayName || post.username}
               </Link>
               <span className="text-[11px] text-white/25">·</span>

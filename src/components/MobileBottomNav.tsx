@@ -28,7 +28,7 @@ export default function MobileBottomNav() {
     { href: "/", icon: Home, label: "Home" },
     { href: "/projects", icon: FolderCode, label: "Projects" },
     { href: "/explore", icon: Users, label: "Explore" },
-    { href: username ? `/u/${username}` : "/settings", icon: User, label: "Profile" },
+    { href: username ? `/@${username}` : "/settings", icon: User, label: "Profile" },
   ];
 
   return (

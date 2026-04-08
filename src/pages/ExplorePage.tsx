@@ -159,7 +159,7 @@ function ProjectCard({ project, rank }: { project: Project; rank: number }) {
       <h3 className="font-bold text-white text-sm mb-1 truncate">{project.name}</h3>
       {project.description && <p className="text-white/40 text-xs line-clamp-2 mb-3 flex-1">{project.description}</p>}
       <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/[0.06]">
-        <Link to={`/u/${project.ownerUsername}`} className="text-xs text-white/40 hover:text-white transition-colors font-mono">
+        <Link to={`/@${project.ownerUsername}`} className="text-xs text-white/40 hover:text-white transition-colors font-mono">
           @{project.ownerUsername || "unknown"}
         </Link>
         {(project.liveUrl || project.deployUrl) && (
@@ -222,7 +222,7 @@ function DevCard({ user, rank }: { user: UserProfile & { followerCount: number }
   return (
     <div className="flex items-center gap-4 p-4 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all">
       <span className="text-xs font-bold text-white/20 font-mono w-5 text-right flex-shrink-0">#{rank}</span>
-      <Link to={`/u/${user.username}`} className="flex items-center gap-3 flex-1 min-w-0">
+      <Link to={`/@${user.username}`} className="flex items-center gap-3 flex-1 min-w-0">
         <img src={avatar} alt={user.displayName} className="w-11 h-11 rounded-full object-cover border border-white/10 flex-shrink-0" referrerPolicy="no-referrer" />
         <div className="min-w-0">
           <p className="font-bold text-white truncate text-sm">{user.displayName || user.username}</p>
@@ -277,12 +277,12 @@ function ActivityCard({ post }: { post: FeedPost }) {
   };
   return (
     <div className="flex gap-4 p-4 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all">
-      <Link to={`/u/${post.username}`} className="flex-shrink-0">
+      <Link to={`/@${post.username}`} className="flex-shrink-0">
         <img src={avatar} alt={post.displayName || post.username} className="w-10 h-10 rounded-full object-cover border border-white/10" referrerPolicy="no-referrer" />
       </Link>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <Link to={`/u/${post.username}`} className="font-bold text-sm text-white hover:text-blue-400 transition-colors">
+          <Link to={`/@${post.username}`} className="font-bold text-sm text-white hover:text-blue-400 transition-colors">
             {post.displayName || post.username}
           </Link>
           <span className="text-white/30 text-xs font-mono">@{post.username}</span>
@@ -290,7 +290,7 @@ function ActivityCard({ post }: { post: FeedPost }) {
         </div>
         <p className="text-white/70 text-sm leading-relaxed">{post.content}</p>
         {post.projectId && post.projectName && (
-          <Link to={`/u/${post.username}/${post.projectId}`} className="inline-flex items-center gap-1 mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium">
+          <Link to={`/@${post.username}/${post.projectId}`} className="inline-flex items-center gap-1 mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium">
             <Zap className="w-3 h-3" />
             {post.projectName}
           </Link>
@@ -346,7 +346,7 @@ function LeaderboardTab({ currentUser }: { currentUser: any }) {
           {topDevs.map((u, i) => (
             <div key={u.uid} className="flex items-center gap-3 p-3 rounded-xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all">
               <RankBadge rank={i + 1} />
-              <Link to={`/u/${u.username}`} className="flex items-center gap-2.5 flex-1 min-w-0">
+              <Link to={`/@${u.username}`} className="flex items-center gap-2.5 flex-1 min-w-0">
                 <img src={resolveAvatar(u.avatarUrl)} alt={u.displayName} className="w-9 h-9 rounded-full object-cover border border-white/10" referrerPolicy="no-referrer" />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-white truncate">{u.displayName || u.username}</p>

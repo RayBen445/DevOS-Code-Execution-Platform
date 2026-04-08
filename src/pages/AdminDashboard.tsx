@@ -3275,7 +3275,7 @@ export default function AdminDashboard() {
                               { label: "Docs", path: "/docs" },
                               { label: "Settings", path: "/settings" },
                               { label: "Projects / IDE", path: "/projects" },
-                              { label: "User Profiles (/u/...)", path: "/u" },
+                              { label: "User Profiles (/@...)", path: "/u" },
                               { label: "Project Pages (/project/...)", path: "/project" },
                               { label: "Orgs (/org/...)", path: "/org" },
                             ].map(({ label, path }) => {
