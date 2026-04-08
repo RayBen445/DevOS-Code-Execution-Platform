@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
-import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { Project, UserSettings } from "../types";
 import { Globe, Github, ExternalLink, Zap, AlertCircle, BadgeCheck, ArrowUpRight } from "lucide-react";
 import { resolveAvatar } from "../lib/avatars";
@@ -20,7 +20,7 @@ export default function SubdomainPortfolio({ username }: Props) {
   useSEO({
     title: userSettings ? `${userSettings.displayName || username} — DevOS Portfolio` : `${username} — DevOS`,
     description: userSettings?.bio || `${username}'s portfolio on DevOS`,
-    ogImage: userSettings?.avatar,
+    ogImage: userSettings?.avatarUrl,
   });
 
   useEffect(() => {
@@ -40,19 +40,21 @@ export default function SubdomainPortfolio({ username }: Props) {
         const uid = userSnap.docs[0].id;
         const userData = userSnap.docs[0].data();
 
-        // Try to get settings doc
-        const settingsRef = collection(db, "user_settings");
-        const settingsQ = query(settingsRef, where("userId", "==", uid), limit(1));
-        const settingsSnap = await getDocs(settingsQ);
-        if (!settingsSnap.empty) {
-          setUserSettings(settingsSnap.docs[0].data() as UserSettings);
+        // Fetch settings doc keyed by uid (user_settings/{uid})
+        const settingsSnap = await getDoc(doc(db, "user_settings", uid));
+        if (settingsSnap.exists()) {
+          const s = settingsSnap.data();
+          setUserSettings({
+            ...s,
+            // Normalise avatar: prefer avatarUrl, fall back to avatar or users doc
+            avatarUrl: s.avatarUrl || s.avatar || userData.avatarUrl || undefined,
+          } as UserSettings);
         } else {
           // Fall back to users doc fields
           setUserSettings({
-            userId: uid,
             username: userData.username,
             displayName: userData.displayName || userData.username,
-            avatar: userData.avatar,
+            avatarUrl: userData.avatarUrl || undefined,
             bio: userData.bio,
           } as UserSettings);
         }
@@ -84,7 +86,7 @@ export default function SubdomainPortfolio({ username }: Props) {
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center text-white/60 gap-3">
         <AlertCircle className="w-10 h-10 text-red-400" />
         <p className="text-lg">{error || "Portfolio not found"}</p>
-        <a href="https://devos.zone.id" className="text-blue-400 hover:underline text-sm">Go to DevOS</a>
+        <a href="https://devos.name.ng" className="text-blue-400 hover:underline text-sm">Go to DevOS</a>
       </div>
     );
   }
@@ -95,7 +97,7 @@ export default function SubdomainPortfolio({ username }: Props) {
       <div className="max-w-3xl mx-auto px-4 pt-16 pb-10">
         <div className="flex items-center gap-5">
           <img
-            src={resolveAvatar(userSettings.avatar, userSettings.displayName || userSettings.username)}
+            src={resolveAvatar(userSettings.avatarUrl, userSettings.displayName || userSettings.username)}
             alt={userSettings.displayName || username}
             className="w-20 h-20 rounded-full ring-2 ring-white/10 object-cover"
           />
@@ -111,14 +113,14 @@ export default function SubdomainPortfolio({ username }: Props) {
 
         {/* Links */}
         <div className="flex flex-wrap gap-3 mt-5">
-          {(userSettings as any).websiteUrl && (
-            <a href={(userSettings as any).websiteUrl} target="_blank" rel="noreferrer"
+          {(userSettings.links?.website || (userSettings as any).websiteUrl) && (
+            <a href={userSettings.links?.website || (userSettings as any).websiteUrl} target="_blank" rel="noreferrer"
               className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors">
               <Globe className="w-4 h-4" /> Website
             </a>
           )}
-          {(userSettings as any).githubUrl && (
-            <a href={(userSettings as any).githubUrl} target="_blank" rel="noreferrer"
+          {(userSettings.links?.github || (userSettings as any).githubUrl) && (
+            <a href={userSettings.links?.github || (userSettings as any).githubUrl} target="_blank" rel="noreferrer"
               className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors">
               <Github className="w-4 h-4" /> GitHub
             </a>
@@ -136,7 +138,7 @@ export default function SubdomainPortfolio({ username }: Props) {
             {projects.map(project => (
               <a
                 key={project.id}
-                href={`https://devos.zone.id/project/${project.id}`}
+                href={`https://devos.name.ng/project/${project.id}`}
                 target="_blank"
                 rel="noreferrer"
                 className="group flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 hover:border-white/10 transition-all"
@@ -158,7 +160,7 @@ export default function SubdomainPortfolio({ username }: Props) {
 
       {/* Footer */}
       <div className="border-t border-white/5 py-6 text-center">
-        <a href="https://devos.zone.id" className="text-white/20 text-xs hover:text-white/40 transition-colors">
+        <a href="https://devos.name.ng" className="text-white/20 text-xs hover:text-white/40 transition-colors">
           Powered by DevOS
         </a>
       </div>

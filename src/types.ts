@@ -182,6 +182,8 @@ export interface UserProfile {
   displayName: string;
   avatarUrl: string;
   bio: string;
+  /** Automatically assigned on signup: <username>.devos.name.ng */
+  subdomain?: string;
   birthday?: string;        // ISO date string YYYY-MM-DD
   role?: 'user' | 'admin' | 'company';
   status?: 'active' | 'suspended' | 'banned' | 'deactivated';
@@ -428,6 +430,27 @@ export interface PollVote {
   optionIds: string[];        // one or more selected option IDs
   textResponse?: string;      // free-text answer (if allowTextInput and user supplied one)
   votedAt: any;
+}
+
+// ── Deployments ─────────────────────────────────────────────────────────────
+
+/**
+ * A deployment record written to the `deployments` Firestore collection
+ * whenever a user publishes a project.
+ */
+export interface Deployment {
+  id: string;
+  projectId: string;
+  userId: string;
+  username: string;
+  /** Public URL of the deployed project, e.g. https://username.devos.name.ng */
+  url: string;
+  status: 'building' | 'ready' | 'failed';
+  buildCommand?: string;
+  outputDir?: string;
+  createdAt: any;
+  completedAt?: any;
+  error?: string;
 }
 
 // ── Real-time collaboration ────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { deductCredits, CREDIT_COSTS } from "../lib/creditsService";
 import { emitBotEventWithToast } from "../lib/botEngine";
+import { createDeployment } from "../lib/deploymentService";
 
 import { FileData } from "../types";
 
@@ -146,7 +147,11 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       const projectData = projectDoc.data();
       
       const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
-      const url = `${window.location.origin}/@${username}/${projectSlug}`;
+      // Canonical deploy URL: username subdomain on devos.name.ng
+      const subdomainUrl = `https://${username.toLowerCase()}.devos.name.ng`;
+      const url = projectSlug
+        ? `${subdomainUrl}/${projectSlug}`
+        : subdomainUrl;
       
       const projectRef = doc(db, "projects", projectId);
       await updateDoc(projectRef, {
@@ -157,8 +162,13 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
         ownerUsername: username,
         entryFile,
         isPublic: true,
+        deployStatus: "success",
+        lastDeployedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
+
+      // Record deployment in the deployments collection
+      await createDeployment(projectId, auth.currentUser.uid, username, url);
 
       setDeployedUrl(url);
       setStep("success");

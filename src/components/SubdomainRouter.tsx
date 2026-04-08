@@ -9,12 +9,38 @@ const RESERVED = new Set(["www", "admin", "api", "devos", "app", "mail", "ftp", 
 
 type SubdomainType = "loading" | "user" | "project" | "reserved" | "not-found";
 
+// ── In-memory cache for subdomain resolution (TTL: 5 minutes) ────────────────
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const subdomainCache = new Map<string, { type: SubdomainType; expiresAt: number }>();
+
+function getCachedType(subdomain: string): SubdomainType | null {
+  const entry = subdomainCache.get(subdomain);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    subdomainCache.delete(subdomain);
+    return null;
+  }
+  return entry.type;
+}
+
+function setCachedType(subdomain: string, type: SubdomainType): void {
+  subdomainCache.set(subdomain, { type, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
   const [resolvedType, setResolvedType] = useState<SubdomainType>("loading");
 
   useEffect(() => {
     if (RESERVED.has(subdomain.toLowerCase())) {
       setResolvedType("reserved");
+      return;
+    }
+
+    // Serve from cache when available (skip DB round-trip)
+    const cached = getCachedType(subdomain);
+    if (cached) {
+      setResolvedType(cached);
       return;
     }
 
@@ -25,6 +51,7 @@ export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
         const userQ = query(usersRef, where("username", "==", subdomain), limit(1));
         const userSnap = await getDocs(userQ);
         if (!userSnap.empty) {
+          setCachedType(subdomain, "user");
           setResolvedType("user");
           return;
         }
@@ -34,6 +61,7 @@ export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
         const projQ = query(projectsRef, where("slug", "==", subdomain), limit(1));
         const projSnap = await getDocs(projQ);
         if (!projSnap.empty) {
+          setCachedType(subdomain, "project");
           setResolvedType("project");
           return;
         }
@@ -42,10 +70,12 @@ export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
         const projQ2 = query(projectsRef, where("projectSlug", "==", subdomain), limit(1));
         const projSnap2 = await getDocs(projQ2);
         if (!projSnap2.empty) {
+          setCachedType(subdomain, "project");
           setResolvedType("project");
           return;
         }
 
+        setCachedType(subdomain, "not-found");
         setResolvedType("not-found");
       } catch {
         setResolvedType("not-found");
