@@ -93,6 +93,28 @@ function LegacyPortfolioRedirect() {
   return <Navigate to={to} replace />;
 }
 
+/**
+ * Handles /@:username routes.
+ * On devos.zone.id, redirects the browser to https://<username>.devos.name.ng.
+ * Everywhere else, renders the normal Portfolio page.
+ */
+function AtUsernameRoute() {
+  const { username } = useParams<{ username: string }>();
+  const hostname = window.location.hostname;
+
+  useEffect(() => {
+    if ((hostname === "devos.zone.id" || hostname.endsWith(".devos.zone.id")) && username) {
+      window.location.replace(`https://${username}.devos.name.ng`);
+    }
+  }, [username, hostname]);
+
+  if ((hostname === "devos.zone.id" || hostname.endsWith(".devos.zone.id")) && username) {
+    return null;
+  }
+
+  return <Portfolio />;
+}
+
 export default function App() {
   // Subdomain routing: *.devos.name.ng → render SubdomainRouter without full app chrome
   const hostname = window.location.hostname;
@@ -370,7 +392,7 @@ export default function App() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
             <Route path="/not-found" element={<NotFoundPage />} />
-            <Route path="/@:username" element={withPageMaintenance("/u", <Portfolio />)} />
+            <Route path="/@:username" element={withPageMaintenance("/u", <AtUsernameRoute />)} />
             <Route path="/@:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
             <Route path="/u/:username" element={<LegacyPortfolioRedirect />} />
             <Route path="/u/:username/:projectSlug" element={<LegacyPortfolioRedirect />} />
