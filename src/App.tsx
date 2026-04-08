@@ -41,7 +41,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import SubdomainRouter from "./components/SubdomainRouter";
 import { Zap, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useParams, useLocation, useNavigate } from "react-router-dom";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "./lib/firebase";
 import { signOut } from "firebase/auth";
@@ -84,6 +84,13 @@ function RouteTracker({ user }: { user: any }) {
   }, [user, location.pathname, navigate]);
 
   return null;
+}
+
+/** Redirects legacy /u/:username[/:projectSlug] URLs to the new /@:username[/:projectSlug] format. */
+function LegacyPortfolioRedirect() {
+  const { username, projectSlug } = useParams<{ username: string; projectSlug?: string }>();
+  const to = projectSlug ? `/@${username}/${projectSlug}` : `/@${username}`;
+  return <Navigate to={to} replace />;
 }
 
 export default function App() {
@@ -190,10 +197,10 @@ export default function App() {
       const parts = hostname.split(".");
       if (parts.length === 5) {
         const [projectSlug, username] = parts;
-        window.location.href = `${window.location.origin}/u/${username}/${projectSlug}`;
+        window.location.href = `${window.location.origin}/@${username}/${projectSlug}`;
       } else if (parts.length === 4) {
         const [username] = parts;
-        window.location.href = `${window.location.origin}/u/${username}`;
+        window.location.href = `${window.location.origin}/@${username}`;
       }
     }
   }, []);
@@ -363,8 +370,10 @@ export default function App() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
             <Route path="/not-found" element={<NotFoundPage />} />
-            <Route path="/u/:username" element={withPageMaintenance("/u", <Portfolio />)} />
-            <Route path="/u/:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
+            <Route path="/@:username" element={withPageMaintenance("/u", <Portfolio />)} />
+            <Route path="/@:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
+            <Route path="/u/:username" element={<LegacyPortfolioRedirect />} />
+            <Route path="/u/:username/:projectSlug" element={<LegacyPortfolioRedirect />} />
             {/* /projects — full dashboard & project management */}
             <Route
               path="/projects"

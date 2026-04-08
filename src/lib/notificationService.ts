@@ -190,7 +190,7 @@ export async function notifyFollow(params: {
     type: "follow",
     title: "New follower",
     message: `@${params.followerUsername} started following you.`,
-    link: `/u/${params.followerUsername}`,
+    link: `/@${params.followerUsername}`,
     isRead: false,
     readBy: [],
     createdAt: serverTimestamp(),

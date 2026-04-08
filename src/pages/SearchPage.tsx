@@ -509,7 +509,7 @@ function UserCard({
       animate={{ opacity: 1, y: 0 }}
       className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all"
     >
-      <Link to={`/u/${profile.username}`} className="flex items-center gap-3 flex-1 min-w-0">
+      <Link to={`/@${profile.username}`} className="flex items-center gap-3 flex-1 min-w-0">
         <img
           src={avatar}
           alt={profile.displayName}
@@ -548,7 +548,7 @@ function ProjectResultCard({ project }: { project: Project }) {
       animate={{ opacity: 1, y: 0 }}
     >
       <Link
-        to={`/u/${project.ownerUsername}/${project.id}`}
+        to={`/@${project.ownerUsername}/${project.id}`}
         className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
       >
         <div className="w-10 h-10 rounded-xl bg-blue-600/15 flex items-center justify-center flex-shrink-0">

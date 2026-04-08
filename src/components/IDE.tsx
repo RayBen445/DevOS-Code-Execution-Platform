@@ -200,7 +200,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       const projectDoc = await getDoc(doc(db, "projects", projectId));
       const projectData = projectDoc.data();
       const projectSlug = projectData?.projectSlug || `${(project?.name || "project").toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
-      const url = `${window.location.origin}/u/${username}/${projectSlug}`;
+      const url = `${window.location.origin}/@${username}/${projectSlug}`;
       const htmlFile = files.find(f => f.name.toLowerCase() === "index.html");
       const entryFile = htmlFile?.path || "index.html";
 
@@ -1079,7 +1079,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const breadcrumbFolders = breadcrumbSegments.length > 1 ? breadcrumbSegments.slice(0, -1) : [];
   const breadcrumbProjectHref =
     project?.projectSlug && breadcrumbUsername
-      ? `/u/${breadcrumbUsername}/${project.projectSlug}`
+      ? `/@${breadcrumbUsername}/${project.projectSlug}`
       : `/project/${projectId}`;
 
   return (
@@ -1133,7 +1133,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {!isOrgProject && breadcrumbUsername && (
                   <>
                     <a
-                      href={`/u/${breadcrumbUsername}`}
+                      href={`/@${breadcrumbUsername}`}
                       className="hidden md:inline text-[#9CA3AF] hover:text-white font-medium transition-colors flex-shrink-0"
                       title={`@${breadcrumbUsername}'s profile`}
                     >

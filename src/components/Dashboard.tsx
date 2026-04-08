@@ -180,7 +180,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         forksCount: 0,
         views: 0,
         ...(selectedTemplateId === "portfolio" ? { isSystem: true, systemType: "portfolio" } : {}),
-        deployUrl: `/u/${settings?.username || "anonymous"}/${projectSlug}`
+        deployUrl: `/@${settings?.username || "anonymous"}/${projectSlug}`
       });
 
       // Create default files based on template
@@ -693,7 +693,7 @@ p {
               </button>
               {settings?.username && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/u/${settings.username}`); }}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/@${settings.username}`); }}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />

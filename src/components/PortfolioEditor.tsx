@@ -194,9 +194,9 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
     if (!username) return;
     
     if (project.systemType === 'portfolio') {
-      window.open(`/u/${username}?preview=true`, "_blank");
+      window.open(`/@${username}?preview=true`, "_blank");
     } else {
-      window.open(`/u/${username}/${project.projectSlug}?preview=true`, "_blank");
+      window.open(`/@${username}/${project.projectSlug}?preview=true`, "_blank");
     }
   };
 

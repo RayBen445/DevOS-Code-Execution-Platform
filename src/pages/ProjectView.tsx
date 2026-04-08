@@ -242,7 +242,7 @@ export default function ProjectView() {
                   {/* Stats row */}
                   <div className="flex flex-wrap items-center gap-5 text-sm text-white/40 mb-7">
                     <Link
-                      to={project.ownerUsername ? `/u/${project.ownerUsername}` : "#"}
+                      to={project.ownerUsername ? `/@${project.ownerUsername}` : "#"}
                       className="flex items-center gap-1.5 hover:text-white transition-colors"
                     >
                       <UserIcon className="w-3.5 h-3.5" />
@@ -415,7 +415,7 @@ export default function ProjectView() {
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/40">
               <Link
-                to={project.ownerUsername ? `/u/${project.ownerUsername}` : "#"}
+                to={project.ownerUsername ? `/@${project.ownerUsername}` : "#"}
                 className="flex items-center gap-1.5 hover:text-white transition-colors"
               >
                 <UserIcon className="w-3.5 h-3.5" />

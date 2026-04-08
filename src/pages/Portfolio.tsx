@@ -740,7 +740,7 @@ export default function Portfolio() {
           </Link>
           <div className="h-4 w-[1px] bg-white/5" />
           <p className="text-[10px] text-white/10 font-mono uppercase tracking-[0.2em]">
-            {username}.devos.zone.id
+            devos.zone.id/@{username}
           </p>
         </div>
       </footer>

@@ -100,7 +100,7 @@ const sections: DocSection[] = [
         <Section title="How it works">
           Clicking <strong>Deploy</strong> (or running <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">deploy</code> in the terminal)
           publishes your project and generates a URL in the format{" "}
-          <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">devos.zone.id/u/&lt;username&gt;/&lt;project-slug&gt;</code>.
+          <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">devos.zone.id/@&lt;username&gt;/&lt;project-slug&gt;</code>.
         </Section>
         <Section title="Live preview">
           The right panel shows a live preview that re-renders on every save. Use this to iterate
@@ -134,7 +134,7 @@ const sections: DocSection[] = [
         <p className="text-white/60 leading-relaxed">
           Every DevOS account comes with a personal portfolio page at{" "}
           <code className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-sm">
-            devos.zone.id/u/&lt;username&gt;
+            devos.zone.id/@&lt;username&gt;
           </code>
           .
         </p>

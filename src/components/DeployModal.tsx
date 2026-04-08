@@ -146,7 +146,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       const projectData = projectDoc.data();
       
       const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
-      const url = `${window.location.origin}/u/${username}/${projectSlug}`;
+      const url = `${window.location.origin}/@${username}/${projectSlug}`;
       
       const projectRef = doc(db, "projects", projectId);
       await updateDoc(projectRef, {
