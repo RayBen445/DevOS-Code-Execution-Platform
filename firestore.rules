@@ -709,5 +709,14 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
+
+    // ── User activities (heatmap data) ────────────────────────────────────────
+    match /user_activities/{actId} {
+      // Anyone can read their own activities; public profiles can be read by all
+      allow read: if true;
+      // Only the owning user (or server via admin SDK) may write
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
   }
 }

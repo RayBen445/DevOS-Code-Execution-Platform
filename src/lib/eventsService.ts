@@ -15,6 +15,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { trackActivity } from "./activityService";
 import {
   Chapter,
   EventSeries,
@@ -24,6 +25,17 @@ import {
   EventSpeaker,
   EventStatus,
 } from "../types";
+import { addDoc as _addNotif, collection as _notifColl, serverTimestamp as _sts } from "firebase/firestore";
+
+// ── Internal notification helper ──────────────────────────────────────────────
+async function _notify(userId: string, type: string, title: string, message: string, link?: string) {
+  try {
+    await _addNotif(_notifColl(db, "notifications"), {
+      userId, type, title, message, link: link ?? null,
+      isRead: false, readBy: [], createdAt: _sts(), createdBy: "system",
+    });
+  } catch { /* non-critical */ }
+}
 
 // ── Chapters ─────────────────────────────────────────────────────────────────
 
@@ -167,6 +179,36 @@ export async function updateEvent(eventId: string, data: Partial<Event>): Promis
 
 export async function setEventStatus(eventId: string, status: EventStatus): Promise<void> {
   await updateDoc(doc(db, "events", eventId), { status });
+
+  // Notify the event creator about approval/rejection
+  if (status === "approved" || status === "rejected") {
+    try {
+      const evSnap = await getDoc(doc(db, "events", eventId));
+      if (evSnap.exists()) {
+        const ev = evSnap.data();
+        const createdBy: string = ev.createdBy;
+        const title = ev.title as string;
+        const slug = ev.slug as string;
+        if (status === "approved") {
+          await _notify(
+            createdBy,
+            "event_approved",
+            "Event approved ✅",
+            `Your event "${title}" has been approved and is now live.`,
+            `/events/${slug}`
+          );
+        } else {
+          await _notify(
+            createdBy,
+            "event_rejected",
+            "Event not approved",
+            `Your event "${title}" was not approved. Review the guidelines and resubmit.`,
+            `/events`
+          );
+        }
+      }
+    } catch { /* noop */ }
+  }
 }
 
 export async function deleteEvent(eventId: string): Promise<void> {
@@ -180,6 +222,25 @@ export async function registerForEvent(params: Omit<EventRegistration, "id" | "c
     ...params,
     createdAt: serverTimestamp(),
   });
+
+  // Notify the user (if authenticated) with an RSVP confirmation
+  if (params.userId) {
+    // Track RSVP as a user activity for the heatmap
+    trackActivity(params.userId, "event_rsvp", { eventId: params.eventId });
+    // Fetch event title for a friendly message
+    try {
+      const evSnap = await getDoc(doc(db, "events", params.eventId));
+      const eventTitle = evSnap.exists() ? (evSnap.data().title as string) : "the event";
+      await _notify(
+        params.userId,
+        "event_rsvp",
+        "RSVP confirmed 🎉",
+        `You're registered for "${eventTitle}". See you there!`,
+        `/events/${evSnap.data()?.slug ?? params.eventId}`
+      );
+    } catch { /* noop */ }
+  }
+
   return ref.id;
 }
 

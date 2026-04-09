@@ -216,7 +216,12 @@ export type NotificationType =
   | 'like'
   | 'community_join'
   | 'org_join'
-  | 'mention';
+  | 'mention'
+  | 'event_rsvp'
+  | 'event_approved'
+  | 'event_rejected'
+  | 'event_reminder'
+  | 'bot_command';
 
 export interface Notification {
   id: string;
@@ -472,6 +477,27 @@ export interface ActivityItem {
   action: "save" | "edit" | "deploy";
   file?: string | null;
   timestamp: any;            // Firestore Timestamp
+}
+
+/** Platform-level user activity tracked in user_activities/{id} for the heatmap */
+export type UserActivityType =
+  | "project_create"
+  | "project_fork"
+  | "deploy"
+  | "code_run"
+  | "post"
+  | "event_rsvp"
+  | "event_create"
+  | "community_join";
+
+export interface UserActivity {
+  id: string;
+  userId: string;
+  type: UserActivityType;
+  projectId?: string;
+  eventId?: string;
+  postId?: string;
+  createdAt: any; // Firestore Timestamp (serverTimestamp)
 }
 
 // ── Events Platform ──────────────────────────────────────────────────────────

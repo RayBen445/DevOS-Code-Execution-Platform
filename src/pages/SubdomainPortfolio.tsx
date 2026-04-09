@@ -6,6 +6,7 @@ import { Globe, Github, ExternalLink, Zap, AlertCircle, BadgeCheck, ArrowUpRight
 import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import { cn } from "../lib/utils";
+import ActivityGraph from "../components/ActivityGraph";
 
 interface Props {
   username: string;
@@ -13,6 +14,7 @@ interface Props {
 
 export default function SubdomainPortfolio({ username }: Props) {
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export default function SubdomainPortfolio({ username }: Props) {
           return;
         }
         const uid = userSnap.docs[0].id;
+        setUid(uid);
         const userData = userSnap.docs[0].data();
 
         // Fetch settings doc keyed by uid (user_settings/{uid})
@@ -157,6 +160,13 @@ export default function SubdomainPortfolio({ username }: Props) {
           </div>
         )}
       </div>
+
+      {/* Activity Graph */}
+      {uid && (
+        <div className="px-6 pb-8">
+          <ActivityGraph userId={uid} />
+        </div>
+      )}
 
       {/* Footer */}
       <div className="border-t border-white/5 py-6 text-center">
