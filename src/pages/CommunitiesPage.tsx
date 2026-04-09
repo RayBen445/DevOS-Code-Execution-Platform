@@ -27,6 +27,7 @@ import {
   createCommunity,
 } from "../lib/communityService";
 import { useSEO } from "../hooks/useSEO";
+import CustomSelect from "../components/CustomSelect";
 
 const CATEGORIES = ["All", "Web Dev", "Mobile", "DevOps", "AI/ML", "Open Source", "Career", "General"];
 
@@ -110,13 +111,11 @@ function CreateCommunityModal({ open, onClose, userId, onCreated }: CreateModalP
           </div>
           <div>
             <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Category</label>
-            <select
+            <CustomSelect
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
-            >
-              {CATEGORIES.filter((c) => c !== "All").map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+              onChange={setCategory}
+              options={CATEGORIES.filter((c) => c !== "All").map((c) => ({ value: c, label: c }))}
+            />
           </div>
           <div className="flex items-center justify-between py-2">
             <div>

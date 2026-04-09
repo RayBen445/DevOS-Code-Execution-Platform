@@ -20,6 +20,7 @@ import { ProjectShareCard, useShareAsImage } from "./ShareAsImageCard";
 import { emitBotEventWithToast } from "../lib/botEngine";
 import CreateOrgModal from "./CreateOrgModal";
 import { useActiveContext } from "../hooks/useActiveContext";
+import CustomSelect from "./CustomSelect";
 
 interface DashboardProps {
   onSelectProject: (projectId: string) => void;
@@ -1133,16 +1134,16 @@ p {
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-white/40 uppercase tracking-widest">License</label>
-                    <select
+                    <CustomSelect
                       value={selectedLicense}
-                      onChange={(e) => setSelectedLicense(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
-                    >
-                      <option value="none">No License</option>
-                      <option value="MIT">MIT License</option>
-                      <option value="Apache2">Apache License 2.0</option>
-                      <option value="GPL3">GNU GPL v3</option>
-                    </select>
+                      onChange={setSelectedLicense}
+                      options={[
+                        { value: "none", label: "No License" },
+                        { value: "MIT", label: "MIT License" },
+                        { value: "Apache2", label: "Apache License 2.0" },
+                        { value: "GPL3", label: "GNU GPL v3" },
+                      ]}
+                    />
                     {selectedLicense !== "none" && (
                       <p className="text-xs text-white/30">A LICENSE file will be added to your project.</p>
                     )}

@@ -90,6 +90,7 @@ import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
+import CustomSelect from "../components/CustomSelect";
 
 type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events";
 
@@ -274,6 +275,8 @@ export default function AdminDashboard() {
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [pollAllowText, setPollAllowText] = useState(false);
+  const [pollAllowGuest, setPollAllowGuest] = useState(false);
+  const [pollAllowMultiple, setPollAllowMultiple] = useState(false);
   const [pollExpiry, setPollExpiry] = useState("");
   const [pollMaxSelections, setPollMaxSelections] = useState(1);
   const [creatingPoll, setCreatingPoll] = useState(false);
@@ -2553,10 +2556,14 @@ export default function AdminDashboard() {
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
-                            <select value={creditType} onChange={(e) => setCreditType(e.target.value as "daily" | "monthly")} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all">
-                              <option value="daily">Daily</option>
-                              <option value="monthly">Monthly</option>
-                            </select>
+                            <CustomSelect
+                              value={creditType}
+                              onChange={(v) => setCreditType(v as "daily" | "monthly")}
+                              options={[
+                                { value: "daily", label: "Daily" },
+                                { value: "monthly", label: "Monthly" },
+                              ]}
+                            />
                           </div>
                         </div>
                         <button type="submit" disabled={adjusting} className={cn("w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2", adjusting ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95")}>
