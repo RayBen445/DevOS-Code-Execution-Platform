@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeft, Bot, BotMessageSquare, Zap, ToggleRight, ToggleLeft,
   Terminal, RefreshCw, Play, CheckCircle2, Clock, AlertCircle, Info,
@@ -13,7 +14,7 @@ import { cn } from "../lib/utils";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-const BOT_COMMANDS = [
+const BOT_COMMANDS: Array<{ cmd: string; desc: string; icon: LucideIcon }> = [
   { cmd: "/help", desc: "List all available bot commands", icon: Info },
   { cmd: "/deploy", desc: "Trigger a deploy for the current project", icon: Rocket },
   { cmd: "/run", desc: "Run the project in the terminal", icon: Play },
@@ -27,11 +28,11 @@ const LOG_LEVEL_STYLES: Record<string, string> = {
   success: "text-green-400 border-green-500/20 bg-green-500/5",
 };
 
-const LOG_LEVEL_ICON: Record<string, any> = {
+const LOG_LEVEL_ICON: Record<string, LucideIcon> = {
   info: Info, warning: AlertCircle, error: AlertCircle, success: CheckCircle2,
 };
 
-function getBotTypeIcon(type: string) {
+function getBotTypeIcon(type: string): LucideIcon {
   if (type === "automation") return Cpu;
   if (type === "moderation") return Shield;
   if (type === "chat") return MessageSquare;
