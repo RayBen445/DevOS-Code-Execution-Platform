@@ -38,6 +38,11 @@ import ContactPage from "./pages/ContactPage";
 import BotsPage from "./pages/BotsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import SubdomainRouter from "./components/SubdomainRouter";
+import EventsPage from "./pages/EventsPage";
+import EventPage from "./pages/EventPage";
+import CreateEventPage from "./pages/CreateEventPage";
+import SpeakersPage from "./pages/SpeakersPage";
+import SpeakerPage from "./pages/SpeakerPage";
 import { Zap, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, Navigate, useParams, useLocation, useNavigate } from "react-router-dom";
@@ -390,6 +395,11 @@ export default function App() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
+            <Route path="/events" element={withPageMaintenance("/events", <EventsPage />)} />
+            <Route path="/events/create" element={withPageMaintenance("/events", <CreateEventPage />)} />
+            <Route path="/events/:slug" element={withPageMaintenance("/events", <EventPage />)} />
+            <Route path="/speakers" element={withPageMaintenance("/speakers", <SpeakersPage />)} />
+            <Route path="/speakers/:slug" element={withPageMaintenance("/speakers", <SpeakerPage />)} />
             <Route path="/not-found" element={<NotFoundPage />} />
             <Route path="/@:username" element={withPageMaintenance("/u", <AtUsernameRoute />)} />
             <Route path="/@:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />

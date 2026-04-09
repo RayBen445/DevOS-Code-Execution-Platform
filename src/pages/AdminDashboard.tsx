@@ -19,6 +19,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
+import { getAllEvents, setEventStatus, deleteEvent as deleteEventDoc } from "../lib/eventsService";
 import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits, getMaintenanceConfig, saveMaintenanceConfig, MaintenanceConfig, getSiteConfig, saveSiteConfig, SiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
@@ -28,6 +29,7 @@ import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollServi
 import { updateCommunity, deleteCommunity, createCommunity, batchAddAllUsersToCommunity } from "../lib/communityService";
 import { getAllOrgs, deleteOrg, updateOrg, createOrg, batchAddAllUsersToOrg } from "../lib/orgService";
 import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization, Project } from "../types";
+import { Event as DevEvent, EventStatus } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -81,13 +83,15 @@ import {
   Link2,
   Building2,
   FolderPlus,
+  Calendar,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -337,6 +341,14 @@ export default function AdminDashboard() {
   const [newOrgOfficial, setNewOrgOfficial] = useState(false);
   const [creatingOrg, setCreatingOrg] = useState(false);
 
+  // Events management state
+  const [adminEvents, setAdminEvents] = useState<DevEvent[]>([]);
+  const [loadingAdminEvents, setLoadingAdminEvents] = useState(false);
+  const [eventStatusFilter, setEventStatusFilter] = useState<"all" | EventStatus>("all");
+  const [updatingEventId, setUpdatingEventId] = useState<string | null>(null);
+  const [deleteEventConfirm, setDeleteEventConfirm] = useState<string | null>(null);
+  const [deletingEvent, setDeletingEvent] = useState(false);
+
   // Admin projects state
   const [adminProjects, setAdminProjects] = useState<Project[]>([]);
   const [loadingAdminProjects, setLoadingAdminProjects] = useState(false);
@@ -392,6 +404,9 @@ export default function AdminDashboard() {
     }
     if (activeTab === "site" && isAdmin) {
       loadSiteConfig();
+    }
+    if (activeTab === "events" && isAdmin) {
+      loadAdminEvents();
     }
   }, [activeTab, isAdmin]);
 
@@ -1560,6 +1575,48 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadAdminEvents = async () => {
+    setLoadingAdminEvents(true);
+    try {
+      const data = await getAllEvents();
+      setAdminEvents(data);
+    } catch {
+      toast.error("Failed to load events.");
+    } finally {
+      setLoadingAdminEvents(false);
+    }
+  };
+
+  const handleSetEventStatus = async (eventId: string, status: EventStatus) => {
+    setUpdatingEventId(eventId);
+    try {
+      await setEventStatus(eventId, status);
+      setAdminEvents((prev) =>
+        prev.map((e) => (e.id === eventId ? { ...e, status } : e))
+      );
+      toast.success(`Event ${status === "approved" ? "approved" : status === "rejected" ? "rejected" : "updated"}`);
+    } catch {
+      toast.error("Failed to update event status.");
+    } finally {
+      setUpdatingEventId(null);
+    }
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (!deleteEventConfirm) return;
+    setDeletingEvent(true);
+    try {
+      await deleteEventDoc(deleteEventConfirm);
+      setAdminEvents((prev) => prev.filter((e) => e.id !== deleteEventConfirm));
+      setDeleteEventConfirm(null);
+      toast.success("Event deleted.");
+    } catch {
+      toast.error("Failed to delete event.");
+    } finally {
+      setDeletingEvent(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
@@ -1608,6 +1665,7 @@ export default function AdminDashboard() {
     { id: "communities", label: "Communities", icon: <Users2 className="w-4 h-4" /> },
     { id: "organizations", label: "Organizations", icon: <Building2 className="w-4 h-4" /> },
     { id: "projects", label: "Projects", icon: <FolderPlus className="w-4 h-4" /> },
+    { id: "events", label: "Events", icon: <Calendar className="w-4 h-4" /> },
     { id: "site", label: "Site Settings", icon: <Globe className="w-4 h-4" /> },
   ];
 
@@ -1753,6 +1811,7 @@ export default function AdminDashboard() {
                   {activeTab === "communities" && "View, create, edit and delete all platform communities"}
                   {activeTab === "organizations" && "View, create, edit and delete all platform organizations"}
                   {activeTab === "projects" && "Create and manage official DevOS projects"}
+                  {activeTab === "events" && "Approve, reject, or delete developer events submitted by users"}
                   {activeTab === "site" && "Edit branding, links, footer text, and global voice-call availability"}
                 </p>
               </div>
@@ -3899,6 +3958,138 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
+                {/* Events Management Tab */}
+                {activeTab === "events" && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <div className="flex items-center gap-2">
+                        {(["all", "pending", "under_review", "approved", "rejected"] as const).map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setEventStatusFilter(s)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all",
+                              eventStatusFilter === s
+                                ? "bg-blue-600 text-white"
+                                : "bg-white/5 text-white/50 hover:bg-white/10"
+                            )}
+                          >
+                            {s.replace("_", " ")}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={loadAdminEvents}
+                        disabled={loadingAdminEvents}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${loadingAdminEvents ? "animate-spin" : ""}`} />
+                        Refresh
+                      </button>
+                    </div>
+
+                    {loadingAdminEvents ? (
+                      <div className="flex items-center justify-center py-12 text-white/40 gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Loading events…
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {adminEvents
+                          .filter((e) => eventStatusFilter === "all" || e.status === eventStatusFilter)
+                          .map((ev) => (
+                            <div
+                              key={ev.id}
+                              className="bg-[#111827] border border-white/10 rounded-2xl p-5"
+                            >
+                              <div className="flex items-start justify-between gap-4 flex-wrap">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                                    <span className={cn(
+                                      "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border",
+                                      ev.status === "approved" && "bg-green-600/10 text-green-400 border-green-500/20",
+                                      ev.status === "rejected" && "bg-red-600/10 text-red-400 border-red-500/20",
+                                      ev.status === "pending" && "bg-yellow-600/10 text-yellow-400 border-yellow-500/20",
+                                      ev.status === "under_review" && "bg-blue-600/10 text-blue-400 border-blue-500/20",
+                                    )}>
+                                      {ev.status.replace("_", " ")}
+                                    </span>
+                                    <span className={cn(
+                                      "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border",
+                                      ev.type === "online" ? "bg-green-600/10 text-green-400 border-green-500/20" : "bg-orange-600/10 text-orange-400 border-orange-500/20"
+                                    )}>
+                                      {ev.type}
+                                    </span>
+                                    {ev.isPremium && (
+                                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-yellow-600/10 text-yellow-400 border-yellow-500/20">
+                                        Premium
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h3 className="font-semibold text-white">{ev.title}</h3>
+                                  <p className="text-white/40 text-xs mt-1 line-clamp-2">{ev.description}</p>
+                                  <div className="flex items-center gap-3 mt-2 text-xs text-white/30">
+                                    {ev.createdByUsername && (
+                                      <span>By @{ev.createdByUsername}</span>
+                                    )}
+                                    {ev.type === "physical" && ev.venueName && (
+                                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {ev.venueName}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                                  {ev.status !== "approved" && (
+                                    <button
+                                      onClick={() => handleSetEventStatus(ev.id, "approved")}
+                                      disabled={updatingEventId === ev.id}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white transition-colors disabled:opacity-50"
+                                    >
+                                      {updatingEventId === ev.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                                      Approve
+                                    </button>
+                                  )}
+                                  {ev.status !== "rejected" && (
+                                    <button
+                                      onClick={() => handleSetEventStatus(ev.id, "rejected")}
+                                      disabled={updatingEventId === ev.id}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50"
+                                    >
+                                      <XCircle className="w-3 h-3" />
+                                      Reject
+                                    </button>
+                                  )}
+                                  {ev.status === "pending" && (
+                                    <button
+                                      onClick={() => handleSetEventStatus(ev.id, "under_review")}
+                                      disabled={updatingEventId === ev.id}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition-colors disabled:opacity-50"
+                                    >
+                                      <Clock className="w-3 h-3" />
+                                      Mark Under Review
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => setDeleteEventConfirm(ev.id)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-white/40 hover:bg-red-600/20 hover:text-red-400 transition-colors"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        {adminEvents.filter((e) => eventStatusFilter === "all" || e.status === eventStatusFilter).length === 0 && (
+                          <div className="text-center py-12 text-white/30">
+                            <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                            <p>No events found</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Site Settings Tab */}
                 {activeTab === "site" && (
                   <div className="space-y-6 max-w-2xl">
@@ -4075,6 +4266,17 @@ export default function AdminDashboard() {
       loading={deletingOrg}
       onConfirm={confirmDeleteOrg}
       onCancel={() => setDeleteOrgConfirm(null)}
+    />
+
+    <ConfirmModal
+      open={!!deleteEventConfirm}
+      title="Delete Event"
+      description="This event will be permanently removed from the platform."
+      warning="This action cannot be undone."
+      confirmLabel="Delete Event"
+      loading={deletingEvent}
+      onConfirm={confirmDeleteEvent}
+      onCancel={() => setDeleteEventConfirm(null)}
     />
 
     <ConfirmModal
