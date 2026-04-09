@@ -12,6 +12,7 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { toast } from "sonner";
+import CustomSelect from "../components/CustomSelect";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -206,13 +207,11 @@ export default function ContactPage() {
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Topic</label>
-                    <select
+                    <CustomSelect
                       value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      className={inputCls + " cursor-pointer"}
-                    >
-                      {TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                      onChange={setTopic}
+                      options={TOPICS.map((t) => ({ value: t, label: t }))}
+                    />
                   </div>
 
                   <div className="space-y-1.5">

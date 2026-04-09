@@ -423,8 +423,51 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -6, scale: 0.97 }}
                     transition={{ duration: 0.13 }}
-                    className="absolute right-0 top-full mt-2 w-48 bg-[#111] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50"
+                    className="absolute right-0 top-full mt-2 w-56 bg-[#111] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50"
                   >
+                    {/* ── Workspaces Section ── */}
+                    <div className="px-4 pt-3 pb-1.5">
+                      <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Workspace</p>
+                    </div>
+                    {/* Personal workspace */}
+                    <button
+                      onClick={() => { setUserContext(user!.uid); setIsProfileOpen(false); }}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors text-left",
+                        context?.type === "user" || !context
+                          ? "text-white bg-white/5 font-semibold"
+                          : "text-white/60 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <UserIcon className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">Personal</span>
+                      {(context?.type === "user" || !context) && (
+                        <Check className="w-3.5 h-3.5 ml-auto text-blue-400 flex-shrink-0" />
+                      )}
+                    </button>
+                    {/* Org workspaces */}
+                    {userOrgs.map((org) => {
+                      const isActive = context?.type === "org" && context.id === org.id;
+                      return (
+                        <button
+                          key={org.id}
+                          onClick={() => { isActive ? setUserContext(user!.uid) : setOrgContext(org.id, org.slug, org.name); setIsProfileOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-4 py-2 text-sm transition-colors text-left",
+                            isActive
+                              ? "text-blue-300 bg-blue-500/10 font-semibold"
+                              : "text-white/60 hover:text-white hover:bg-white/5"
+                          )}
+                        >
+                          <Building2 className="w-4 h-4 text-blue-400/70 flex-shrink-0" />
+                          <span className="truncate">{org.name}</span>
+                          {isActive && (
+                            <Check className="w-3.5 h-3.5 ml-auto text-blue-400 flex-shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
+                    <div className="border-t border-white/5 my-1" />
                     {username && (
                       <Link
                         to={`/u/${username}`}
@@ -516,46 +559,23 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                       </>
                     )}
                     <div className="border-t border-white/5 my-1" />
-                    {/* My Organizations — with context switch */}
+                    {/* My Organizations — quick navigation links */}
                     {userOrgs.length > 0 && (
                       <>
                         <div className="px-4 py-1.5">
-                          <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">My Organizations</p>
+                          <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Organizations</p>
                         </div>
-                        {userOrgs.slice(0, 4).map((org) => {
-                          const isActive = context?.type === "org" && context.id === org.id;
-                          return (
-                            <div key={org.id} className="flex items-center gap-1 px-1">
-                              <Link
-                                to={`/org/${org.slug}`}
-                                onClick={() => setIsProfileOpen(false)}
-                                className="flex-1 flex items-center gap-2.5 px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors rounded-lg"
-                              >
-                                <Building2 className="w-4 h-4 text-blue-400/70 flex-shrink-0" />
-                                <span className="truncate">{org.name}</span>
-                              </Link>
-                              <button
-                                onClick={() => {
-                                  if (isActive) {
-                                    setUserContext(user!.uid);
-                                  } else {
-                                    setOrgContext(org.id, org.slug, org.name);
-                                  }
-                                  setIsProfileOpen(false);
-                                }}
-                                title={isActive ? "Switch back to personal context" : `Switch to ${org.name} context`}
-                                className={cn(
-                                  "p-1.5 rounded-lg transition-colors flex-shrink-0",
-                                  isActive
-                                    ? "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30"
-                                    : "text-white/20 hover:text-white/50 hover:bg-white/5"
-                                )}
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          );
-                        })}
+                        {userOrgs.slice(0, 4).map((org) => (
+                          <Link
+                            key={org.id}
+                            to={`/org/${org.slug}`}
+                            onClick={() => setIsProfileOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <Building2 className="w-4 h-4 text-blue-400/70 flex-shrink-0" />
+                            <span className="truncate">{org.name}</span>
+                          </Link>
+                        ))}
                         <div className="border-t border-white/5 my-1" />
                       </>
                     )}
@@ -741,33 +761,42 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   </Link>
                 )}
 
-                {/* My Organizations (mobile) */}
-                {userOrgs.length > 0 && (
+                {/* Workspaces (mobile) */}
+                {(userOrgs.length > 0 || true) && (
                   <>
                     <div className="border-t border-white/5 my-2" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">My Organizations</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Workspace</p>
+                    {/* Personal */}
+                    <button
+                      onClick={() => { setUserContext(user!.uid); setIsMobileMenuOpen(false); }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors text-sm text-left",
+                        context?.type === "user" || !context
+                          ? "text-white bg-white/5 font-semibold"
+                          : "text-white/60 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <UserIcon className="w-4 h-4" />
+                      Personal
+                      {(context?.type === "user" || !context) && <Check className="w-4 h-4 ml-auto text-blue-400" />}
+                    </button>
                     {userOrgs.slice(0, 4).map((org) => {
                       const isActive = context?.type === "org" && context.id === org.id;
                       return (
-                        <div key={org.id} className="flex items-center gap-1 px-1">
-                          <Link
-                            to={`/org/${org.slug}`}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="flex-1 flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm"
-                          >
-                            <Building2 className="w-4 h-4 text-blue-400/70" />
-                            <span className="truncate">{org.name}</span>
-                          </Link>
-                          <button
-                            onClick={() => {
-                              if (isActive) setUserContext(user!.uid); else setOrgContext(org.id, org.slug, org.name);
-                              setIsMobileMenuOpen(false);
-                            }}
-                            className={cn("p-2 rounded-xl transition-colors", isActive ? "text-blue-400 bg-blue-600/15" : "text-white/20 hover:text-white/50")}
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <button
+                          key={org.id}
+                          onClick={() => { isActive ? setUserContext(user!.uid) : setOrgContext(org.id, org.slug, org.name); setIsMobileMenuOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors text-sm text-left",
+                            isActive
+                              ? "text-blue-300 bg-blue-500/10 font-semibold"
+                              : "text-white/60 hover:text-white hover:bg-white/5"
+                          )}
+                        >
+                          <Building2 className="w-4 h-4 text-blue-400/70" />
+                          <span className="truncate">{org.name}</span>
+                          {isActive && <Check className="w-4 h-4 ml-auto text-blue-400" />}
+                        </button>
                       );
                     })}
                   </>

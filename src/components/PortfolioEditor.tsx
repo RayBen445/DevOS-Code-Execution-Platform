@@ -26,6 +26,7 @@ import { cn } from "../lib/utils";
 import { toast } from "sonner";
 import { db } from "../lib/firebase";
 import ConfirmModal from "./ConfirmModal";
+import CustomSelect from "./CustomSelect";
 import { 
   doc, 
   updateDoc, 
@@ -507,16 +508,16 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Font Family</label>
-                    <select
+                    <CustomSelect
                       value={themeData.fontFamily}
-                      onChange={e => setThemeData({ ...themeData, fontFamily: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-all appearance-none"
-                    >
-                      <option value="Inter">Inter</option>
-                      <option value="Roboto">Roboto</option>
-                      <option value="Poppins">Poppins</option>
-                      <option value="Space Grotesk">Space Grotesk</option>
-                    </select>
+                      onChange={(v) => setThemeData({ ...themeData, fontFamily: v })}
+                      options={[
+                        { value: "Inter", label: "Inter" },
+                        { value: "Roboto", label: "Roboto" },
+                        { value: "Poppins", label: "Poppins" },
+                        { value: "Space Grotesk", label: "Space Grotesk" },
+                      ]}
+                    />
                   </div>
                 </div>
                 <div className="flex items-center justify-between p-6 bg-white/5 border border-white/10 rounded-2xl">

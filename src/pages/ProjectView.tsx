@@ -77,9 +77,21 @@ export default function ProjectView() {
         }
         const data = { id: projectSnap.id, ...projectSnap.data() } as Project;
         if (!data.isPublic) {
-          setError("This project is private");
-          setLoading(false);
-          return;
+          // Allow access to the owner
+          const isOwner = user && user.uid === data.ownerId;
+          // Allow org members to access private org projects
+          let isOrgMember = false;
+          if (!isOwner && data.ownerType === "organization" && data.ownerOrgId && user) {
+            const memberSnap = await getDoc(
+              doc(db, "organizations", data.ownerOrgId, "members", user.uid)
+            );
+            isOrgMember = memberSnap.exists();
+          }
+          if (!isOwner && !isOrgMember) {
+            setError("This project is private");
+            setLoading(false);
+            return;
+          }
         }
         setProject(data);
 
@@ -125,7 +137,7 @@ export default function ProjectView() {
         setLoading(false);
       }
     })();
-  }, [projectId]);
+  }, [projectId, user]);
 
   const handleFork = async () => {
     if (!user || !project) {

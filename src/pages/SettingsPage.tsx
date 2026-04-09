@@ -68,6 +68,7 @@ import { deactivateAccount, requestAccountDeletion, requestUsernameChange, getUs
 import { UsernameChangeRequest } from "../types";
 import UIThemeSwitcher from "../components/UIThemeSwitcher";
 import { ReferralStats } from "../types";
+import CustomSelect from "../components/CustomSelect";
 
 type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
 
@@ -897,15 +898,21 @@ function PreferencesTab() {
           </p>
           <div className="space-y-4">
             <Field label="Font Size">
-              <select value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className={selectCls}>
-                {[12, 13, 14, 15, 16, 18, 20].map((s) => <option key={s} value={s}>{s}px</option>)}
-              </select>
+              <CustomSelect
+                value={String(fontSize)}
+                onChange={(v) => setFontSize(Number(v))}
+                options={[12, 13, 14, 15, 16, 18, 20].map((s) => ({ value: String(s), label: `${s}px` }))}
+              />
             </Field>
             <Field label="Tab Size">
-              <select value={tabSize} onChange={(e) => setTabSize(Number(e.target.value))} className={selectCls}>
-                <option value={2}>2 spaces</option>
-                <option value={4}>4 spaces</option>
-              </select>
+              <CustomSelect
+                value={String(tabSize)}
+                onChange={(v) => setTabSize(Number(v))}
+                options={[
+                  { value: "2", label: "2 spaces" },
+                  { value: "4", label: "4 spaces" },
+                ]}
+              />
             </Field>
           </div>
         </div>
