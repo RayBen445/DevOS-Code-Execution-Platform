@@ -36,6 +36,7 @@ import OrgsPage from "./pages/OrgsPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import BotsPage from "./pages/BotsPage";
+import Portfolio from "./pages/Portfolio";
 import NotFoundPage from "./pages/NotFoundPage";
 import SubdomainRouter from "./components/SubdomainRouter";
 import EventsPage from "./pages/EventsPage";
@@ -90,11 +91,15 @@ function RouteTracker({ user }: { user: any }) {
   return null;
 }
 
-/** Redirects legacy /u/:username[/:projectSlug] URLs to the new /@:username[/:projectSlug] format. */
+/** /u/:username renders the portfolio inline (no subdomain redirect). */
 function LegacyPortfolioRedirect() {
   const { username, projectSlug } = useParams<{ username: string; projectSlug?: string }>();
-  const to = projectSlug ? `/@${username}/${projectSlug}` : `/@${username}`;
-  return <Navigate to={to} replace />;
+  if (projectSlug) {
+    // /u/:username/:projectSlug → /@:username/:projectSlug (ProjectPreview)
+    return <Navigate to={`/@${username}/${projectSlug}`} replace />;
+  }
+  // /u/:username → render Portfolio inline
+  return <Portfolio />;
 }
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
