@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "../lib/firebase";
+import { signInAnonymously } from "firebase/auth";
 import { voteOnPoll, getUserVote } from "../lib/pollService";
 import { Poll, PollVote } from "../types";
 import { CheckCircle2, Loader2, BarChart2, Clock, MessageSquare } from "lucide-react";
@@ -26,14 +27,23 @@ export default function PollCard({ poll, onVoted, className }: PollCardProps) {
   const isMulti = maxSel > 1;
   const isExpired = poll.expiresAt && poll.expiresAt?.toMillis?.() < Date.now();
   const isClosed = !poll.isOpen || !!isExpired;
+  const allowGuest = poll.allowGuestVoting ?? false;
+  const canVoteAsGuest = allowGuest && !user;
+
+  // Track guest votes locally to prevent duplicate voting in the same session
+  const guestVoteKey = `devos_poll_vote_${poll.id}`;
+  const [guestVoted, setGuestVoted] = useState<boolean>(() => {
+    try { return !!sessionStorage.getItem(guestVoteKey); } catch { return false; }
+  });
 
   useEffect(() => {
+    if (!user && !canVoteAsGuest) { setLoadingVote(false); return; }
     if (!user) { setLoadingVote(false); return; }
     getUserVote(poll.id, user.uid)
       .then((v) => setMyVote(v))
       .catch(() => {})
       .finally(() => setLoadingVote(false));
-  }, [poll.id, user]);
+  }, [poll.id, user, canVoteAsGuest]);
 
   const toggleOption = (id: string) => {
     setSelectedIds((prev) => {
@@ -48,18 +58,30 @@ export default function PollCard({ poll, onVoted, className }: PollCardProps) {
   };
 
   const handleVote = async () => {
-    if (!user) { toast.error("Sign in to vote."); return; }
+    if (!user && !allowGuest) { toast.error("Sign in to vote."); return; }
+    if (!user && allowGuest && guestVoted) { toast.error("You have already voted."); return; }
     if (selectedIds.length === 0) { toast.error("Select at least one option."); return; }
     setSubmitting(true);
     try {
-      await voteOnPoll(poll.id, user.uid, selectedIds, textResponse || undefined);
+      let voterId = user?.uid;
+      // For guest voting, sign in anonymously so Firestore write is authenticated
+      if (!user && allowGuest) {
+        const cred = await signInAnonymously(auth);
+        voterId = cred.user.uid;
+      }
+      await voteOnPoll(poll.id, voterId!, selectedIds, textResponse || undefined);
       const voted: PollVote = {
-        userId: user.uid,
+        userId: voterId!,
         optionIds: selectedIds,
         votedAt: new Date(),
         textResponse: textResponse || undefined,
       };
       setMyVote(voted);
+      // Mark guest vote in sessionStorage to prevent duplicates
+      if (!user && allowGuest) {
+        try { sessionStorage.setItem(guestVoteKey, "1"); } catch { /* ignore */ }
+        setGuestVoted(true);
+      }
       const updated: Poll = {
         ...poll,
         totalVotes: poll.totalVotes + 1,
@@ -76,7 +98,7 @@ export default function PollCard({ poll, onVoted, className }: PollCardProps) {
     }
   };
 
-  const hasVoted = !!myVote;
+  const hasVoted = !!myVote || guestVoted;
   const showResults = hasVoted || isClosed;
 
   return (
@@ -195,18 +217,25 @@ export default function PollCard({ poll, onVoted, className }: PollCardProps) {
       )}
 
       {!showResults && !loadingVote && (
-        <button
-          onClick={handleVote}
-          disabled={selectedIds.length === 0 || submitting || !user}
-          className={cn(
-            "w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
-            selectedIds.length === 0 || !user
-              ? "bg-white/5 text-white/20 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
+        <>
+          {!user && !allowGuest && (
+            <p className="text-xs text-white/30 text-center">
+              <span className="text-blue-400">Sign in</span> to vote on this poll.
+            </p>
           )}
-        >
-          {submitting ? <><Loader2 className="w-4 h-4 animate-spin" />Submitting…</> : "Submit Vote"}
-        </button>
+          <button
+            onClick={handleVote}
+            disabled={selectedIds.length === 0 || submitting || (!user && !allowGuest)}
+            className={cn(
+              "w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
+              selectedIds.length === 0 || (!user && !allowGuest)
+                ? "bg-white/5 text-white/20 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
+            )}
+          >
+            {submitting ? <><Loader2 className="w-4 h-4 animate-spin" />Submitting…</> : "Submit Vote"}
+          </button>
+        </>
       )}
 
       <p className="text-xs text-white/25 text-right">{poll.totalVotes} vote{poll.totalVotes !== 1 ? "s" : ""}</p>

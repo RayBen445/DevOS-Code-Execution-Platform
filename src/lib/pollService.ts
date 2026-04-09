@@ -22,9 +22,11 @@ export const createPoll = async (params: {
   options: string[];          // option texts (2–6 items)
   allowTextInput: boolean;
   maxSelections?: number;     // 1 = single-choice (default), >1 = multi-select
+  allowGuestVoting?: boolean; // allow unauthenticated users to vote
+  allowMultipleVotes?: boolean; // allow same user to vote more than once
   expiresAt?: Date | null;
 }): Promise<string> => {
-  const { createdBy, question, options, allowTextInput, expiresAt, maxSelections = 1 } = params;
+  const { createdBy, question, options, allowTextInput, expiresAt, maxSelections = 1, allowGuestVoting = false, allowMultipleVotes = false } = params;
 
   const pollOptions: PollOption[] = options.map((text, i) => ({
     id: `opt_${i}`,
@@ -37,6 +39,8 @@ export const createPoll = async (params: {
     options: pollOptions,
     allowTextInput,
     maxSelections: Math.max(1, Math.min(maxSelections, pollOptions.length)),
+    allowGuestVoting,
+    allowMultipleVotes,
     createdBy,
     createdAt: serverTimestamp(),
     expiresAt: expiresAt ? Timestamp.fromDate(expiresAt) : null,
@@ -63,7 +67,7 @@ export const voteOnPoll = async (
     if (!pollSnap.exists()) throw new Error("Poll not found");
 
     const voteSnap = await tx.get(voteRef);
-    if (voteSnap.exists()) throw new Error("Already voted");
+    if (voteSnap.exists() && !poll.allowMultipleVotes) throw new Error("Already voted");
 
     const poll = pollSnap.data() as Poll;
     if (!poll.isOpen) throw new Error("Poll is closed");

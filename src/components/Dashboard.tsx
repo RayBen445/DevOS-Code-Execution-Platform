@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { ProjectShareCard, useShareAsImage } from "./ShareAsImageCard";
 import { emitBotEventWithToast } from "../lib/botEngine";
 import CreateOrgModal from "./CreateOrgModal";
+import { useActiveContext } from "../hooks/useActiveContext";
 
 interface DashboardProps {
   onSelectProject: (projectId: string) => void;
@@ -27,6 +28,8 @@ interface DashboardProps {
 export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
+  const { context } = useActiveContext();
+  const isOrgWorkspace = context?.type === "org";
   const [projects, setProjects] = useState<Project[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isQuickStarting, setIsQuickStarting] = useState(false);
@@ -82,10 +85,21 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, "projects"),
-      where("ownerId", "==", user.uid)
-    );
+    let q;
+    if (isOrgWorkspace && context?.type === "org") {
+      // In org workspace: show projects owned by the org
+      q = query(
+        collection(db, "projects"),
+        where("ownerOrgId", "==", context.id),
+        where("ownerType", "==", "organization")
+      );
+    } else {
+      // Personal workspace: show user-owned personal projects
+      q = query(
+        collection(db, "projects"),
+        where("ownerId", "==", user.uid)
+      );
+    }
 
     const unsubscribeProjects = onSnapshot(q, (snapshot) => {
       const projs = snapshot.docs.map(doc => ({
@@ -93,11 +107,17 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         ...doc.data()
       })) as Project[];
 
-      // Exclude org-owned projects – they live on the org page, not the personal dashboard
-      const personalProjs = projs.filter(p => p.ownerType !== "organization");
-      
+      let filtered: Project[];
+      if (isOrgWorkspace) {
+        // Org workspace: show all org projects
+        filtered = projs;
+      } else {
+        // Personal workspace: exclude org-owned projects
+        filtered = projs.filter(p => p.ownerType !== "organization");
+      }
+
       // Sort: Portfolio first, then by updatedAt
-      personalProjs.sort((a, b) => {
+      filtered.sort((a, b) => {
         if (a.systemType === 'portfolio') return -1;
         if (b.systemType === 'portfolio') return 1;
         const timeA = a.updatedAt?.seconds || 0;
@@ -105,7 +125,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         return timeB - timeA;
       });
       
-      setProjects(personalProjs);
+      setProjects(filtered);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "projects");
     });
@@ -138,7 +158,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
       unsubscribeSettings();
       unsubscribePublic();
     };
-  }, [user]);
+  }, [user, context]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -876,14 +896,28 @@ p {
     return () => document.removeEventListener("click", handler);
   }, [groupPopoverProjectId]);
 
-  useSEO({ title: "Dashboard — DevOS" });
+  useSEO({ title: isOrgWorkspace && context?.type === "org" ? `${context.name} — DevOS` : "Dashboard — DevOS" });
   return (
     <div className="max-w-6xl mx-auto p-8">
+      {/* Workspace Banner */}
+      {isOrgWorkspace && context?.type === "org" && (
+        <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+          <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+          <span className="text-sm text-blue-300 font-medium">
+            Workspace: <span className="font-bold">{context.name}</span>
+          </span>
+          <span className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 text-[10px] font-bold uppercase tracking-wider">org</span>
+        </div>
+      )}
       {/* Header / Profile Section */}
       <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <p className="text-white/40">Manage your cloud-based development environments.</p>
-          {settings?.username && (
+          <p className="text-white/40">
+            {isOrgWorkspace && context?.type === "org"
+              ? `Showing projects for ${context.name}.`
+              : "Manage your cloud-based development environments."}
+          </p>
+          {!isOrgWorkspace && settings?.username && (
             <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
               @{settings.username}
             </span>
@@ -1171,7 +1205,7 @@ p {
             activeTab === "my-projects" ? "text-white" : "text-white/20 hover:text-white/40"
           )}
         >
-          My Projects
+          {isOrgWorkspace ? "Org Projects" : "My Projects"}
           {activeTab === "my-projects" && (
             <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
           )}

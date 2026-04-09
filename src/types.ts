@@ -423,6 +423,8 @@ export interface Poll {
   options: PollOption[];
   allowTextInput: boolean;   // when true, voters may also type a free-text response
   maxSelections: number;     // 1 = single choice; >1 = multi-select (up to N options)
+  allowGuestVoting: boolean; // when true, anonymous/unauthenticated users may vote
+  allowMultipleVotes: boolean; // when true, a single user can vote more than once (overrides duplicate check)
   createdBy: string;         // admin uid
   createdAt: any;
   expiresAt?: any | null;    // Firestore Timestamp – null / absent = no expiry
