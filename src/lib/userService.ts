@@ -53,6 +53,7 @@ export const registerUserProfile = async (
     avatarUrl: avatar,
     bio: "Building the future on DevOS.",
     role: isAdmin ? "admin" : "user",
+    subdomain: `${profile.username.toLowerCase()}.devos.name.ng`,
     updatedAt: serverTimestamp(),
   });
 
@@ -119,6 +120,7 @@ export const initializeUser = async (user: any) => {
       avatarUrl: avatar,
       bio: "Building the future on DevOS.",
       role: isAdmin ? "admin" : "user",
+      subdomain: `${username.toLowerCase()}.devos.name.ng`,
       updatedAt: serverTimestamp(),
     });
 

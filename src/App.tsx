@@ -17,7 +17,6 @@ import TermsPage from "./pages/TermsPage";
 import CookiePolicyPage from "./pages/CookiePolicyPage";
 import AcceptableUsePage from "./pages/AcceptableUsePage";
 import CopyrightPage from "./pages/CopyrightPage";
-import Portfolio from "./pages/Portfolio";
 import ProjectPreview from "./pages/ProjectPreview";
 import ProjectView from "./pages/ProjectView";
 import TemplatePage from "./pages/TemplatePage";
@@ -93,26 +92,26 @@ function LegacyPortfolioRedirect() {
   return <Navigate to={to} replace />;
 }
 
+const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
+
 /**
  * Handles /@:username routes.
- * On devos.zone.id, redirects the browser to https://<username>.devos.name.ng.
- * Everywhere else, renders the normal Portfolio page.
+ * Validates the username, then redirects the browser to https://<username>.devos.name.ng
+ * so that subdomain-based portfolio rendering takes over.
+ * An invalid username shows a 404.
  */
 function AtUsernameRoute() {
   const { username } = useParams<{ username: string }>();
-  const hostname = window.location.hostname;
 
-  useEffect(() => {
-    if ((hostname === "devos.zone.id" || hostname.endsWith(".devos.zone.id")) && username) {
-      window.location.replace(`https://${username}.devos.name.ng`);
-    }
-  }, [username, hostname]);
-
-  if ((hostname === "devos.zone.id" || hostname.endsWith(".devos.zone.id")) && username) {
-    return null;
+  // Validate username before doing anything
+  if (!username || !USERNAME_REGEX.test(username)) {
+    return <NotFoundPage />;
   }
 
-  return <Portfolio />;
+  // Always redirect /@username → https://username.devos.name.ng
+  // (SubdomainRouter on *.devos.name.ng will render the portfolio)
+  window.location.replace(`https://${encodeURIComponent(username)}.devos.name.ng`);
+  return null;
 }
 
 export default function App() {
