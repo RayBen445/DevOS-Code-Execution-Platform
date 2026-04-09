@@ -18,6 +18,7 @@ import {
 import { db } from "./firebase";
 import { DEFAULT_USER_AVATAR, SYSTEM_AVATAR } from "./avatars";
 import { FeedComment, FeedPost } from "../types";
+import { trackActivity } from "./activityService";
 
 /** Subscribe to the public developer feed */
 export function subscribeFeed(
@@ -88,10 +89,10 @@ export async function createFeedPost(params: {
     viewsCount: 0,
     isPublic: params.isPublic,
   });
+  // Track post creation as a platform activity
+  trackActivity(params.userId, "post", { postId: docRef.id });
   return docRef.id;
 }
-
-/** Auto-post on deployment */
 export async function autoPostDeployment(params: {
   userId: string;
   username: string;

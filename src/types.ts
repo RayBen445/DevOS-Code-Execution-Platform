@@ -216,7 +216,12 @@ export type NotificationType =
   | 'like'
   | 'community_join'
   | 'org_join'
-  | 'mention';
+  | 'mention'
+  | 'event_rsvp'
+  | 'event_approved'
+  | 'event_rejected'
+  | 'event_reminder'
+  | 'bot_command';
 
 export interface Notification {
   id: string;
@@ -472,4 +477,109 @@ export interface ActivityItem {
   action: "save" | "edit" | "deploy";
   file?: string | null;
   timestamp: any;            // Firestore Timestamp
+}
+
+/** Platform-level user activity tracked in user_activities/{id} for the heatmap */
+export type UserActivityType =
+  | "project_create"
+  | "project_fork"
+  | "deploy"
+  | "code_run"
+  | "post"
+  | "event_rsvp"
+  | "event_create"
+  | "community_join";
+
+export interface UserActivity {
+  id: string;
+  userId: string;
+  type: UserActivityType;
+  projectId?: string;
+  eventId?: string;
+  postId?: string;
+  createdAt: any; // Firestore Timestamp (serverTimestamp)
+}
+
+// ── Events Platform ──────────────────────────────────────────────────────────
+
+export interface Chapter {
+  id: string;
+  orgId: string;
+  name: string;
+  slug: string;
+  city: string;
+  country: string;
+  createdAt: any;
+}
+
+export interface EventSeries {
+  id: string;
+  orgId: string;
+  title: string;
+  slug: string;
+  description: string;
+  createdAt: any;
+}
+
+export type EventType = "online" | "physical";
+export type EventStatus = "pending" | "under_review" | "approved" | "rejected";
+
+export interface Event {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  bannerImage?: string;
+  type: EventType;
+  /** URL for online events */
+  eventLink?: string;
+  /** Venue name for physical events */
+  venueName?: string;
+  /** Address for physical events */
+  address?: string;
+  startDate: any;
+  endDate: any;
+  orgId?: string;
+  chapterId?: string;
+  seriesId?: string;
+  createdBy: string;
+  createdByUsername?: string;
+  status: EventStatus;
+  isPremium: boolean;
+  createdAt: any;
+}
+
+export interface EventRegistration {
+  id: string;
+  eventId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  /** uid of the registered user, null for guest registrations */
+  userId?: string | null;
+  source: "guest" | "user";
+  createdAt: any;
+}
+
+export interface Speaker {
+  id: string;
+  name: string;
+  slug: string;
+  title: string;
+  bio: string;
+  image?: string;
+  socialLinks?: {
+    twitter?: string;
+    linkedin?: string;
+    github?: string;
+    website?: string;
+  };
+  createdAt: any;
+}
+
+export interface EventSpeaker {
+  id: string;
+  eventId: string;
+  speakerId: string;
+  role: "speaker" | "host" | "panelist";
 }

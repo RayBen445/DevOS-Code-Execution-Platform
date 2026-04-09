@@ -36,8 +36,14 @@ import OrgsPage from "./pages/OrgsPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import BotsPage from "./pages/BotsPage";
+import Portfolio from "./pages/Portfolio";
 import NotFoundPage from "./pages/NotFoundPage";
 import SubdomainRouter from "./components/SubdomainRouter";
+import EventsPage from "./pages/EventsPage";
+import EventPage from "./pages/EventPage";
+import CreateEventPage from "./pages/CreateEventPage";
+import SpeakersPage from "./pages/SpeakersPage";
+import SpeakerPage from "./pages/SpeakerPage";
 import { Zap, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, Navigate, useParams, useLocation, useNavigate } from "react-router-dom";
@@ -85,11 +91,15 @@ function RouteTracker({ user }: { user: any }) {
   return null;
 }
 
-/** Redirects legacy /u/:username[/:projectSlug] URLs to the new /@:username[/:projectSlug] format. */
+/** /u/:username renders the portfolio inline (no subdomain redirect). */
 function LegacyPortfolioRedirect() {
   const { username, projectSlug } = useParams<{ username: string; projectSlug?: string }>();
-  const to = projectSlug ? `/@${username}/${projectSlug}` : `/@${username}`;
-  return <Navigate to={to} replace />;
+  if (projectSlug) {
+    // /u/:username/:projectSlug → /@:username/:projectSlug (ProjectPreview)
+    return <Navigate to={`/@${username}/${projectSlug}`} replace />;
+  }
+  // /u/:username → render Portfolio inline
+  return <Portfolio />;
 }
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
@@ -390,6 +400,11 @@ export default function App() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
+            <Route path="/events" element={withPageMaintenance("/events", <EventsPage />)} />
+            <Route path="/events/create" element={withPageMaintenance("/events", <CreateEventPage />)} />
+            <Route path="/events/:slug" element={withPageMaintenance("/events", <EventPage />)} />
+            <Route path="/speakers" element={withPageMaintenance("/speakers", <SpeakersPage />)} />
+            <Route path="/speakers/:slug" element={withPageMaintenance("/speakers", <SpeakerPage />)} />
             <Route path="/not-found" element={<NotFoundPage />} />
             <Route path="/@:username" element={withPageMaintenance("/u", <AtUsernameRoute />)} />
             <Route path="/@:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />

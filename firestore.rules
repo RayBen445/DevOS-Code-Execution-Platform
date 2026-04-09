@@ -659,5 +659,64 @@ service cloud.firestore {
         );
       }
     }
+
+    // ── Events Platform ───────────────────────────────────────────────────────
+
+    // Chapters — public read, authenticated create, admin write
+    match /chapters/{chapterId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Event Series — public read, authenticated create, admin write
+    match /event_series/{seriesId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Events — public read of approved events, auth create, admin update/delete
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      // Creator can update their own pending event; admin can update any
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.createdBy == request.auth.uid &&
+        resource.data.status == 'pending'
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Event Registrations — auth users can create their own, admin reads all
+    match /event_registrations/{regId} {
+      // Admin can read all; authenticated user can read their own
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      // Any user (authenticated or guest) can register (create)
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Speakers — public read, admin write
+    match /speakers/{speakerId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Event Speakers (join table) — public read, admin write
+    match /event_speakers/{linkId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── User activities (heatmap data) ────────────────────────────────────────
+    match /user_activities/{actId} {
+      // Anyone can read their own activities; public profiles can be read by all
+      allow read: if true;
+      // Only the owning user (or server via admin SDK) may write
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
   }
 }

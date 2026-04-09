@@ -14,6 +14,7 @@ import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import Navbar from "../components/Navbar";
 import FollowButton from "../components/FollowButton";
+import ActivityGraph from "../components/ActivityGraph";
 import { getFollowerCount, getFollowingCount } from "../lib/followService";
 import { subscribeFeed } from "../lib/feedService";
 
@@ -728,6 +729,13 @@ export default function Portfolio() {
           </div>
         )}
       </main>
+
+      {/* Activity Graph */}
+      {uid && (
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-10">
+          <ActivityGraph userId={uid} />
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="relative max-w-5xl mx-auto px-6 py-20 border-t border-white/5 text-center">

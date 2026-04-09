@@ -6,6 +6,19 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* ── Full-height baseline for the app shell ─────────────────────────────────── */
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ── Theme CSS variables (defaults = dark theme) ───────────────────────────── */
 :root {
   --primary-color: #3b82f6;

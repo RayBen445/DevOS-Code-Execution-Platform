@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { deductCredits, CREDIT_COSTS } from "../lib/creditsService";
 import { emitBotEventWithToast } from "../lib/botEngine";
 import { createDeployment } from "../lib/deploymentService";
+import { trackActivity } from "../lib/activityService";
 
 import { FileData } from "../types";
 
@@ -171,6 +172,8 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       setDeployedUrl(url);
       setStep("success");
       toast.success("Your project is live!");
+      // Track deployment activity for the heatmap
+      trackActivity(auth.currentUser.uid, "deploy", { projectId });
       emitBotEventWithToast({
         name: "deploy.triggered",
         payload: { projectId, projectName, deployUrl: url, userId: auth.currentUser.uid },

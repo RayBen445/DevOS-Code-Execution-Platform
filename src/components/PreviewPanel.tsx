@@ -236,7 +236,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
   };
 
   return (
-    <div className="w-96 border-r border-white/5 bg-[#111] flex flex-col h-full">
+    <div className="w-full bg-[#111] flex flex-col h-full overflow-hidden">
       <div className="p-4 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-blue-400" />

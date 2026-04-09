@@ -64,6 +64,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const terminalInputRef = useRef<HTMLInputElement>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [isSaved, setIsSaved] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -1546,7 +1547,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           onTouchEnd={handleTouchEnd}
         >
           {/* Left Pane: Explorer + Editor + Terminal */}
-          <div className="flex-1 flex flex-col border-r border-[#21262D] overflow-hidden">
+          <div className={cn(
+            "flex flex-col border-r border-[#21262D] overflow-hidden",
+            isPreviewFullscreen ? "hidden" : "flex-1"
+          )}>
             <div className="flex-1 flex overflow-hidden">
               {/* Explorer Panel — desktop only, hidden in focus mode */}
               {project?.systemType !== 'portfolio' && activePanel === "explorer" && !isFocusMode && (
@@ -1831,7 +1835,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
           {/* Right Pane: Live Preview — hidden on mobile, hidden in focus mode */}
           {project?.systemType !== 'portfolio' && !isFocusMode && (
-            <div className="w-1/2 bg-[#0D1117] hidden md:flex flex-col border-l border-[#21262D]">
+            <div className={cn(
+              "bg-[#0D1117] hidden md:flex flex-col border-l border-[#21262D] overflow-hidden",
+              isPreviewFullscreen ? "flex-1" : "w-1/2"
+            )}>
               <div className="h-10 border-b border-[#21262D] flex items-center justify-between px-3 bg-[#161B22] flex-shrink-0">
                 <div className="flex items-center gap-2 text-white/40 min-w-0">
                   <Globe className="w-3.5 h-3.5 flex-shrink-0 text-green-400/60" />
@@ -1857,9 +1864,18 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       <ExternalLink className="w-3 h-3" />
                     </button>
                   )}
+                  <button
+                    onClick={() => setIsPreviewFullscreen(v => !v)}
+                    title={isPreviewFullscreen ? "Restore split view" : "Fullscreen preview"}
+                    className="p-1.5 rounded-lg text-white/25 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+                  >
+                    {isPreviewFullscreen
+                      ? <Minimize2 className="w-3 h-3" />
+                      : <Maximize2 className="w-3 h-3" />}
+                  </button>
                 </div>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 overflow-hidden">
                 <PreviewPanel projectId={projectId} files={buildPreviewFiles ?? files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
               </div>
             </div>
