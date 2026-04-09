@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, db, storage } from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import {
   doc,
@@ -10,13 +10,13 @@ import {
   onSnapshot,
   deleteDoc,
 } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import {
   updatePassword,
   deleteUser,
   EmailAuthProvider,
   reauthenticateWithCredential,
 } from "firebase/auth";
+import { uploadImage, avatarPath } from "../lib/storageService";
 import {
   User,
   AtSign,
@@ -461,27 +461,18 @@ function ProfileTab() {
     setUploading(true);
     setUploadProgress(0);
     try {
-      const ext = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const storageRef = ref(storage, `avatars/${user.uid}/${fileName}`);
-      const task = uploadBytesResumable(storageRef, file);
-      task.on(
-        "state_changed",
-        (snap) => setUploadProgress((snap.bytesTransferred / snap.totalBytes) * 100),
-        (err) => { toast.error("Upload failed: " + err.message); setUploading(false); },
-        async () => {
-          const url = await getDownloadURL(task.snapshot.ref);
-          setAvatarUrl(url);
-          await Promise.all([
-            setDoc(doc(db, "users", user.uid), { uid: user.uid, email: user.email || "", avatarUrl: url, avatar: url, updatedAt: serverTimestamp() }, { merge: true }),
-            setDoc(doc(db, "user_settings", user.uid), { avatarUrl: url, avatar: url, updatedAt: serverTimestamp() }, { merge: true }),
-          ]);
-          toast.success("Avatar updated!");
-          setUploading(false);
-        }
-      );
+      const url = await uploadImage(file, avatarPath(user.uid, file), {
+        onProgress: setUploadProgress,
+      });
+      setAvatarUrl(url);
+      await Promise.all([
+        setDoc(doc(db, "users", user.uid), { uid: user.uid, email: user.email || "", avatarUrl: url, avatar: url, updatedAt: serverTimestamp() }, { merge: true }),
+        setDoc(doc(db, "user_settings", user.uid), { avatarUrl: url, avatar: url, updatedAt: serverTimestamp() }, { merge: true }),
+      ]);
+      toast.success("Avatar updated!");
     } catch (err: any) {
-      toast.error("Failed to start upload.");
+      toast.error("Upload failed: " + (err?.message ?? "Unknown error"));
+    } finally {
       setUploading(false);
     }
   };

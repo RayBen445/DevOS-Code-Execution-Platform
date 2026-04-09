@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar, Check } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -14,6 +14,15 @@ import { resolveAvatar } from "../lib/avatars";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { subscribeUserOrgs } from "../lib/orgService";
+import {
+  registerUser,
+  upsertSavedAccount,
+  getSavedAccounts,
+  switchToAccount,
+  logoutAccount,
+  type SavedAccount,
+} from "../lib/sessionManager";
+import { useActiveContext } from "../hooks/useActiveContext";
 
 interface NavbarProps {
   onSignIn?: () => void;
@@ -30,14 +39,18 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const [credits, setCredits] = useState<Credits | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [savedAccounts, setSavedAccounts] = useState<Array<{ uid: string; username: string; displayName: string; avatarUrl: string; email: string }>>([]);
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
   const [isSwitchAccountOpen, setIsSwitchAccountOpen] = useState(false);
+  const [switchingUid, setSwitchingUid] = useState<string | null>(null);
   const [userOrgs, setUserOrgs] = useState<Organization[]>([]);
   const [isOrgsOpen, setIsOrgsOpen] = useState(false);
   const [isCreateOrgOpen, setIsCreateOrgOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const creditsPanelRef = useRef<HTMLDivElement>(null);
   const orgsDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Active org/user context
+  const { context, setUserContext, setOrgContext } = useActiveContext();
 
   useEffect(() => {
     if (!user) {
@@ -69,31 +82,28 @@ export default function Navbar({ onSignIn }: NavbarProps) {
     };
   }, [user]);
 
-  // Load saved accounts from localStorage
+  // Register the User object in the in-memory cache whenever auth changes
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("devos_saved_accounts");
-      setSavedAccounts(raw ? JSON.parse(raw) : []);
-    } catch {
-      setSavedAccounts([]);
-    }
+    if (user) registerUser(user);
+  }, [user]);
+
+  // Load saved accounts from localStorage via sessionManager
+  useEffect(() => {
+    setSavedAccounts(getSavedAccounts());
   }, [user]);
 
   // Persist current user to saved accounts list whenever settings are loaded
   useEffect(() => {
     if (!user || !settings?.username) return;
-    const account = {
+    const account: SavedAccount = {
       uid: user.uid,
       username: settings.username,
       displayName: settings.displayName || user.displayName || settings.username,
       avatarUrl: resolveAvatar(settings.avatarUrl || user.photoURL),
       email: user.email || "",
     };
-    const raw = localStorage.getItem("devos_saved_accounts");
-    const existing: typeof savedAccounts = (() => { try { return raw ? JSON.parse(raw) : []; } catch { return []; } })();
-    const updated = [account, ...existing.filter((a) => a.uid !== user.uid)];
-    localStorage.setItem("devos_saved_accounts", JSON.stringify(updated));
-    setSavedAccounts(updated);
+    upsertSavedAccount(account);
+    setSavedAccounts(getSavedAccounts());
   }, [user, settings]);
 
   useEffect(() => {
@@ -389,9 +399,19 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   <img src={avatarUrl} alt={displayName} className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <UserIcon className="w-4 h-4 text-white/60" />
-                )}                <div className="flex flex-col leading-none text-left">
-                  <span className="text-sm font-medium text-white/80">{displayName}</span>
-                  {username && <span className="text-[10px] text-white/40">@{username}</span>}
+                )}
+                <div className="flex flex-col leading-none text-left">
+                  {context?.type === "org" ? (
+                    <>
+                      <span className="text-sm font-medium text-blue-300">{context.name}</span>
+                      <span className="text-[10px] text-blue-400/50">org context</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm font-medium text-white/80">{displayName}</span>
+                      {username && <span className="text-[10px] text-white/40">@{username}</span>}
+                    </>
+                  )}
                 </div>
                 <ChevronDown className={cn("w-3.5 h-3.5 text-white/30 transition-transform", isProfileOpen && "rotate-180")} />
               </button>
@@ -449,13 +469,25 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                             {savedAccounts.filter((a) => a.uid !== user?.uid).map((acc) => (
                               <button
                                 key={acc.uid}
+                                disabled={switchingUid === acc.uid}
                                 onClick={async () => {
-                                  setIsProfileOpen(false);
-                                  await logout();
-                                  navigate("/");
+                                  setSwitchingUid(acc.uid);
+                                  const result = await switchToAccount(acc.uid);
+                                  setSwitchingUid(null);
+                                  if (result.success) {
+                                    setIsProfileOpen(false);
+                                    navigate("/");
+                                    return;
+                                  }
+                                  // result.success === false here
+                                  const fail = result as { success: false; reason: string };
+                                  if (fail.reason === "not_in_cache") {
+                                    setIsProfileOpen(false);
+                                    onSignIn?.();
+                                  }
                                 }}
-                                title={`Sign out and sign in as ${acc.displayName}`}
-                                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors text-left"
+                                title={`Switch to ${acc.displayName}`}
+                                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors text-left disabled:opacity-50"
                               >
                                 <img
                                   src={acc.avatarUrl}
@@ -465,8 +497,11 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                                 />
                                 <div className="min-w-0 flex-1">
                                   <p className="text-xs font-semibold text-white/80 truncate">{acc.displayName}</p>
-                                  <p className="text-[10px] text-white/40 truncate">@{acc.username} · sign in</p>
+                                  <p className="text-[10px] text-white/40 truncate">@{acc.username}</p>
                                 </div>
+                                {switchingUid === acc.uid
+                                  ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-400 flex-shrink-0" />
+                                  : <RefreshCw className="w-3.5 h-3.5 text-white/20 flex-shrink-0" />}
                               </button>
                             ))}
                             <button
@@ -481,28 +516,51 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                       </>
                     )}
                     <div className="border-t border-white/5 my-1" />
-                    {/* My Organizations */}
+                    {/* My Organizations — with context switch */}
                     {userOrgs.length > 0 && (
                       <>
                         <div className="px-4 py-1.5">
                           <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">My Organizations</p>
                         </div>
-                        {userOrgs.slice(0, 4).map((org) => (
-                          <Link
-                            key={org.id}
-                            to={`/org/${org.slug}`}
-                            onClick={() => setIsProfileOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
-                          >
-                            <Building2 className="w-4 h-4 text-blue-400/70" />
-                            <span className="truncate">{org.name}</span>
-                          </Link>
-                        ))}
+                        {userOrgs.slice(0, 4).map((org) => {
+                          const isActive = context?.type === "org" && context.id === org.id;
+                          return (
+                            <div key={org.id} className="flex items-center gap-1 px-1">
+                              <Link
+                                to={`/org/${org.slug}`}
+                                onClick={() => setIsProfileOpen(false)}
+                                className="flex-1 flex items-center gap-2.5 px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors rounded-lg"
+                              >
+                                <Building2 className="w-4 h-4 text-blue-400/70 flex-shrink-0" />
+                                <span className="truncate">{org.name}</span>
+                              </Link>
+                              <button
+                                onClick={() => {
+                                  if (isActive) {
+                                    setUserContext(user!.uid);
+                                  } else {
+                                    setOrgContext(org.id, org.slug, org.name);
+                                  }
+                                  setIsProfileOpen(false);
+                                }}
+                                title={isActive ? "Switch back to personal context" : `Switch to ${org.name} context`}
+                                className={cn(
+                                  "p-1.5 rounded-lg transition-colors flex-shrink-0",
+                                  isActive
+                                    ? "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30"
+                                    : "text-white/20 hover:text-white/50 hover:bg-white/5"
+                                )}
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })}
                         <div className="border-t border-white/5 my-1" />
                       </>
                     )}
                     <button
-                      onClick={() => { setIsProfileOpen(false); logout(); }}
+                      onClick={() => { setIsProfileOpen(false); if (user) logoutAccount(user.uid); else logout(); }}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors text-left"
                     >
                       <LogOut className="w-4 h-4" />
@@ -688,17 +746,30 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   <>
                     <div className="border-t border-white/5 my-2" />
                     <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">My Organizations</p>
-                    {userOrgs.slice(0, 4).map((org) => (
-                      <Link
-                        key={org.id}
-                        to={`/org/${org.slug}`}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm"
-                      >
-                        <Building2 className="w-4 h-4 text-blue-400/70" />
-                        <span className="truncate">{org.name}</span>
-                      </Link>
-                    ))}
+                    {userOrgs.slice(0, 4).map((org) => {
+                      const isActive = context?.type === "org" && context.id === org.id;
+                      return (
+                        <div key={org.id} className="flex items-center gap-1 px-1">
+                          <Link
+                            to={`/org/${org.slug}`}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="flex-1 flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm"
+                          >
+                            <Building2 className="w-4 h-4 text-blue-400/70" />
+                            <span className="truncate">{org.name}</span>
+                          </Link>
+                          <button
+                            onClick={() => {
+                              if (isActive) setUserContext(user!.uid); else setOrgContext(org.id, org.slug, org.name);
+                              setIsMobileMenuOpen(false);
+                            }}
+                            className={cn("p-2 rounded-xl transition-colors", isActive ? "text-blue-400 bg-blue-600/15" : "text-white/20 hover:text-white/50")}
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </>
                 )}
 
@@ -735,11 +806,21 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     {savedAccounts.filter((a) => a.uid !== user?.uid).map((acc) => (
                       <button
                         key={acc.uid}
-                        onClick={async () => { setIsMobileMenuOpen(false); await logout(); navigate("/"); }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"
+                        disabled={switchingUid === acc.uid}
+                        onClick={async () => {
+                          setSwitchingUid(acc.uid);
+                          const result = await switchToAccount(acc.uid);
+                          setSwitchingUid(null);
+                          setIsMobileMenuOpen(false);
+                          if (result.success) { navigate("/"); return; }
+                          const fail = result as { success: false; reason: string };
+                          if (fail.reason === "not_in_cache") { onSignIn?.(); }
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left disabled:opacity-50"
                       >
                         <img src={acc.avatarUrl} alt={acc.displayName} className="w-5 h-5 rounded-full object-cover" referrerPolicy="no-referrer" />
-                        <span>Switch to @{acc.username}</span>
+                        <span className="flex-1">Switch to @{acc.username}</span>
+                        {switchingUid === acc.uid && <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-400" />}
                       </button>
                     ))}
                   </>
@@ -755,7 +836,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
 
               <div className="px-4 pb-6">
                 <button
-                  onClick={() => { setIsMobileMenuOpen(false); logout(); }}
+                  onClick={() => { setIsMobileMenuOpen(false); if (user) logoutAccount(user.uid); else logout(); }}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-500/10 text-red-400/70 hover:text-red-400 transition-colors text-sm text-left"
                 >
                   <LogOut className="w-4 h-4" />
