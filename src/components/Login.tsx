@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signInWithGithub, signUpWithEmail, signInWithEmail } from "../lib/firebase";
-import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
+import {
+  signInWithGoogle,
+  signInWithGithub,
+  signUpWithEmail,
+  signInWithEmail,
+  sendVerificationEmail,
+  sendPasswordReset,
+  getMfaResolver,
+  resolveTotpSignIn,
+  type MultiFactorResolver,
+} from "../lib/firebase";
+import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign, Eye, EyeOff, CheckCircle2, XCircle, ShieldCheck, KeyRound } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { registerUserProfile, checkUsernameAvailable, skipNextInitialize } from "../lib/userService";
 import { getAuthErrorMessage } from "../lib/errorMessages";
