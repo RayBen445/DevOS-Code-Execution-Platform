@@ -7,6 +7,7 @@ import crypto from "crypto";
 import fs from "fs";
 import os from "os";
 import { Resend } from "resend";
+import rateLimit from "express-rate-limit";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1414,10 +1415,16 @@ app.post("/api/email-worker", async (req, res) => {
 // Returns: { text: string }
 // ---------------------------------------------------------------------------
 
-/** Simple per-user AI rate-limiter (max 20 requests per minute). */
-const aiRateLimit = new Map<string, { count: number; resetAt: number }>();
+/** Rate-limiter: max 20 AI requests per user per 60 seconds (keyed by IP). */
+const aiRateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests — please wait before sending another message." },
+});
 
-app.post("/api/devos-ai", async (req, res) => {
+app.post("/api/devos-ai", aiRateLimiter, async (req, res) => {
   // ── 1. Authenticate the caller via Firebase ID token ──────────────────────
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer "))
@@ -1432,18 +1439,7 @@ app.post("/api/devos-ai", async (req, res) => {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 
-  // ── 2. Per-user rate-limit: 20 AI calls per 60 seconds ────────────────────
-  const now = Date.now();
-  const aiEntry = aiRateLimit.get(uid);
-  if (aiEntry && now < aiEntry.resetAt) {
-    if (aiEntry.count >= 20)
-      return res.status(429).json({ error: "Too many requests — please wait before sending another message." });
-    aiEntry.count += 1;
-  } else {
-    aiRateLimit.set(uid, { count: 1, resetAt: now + 60_000 });
-  }
-
-  // ── 3. Validate the request body ──────────────────────────────────────────
+  // ── 2. Validate the request body ──────────────────────────────────────────
   const { prompt, maxTokens } = req.body as { prompt?: unknown; maxTokens?: unknown };
   if (typeof prompt !== "string" || prompt.trim().length === 0)
     return res.status(400).json({ error: "A non-empty 'prompt' string is required." });
@@ -1455,12 +1451,12 @@ app.post("/api/devos-ai", async (req, res) => {
       ? maxTokens
       : 512;
 
-  // ── 4. Ensure the API key is configured ───────────────────────────────────
+  // ── 3. Ensure the API key is configured ───────────────────────────────────
   const hfApiKey = process.env.HUGGINGFACE_API_KEY;
   if (!hfApiKey)
     return res.status(500).json({ error: "AI service is not configured. Please contact support." });
 
-  // ── 5. Call the Hugging Face Serverless Inference API ─────────────────────
+  // ── 4. Call the Hugging Face Serverless Inference API ─────────────────────
   try {
     const { HfInference } = await import("@huggingface/inference");
     const hf = new HfInference(hfApiKey);
