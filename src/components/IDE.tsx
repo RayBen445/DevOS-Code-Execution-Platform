@@ -262,7 +262,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     const hasIndexHtml = files.some(f => f.name.toLowerCase() === "index.html");
     if (!hasIndexHtml && !det.hasPackageJson) {
       addLog("error", "✖ Deployment failed");
-      addLog("error", "Reason: Missing index.html or package.json");
+      addLog("error", "Reason: Missing both index.html and package.json — cannot determine deploy strategy");
       return;
     }
 

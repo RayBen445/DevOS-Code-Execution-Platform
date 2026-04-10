@@ -6,7 +6,7 @@ import admin from "firebase-admin";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -107,6 +107,21 @@ const TERMINAL_RATE_WINDOW_MS = 60_000;
 const runProjectRateLimit = new Map<string, { count: number; resetAt: number }>();
 const RUN_PROJECT_RATE_MAX = 5;
 const RUN_PROJECT_RATE_WINDOW_MS = 60_000;
+
+const buildJobRateLimit = new Map<string, { count: number; resetAt: number }>();
+const BUILD_JOB_RATE_MAX = 10;
+const BUILD_JOB_RATE_WINDOW_MS = 60_000;
+
+const validateProjectRateLimit = new Map<string, { count: number; resetAt: number }>();
+const VALIDATE_RATE_MAX = 20;
+const VALIDATE_RATE_WINDOW_MS = 60_000;
+
+// Allowed output directories — used to prevent path traversal via user-supplied outputDir
+const ALLOWED_OUTPUT_DIRS = new Set(["dist", "build", ".next", "out", "public"]);
+// Max output file count and size (named constants for clarity)
+const MAX_OUTPUT_FILES = 300;
+const MAX_OUTPUT_FILE_SIZE = 1_048_576; // 1 MB
+const MAX_STORED_OUTPUT_FILES = 50;
 
 // Per-user persistent workspace directories for the terminal (lives for the process lifetime).
 // This lets successive commands (e.g. `npm install` then `node index.js`) share state.
@@ -745,35 +760,29 @@ app.post("/api/admin/send-email", async (req, res) => {
       .status(400)
       .json({ error: `Invalid email address: ${invalid}` });
 
-  // 6. Send via Gmail SMTP
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
-  if (!gmailPass)
+  // 6. Send via Resend
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey)
     return res
       .status(500)
-      .json({ error: "GMAIL_APP_PASSWORD is not configured on the server." });
+      .json({ error: "RESEND_API_KEY is not configured on the server." });
 
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    auth: { user: ADMIN_EMAIL_SENDER, pass: gmailPass },
-  });
+  const resend = new Resend(resendApiKey);
 
   try {
     // `message` is admin-supplied HTML for the email body.
     // This endpoint is restricted to authenticated admins only; the HTML is
     // delivered to an email client, not rendered in a browser, so it is not
     // an XSS surface for other users of the platform.
-    const info = await transporter.sendMail({
-      from: `"DevOS" <${ADMIN_EMAIL_SENDER}>`,
-      to: toAddresses.map((a) => a.trim()).join(", "),
+    const { data, error: resendError } = await resend.emails.send({
+      from: "DevOS <noreply@devos.name.ng>",
+      to: toAddresses.map((a) => a.trim()),
       subject,
       html: message,
     });
-    console.log(
-      `Admin email sent: ${info.messageId} to ${toAddresses.length} recipient(s).`
-    );
-    res.json({ success: true, messageId: info.messageId });
+    if (resendError) throw new Error(resendError.message);
+    console.log(`Admin email sent via Resend: ${data?.id} to ${toAddresses.length} recipient(s).`);
+    res.json({ success: true, messageId: data?.id });
   } catch (error: any) {
     console.error("Admin email send error:", error);
     res.status(500).json({ error: error.message || "Failed to send email" });
@@ -952,6 +961,17 @@ app.post("/api/build-job", async (req, res) => {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 
+  // Per-user rate limit for build jobs
+  const nowBj = Date.now();
+  const bjEntry = buildJobRateLimit.get(uid);
+  if (bjEntry && nowBj < bjEntry.resetAt) {
+    if (bjEntry.count >= BUILD_JOB_RATE_MAX)
+      return res.status(429).json({ error: "Rate limit exceeded. Try again in a moment." });
+    bjEntry.count++;
+  } else {
+    buildJobRateLimit.set(uid, { count: 1, resetAt: nowBj + BUILD_JOB_RATE_WINDOW_MS });
+  }
+
   if (activeBuildCount >= MAX_CONCURRENT_BUILDS) {
     return res.status(429).json({ error: "Build queue full — job remains queued" });
   }
@@ -1027,33 +1047,37 @@ app.post("/api/build-job", async (req, res) => {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
     const scripts: Record<string, string> = pkg?.scripts ?? {};
 
-    // Determine build command
-    const chosenBuildCmd = buildCommand ?? (scripts.build ? "npm run build" : null);
-    if (!chosenBuildCmd) throw new Error("No build command found");
+    // Determine build command — derive from package.json scripts (do NOT execute arbitrary user input)
+    // The client-provided buildCommand is only used as a hint to pick from allowed scripts.
+    const hasBuildScript = !!scripts.build;
+    if (!hasBuildScript) throw new Error("No build script found in package.json");
+    // Always use the fixed npm invocation to prevent command injection
+    const buildArgs = ["run", "build"];
 
     emitLog("info", "Installing dependencies…");
     const installResult = await runCommand("npm", ["install", "--ignore-scripts"], tmpDir, 60_000);
     if (installResult.stderr) emitLog("warning", installResult.stderr.slice(0, 500));
     emitLog("success", "Dependencies installed");
 
-    emitLog("info", `Running: ${chosenBuildCmd}`);
-    const [cmd, ...args] = chosenBuildCmd.split(" ");
-    const buildResult = await runCommand(cmd, args, tmpDir, 60_000);
+    emitLog("info", "Running: npm run build");
+    const buildResult = await runCommand("npm", buildArgs, tmpDir, 60_000);
     if (buildResult.stdout) buildResult.stdout.split("\n").forEach((l) => emitLog("info", l));
     if (buildResult.stderr) buildResult.stderr.split("\n").forEach((l) => emitLog("warning", l));
 
-    // Detect output dir
-    const candidates = [requestedOutputDir, "dist", "build", ".next", "out"].filter(Boolean) as string[];
-    const outputDirName = candidates.find((d) => fs.existsSync(path.join(tmpDir, d)));
+    // Detect output dir — only check against the allowed whitelist to prevent path traversal
+    const safeRequestedDir =
+      requestedOutputDir && ALLOWED_OUTPUT_DIRS.has(requestedOutputDir) ? requestedOutputDir : null;
+    const candidates = [safeRequestedDir, "dist", "build", ".next", "out"].filter(Boolean) as string[];
+    const outputDirName = candidates.find((d) => ALLOWED_OUTPUT_DIRS.has(d) && fs.existsSync(path.join(tmpDir, d)));
     if (!outputDirName) throw new Error("Build output directory not found");
 
     emitLog("success", `Build complete — output: ${outputDirName}`);
 
-    // Store output files back in Firestore under the job (capped at 300 files / 800 KB)
+    // Store output files back in Firestore under the job (capped to MAX_OUTPUT_FILES / MAX_OUTPUT_FILE_SIZE)
     const outputDir = path.join(tmpDir, outputDirName);
     const outputFiles = walkFiles(outputDir)
-      .filter((f) => fs.statSync(f).size <= 1_048_576)
-      .slice(0, 300)
+      .filter((f) => fs.statSync(f).size <= MAX_OUTPUT_FILE_SIZE)
+      .slice(0, MAX_OUTPUT_FILES)
       .map((fullPath) => ({
         path: path.relative(outputDir, fullPath).replace(/\\/g, "/"),
         content: fs.readFileSync(fullPath, "utf-8"),
@@ -1070,7 +1094,7 @@ app.post("/api/build-job", async (req, res) => {
       status: "success",
       previewUrl,
       logs,
-      outputFiles: outputFiles.slice(0, 50), // keep first 50 for quick retrieval
+      outputFiles: outputFiles.slice(0, MAX_STORED_OUTPUT_FILES),
       finishedAt: admin.firestore.FieldValue.serverTimestamp(),
       error: null,
     });

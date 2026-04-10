@@ -645,7 +645,17 @@ export type AuditAction =
   // Rollback & branch
   | "rollback_triggered"
   | "branch_deployed"
-  | "deployment_promoted";
+  | "deployment_promoted"
+  // Validation
+  | "type_check_started"
+  | "type_check_passed"
+  | "type_check_failed"
+  | "build_check_failed"
+  // Email
+  | "email_queued"
+  | "email_sent"
+  | "email_failed"
+  | "email_retried";
 
 export interface AuditLog {
   id: string;
@@ -743,4 +753,69 @@ export interface BuildJob {
   startedAt?: any | null;
   finishedAt?: any | null;
   error?: string | null;
+}
+
+// ── Project Validation ───────────────────────────────────────────────────────
+
+export interface ValidationError {
+  file: string;
+  line: number;
+  col: number;
+  message: string;
+  severity: "error" | "warning";
+}
+
+export interface ValidationResult {
+  status: "success" | "error" | "warning" | "skipped";
+  errors: ValidationError[];
+  /** Full raw output for display */
+  rawOutput?: string;
+  /** Hash of files at the time of last check — for cache skipping */
+  cachedHash?: string;
+  durationMs?: number;
+}
+
+// ── Email System ─────────────────────────────────────────────────────────────
+
+export type EmailJobStatus = "queued" | "processing" | "sent" | "failed";
+
+export interface EmailJob {
+  id: string;
+  to: string;
+  subject?: string;
+  templateKey: string;
+  payload: Record<string, any>;
+  status: EmailJobStatus;
+  attempts: number;
+  maxAttempts: number;
+  lastError?: string | null;
+  scheduledAt: any;
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface EmailTemplate {
+  id: string;
+  key: string;           // unique slug, e.g. "welcome", "forgot_password"
+  name: string;
+  subject: string;
+  html: string;          // raw HTML with {{variable}} placeholders
+  version: number;
+  isActive: boolean;
+  createdAt: any;
+  updatedAt: any;
+}
+
+// ── Notification Settings ────────────────────────────────────────────────────
+
+export interface UserNotificationSettings {
+  userId: string;
+  emailEnabled: boolean;
+  types: {
+    deploy?: boolean;
+    event?: boolean;
+    comment?: boolean;
+    bot?: boolean;
+    system?: boolean;
+  };
 }
