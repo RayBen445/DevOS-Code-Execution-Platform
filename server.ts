@@ -1223,6 +1223,187 @@ app.post("/api/run", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Validate Project API (TypeScript + Vite pre-flight checks)
+// ---------------------------------------------------------------------------
+app.post("/api/validate-project", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer "))
+    return res.status(401).json({ error: "Unauthorized" });
+  const idToken = authHeader.split("Bearer ")[1];
+
+  try {
+    await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const { files, checks } = req.body as {
+    projectId?: string;
+    files?: Array<{ name: string; content: string }>;
+    checks?: string[];
+  };
+
+  if (!Array.isArray(files) || files.length === 0)
+    return res.status(400).json({ error: "No files provided" });
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "devos-validate-"));
+  const startedAt = Date.now();
+
+  try {
+    for (const file of files) {
+      const rel = sanitizeRelativePath(file.name);
+      const dest = path.join(tmpDir, rel);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, String(file.content ?? ""), "utf-8");
+    }
+
+    const errors: Array<{ file: string; line: number; col: number; message: string; severity: string }> = [];
+    let rawOutput = "";
+    let status = "success";
+
+    const runCheck = (cmd: string, args: string[]): Promise<{ stdout: string; stderr: string }> =>
+      new Promise((resolve) => {
+        const { execFile } = require("child_process");
+        execFile(cmd, args, { timeout: 30_000, cwd: tmpDir }, (_err: any, stdout: string, stderr: string) => {
+          resolve({ stdout: stdout || "", stderr: stderr || "" });
+        });
+      });
+
+    if (checks?.includes("typescript") && fs.existsSync(path.join(tmpDir, "tsconfig.json"))) {
+      const result = await runCheck("npx", ["--yes", "typescript", "--noEmit"]).catch(() => ({ stdout: "", stderr: "" }));
+      const out = result.stdout + result.stderr;
+      rawOutput += out;
+      for (const line of out.split("\n")) {
+        const m = line.match(/^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+TS\d+:\s+(.+)$/);
+        if (m) {
+          errors.push({ file: m[1].replace(/\\/g, "/"), line: parseInt(m[2]), col: parseInt(m[3]), severity: m[4], message: m[5].trim() });
+        }
+      }
+      if (errors.some((e) => e.severity === "error")) status = "error";
+    }
+
+    if (checks?.includes("vite")) {
+      const pkgPath = path.join(tmpDir, "package.json");
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+        if (pkg?.scripts?.build) {
+          const result = await runCheck("npm", ["run", "build", "--", "--logLevel", "error"]).catch(() => ({ stdout: "", stderr: "" }));
+          const out = result.stdout + result.stderr;
+          rawOutput += "\n" + out;
+          for (const line of out.split("\n")) {
+            const m = line.match(/^([^:]+\.(?:ts|tsx|js|jsx|css|vue)):(\d+):(\d+):/);
+            if (m) {
+              const msg = line.slice(m[0].length).replace(/^\s*error:\s*/i, "").trim();
+              errors.push({ file: m[1].replace(/\\/g, "/"), line: parseInt(m[2]), col: parseInt(m[3]), severity: "error", message: msg || "Build error" });
+            }
+          }
+          if (errors.some((e) => e.severity === "error")) status = "error";
+        }
+      }
+    }
+
+    return res.json({ status, errors, rawOutput: rawOutput.slice(0, 10_000), durationMs: Date.now() - startedAt });
+  } catch (error: any) {
+    return res.status(500).json({ status: "error", errors: [], error: error.message });
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true }); } catch { /* ignore */ }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Email Worker API — processes queued email_jobs from Firestore
+// ---------------------------------------------------------------------------
+app.post("/api/email-worker", async (req, res) => {
+  const workerSecret = process.env.EMAIL_WORKER_SECRET;
+  if (workerSecret) {
+    const provided = req.headers["x-worker-secret"];
+    if (provided !== workerSecret)
+      return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const MAX_JOBS = 10;
+  const RETRY_DELAYS_MS = [60_000, 5 * 60_000, 15 * 60_000];
+
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey)
+    return res.status(500).json({ error: "RESEND_API_KEY not configured" });
+
+  const { Resend: ResendClient } = await import("resend");
+  const resend = new ResendClient(resendApiKey);
+
+  const { welcomeEmail } = await import("./src/emails/welcomeEmail.js").catch(() => ({ welcomeEmail: null }));
+  const { deploySuccessEmail, deployFailureEmail } = await import("./src/emails/deployEmail.js").catch(() => ({ deploySuccessEmail: null, deployFailureEmail: null }));
+
+  const templateMap: Record<string, ((p: any) => { subject: string; html: string }) | null> = {
+    welcome: welcomeEmail,
+    deploy_success: deploySuccessEmail,
+    deploy_failure: deployFailureEmail,
+  };
+
+  const now = admin.firestore.Timestamp.now();
+  const snap = await db.collection("email_jobs")
+    .where("status", "==", "queued")
+    .where("scheduledAt", "<=", now)
+    .orderBy("scheduledAt", "asc")
+    .limit(MAX_JOBS)
+    .get();
+
+  const results: Array<{ id: string; status: string; error?: string }> = [];
+
+  for (const jobDoc of snap.docs) {
+    const job = jobDoc.data();
+    const templateFn = templateMap[job.templateKey];
+
+    let subject = job.subject ?? "DevOS notification";
+    let html = job.html ?? "";
+
+    if (templateFn) {
+      try {
+        const rendered = templateFn(job.payload ?? {});
+        subject = rendered.subject;
+        html = rendered.html;
+      } catch (renderErr: any) {
+        await jobDoc.ref.update({ status: "failed", lastError: `Template render failed: ${renderErr.message}`, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        results.push({ id: jobDoc.id, status: "failed", error: renderErr.message });
+        continue;
+      }
+    }
+
+    if (!html) {
+      await jobDoc.ref.update({ status: "failed", lastError: "No HTML content", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      results.push({ id: jobDoc.id, status: "failed", error: "No HTML content" });
+      continue;
+    }
+
+    try {
+      const { error: sendError } = await resend.emails.send({
+        from: "DevOS <noreply@devos.name.ng>",
+        to: job.to,
+        subject,
+        html,
+      });
+      if (sendError) throw new Error(sendError.message);
+
+      await jobDoc.ref.update({ status: "sent", attempts: (job.attempts ?? 0) + 1, lastError: null, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      results.push({ id: jobDoc.id, status: "sent" });
+    } catch (sendErr: any) {
+      const attempts = (job.attempts ?? 0) + 1;
+      if (attempts >= (job.maxAttempts ?? 3)) {
+        await jobDoc.ref.update({ status: "failed", attempts, lastError: sendErr.message, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        results.push({ id: jobDoc.id, status: "failed", error: sendErr.message });
+      } else {
+        const delayMs = RETRY_DELAYS_MS[attempts - 1] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+        const retryAt = admin.firestore.Timestamp.fromMillis(Date.now() + delayMs);
+        await jobDoc.ref.update({ attempts, lastError: sendErr.message, scheduledAt: retryAt, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        results.push({ id: jobDoc.id, status: "retrying", error: sendErr.message });
+      }
+    }
+  }
+
+  return res.json({ processed: results.length, results });
+});
+
+// ---------------------------------------------------------------------------
 // In development, serve the Vite dev server; in production Vercel routes
 // static assets from the build output so this block is skipped.
 // ---------------------------------------------------------------------------

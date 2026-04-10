@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, db } from "../lib/firebase";
+import { auth, db, sendVerificationEmail } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import {
   doc,
@@ -28,6 +28,7 @@ import {
   Settings,
   Bell,
   ShieldAlert,
+  ShieldCheck,
   Loader2,
   Save,
   Upload,
@@ -69,6 +70,7 @@ import { UsernameChangeRequest } from "../types";
 import UIThemeSwitcher from "../components/UIThemeSwitcher";
 import { ReferralStats } from "../types";
 import CustomSelect from "../components/CustomSelect";
+import TwoFactorSetup from "../components/TwoFactorSetup";
 
 type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
 
@@ -821,6 +823,31 @@ function SecurityTab() {
         <p className="text-white/40 text-sm mt-1">Keep your account safe.</p>
       </div>
 
+      {/* Email verification status */}
+      <div className="p-5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Mail className="w-4 h-4 text-white/40" />
+          <span className="text-sm text-white/80">Email address</span>
+          <span className="text-sm text-white/40 font-mono">{user?.email}</span>
+        </div>
+        {user?.emailVerified ? (
+          <span className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-500/10 px-3 py-1 rounded-full">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Verified
+          </span>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-full">⚠ Not verified</span>
+            <button
+              onClick={() => user && sendVerificationEmail(user).then(() => toast.success("Verification email sent.")).catch((e: any) => toast.error(e?.message ?? "Failed to send email."))}
+              className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Resend verification email
+            </button>
+          </div>
+        )}
+      </div>
+
       {!isEmailProvider ? (
         <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
           <p className="text-white/60 text-sm">
@@ -843,6 +870,12 @@ function SecurityTab() {
           </button>
         </form>
       )}
+
+      {/* Two-Factor Authentication */}
+      <div className="space-y-3">
+        <h2 className="text-base font-bold text-white">Two-Factor Authentication</h2>
+        <TwoFactorSetup />
+      </div>
     </div>
   );
 }

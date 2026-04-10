@@ -26,6 +26,9 @@ import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { emitBotEvent } from "../lib/botEngine";
+import ErrorPanel from "./ErrorPanel";
+import { validateProject } from "../lib/validationService";
+import { ValidationResult } from "../types";
 
 interface IDEProps {
   projectId: string;
@@ -87,6 +90,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const terminalDragStartH = useRef<number>(0);
   const [cursorLine, setCursorLine] = useState(1);
   const [cursorCol, setCursorCol] = useState(1);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [validationHash, setValidationHash] = useState<string | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
 
   // Mobile top-nav state (replaces slide-in drawer)
   type MobileTabId = "editor" | "files" | "preview" | "git" | "terminal" | "settings" | "collaborators";

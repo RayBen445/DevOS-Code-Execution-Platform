@@ -219,7 +219,7 @@ service cloud.firestore {
 
     match /projects/{projectId} {
       allow read: if canReadProject(projectId, resource.data);
-      allow create: if isAuthenticated() && isValidProject(request.resource.data) && (
+      allow create: if isAuthenticated() && request.auth.token.email_verified == true && isValidProject(request.resource.data) && (
         request.resource.data.ownerId == request.auth.uid ||
         isAdmin() ||
         // Org member creating a project under their organization
@@ -591,7 +591,7 @@ service cloud.firestore {
       match /members/{userId} {
         allow read: if isAuthenticated();
         // A user can join (create their own member doc) or an org/platform admin can add
-        allow create: if isAuthenticated() && (
+        allow create: if isAuthenticated() && request.auth.token.email_verified == true && (
           request.auth.uid == userId ||
           isAdmin()
         );
