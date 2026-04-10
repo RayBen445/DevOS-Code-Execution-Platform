@@ -1404,6 +1404,115 @@ app.post("/api/email-worker", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// DevOS AI — secure middleware between the frontend IDE chat and the
+// Hugging Face Serverless Inference API.
+//
+// POST /api/devos-ai
+// Authorization: Bearer <Firebase ID token>
+// Body: { prompt: string, maxTokens?: number }
+//
+// Returns: { text: string }
+// ---------------------------------------------------------------------------
+
+/** Simple per-user AI rate-limiter (max 20 requests per minute). */
+const aiRateLimit = new Map<string, { count: number; resetAt: number }>();
+
+app.post("/api/devos-ai", async (req, res) => {
+  // ── 1. Authenticate the caller via Firebase ID token ──────────────────────
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer "))
+    return res.status(401).json({ error: "Unauthorized" });
+
+  const idToken = authHeader.slice(7);
+  let uid: string;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid = decoded.uid;
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  // ── 2. Per-user rate-limit: 20 AI calls per 60 seconds ────────────────────
+  const now = Date.now();
+  const aiEntry = aiRateLimit.get(uid);
+  if (aiEntry && now < aiEntry.resetAt) {
+    if (aiEntry.count >= 20)
+      return res.status(429).json({ error: "Too many requests — please wait before sending another message." });
+    aiEntry.count += 1;
+  } else {
+    aiRateLimit.set(uid, { count: 1, resetAt: now + 60_000 });
+  }
+
+  // ── 3. Validate the request body ──────────────────────────────────────────
+  const { prompt, maxTokens } = req.body as { prompt?: unknown; maxTokens?: unknown };
+  if (typeof prompt !== "string" || prompt.trim().length === 0)
+    return res.status(400).json({ error: "A non-empty 'prompt' string is required." });
+  if (prompt.length > 8_000)
+    return res.status(400).json({ error: "Prompt exceeds the maximum allowed length of 8 000 characters." });
+
+  const resolvedMaxTokens =
+    typeof maxTokens === "number" && maxTokens > 0 && maxTokens <= 2048
+      ? maxTokens
+      : 512;
+
+  // ── 4. Ensure the API key is configured ───────────────────────────────────
+  const hfApiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!hfApiKey)
+    return res.status(500).json({ error: "AI service is not configured. Please contact support." });
+
+  // ── 5. Call the Hugging Face Serverless Inference API ─────────────────────
+  try {
+    const { HfInference } = await import("@huggingface/inference");
+    const hf = new HfInference(hfApiKey);
+
+    /**
+     * We use chatCompletion (OpenAI-compatible) which works cleanly with
+     * instruction-tuned models such as google/gemma-2-9b-it.
+     * A system prompt establishes the persona of DevOS's assistant.
+     */
+    const completion = await hf.chatCompletion({
+      model: "google/gemma-2-9b-it",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are DevOS AI, a helpful, concise coding assistant embedded inside the DevOS cloud IDE. " +
+            "You specialise in TypeScript, React, Node.js, and Firebase. " +
+            "Provide clear, accurate answers. Format code blocks with the appropriate language tag.",
+        },
+        { role: "user", content: prompt.trim() },
+      ],
+      max_tokens: resolvedMaxTokens,
+    });
+
+    const text = completion.choices?.[0]?.message?.content?.trim() ?? "";
+    return res.json({ text });
+  } catch (err: any) {
+    const statusCode: number = err?.response?.status ?? err?.statusCode ?? 0;
+
+    // Hugging Face returns 503 when the model is loading ("cold start").
+    if (statusCode === 503 || err?.message?.includes("loading")) {
+      return res.status(503).json({
+        error: "The AI model is warming up. Please try again in about 20 seconds.",
+        retryAfter: 20,
+      });
+    }
+
+    // Catch network-level timeouts.
+    if (err?.code === "ETIMEDOUT" || err?.name === "TimeoutError" || err?.message?.includes("timeout")) {
+      return res.status(504).json({
+        error: "The AI request timed out. Please try again.",
+      });
+    }
+
+    console.error("[devos-ai] Hugging Face error:", err?.message ?? err);
+    return res.status(502).json({
+      error: "The AI service returned an unexpected error. Please try again shortly.",
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // In development, serve the Vite dev server; in production Vercel routes
 // static assets from the build output so this block is skipped.
 // ---------------------------------------------------------------------------

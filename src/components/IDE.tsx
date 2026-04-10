@@ -2117,7 +2117,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {showErrors && validationResult && (
                   <ErrorPanel
                     result={validationResult}
-                    onClose={() => setShowErrors(false)}
+                    isRunning={isRunning || isExecRunning}
                   />
                 )}
               </motion.div>
