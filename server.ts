@@ -907,6 +907,203 @@ app.post("/api/terminal", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Build Job API  — queue worker + live log streaming via Socket.io
+// ---------------------------------------------------------------------------
+// MAX concurrent builds allowed at once (can be raised via env)
+const MAX_CONCURRENT_BUILDS = Number(process.env.MAX_CONCURRENT_BUILDS ?? 3);
+// Simple in-process counter (good enough for single-instance; use Firestore
+// transactions for multi-instance deployments)
+let activeBuildCount = 0;
+
+interface BuildJobPayload {
+  jobId: string;
+  projectId: string;
+  files: ProjectInputFile[];
+  framework?: string;
+  buildCommand?: string | null;
+  outputDir?: string | null;
+  commitHash?: string;
+  username?: string;
+  projectSlug?: string;
+}
+
+/**
+ * POST /api/build-job
+ *
+ * Processes one queued build job:
+ *   1. Verify auth + load job from Firestore
+ *   2. If MAX_CONCURRENT_BUILDS reached, return 429 (client should retry)
+ *   3. Mark job "running", write files to tmp dir
+ *   4. Run npm install + detected build command
+ *   5. Stream every log line to Socket.io room (projectId)
+ *   6. Mark job "success" | "failed", store previewUrl
+ */
+app.post("/api/build-job", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer "))
+    return res.status(401).json({ error: "Unauthorized" });
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let uid: string;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid = decoded.uid;
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  if (activeBuildCount >= MAX_CONCURRENT_BUILDS) {
+    return res.status(429).json({ error: "Build queue full — job remains queued" });
+  }
+
+  const {
+    jobId,
+    projectId,
+    files,
+    framework,
+    buildCommand,
+    outputDir: requestedOutputDir,
+    commitHash = "dev",
+    username,
+    projectSlug,
+  } = req.body as BuildJobPayload;
+
+  if (!jobId || !projectId || !Array.isArray(files) || files.length === 0) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  // Verify the job belongs to this user
+  const jobRef = db.collection("build_jobs").doc(jobId);
+  const jobSnap = await jobRef.get();
+  if (!jobSnap.exists) return res.status(404).json({ error: "Job not found" });
+  const jobData = jobSnap.data()!;
+  if (jobData.userId !== uid) return res.status(403).json({ error: "Forbidden" });
+  if (jobData.status !== "queued")
+    return res.status(409).json({ error: "Job is not in queued state" });
+
+  activeBuildCount++;
+  const logs: string[] = [];
+  const startedAt = Date.now();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `devos-build-${uid.slice(0, 8)}-`));
+
+  // Helper: emit a log line to the Socket.io room AND store it
+  // We defer io lookup to avoid top-level import (io is created at startup)
+  const emitLog = (level: "info" | "warning" | "error" | "success", message: string) => {
+    const line = `[${level.toUpperCase()}] ${message}`;
+    logs.push(line);
+    try {
+      // io is available as a module-level variable after server start
+      (globalThis as any).__devosIo?.to(projectId).emit("build-log", {
+        jobId,
+        projectId,
+        level,
+        message,
+        timestamp: new Date().toISOString(),
+      });
+    } catch {
+      // socket not available in Vercel serverless — ignore
+    }
+  };
+
+  try {
+    // Mark running
+    await jobRef.update({ status: "running", startedAt: admin.firestore.FieldValue.serverTimestamp() });
+    emitLog("info", `Build job ${jobId} started`);
+    emitLog("info", `Framework: ${framework ?? "Unknown"}`);
+
+    // Write files
+    for (const file of files) {
+      const rel = sanitizeRelativePath(file.name);
+      const dest = path.join(tmpDir, rel);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, String(file.content ?? ""), "utf-8");
+    }
+
+    const pkgPath = path.join(tmpDir, "package.json");
+    if (!fs.existsSync(pkgPath)) {
+      throw new Error("package.json not found");
+    }
+
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+    const scripts: Record<string, string> = pkg?.scripts ?? {};
+
+    // Determine build command
+    const chosenBuildCmd = buildCommand ?? (scripts.build ? "npm run build" : null);
+    if (!chosenBuildCmd) throw new Error("No build command found");
+
+    emitLog("info", "Installing dependencies…");
+    const installResult = await runCommand("npm", ["install", "--ignore-scripts"], tmpDir, 60_000);
+    if (installResult.stderr) emitLog("warning", installResult.stderr.slice(0, 500));
+    emitLog("success", "Dependencies installed");
+
+    emitLog("info", `Running: ${chosenBuildCmd}`);
+    const [cmd, ...args] = chosenBuildCmd.split(" ");
+    const buildResult = await runCommand(cmd, args, tmpDir, 60_000);
+    if (buildResult.stdout) buildResult.stdout.split("\n").forEach((l) => emitLog("info", l));
+    if (buildResult.stderr) buildResult.stderr.split("\n").forEach((l) => emitLog("warning", l));
+
+    // Detect output dir
+    const candidates = [requestedOutputDir, "dist", "build", ".next", "out"].filter(Boolean) as string[];
+    const outputDirName = candidates.find((d) => fs.existsSync(path.join(tmpDir, d)));
+    if (!outputDirName) throw new Error("Build output directory not found");
+
+    emitLog("success", `Build complete — output: ${outputDirName}`);
+
+    // Store output files back in Firestore under the job (capped at 300 files / 800 KB)
+    const outputDir = path.join(tmpDir, outputDirName);
+    const outputFiles = walkFiles(outputDir)
+      .filter((f) => fs.statSync(f).size <= 1_048_576)
+      .slice(0, 300)
+      .map((fullPath) => ({
+        path: path.relative(outputDir, fullPath).replace(/\\/g, "/"),
+        content: fs.readFileSync(fullPath, "utf-8"),
+      }));
+
+    // Build preview URL
+    const short = String(commitHash).slice(0, 8);
+    const previewUrl =
+      username && projectSlug
+        ? `${process.env.APP_ORIGIN ?? "https://devos.name.ng"}/@${username}/${projectSlug}-${short}`
+        : null;
+
+    await jobRef.update({
+      status: "success",
+      previewUrl,
+      logs,
+      outputFiles: outputFiles.slice(0, 50), // keep first 50 for quick retrieval
+      finishedAt: admin.firestore.FieldValue.serverTimestamp(),
+      error: null,
+    });
+
+    emitLog("success", previewUrl ? `Preview URL: ${previewUrl}` : "Job complete");
+    (globalThis as any).__devosIo?.to(projectId).emit("build-complete", { jobId, status: "success", previewUrl });
+
+    return res.json({
+      success: true,
+      jobId,
+      previewUrl,
+      outputDir: outputDirName,
+      duration: Date.now() - startedAt,
+      logs,
+    });
+  } catch (error: any) {
+    const message = String(error?.message ?? "Build failed");
+    emitLog("error", message);
+    await jobRef.update({
+      status: "failed",
+      error: message,
+      logs,
+      finishedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    (globalThis as any).__devosIo?.to(projectId).emit("build-complete", { jobId, status: "failed", error: message });
+    return res.status(500).json({ success: false, jobId, error: message, logs, duration: Date.now() - startedAt });
+  } finally {
+    activeBuildCount--;
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* cleanup best effort */ }
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Run Code API
 // ---------------------------------------------------------------------------
 app.post("/api/run", async (req, res) => {
@@ -1034,6 +1231,8 @@ if (process.env.VERCEL !== "1") {
 
   const httpServer = createServer(app);
   const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
+  // Expose io globally so the /api/build-job route can stream logs
+  (globalThis as any).__devosIo = io;
 
   io.on("connection", (socket) => {
     socket.on("join-project", (projectId: string) => {

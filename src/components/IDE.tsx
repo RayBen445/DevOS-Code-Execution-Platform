@@ -12,12 +12,16 @@ import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
-import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem, DetectionResult } from "../types";
+import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem, DetectionResult, BuildJob } from "../types";
 import { cn } from "../lib/utils";
 import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
 import { canPerform } from "../lib/rbacService";
 import { logAudit } from "../lib/auditService";
 import { detectProject, FRAMEWORK_BADGE_COLORS } from "../lib/detectionService";
+import { hashFiles, shortHash } from "../lib/buildCacheService";
+import { enqueueJob, subscribeProjectBuildJobs, buildPreviewUrl } from "../lib/buildQueueService";
+import DeploymentDashboard from "./DeploymentDashboard";
+import BuildStatusBadge from "./BuildStatusBadge";
 import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -104,6 +108,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   // Framework / command / output-dir detection — updated whenever files change
   const [detection, setDetection] = useState<DetectionResult | null>(null);
+
+  // Build queue state
+  const [buildJobs, setBuildJobs] = useState<BuildJob[]>([]);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const botDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [botSuggestions, setBotSuggestions] = useState<string[]>([]);
 
@@ -166,6 +174,43 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
     prevActivePanel.current = activePanel;
   }, [activePanel]);
+
+  // Subscribe to build jobs for this project
+  useEffect(() => {
+    if (!projectId) return;
+    return subscribeProjectBuildJobs(projectId, setBuildJobs);
+  }, [projectId]);
+
+  // Listen for real-time build log events from the server via Socket.io
+  useEffect(() => {
+    const handleBuildLog = (payload: { jobId: string; level: string; message: string }) => {
+      const typeMap: Record<string, LogEntry["type"]> = {
+        info: "info",
+        warning: "warning",
+        error: "error",
+        success: "success",
+      };
+      addLog(typeMap[payload.level] ?? "output", `[build] ${payload.message}`);
+    };
+
+    const handleBuildComplete = (payload: { jobId: string; status: string; previewUrl?: string }) => {
+      if (payload.status === "success") {
+        addLog("success", `✔ Build ${payload.jobId.slice(0, 8)} complete`);
+        if (payload.previewUrl) addLog("info", `🔗 Preview: ${payload.previewUrl}`);
+        toast.success("Build complete!");
+      } else {
+        addLog("error", `✖ Build ${payload.jobId.slice(0, 8)} failed`);
+        toast.error("Build failed — check terminal");
+      }
+    };
+
+    socket.on("build-log", handleBuildLog);
+    socket.on("build-complete", handleBuildComplete);
+    return () => {
+      socket.off("build-log", handleBuildLog);
+      socket.off("build-complete", handleBuildComplete);
+    };
+  }, []);
 
   const updateLastLog = (type: LogEntry["type"], message: string) => {
     setRunOutput(prev => {
@@ -800,6 +845,98 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
   };
 
+  /**
+   * Queue a build job and immediately dispatch it to the server.
+   * Streams live logs via Socket.io; UI updates via subscribeProjectBuildJobs.
+   */
+  const handleQueueDeploy = async (branch = "main") => {
+    if (!user || !project) return;
+
+    // Permission check
+    if (isOrgProject && !canPerform(orgRole, "deploy_project")) {
+      toast.error("Permission denied: deploy requires developer role or higher");
+      return;
+    }
+
+    const det = detection ?? detectProject(files);
+    const hash = await hashFiles(files);
+    const short = shortHash(hash);
+
+    setActivePanel("terminal");
+    addLog("system", `devos ▶ ${project.name} $ deploy --branch ${branch}`);
+    addLog("info", `Detected: ${det.framework}`);
+    addLog("info", `Commit: ${short}`);
+
+    // Get username for preview URL
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    const username = userDoc.exists() ? userDoc.data().username : null;
+    const slug = project.projectSlug || project.name.toLowerCase().replace(/\s+/g, "-");
+
+    const previewUrl = username
+      ? buildPreviewUrl(window.location.origin, username, slug, hash)
+      : null;
+
+    try {
+      // Enqueue
+      const jobId = await enqueueJob({
+        projectId,
+        userId: user.uid,
+        commitHash: short,
+        framework: det.framework,
+        buildCommand: det.buildCommand,
+        outputDir: det.outputDir,
+        priority: "normal",
+      });
+
+      setActiveJobId(jobId);
+      addLog("info", `Build job queued: ${jobId.slice(0, 8)}`);
+
+      logAudit({
+        userId: user.uid,
+        action: "build_queued",
+        projectId,
+        orgId: project.ownerOrgId ?? null,
+        metadata: { jobId, framework: det.framework, branch, commitHash: short },
+      });
+
+      // Dispatch to server
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch("/api/build-job", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
+        body: JSON.stringify({
+          jobId,
+          projectId,
+          files: files.map((f) => ({
+            name: (f.path || f.name || "").replace(/^\/+/, ""),
+            content: f.content ?? "",
+          })),
+          framework: det.framework,
+          buildCommand: det.buildCommand,
+          outputDir: det.outputDir,
+          commitHash: short,
+          username,
+          projectSlug: slug,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          addLog("warning", "⚠ Build queue full — job will run when a slot opens");
+          toast("Build queued — waiting for slot");
+        } else {
+          addLog("error", `✖ Dispatch failed: ${err.error ?? response.statusText}`);
+        }
+      }
+    } catch (err: any) {
+      addLog("error", `✖ ${err.message}`);
+    }
+  };
+
   const handleRun = async () => {
     if (!activeFile) return;
 
@@ -1401,13 +1538,23 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 Share
               </button>
               {!isReadOnly && canDeploy && (
-                <button 
-                  onClick={() => setIsDeployModalOpen(true)}
-                  className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
-                >
-                  {isDeployed ? <Globe className="w-3.5 h-3.5" /> : <Rocket className="w-3.5 h-3.5" />}
-                  <span className="hidden sm:inline">{isDeployed ? "Sync" : "Deploy"}</span>
-                </button>
+                <>
+                  {/* Active job badge */}
+                  {activeJobId && (
+                    <BuildStatusBadge jobId={activeJobId} className="hidden md:inline-flex" />
+                  )}
+                  <button
+                    onClick={() =>
+                      detection?.hasPackageJson
+                        ? handleQueueDeploy("main")
+                        : setIsDeployModalOpen(true)
+                    }
+                    className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+                  >
+                    {isDeployed ? <Globe className="w-3.5 h-3.5" /> : <Rocket className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline">{isDeployed ? "Sync" : "Deploy"}</span>
+                  </button>
+                </>
               )}
             </>
           )}
@@ -1692,6 +1839,23 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               {project?.systemType !== 'portfolio' && activePanel === "collaborators" && !isFocusMode && isOrgProject && (
                 <div className="hidden md:flex w-72 border-r border-white/5 flex-col overflow-y-auto">
                   <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} presenceUsers={presenceUsers} activityItems={activityItems} />
+                </div>
+              )}
+
+              {/* Deployments Panel — shows history, rollback, branch deployments */}
+              {project?.systemType !== 'portfolio' && activePanel === "settings" && !isFocusMode && canDeploy && (
+                <div className="hidden md:flex w-80 border-r border-white/5 flex-col overflow-y-auto">
+                  <div className="p-4 border-b border-white/5">
+                    <h3 className="text-xs font-bold text-white/60 uppercase tracking-wider">Deployments</h3>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3">
+                    <DeploymentDashboard
+                      projectId={projectId}
+                      userId={user?.uid ?? ""}
+                      activeDeploymentId={project?.activeDeploymentId}
+                      canManage={canDeploy}
+                    />
+                  </div>
                 </div>
               )}
 

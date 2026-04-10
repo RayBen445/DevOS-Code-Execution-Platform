@@ -49,6 +49,8 @@ export interface Project {
   tags?: string[];
   parentTemplateId?: string;
   group?: string;            // user-defined project group name
+  /** ID of the currently active deployment (used for instant rollback) */
+  activeDeploymentId?: string | null;
 }
 
 export interface ProjectVersion {
@@ -476,9 +478,18 @@ export interface Deployment {
   username: string;
   /** Public URL of the deployed project, e.g. https://username.devos.name.ng */
   url: string;
+  /** Per-commit preview URL, e.g. /@username/slug-a1b2c3 */
+  previewUrl?: string | null;
+  /** Git branch this deployment belongs to (default: "main") */
+  branch?: string;
+  /** Short commit hash (8 chars) used for preview URL generation */
+  commitHash?: string;
+  /** Whether this is the currently active (live) deployment for its branch */
+  isActive?: boolean;
   status: 'building' | 'ready' | 'failed';
   buildCommand?: string;
   outputDir?: string;
+  framework?: string;
   createdAt: any;
   completedAt?: any;
   error?: string;
@@ -630,7 +641,11 @@ export type AuditAction =
   | "cache_hit"
   | "cache_miss"
   | "diff_detected"
-  | "deployment_size_reduced";
+  | "deployment_size_reduced"
+  // Rollback & branch
+  | "rollback_triggered"
+  | "branch_deployed"
+  | "deployment_promoted";
 
 export interface AuditLog {
   id: string;

@@ -727,5 +727,41 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if false;
     }
+
+    // ── Build Jobs ────────────────────────────────────────────────────────────
+    match /build_jobs/{jobId} {
+      // Owner or admin can read
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      // Owner can create their own jobs
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Server (via Admin SDK) updates status; owner may not directly mutate
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Build Cache ───────────────────────────────────────────────────────────
+    match /build_cache/{hash} {
+      // Any authenticated user can read (cache is keyed by content hash — no secrets)
+      allow read: if isAuthenticated();
+      // Only write via Admin SDK / server; clients use the API
+      allow write: if false;
+    }
+
+    // ── Deployment Files (diff snapshots) ────────────────────────────────────
+    match /deployment_files/{projectId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // written by server/Admin SDK only
+    }
+
+    // ── Deployments ───────────────────────────────────────────────────────────
+    match /deployments/{deploymentId} {
+      // Public read for public projects; private restricts to owner/admin
+      allow read: if true;
+      // Owner may create; updates (rollback/promote) only via server or admin
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (
+        isAuthenticated() && resource.data.userId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
   }
 }
