@@ -803,6 +803,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       setPreviewSaveKey(k => k + 1);
       if (!silent) toast.success("Project saved");
 
+      // Run validation in the background after every manual save.
+      if (!silent && files.length > 0) {
+        validateProject(files, projectId, validationHash).then((res) => {
+          setValidationResult(res);
+          setValidationHash(res.hash);
+          if (res.errors?.some((e) => e.severity === "error")) setShowErrors(true);
+        }).catch(() => { /* validation is best-effort */ });
+      }
+
       // Create a version snapshot on every manual save (not auto-save).
       // Best-effort: a version failure must never block the normal save flow.
       if (!silent && files.length > 0) {
@@ -2103,6 +2112,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     <Loader2 className="w-3 h-3 text-white/30 animate-spin flex-shrink-0" />
                   )}
                 </form>
+
+                {/* Validation errors panel — shown when there are build/type errors */}
+                {showErrors && validationResult && (
+                  <ErrorPanel
+                    result={validationResult}
+                    onClose={() => setShowErrors(false)}
+                  />
+                )}
               </motion.div>
             )}
           </div>
