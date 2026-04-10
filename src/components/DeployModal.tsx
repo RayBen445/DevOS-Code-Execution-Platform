@@ -9,6 +9,8 @@ import { deductCredits, CREDIT_COSTS } from "../lib/creditsService";
 import { emitBotEventWithToast } from "../lib/botEngine";
 import { createDeployment } from "../lib/deploymentService";
 import { trackActivity } from "../lib/activityService";
+import { logAudit } from "../lib/auditService";
+import { detectProject } from "../lib/detectionService";
 
 import { FileData } from "../types";
 
@@ -174,6 +176,20 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       toast.success("Your project is live!");
       // Track deployment activity for the heatmap
       trackActivity(auth.currentUser.uid, "deploy", { projectId });
+      // Audit log
+      const det = detectProject(files);
+      logAudit({
+        userId: auth.currentUser.uid,
+        action: "deploy_project",
+        projectId,
+        metadata: {
+          framework: det.framework,
+          buildCommand: det.buildCommand,
+          outputDir: det.outputDir,
+          status: "success",
+          url,
+        },
+      });
       emitBotEventWithToast({
         name: "deploy.triggered",
         payload: { projectId, projectName, deployUrl: url, userId: auth.currentUser.uid },

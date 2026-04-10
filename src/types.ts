@@ -620,7 +620,17 @@ export type AuditAction =
   | "preview_project"
   | "deploy_project"
   | "login"
-  | "switch_workspace";
+  | "switch_workspace"
+  // Build system
+  | "build_queued"
+  | "build_started"
+  | "build_completed"
+  | "build_failed"
+  // Cache & diff
+  | "cache_hit"
+  | "cache_miss"
+  | "diff_detected"
+  | "deployment_size_reduced";
 
 export interface AuditLog {
   id: string;
@@ -654,4 +664,68 @@ export interface DetectionResult {
   hasPackageJson: boolean;
   /** true when an index.html was found at root or public/ */
   hasIndexHtml: boolean;
+}
+
+// ── Build Cache ──────────────────────────────────────────────────────────────
+
+/**
+ * Cached build record keyed by a SHA-256 hash of all source files.
+ * Stored in `build_cache/{hash}`.
+ */
+export interface BuildCache {
+  id: string;            // === hash (document ID)
+  projectId: string;
+  hash: string;
+  framework: DetectedFramework;
+  outputDir: string | null;
+  /** Serialised output files (path → content) — capped at ~1 MB */
+  outputFiles: Array<{ path: string; content: string }>;
+  createdAt: any;
+}
+
+// ── Deployment Diffing ───────────────────────────────────────────────────────
+
+/**
+ * Per-file hash snapshot from the last successful deployment.
+ * Stored in `deployment_files/{projectId}`.
+ */
+export interface DeploymentSnapshot {
+  projectId: string;
+  /** map of normalised file path → SHA-256 hex digest of content */
+  fileHashes: Record<string, string>;
+  updatedAt: any;
+}
+
+export interface DeployDiffResult {
+  added: string[];
+  modified: string[];
+  deleted: string[];
+  unchanged: string[];
+  /** true when there are no changes — skip deploy */
+  isIdentical: boolean;
+}
+
+// ── Build Queue ──────────────────────────────────────────────────────────────
+
+export type BuildJobStatus = "queued" | "running" | "success" | "failed";
+export type BuildJobPriority = "normal" | "high";
+
+export interface BuildJob {
+  id: string;
+  projectId: string;
+  userId: string;
+  /** Short hash of the source files at the time of queuing */
+  commitHash: string;
+  status: BuildJobStatus;
+  priority: BuildJobPriority;
+  framework?: DetectedFramework;
+  buildCommand?: string | null;
+  outputDir?: string | null;
+  /** Preview URL generated after a successful build */
+  previewUrl?: string | null;
+  logs?: string[];
+  createdAt: any;
+  startedAt?: any | null;
+  finishedAt?: any | null;
+  error?: string | null;
 }

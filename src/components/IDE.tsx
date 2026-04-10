@@ -152,6 +152,21 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
   }, [files]);
 
+  // Audit log: preview_project when the preview panel is opened
+  const prevActivePanel = useRef<string | null>(null);
+  useEffect(() => {
+    if (activePanel === "preview" && prevActivePanel.current !== "preview" && user && projectId) {
+      logAudit({
+        userId: user.uid,
+        action: "preview_project",
+        projectId,
+        orgId: project?.ownerOrgId ?? null,
+        metadata: { framework: detection?.framework ?? "Unknown" },
+      });
+    }
+    prevActivePanel.current = activePanel;
+  }, [activePanel]);
+
   const updateLastLog = (type: LogEntry["type"], message: string) => {
     setRunOutput(prev => {
       if (prev.length === 0) return prev;
@@ -1230,6 +1245,19 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 >
                   {project?.name}
                 </a>
+
+                {/* Framework badge */}
+                {detection && detection.framework !== "Unknown" && (
+                  <span
+                    className={cn(
+                      "hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border flex-shrink-0",
+                      FRAMEWORK_BADGE_COLORS[detection.framework]
+                    )}
+                    title={`Detected: ${detection.framework}`}
+                  >
+                    {detection.framework}
+                  </span>
+                )}
 
                 {/* File path */}
                 {breadcrumbFilePath && (
