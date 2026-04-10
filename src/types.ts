@@ -319,7 +319,31 @@ export interface ReferralStats {
 
 // ── Organization System ─────────────────────────────────────────────────────
 
-export type OrgMemberRole = "member" | "moderator" | "admin";
+/**
+ * RBAC roles for organization members.
+ * Precedence (highest → lowest): owner > admin > developer > viewer
+ * Legacy values "member" and "moderator" are kept for backward compatibility;
+ * they are treated as "developer" and "admin" respectively in permission checks.
+ */
+export type OrgMemberRole =
+  | "owner"
+  | "admin"
+  | "developer"
+  | "viewer"
+  // Legacy — kept for backward compatibility
+  | "member"
+  | "moderator";
+
+/** Actions that can be checked via checkPermission() */
+export type OrgPermission =
+  | "create_project"
+  | "deploy_project"
+  | "run_project"
+  | "preview_project"
+  | "manage_members"
+  | "view_project"
+  | "delete_project"
+  | "update_project";
 
 export interface Organization {
   id: string;
@@ -584,4 +608,50 @@ export interface EventSpeaker {
   eventId: string;
   speakerId: string;
   role: "speaker" | "host" | "panelist";
+}
+
+// ── Audit Log ────────────────────────────────────────────────────────────────
+
+export type AuditAction =
+  | "create_project"
+  | "update_project"
+  | "delete_project"
+  | "run_project"
+  | "preview_project"
+  | "deploy_project"
+  | "login"
+  | "switch_workspace";
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  orgId?: string | null;
+  projectId?: string | null;
+  action: AuditAction;
+  /** Arbitrary JSON metadata, e.g. framework, status, build command */
+  metadata?: Record<string, any>;
+  createdAt: any;
+}
+
+// ── Execution Detection ──────────────────────────────────────────────────────
+
+export type DetectedFramework =
+  | "Next.js"
+  | "React"
+  | "Vue"
+  | "Vite"
+  | "Node.js"
+  | "Static"
+  | "Unknown";
+
+export interface DetectionResult {
+  framework: DetectedFramework;
+  buildCommand: string | null;
+  devCommand: string | null;
+  startCommand: string | null;
+  outputDir: string | null;
+  /** true when a package.json was found */
+  hasPackageJson: boolean;
+  /** true when an index.html was found at root or public/ */
+  hasIndexHtml: boolean;
 }

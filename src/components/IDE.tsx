@@ -12,9 +12,12 @@ import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
-import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem } from "../types";
+import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem, DetectionResult } from "../types";
 import { cn } from "../lib/utils";
 import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
+import { canPerform } from "../lib/rbacService";
+import { logAudit } from "../lib/auditService";
+import { detectProject, FRAMEWORK_BADGE_COLORS } from "../lib/detectionService";
 import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -98,6 +101,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const orgMembersRef = useRef<OrgMember[]>([]); // stable ref for use in closures
   const notifiedActivityIds = useRef<Set<string>>(new Set()); // prevents duplicate toasts
   const editDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Framework / command / output-dir detection — updated whenever files change
+  const [detection, setDetection] = useState<DetectionResult | null>(null);
   const botDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [botSuggestions, setBotSuggestions] = useState<string[]>([]);
 
@@ -139,6 +145,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     setRunOutput(prev => [...prev, { type, message, timestamp }]);
   };
 
+  // Re-detect project type whenever the file list changes
+  useEffect(() => {
+    if (files.length > 0) {
+      setDetection(detectProject(files));
+    }
+  }, [files]);
+
   const updateLastLog = (type: LogEntry["type"], message: string) => {
     setRunOutput(prev => {
       if (prev.length === 0) return prev;
@@ -178,11 +191,23 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   };
 
   const handleTerminalDeploy = async () => {
-    const hasIndexHtml = files.some(f => f.name.toLowerCase() === "index.html");
-    if (!hasIndexHtml) {
-      addLog("error", "✖ Deployment failed");
-      addLog("error", "Reason: Missing index.html");
+    // Permission check via RBAC
+    if (isOrgProject && !canPerform(orgRole, "deploy_project")) {
+      addLog("error", "✖ Permission denied");
+      addLog("error", "Reason: deploy_project requires developer role or higher.");
       return;
+    }
+
+    const det = detection ?? detectProject(files);
+    const hasIndexHtml = files.some(f => f.name.toLowerCase() === "index.html");
+    if (!hasIndexHtml && !det.hasPackageJson) {
+      addLog("error", "✖ Deployment failed");
+      addLog("error", "Reason: Missing index.html or package.json");
+      return;
+    }
+
+    if (det.framework !== "Unknown" && det.framework !== "Static") {
+      addLog("info", `⚡ Detected framework: ${det.framework}`);
     }
 
     await animateStep("Preparing project...");
@@ -218,9 +243,37 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
       addLog("success", "✔ Deployment successful");
       addLog("info", `🌐 ${url}`);
+
+      // Audit: deploy_project
+      logAudit({
+        userId: auth.currentUser.uid,
+        action: "deploy_project",
+        projectId,
+        orgId: project?.ownerOrgId ?? null,
+        metadata: {
+          framework: det.framework,
+          buildCommand: det.buildCommand,
+          outputDir: det.outputDir,
+          status: "success",
+          url,
+        },
+      });
     } catch (error: any) {
       addLog("error", "✖ Deployment failed");
       addLog("error", `Reason: ${error.message}`);
+      if (auth.currentUser) {
+        logAudit({
+          userId: auth.currentUser.uid,
+          action: "deploy_project",
+          projectId,
+          orgId: project?.ownerOrgId ?? null,
+          metadata: {
+            framework: det.framework,
+            status: "failed",
+            error: error.message,
+          },
+        });
+      }
     }
   };
 
@@ -389,18 +442,19 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     if (!project || !user) return true;
     if (project.ownerId === user.uid) return false; // owner always has full access
     if (isOrgProject) {
-      // In an org project, members can edit; non-members are read-only
-      return orgRole === null;
+      // In an org project, check update_project permission via RBAC
+      if (orgRole === null) return true;
+      return !canPerform(orgRole, "update_project");
     }
     // Personal project: must be owner or collaborator
     return !project.collaborators.includes(user.uid);
   })();
 
-  // Can deploy: owner always; in org projects, org admin only
+  // Can deploy: owner always; in org projects use RBAC deploy_project permission
   const canDeploy = (() => {
     if (!project || !user) return false;
     if (project.ownerId === user.uid) return true;
-    if (isOrgProject) return orgRole === "admin";
+    if (isOrgProject) return canPerform(orgRole, "deploy_project");
     return project.collaborators.includes(user.uid);
   })();
   const isDeployed = !!project?.deployUrl;
@@ -734,9 +788,31 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const handleRun = async () => {
     if (!activeFile) return;
 
+    // Permission check for org projects
+    if (isOrgProject && !canPerform(orgRole, "run_project")) {
+      toast.error("Permission denied: run_project requires developer role or higher.");
+      return;
+    }
+
+    const det = detection ?? detectProject(files);
+
     setIsRunning(true);
     setActivePanel("terminal");
     addLog("system", `devos ▶ ${project?.name || "project"} $ run`);
+    if (det.framework !== "Unknown") {
+      addLog("info", `⚡ Framework: ${det.framework}`);
+    }
+
+    // Audit: run_project
+    if (user) {
+      logAudit({
+        userId: user.uid,
+        action: "run_project",
+        projectId,
+        orgId: project?.ownerOrgId ?? null,
+        metadata: { framework: det.framework, file: activeFile.name },
+      });
+    }
 
     const packageFile = files.find((f) => f.name === "package.json" || f.path === "/package.json");
     if (packageFile) {

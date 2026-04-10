@@ -718,5 +718,14 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if false;
     }
+
+    // ── Audit Logs ────────────────────────────────────────────────────────────
+    match /audit_logs/{logId} {
+      // Only admins or the owning user may read audit entries
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      // Authenticated users may append their own audit entries (no update/delete)
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
   }
 }
