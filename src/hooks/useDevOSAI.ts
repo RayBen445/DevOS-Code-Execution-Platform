@@ -123,12 +123,41 @@ export function useDevOSAI(): DevOSAIState {
         if (!response.ok) {
           // Try to extract a friendly error message from the JSON body.
           let friendlyError = `Request failed (HTTP ${response.status}).`;
+          let retryAfter = 0;
           try {
             const errBody: AIErrorResponse = await response.json();
             if (errBody.error) friendlyError = errBody.error;
+            if (errBody.retryAfter) retryAfter = errBody.retryAfter;
           } catch {
             // Ignore JSON parse errors; stick with the generic message.
           }
+
+          // On 503 with retryAfter, wait and retry once automatically
+          if (response.status === 503 && retryAfter > 0) {
+            await new Promise((r) => setTimeout(r, retryAfter * 1000));
+            // Single retry
+            const retry = await fetch("/api/devos-ai", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+              },
+              body: JSON.stringify(body),
+              signal: abortRef.current?.signal,
+            });
+            if (retry.ok) {
+              const retryResult: AISuccessResponse = await retry.json();
+              const retryText = retryResult.text ?? "";
+              setData(retryText);
+              return retryText;
+            }
+            // Retry also failed — try to get its error
+            try {
+              const retryErr: AIErrorResponse = await retry.json();
+              if (retryErr.error) friendlyError = retryErr.error;
+            } catch { /* ignore */ }
+          }
+
           setError(friendlyError);
           return null;
         }

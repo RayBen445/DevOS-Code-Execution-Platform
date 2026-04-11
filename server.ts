@@ -1443,11 +1443,11 @@ app.post("/api/devos-ai", aiRateLimiter, async (req, res) => {
   const { prompt, maxTokens } = req.body as { prompt?: unknown; maxTokens?: unknown };
   if (typeof prompt !== "string" || prompt.trim().length === 0)
     return res.status(400).json({ error: "A non-empty 'prompt' string is required." });
-  if (prompt.length > 8_000)
-    return res.status(400).json({ error: "Prompt exceeds the maximum allowed length of 8 000 characters." });
+  if (prompt.length > 12_000)
+    return res.status(400).json({ error: "Prompt exceeds the maximum allowed length of 12 000 characters." });
 
   const resolvedMaxTokens =
-    typeof maxTokens === "number" && maxTokens > 0 && maxTokens <= 2048
+    typeof maxTokens === "number" && maxTokens > 0 && maxTokens <= 4096
       ? maxTokens
       : 512;
 
@@ -1457,55 +1457,101 @@ app.post("/api/devos-ai", aiRateLimiter, async (req, res) => {
     return res.status(500).json({ error: "AI service is not configured. Please contact support." });
 
   // ── 4. Call the Hugging Face Serverless Inference API ─────────────────────
-  try {
-    const { HfInference } = await import("@huggingface/inference");
-    const hf = new HfInference(hfApiKey);
+  /**
+   * Model preference list — we try each in order until one succeeds.
+   * Primary:  mistralai/Mistral-7B-Instruct-v0.3  (open-weights, no gating)
+   * Fallback: HuggingFaceH4/zephyr-7b-beta         (open, widely available)
+   */
+  const MODELS = [
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "HuggingFaceH4/zephyr-7b-beta",
+  ];
 
-    /**
-     * We use chatCompletion (OpenAI-compatible) which works cleanly with
-     * instruction-tuned models such as google/gemma-2-9b-it.
-     * A system prompt establishes the persona of DevOS's assistant.
-     */
-    const completion = await hf.chatCompletion({
-      model: "google/gemma-2-9b-it",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are DevOS AI, a helpful, concise coding assistant embedded inside the DevOS cloud IDE. " +
-            "You specialise in TypeScript, React, Node.js, and Firebase. " +
-            "Provide clear, accurate answers. Format code blocks with the appropriate language tag.",
-        },
-        { role: "user", content: prompt.trim() },
-      ],
-      max_tokens: resolvedMaxTokens,
-    });
+  const systemPrompt =
+    "You are DevOS AI, a helpful, concise coding assistant embedded inside the DevOS cloud IDE. " +
+    "You specialise in TypeScript, React, Node.js, and Firebase. " +
+    "Provide clear, accurate answers. Format code blocks with the appropriate language tag.";
 
-    const text = completion.choices?.[0]?.message?.content?.trim() ?? "";
-    return res.json({ text });
-  } catch (err: any) {
-    const statusCode: number = err?.response?.status ?? err?.statusCode ?? 0;
+  const { HfInference } = await import("@huggingface/inference");
+  const hf = new HfInference(hfApiKey);
 
-    // Hugging Face returns 503 when the model is loading ("cold start").
-    if (statusCode === 503 || err?.message?.includes("loading")) {
-      return res.status(503).json({
-        error: "The AI model is warming up. Please try again in about 20 seconds.",
-        retryAfter: 20,
+  let lastErr: any = null;
+
+  for (const model of MODELS) {
+    try {
+      const completion = await hf.chatCompletion({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt.trim() },
+        ],
+        max_tokens: resolvedMaxTokens,
+      });
+
+      const text = completion.choices?.[0]?.message?.content?.trim() ?? "";
+      return res.json({ text });
+    } catch (err: any) {
+      lastErr = err;
+      const statusCode: number = err?.response?.status ?? err?.statusCode ?? 0;
+
+      // 401 / 403 — key issue or gated model; try next model
+      if (statusCode === 401 || statusCode === 403) {
+        console.warn(`[devos-ai] Model ${model} returned ${statusCode} — trying next model`);
+        continue;
+      }
+
+      // 404 — model not found; try next
+      if (statusCode === 404) {
+        console.warn(`[devos-ai] Model ${model} not found — trying next model`);
+        continue;
+      }
+
+      // 503 — model cold-starting; try next model before giving up
+      if (statusCode === 503 || err?.message?.includes("loading") || err?.message?.includes("currently loading")) {
+        console.warn(`[devos-ai] Model ${model} is loading — trying next model`);
+        continue;
+      }
+
+      // 429 — rate limited on this model; try next
+      if (statusCode === 429) {
+        console.warn(`[devos-ai] Model ${model} rate-limited — trying next model`);
+        continue;
+      }
+
+      // Timeout — try next model
+      if (err?.code === "ETIMEDOUT" || err?.name === "TimeoutError" || err?.message?.includes("timeout")) {
+        console.warn(`[devos-ai] Model ${model} timed out — trying next model`);
+        continue;
+      }
+
+      // Any other error — stop trying, surface immediately
+      console.error(`[devos-ai] Unrecoverable error from ${model}:`, err?.message ?? err);
+      return res.status(502).json({
+        error: "The AI service encountered an error. Please try again shortly.",
       });
     }
+  }
 
-    // Catch network-level timeouts.
-    if (err?.code === "ETIMEDOUT" || err?.name === "TimeoutError" || err?.message?.includes("timeout")) {
-      return res.status(504).json({
-        error: "The AI request timed out. Please try again.",
-      });
-    }
+  // All models failed — surface the most useful message
+  const lastStatus: number = lastErr?.response?.status ?? lastErr?.statusCode ?? 0;
+  console.error("[devos-ai] All models failed. Last error:", lastErr?.message ?? lastErr);
 
-    console.error("[devos-ai] Hugging Face error:", err?.message ?? err);
-    return res.status(502).json({
-      error: "The AI service returned an unexpected error. Please try again shortly.",
+  if (lastStatus === 503 || lastErr?.message?.includes("loading")) {
+    return res.status(503).json({
+      error: "The AI models are warming up. Please try again in about 30 seconds.",
+      retryAfter: 30,
     });
   }
+  if (lastErr?.code === "ETIMEDOUT" || lastErr?.name === "TimeoutError" || lastErr?.message?.includes("timeout")) {
+    return res.status(504).json({ error: "The AI request timed out. Please try again." });
+  }
+  if (lastStatus === 429) {
+    return res.status(429).json({ error: "AI rate limit reached. Please wait a moment and try again." });
+  }
+
+  return res.status(502).json({
+    error: "The AI service is temporarily unavailable. Please try again shortly.",
+  });
 });
 
 // ---------------------------------------------------------------------------
