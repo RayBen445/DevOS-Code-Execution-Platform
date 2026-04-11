@@ -51,6 +51,8 @@ import EventPage from "./pages/EventPage";
 import CreateEventPage from "./pages/CreateEventPage";
 import SpeakersPage from "./pages/SpeakersPage";
 import SpeakerPage from "./pages/SpeakerPage";
+import CommunityChatPage from "./pages/CommunityChatPage";
+import OrgChatPage from "./pages/OrgChatPage";
 import { Zap, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, Navigate, useParams, useLocation, useNavigate } from "react-router-dom";
@@ -423,6 +425,7 @@ export default function App() {
             <Route path="/search" element={withPageMaintenance("/search", <SearchPage />)} />
             <Route path="/explore" element={withPageMaintenance("/explore", <ExplorePage />)} />
             <Route path="/org/:slug" element={withPageMaintenance("/org", <OrgPage />)} />
+            <Route path="/org/:slug/chat" element={withPageMaintenance("/org", <OrgChatPage />)} />
             <Route path="/orgs" element={withPageMaintenance("/orgs", <OrgsPage />)} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
@@ -432,6 +435,7 @@ export default function App() {
             <Route path="/learn/l/:slug" element={withPageMaintenance("/learn", <LearnDynamicLessonPage />)} />
             <Route path="/communities" element={withPageMaintenance("/communities", <CommunitiesPage />)} />
             <Route path="/communities/:slug" element={withPageMaintenance("/communities", <CommunityPage />)} />
+            <Route path="/communities/:slug/chat" element={withPageMaintenance("/communities", <CommunityChatPage />)} />
             <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
             <Route path="/events" element={withPageMaintenance("/events", <EventsPage />)} />
             <Route path="/events/create" element={withPageMaintenance("/events", <CreateEventPage />)} />

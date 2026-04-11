@@ -202,21 +202,49 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                 sandboxed execution, and instant deployments — from mobile to desktop.
               </motion.p>
 
-              <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3">
+              <motion.div variants={fadeUp} className="flex flex-col sm:flex-row flex-wrap gap-3">
                 <button
                   onClick={openSignup}
-                  className="w-full sm:w-auto px-7 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg transition-all active:scale-95 flex items-center justify-center gap-3 shadow-lg shadow-blue-600/25 pulse-glow"
+                  className="flex-1 min-w-0 sm:flex-none px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 pulse-glow"
                 >
-                  Get Started Free
-                  <ChevronRight className="w-5 h-5" />
+                  <Rocket className="w-4 h-4" />
+                  Start Building
                 </button>
                 <button
-                  onClick={() => setIsQuickStarting(true)}
-                  className="w-full sm:w-auto px-7 py-4 glass border border-white/10 text-white rounded-2xl font-bold text-lg hover:bg-white/10 transition-all flex items-center justify-center gap-3"
+                  onClick={() => window.location.href = "/explore"}
+                  className="flex-1 min-w-0 sm:flex-none px-6 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2"
                 >
-                  <Sparkles className="w-5 h-5 text-yellow-400" />
-                  Try Demo
+                  <Globe className="w-4 h-4 text-green-400" />
+                  Explore DevOS
                 </button>
+                <button
+                  onClick={() => window.location.href = "/templates"}
+                  className="flex-1 min-w-0 sm:flex-none px-6 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-400" />
+                  View Templates
+                </button>
+              </motion.div>
+
+              <motion.div variants={fadeUp} className="flex items-center gap-6 pt-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex -space-x-2">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 border-2 border-[#0a0a0a] flex items-center justify-center">
+                        <span className="text-[9px] font-bold text-white">{String.fromCharCode(65 + i)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-xs text-white/40">1000+ builders</span>
+                </div>
+                <div className="h-3 w-px bg-white/10" />
+                <div className="flex items-center gap-1.5">
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  </span>
+                  <span className="text-xs text-white/40">Live & free</span>
+                </div>
               </motion.div>
             </motion.div>
 
