@@ -394,7 +394,7 @@ export default function ProjectView() {
           Developer View — you own this project
         </span>
         <Link
-          to="/projects"
+          to={`/projects?open=${projectId}`}
           className="text-xs text-blue-400/70 hover:text-blue-300 transition-colors font-medium"
         >
           Open in IDE
