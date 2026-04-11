@@ -183,7 +183,7 @@ service cloud.firestore {
     }
 
     function isValidUserSettings(data) {
-      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId', 'links', 'preferences', 'notifications', 'skills', 'birthday'];
+      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId', 'links', 'preferences', 'notifications', 'skills', 'birthday', 'bottomNavButtons'];
       return data.keys().hasOnly(allowedFields) &&
              (!('githubToken' in data) || data.githubToken is string) &&
              (!('vercelToken' in data) || data.vercelToken is string) &&
@@ -198,7 +198,8 @@ service cloud.firestore {
              (!('links' in data) || data.links is map) &&
              (!('skills' in data) || data.skills is list) &&
              (!('preferences' in data) || data.preferences is map) &&
-             (!('notifications' in data) || data.notifications is map);
+             (!('notifications' in data) || data.notifications is map) &&
+             (!('bottomNavButtons' in data) || (data.bottomNavButtons is list && data.bottomNavButtons.size() <= 4));
     }
 
     // Rules
@@ -227,7 +228,7 @@ service cloud.firestore {
          request.resource.data.get('ownerOrgId', '') != '' &&
          exists(/databases/$(database)/documents/organizations/$(request.resource.data.ownerOrgId)/members/$(request.auth.uid)))
       );
-      allow update: if canWriteProject(projectId, resource.data) && isValidProject(request.resource.data);
+      allow update: if isAdmin() || (canWriteProject(projectId, resource.data) && isValidProject(request.resource.data));
       allow delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin()) && resource.data.get('isDeletable', true) == true;
 
       match /files/{fileId} {

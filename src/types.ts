@@ -129,6 +129,7 @@ export interface UserSettings {
     deployments?: boolean;
     adminAnnouncements?: boolean;
   };
+  bottomNavButtons?: string[];
   updatedAt?: any;
   isOfficial?: boolean;
 }
