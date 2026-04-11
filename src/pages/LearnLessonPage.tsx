@@ -117,7 +117,7 @@ export default function LearnLessonPage() {
     if (isHTML) {
       // HTML preview is handled by the inline iframe — just mark as run
       setHasRun(true);
-      setOutput(["(preview rendered below)"]); 
+      setOutput(["(preview rendered below)"]);
       return;
     }
 
