@@ -6,14 +6,15 @@ import { db, auth } from "../lib/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "sonner";
 import Avatar from "./Avatar";
-import { uploadAvatarToCloudinary } from "../lib/avatars";
+import { MAX_AVATAR_SIZE_BYTES } from "../lib/avatars";
+import { uploadImage, avatarPath } from "../lib/storageService";
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Upload progress simulation constants (Cloudinary doesn't expose XHR progress via fetch)
+// Upload progress simulation constants (Supabase fetch-based upload doesn't expose XHR progress)
 const PROGRESS_INCREMENT = 15;
 const PROGRESS_MAX = 85;
 const PROGRESS_INTERVAL_MS = 200;
@@ -109,6 +110,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const file = e.target.files?.[0];
     if (!file || !auth.currentUser) return;
 
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only images are allowed (jpg, png, webp).");
+      return;
+    }
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      toast.error("Image must be smaller than 2 MB.");
+      return;
+    }
+
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -117,7 +127,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }, PROGRESS_INTERVAL_MS);
 
     try {
-      const secureUrl = await uploadAvatarToCloudinary(file);
+      const path = avatarPath(auth.currentUser.uid, file);
+      const secureUrl = await uploadImage(file, path, {
+        onProgress: (pct) => setUploadProgress(pct),
+      });
 
       setUploadProgress(100);
 
