@@ -115,7 +115,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       return;
     }
     if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      toast.error("Image must be smaller than 2 MB.");
+      toast.error(`Image must be smaller than ${MAX_AVATAR_SIZE_BYTES / (1024 * 1024)} MB.`);
       return;
     }
 

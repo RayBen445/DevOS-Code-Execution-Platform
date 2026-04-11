@@ -39,6 +39,7 @@ import BotsPage from "./pages/BotsPage";
 import Portfolio from "./pages/Portfolio";
 import NotFoundPage from "./pages/NotFoundPage";
 import SubdomainRouter from "./components/SubdomainRouter";
+import SubdomainPreview from "./pages/SubdomainPreview";
 import EventsPage from "./pages/EventsPage";
 import EventPage from "./pages/EventPage";
 import CreateEventPage from "./pages/CreateEventPage";
@@ -125,13 +126,25 @@ function AtUsernameRoute() {
 }
 
 export default function App() {
-  // Subdomain routing: *.devos.name.ng → render SubdomainRouter without full app chrome
+  // Subdomain routing: *.devos.name.ng → render the appropriate component
+  // without full app chrome and without changing the browser URL.
+  //
+  //   username.devos.name.ng          (4 parts) → SubdomainRouter (portfolio / project)
+  //   previewId.username.devos.name.ng (5 parts) → SubdomainPreview (project preview)
+  //
   const hostname = window.location.hostname;
   const hostParts = hostname.split(".");
-  // devos.name.ng is 3 parts; a subdomain makes it 4+ parts
-  if (hostParts.length >= 4 && hostname.endsWith(".devos.name.ng")) {
-    const subdomain = hostParts[0];
-    return <SubdomainRouter subdomain={subdomain} />;
+  if (hostname.endsWith(".devos.name.ng")) {
+    if (hostParts.length === 5) {
+      // previewId.username.devos.name.ng
+      const [previewId, username] = hostParts;
+      return <SubdomainPreview username={username} previewId={previewId} />;
+    }
+    if (hostParts.length === 4) {
+      // username.devos.name.ng
+      const [username] = hostParts;
+      return <SubdomainRouter subdomain={username} />;
+    }
   }
 
   const [user, loading] = useAuthState(auth);
