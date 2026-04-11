@@ -1623,6 +1623,26 @@ if (process.env.VERCEL !== "1") {
   // Expose io globally so the /api/build-job route can stream logs
   (globalThis as any).__devosIo = io;
 
+  // ── Per-room voice participant registry ────────────────────────────────────
+  // voiceRooms: roomId → Map<userId, displayName>
+  // Persists across individual socket connections within the same process.
+  const voiceRooms = new Map<string, Map<string, string>>();
+
+  /** Write current participants for a room to Firestore (fire-and-forget). */
+  const syncVoiceRoom = (roomId: string) => {
+    const room = voiceRooms.get(roomId);
+    if (!room || room.size === 0) {
+      db.collection("voice_rooms").doc(roomId).delete().catch(() => {});
+    } else {
+      const participants: Record<string, string> = {};
+      room.forEach((name, uid) => { participants[uid] = name; });
+      db.collection("voice_rooms").doc(roomId).set({
+        participants,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }).catch(() => {});
+    }
+  };
+
   io.on("connection", (socket) => {
     socket.on("join-project", (projectId: string) => {
       if (!projectId) return;
@@ -1669,9 +1689,38 @@ if (process.env.VERCEL !== "1") {
     socket.on("join-voice-room", ({ roomId, userId, name }: { roomId: string; userId: string; name?: string }) => {
       if (!roomId || !userId) return;
       if (!consumeVoiceQuota("join-voice-room", 5, 60_000)) return;
+
+      // Collect existing participants BEFORE the new user joins so we can send
+      // the list back to them.  They will then initiate WebRTC offers to each.
+      const existing = voiceRooms.get(roomId) ?? new Map<string, string>();
+      const existingList = Array.from(existing.entries()).map(([uid, n]) => ({ userId: uid, name: n }));
+
+      // Tell the joining socket who is already in the room
+      socket.emit("voice-room-participants", { roomId, participants: existingList });
+
+      // Add new participant to registry
+      if (!voiceRooms.has(roomId)) voiceRooms.set(roomId, new Map());
+      voiceRooms.get(roomId)!.set(userId, name || "User");
+
+      // Join the socket.io room and tag the socket
       socket.join(roomId);
       socket.data.voice = { roomId, userId };
-      socket.to(roomId).emit("voice-user-joined", { userId, name });
+
+      // Notify everyone already in the room
+      socket.to(roomId).emit("voice-user-joined", { userId, name: name || "User" });
+
+      // Persist state to Firestore for real-time "call active" banner
+      syncVoiceRoom(roomId);
+    });
+
+    // Non-joining query: let a user check whether a call is active without joining
+    socket.on("get-voice-room-participants", ({ roomId }: { roomId: string }) => {
+      if (!roomId) return;
+      const room = voiceRooms.get(roomId);
+      const participants = room
+        ? Array.from(room.entries()).map(([uid, n]) => ({ userId: uid, name: n }))
+        : [];
+      socket.emit("voice-room-participants", { roomId, participants });
     });
 
     socket.on("voice-offer", ({ roomId, targetUserId, fromUserId, offer }: any) => {
@@ -1710,13 +1759,20 @@ if (process.env.VERCEL !== "1") {
     socket.on("leave-voice-room", ({ roomId, userId }: { roomId: string; userId: string }) => {
       if (!roomId || !userId) return;
       socket.leave(roomId);
+      socket.data.voice = null;
+      voiceRooms.get(roomId)?.delete(userId);
+      if (voiceRooms.get(roomId)?.size === 0) voiceRooms.delete(roomId);
       socket.to(roomId).emit("voice-user-left", { userId });
+      syncVoiceRoom(roomId);
     });
 
     socket.on("disconnect", () => {
       const voice = socket.data?.voice;
       if (voice?.roomId && voice?.userId) {
+        voiceRooms.get(voice.roomId)?.delete(voice.userId);
+        if (voiceRooms.get(voice.roomId)?.size === 0) voiceRooms.delete(voice.roomId);
         socket.to(voice.roomId).emit("voice-user-left", { userId: voice.userId });
+        syncVoiceRoom(voice.roomId);
       }
     });
   });
