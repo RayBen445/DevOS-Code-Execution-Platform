@@ -704,15 +704,19 @@ app.post("/api/admin/send-email", async (req, res) => {
   const idToken = authHeader.split("Bearer ")[1];
 
   let uid: string;
+  let callerEmail: string | undefined;
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
     uid = decoded.uid;
+    callerEmail = decoded.email;
   } catch {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 
   // 3. Confirm caller is admin
-  let userDoc: FirebaseFirestore.DocumentSnapshot;
+  // Accepts either the platform-owner email or a Firestore role == 'admin'.
+  const PLATFORM_ADMIN_EMAIL = "oladoyeheritage445@gmail.com";
+  let userDoc: FirebaseFirestore.DocumentSnapshot | null = null;
   try {
     userDoc = await db.collection("users").doc(uid).get();
   } catch (err: any) {
@@ -724,7 +728,10 @@ app.post("/api/admin/send-email", async (req, res) => {
       .status(500)
       .json({ error: "Server configuration error. Please try again later." });
   }
-  if (userDoc.data()?.role !== "admin")
+  const isAdminUser =
+    callerEmail === PLATFORM_ADMIN_EMAIL ||
+    userDoc?.data()?.role === "admin";
+  if (!isAdminUser)
     return res.status(403).json({ error: "Forbidden: admin only" });
 
   // 4. Per-admin rate limit
@@ -761,29 +768,55 @@ app.post("/api/admin/send-email", async (req, res) => {
       .status(400)
       .json({ error: `Invalid email address: ${invalid}` });
 
-  // 6. Send via Resend
+  // 6. Send email — Gmail SMTP (nodemailer) is the primary transport.
+  //    Falls back to Resend when GMAIL_APP_PASSWORD is absent but
+  //    RESEND_API_KEY is present.  At least one must be configured.
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
   const resendApiKey = process.env.RESEND_API_KEY;
-  if (!resendApiKey)
-    return res
-      .status(500)
-      .json({ error: "RESEND_API_KEY is not configured on the server." });
 
-  const resend = new Resend(resendApiKey);
+  if (!gmailPassword && !resendApiKey)
+    return res.status(500).json({
+      error:
+        "Email service is not configured. " +
+        "Set GMAIL_APP_PASSWORD (Gmail SMTP) or RESEND_API_KEY on the server.",
+    });
 
   try {
-    // `message` is admin-supplied HTML for the email body.
-    // This endpoint is restricted to authenticated admins only; the HTML is
-    // delivered to an email client, not rendered in a browser, so it is not
-    // an XSS surface for other users of the platform.
-    const { data, error: resendError } = await resend.emails.send({
-      from: "DevOS <noreply@devos.name.ng>",
-      to: toAddresses.map((a) => a.trim()),
-      subject,
-      html: message,
-    });
-    if (resendError) throw new Error(resendError.message);
-    console.log(`Admin email sent via Resend: ${data?.id} to ${toAddresses.length} recipient(s).`);
-    res.json({ success: true, messageId: data?.id });
+    if (gmailPassword) {
+      // Primary: Gmail SMTP via nodemailer
+      // `message` is admin-supplied HTML for the email body.
+      // This endpoint is restricted to authenticated admins only; the HTML is
+      // delivered to an email client, not rendered in a browser, so it is not
+      // an XSS surface for other users of the platform.
+      const nodemailer = await import("nodemailer");
+      const transporter = nodemailer.default.createTransport({
+        service: "gmail",
+        auth: {
+          user: ADMIN_EMAIL_SENDER,
+          pass: gmailPassword,
+        },
+      });
+      const info = await transporter.sendMail({
+        from: `"DevOS" <${ADMIN_EMAIL_SENDER}>`,
+        to: toAddresses.map((a) => a.trim()).join(", "),
+        subject,
+        html: message,
+      });
+      console.log(`Admin email sent via Gmail: ${info.messageId} to ${toAddresses.length} recipient(s).`);
+      res.json({ success: true, messageId: info.messageId });
+    } else {
+      // Fallback: Resend
+      const resend = new Resend(resendApiKey!);
+      const { data, error: resendError } = await resend.emails.send({
+        from: "DevOS <noreply@devos.name.ng>",
+        to: toAddresses.map((a) => a.trim()),
+        subject,
+        html: message,
+      });
+      if (resendError) throw new Error(resendError.message);
+      console.log(`Admin email sent via Resend: ${data?.id} to ${toAddresses.length} recipient(s).`);
+      res.json({ success: true, messageId: data?.id });
+    }
   } catch (error: any) {
     console.error("Admin email send error:", error);
     res.status(500).json({ error: error.message || "Failed to send email" });

@@ -19,7 +19,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
-import { getAllEvents, setEventStatus, deleteEvent as deleteEventDoc, createEvent } from "../lib/eventsService";
+import { getAllEvents, setEventStatus, deleteEvent as deleteEventDoc, createEvent, getEventRegistrations } from "../lib/eventsService";
 import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits, getMaintenanceConfig, saveMaintenanceConfig, MaintenanceConfig, getSiteConfig, saveSiteConfig, SiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
@@ -28,7 +28,7 @@ import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsername
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
 import { updateCommunity, deleteCommunity, createCommunity, batchAddAllUsersToCommunity } from "../lib/communityService";
 import { getAllOrgs, deleteOrg, updateOrg, createOrg, batchAddAllUsersToOrg } from "../lib/orgService";
-import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization, Project } from "../types";
+import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization, Project, EventRegistration } from "../types";
 import { useDevOSAI } from "../hooks/useDevOSAI";
 import { Event as DevEvent, EventStatus, EventType } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -354,6 +354,11 @@ export default function AdminDashboard() {
   const [updatingEventId, setUpdatingEventId] = useState<string | null>(null);
   const [deleteEventConfirm, setDeleteEventConfirm] = useState<string | null>(null);
   const [deletingEvent, setDeletingEvent] = useState(false);
+
+  // RSVP viewer state
+  const [expandedRsvpEventId, setExpandedRsvpEventId] = useState<string | null>(null);
+  const [eventRsvps, setEventRsvps] = useState<Record<string, EventRegistration[]>>({});
+  const [loadingRsvpEventId, setLoadingRsvpEventId] = useState<string | null>(null);
 
   // Create event state (admin)
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -1628,6 +1633,24 @@ export default function AdminDashboard() {
       toast.error("Failed to update event status.");
     } finally {
       setUpdatingEventId(null);
+    }
+  };
+
+  const handleToggleRsvps = async (eventId: string) => {
+    if (expandedRsvpEventId === eventId) {
+      setExpandedRsvpEventId(null);
+      return;
+    }
+    setExpandedRsvpEventId(eventId);
+    if (eventRsvps[eventId]) return; // already loaded
+    setLoadingRsvpEventId(eventId);
+    try {
+      const regs = await getEventRegistrations(eventId);
+      setEventRsvps((prev) => ({ ...prev, [eventId]: regs }));
+    } catch {
+      toast.error("Failed to load RSVPs.");
+    } finally {
+      setLoadingRsvpEventId(null);
     }
   };
 
@@ -4374,6 +4397,20 @@ User request: ${aiTestPrompt.trim()}`;
                                     </button>
                                   )}
                                   <button
+                                    onClick={() => handleToggleRsvps(ev.id)}
+                                    className={cn(
+                                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors",
+                                      expandedRsvpEventId === ev.id
+                                        ? "bg-purple-600/30 text-purple-300"
+                                        : "bg-white/5 text-white/40 hover:bg-purple-600/20 hover:text-purple-300"
+                                    )}
+                                  >
+                                    {loadingRsvpEventId === ev.id
+                                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                                      : <Users className="w-3 h-3" />}
+                                    RSVPs {eventRsvps[ev.id] ? `(${eventRsvps[ev.id].length})` : ""}
+                                  </button>
+                                  <button
                                     onClick={() => setDeleteEventConfirm(ev.id)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-white/40 hover:bg-red-600/20 hover:text-red-400 transition-colors"
                                   >
@@ -4382,6 +4419,51 @@ User request: ${aiTestPrompt.trim()}`;
                                   </button>
                                 </div>
                               </div>
+
+                              {/* RSVP panel */}
+                              {expandedRsvpEventId === ev.id && (
+                                <div className="mt-4 border-t border-white/10 pt-4">
+                                  {loadingRsvpEventId === ev.id ? (
+                                    <div className="flex items-center gap-2 text-white/40 text-xs py-2">
+                                      <Loader2 className="w-4 h-4 animate-spin" /> Loading RSVPs…
+                                    </div>
+                                  ) : (eventRsvps[ev.id] ?? []).length === 0 ? (
+                                    <p className="text-xs text-white/30 py-2">No RSVPs yet.</p>
+                                  ) : (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-xs">
+                                        <thead>
+                                          <tr className="text-white/30 uppercase text-[10px] tracking-widest">
+                                            <th className="text-left pb-2 pr-4">Name</th>
+                                            <th className="text-left pb-2 pr-4">Email</th>
+                                            <th className="text-left pb-2 pr-4">Phone</th>
+                                            <th className="text-left pb-2">Source</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {(eventRsvps[ev.id] ?? []).map((reg) => (
+                                            <tr key={reg.id} className="border-t border-white/5">
+                                              <td className="py-2 pr-4 text-white/80">{reg.name}</td>
+                                              <td className="py-2 pr-4 text-white/60">{reg.email}</td>
+                                              <td className="py-2 pr-4 text-white/40">{reg.phone ?? "—"}</td>
+                                              <td className="py-2">
+                                                <span className={cn(
+                                                  "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
+                                                  reg.source === "user"
+                                                    ? "bg-blue-600/20 text-blue-400"
+                                                    : "bg-white/10 text-white/40"
+                                                )}>
+                                                  {reg.source}
+                                                </span>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ))}
                         {adminEvents.filter((e) => eventStatusFilter === "all" || e.status === eventStatusFilter).length === 0 && (
