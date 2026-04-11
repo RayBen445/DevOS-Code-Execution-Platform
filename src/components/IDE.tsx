@@ -103,6 +103,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
   const [orgRole, setOrgRole] = useState<OrgMemberRole | null>(null);
   const [orgMembersLoading, setOrgMembersLoading] = useState(false);
+  const [orgRoleLoading, setOrgRoleLoading] = useState(false);
 
   // Real-time collaboration state (org projects only)
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([]);
@@ -508,7 +509,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     if (!project || !user) return true;
     if (project.ownerId === user.uid) return false; // owner always has full access
     if (isOrgProject) {
-      // In an org project, check update_project permission via RBAC
+      // While the role is still loading, stay editable so the user isn't
+      // incorrectly blocked by a temporary null role.
+      if (orgRoleLoading) return false;
       if (orgRole === null) return true;
       return !canPerform(orgRole, "update_project");
     }
@@ -520,7 +523,10 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const canDeploy = (() => {
     if (!project || !user) return false;
     if (project.ownerId === user.uid) return true;
-    if (isOrgProject) return canPerform(orgRole, "deploy_project");
+    if (isOrgProject) {
+      if (orgRoleLoading) return false;
+      return canPerform(orgRole, "deploy_project");
+    }
     return project.collaborators.includes(user.uid);
   })();
   const isDeployed = !!project?.deployUrl;
@@ -611,6 +617,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     if (!project?.ownerOrgId || project?.ownerType !== "organization") {
       setOrgMembers([]);
       setOrgRole(null);
+      setOrgRoleLoading(false);
       return;
     }
     const orgId = project.ownerOrgId;
@@ -621,7 +628,11 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     });
     // Load user's own role
     if (user) {
-      getOrgMember(orgId, user.uid).then((m) => setOrgRole(m?.role ?? null)).catch(() => setOrgRole(null));
+      setOrgRoleLoading(true);
+      getOrgMember(orgId, user.uid)
+        .then((m) => setOrgRole(m?.role ?? null))
+        .catch(() => setOrgRole(null))
+        .finally(() => setOrgRoleLoading(false));
     }
     return () => unsub();
   }, [project?.ownerOrgId, project?.ownerType, user?.uid]);
@@ -1332,7 +1343,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       onClick={() => contextMenu && setContextMenu(null)}
     >
       {/* Org project permission banner */}
-      {isOrgProject && orgRole === null && !loading && (
+      {isOrgProject && orgRole === null && !loading && !orgRoleLoading && (
         <div className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 border-b border-orange-500/20 text-orange-300 text-xs font-medium">
           <Shield className="w-3.5 h-3.5 flex-shrink-0" />
           You are not a member of this organization — the project is read-only.
@@ -2536,44 +2547,105 @@ function formatTimestamp(ts: any): string {
   return `${Math.floor(diff / 86_400_000)}d ago`;
 }
 
-/** Minimal README renderer — handles headings, bold, inline-code, code blocks, and lists */
+/** README renderer — headings, bold, italic, inline-code, links, images,
+ *  fenced code blocks, unordered & ordered lists, blockquotes, and hr. */
 function ReadmeRenderer({ content }: { content: string }) {
   if (!content?.trim()) {
     return <p className="text-white/30 text-sm italic">No content.</p>;
   }
 
+  // ── Inline renderer: bold, italic, inline-code, links, images ─────────────
+  const renderInline = (text: string, baseKey: string): React.ReactNode => {
+    // Split on the following patterns (order matters):
+    //   ![alt](url)   — image
+    //   [text](url)   — link
+    //   `code`        — inline code
+    //   **bold**      — bold
+    //   *italic*      — italic (single asterisk or underscore)
+    const re = /(!\[[^\]]*\]\([^)]*\)|\[[^\]]*\]\([^)]*\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_)/g;
+    const parts: React.ReactNode[] = [];
+    let last = 0;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(text)) !== null) {
+      if (match.index > last) parts.push(text.slice(last, match.index));
+      const token = match[0];
+      const ki = `${baseKey}-${match.index}`;
+      if (token.startsWith("![")) {
+        const alt = token.slice(2, token.indexOf("]"));
+        const src = token.slice(token.indexOf("(") + 1, -1);
+        parts.push(
+          <img key={ki} src={src} alt={alt} className="max-w-full rounded-lg my-2 inline-block" />
+        );
+      } else if (token.startsWith("[")) {
+        const label = token.slice(1, token.indexOf("]"));
+        const href = token.slice(token.indexOf("(") + 1, -1);
+        parts.push(
+          <a key={ki} href={href} target="_blank" rel="noopener noreferrer"
+            className="text-blue-400 underline underline-offset-2 hover:text-blue-300 transition-colors">
+            {label}
+          </a>
+        );
+      } else if (token.startsWith("`")) {
+        parts.push(
+          <code key={ki} className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-[12px] font-mono">
+            {token.slice(1, -1)}
+          </code>
+        );
+      } else if (token.startsWith("**")) {
+        parts.push(<strong key={ki} className="text-white font-bold">{token.slice(2, -2)}</strong>);
+      } else {
+        // *italic* or _italic_
+        parts.push(<em key={ki} className="italic text-white/80">{token.slice(1, -1)}</em>);
+      }
+      last = match.index + token.length;
+    }
+    if (last < text.length) parts.push(text.slice(last));
+    return <span key={baseKey}>{parts}</span>;
+  };
+
+  // ── Block-level pass ──────────────────────────────────────────────────────
   const lines = content.split("\n");
-  const elements: React.ReactNode[] = [];
+  const out: React.ReactNode[] = [];
   let inCodeBlock = false;
   let codeLines: string[] = [];
   let codeLang = "";
+  // Accumulate consecutive list items so we can wrap them
+  type ListItem = { ordered: boolean; content: string; lineIdx: number };
+  let pendingList: ListItem[] = [];
 
-  const renderInline = (text: string, key: string): React.ReactNode => {
-    // bold **text** and inline `code`
-    const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
-    return (
-      <span key={key}>
-        {parts.map((p, i) => {
-          if (p.startsWith("`") && p.endsWith("`"))
-            return <code key={i} className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-[12px] font-mono">{p.slice(1, -1)}</code>;
-          if (p.startsWith("**") && p.endsWith("**"))
-            return <strong key={i} className="text-white font-bold">{p.slice(2, -2)}</strong>;
-          return p;
-        })}
-      </span>
+  const flushList = () => {
+    if (pendingList.length === 0) return;
+    const ordered = pendingList[0].ordered;
+    const Tag = ordered ? "ol" : "ul";
+    out.push(
+      <Tag
+        key={`list-${pendingList[0].lineIdx}`}
+        className={`text-sm text-white/60 leading-relaxed pl-6 space-y-0.5 ${ordered ? "list-decimal" : "list-disc"} my-1`}
+      >
+        {pendingList.map((item) => (
+          <li key={item.lineIdx}>{renderInline(item.content, `li-${item.lineIdx}`)}</li>
+        ))}
+      </Tag>
     );
+    pendingList = [];
   };
 
   lines.forEach((line, i) => {
+    // Fenced code block toggle
     if (line.startsWith("```")) {
+      flushList();
       if (!inCodeBlock) {
         inCodeBlock = true;
         codeLang = line.slice(3).trim();
         codeLines = [];
       } else {
         inCodeBlock = false;
-        elements.push(
-          <pre key={`code-${i}`} className="bg-white/5 border border-white/10 rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-green-300 leading-relaxed my-3">
+        out.push(
+          <pre
+            key={`code-${i}`}
+            className="bg-white/5 border border-white/10 rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-green-300 leading-relaxed my-3"
+            data-lang={codeLang || undefined}
+          >
             <code>{codeLines.join("\n")}</code>
           </pre>
         );
@@ -2584,22 +2656,45 @@ function ReadmeRenderer({ content }: { content: string }) {
     }
     if (inCodeBlock) { codeLines.push(line); return; }
 
-    if (line.startsWith("### ")) {
-      elements.push(<h3 key={i} className="text-base font-bold text-white mt-4 mb-1">{line.slice(4)}</h3>);
+    // Headings
+    if (line.startsWith("#### ")) {
+      flushList();
+      out.push(<h4 key={i} className="text-sm font-bold text-white mt-3 mb-1">{renderInline(line.slice(5), `h4-${i}`)}</h4>);
+    } else if (line.startsWith("### ")) {
+      flushList();
+      out.push(<h3 key={i} className="text-base font-bold text-white mt-4 mb-1">{renderInline(line.slice(4), `h3-${i}`)}</h3>);
     } else if (line.startsWith("## ")) {
-      elements.push(<h2 key={i} className="text-lg font-extrabold text-white mt-5 mb-2 border-b border-white/10 pb-1">{line.slice(3)}</h2>);
+      flushList();
+      out.push(<h2 key={i} className="text-lg font-extrabold text-white mt-5 mb-2 border-b border-white/10 pb-1">{renderInline(line.slice(3), `h2-${i}`)}</h2>);
     } else if (line.startsWith("# ")) {
-      elements.push(<h1 key={i} className="text-xl font-black text-white mt-5 mb-2">{line.slice(2)}</h1>);
-    } else if (/^[-*] /.test(line)) {
-      elements.push(
-        <li key={i} className="text-sm text-white/60 leading-relaxed ml-4 list-disc">
-          {renderInline(line.slice(2), `li-${i}`)}
-        </li>
+      flushList();
+      out.push(<h1 key={i} className="text-xl font-black text-white mt-5 mb-2">{renderInline(line.slice(2), `h1-${i}`)}</h1>);
+    // Horizontal rule: --- or *** or ___
+    } else if (/^(\s*[-*_]){3,}\s*$/.test(line)) {
+      flushList();
+      out.push(<hr key={i} className="border-white/10 my-4" />);
+    // Blockquote
+    } else if (line.startsWith("> ")) {
+      flushList();
+      out.push(
+        <blockquote key={i} className="border-l-4 border-blue-500/40 pl-4 text-sm text-white/50 italic my-2">
+          {renderInline(line.slice(2), `bq-${i}`)}
+        </blockquote>
       );
+    // Unordered list
+    } else if (/^[-*+] /.test(line)) {
+      pendingList.push({ ordered: false, content: line.slice(2), lineIdx: i });
+    // Ordered list
+    } else if (/^\d+\. /.test(line)) {
+      pendingList.push({ ordered: true, content: line.replace(/^\d+\. /, ""), lineIdx: i });
+    // Blank line
     } else if (line.trim() === "") {
-      elements.push(<div key={i} className="h-2" />);
+      flushList();
+      out.push(<div key={i} className="h-2" />);
+    // Paragraph
     } else {
-      elements.push(
+      flushList();
+      out.push(
         <p key={i} className="text-sm text-white/60 leading-relaxed">
           {renderInline(line, `p-${i}`)}
         </p>
@@ -2607,5 +2702,15 @@ function ReadmeRenderer({ content }: { content: string }) {
     }
   });
 
-  return <div className="space-y-1 leading-relaxed">{elements}</div>;
+  // Flush any trailing list / code block
+  flushList();
+  if (inCodeBlock && codeLines.length) {
+    out.push(
+      <pre key="code-eof" className="bg-white/5 border border-white/10 rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-green-300 leading-relaxed my-3">
+        <code>{codeLines.join("\n")}</code>
+      </pre>
+    );
+  }
+
+  return <div className="space-y-1 leading-relaxed">{out}</div>;
 }
