@@ -8,11 +8,37 @@ export function cn(...inputs: ClassValue[]) {
 export function toValidDate(value: any): Date | null {
   if (!value) return null;
   try {
-    const date = value?.toDate ? value.toDate() : new Date(value);
+    let date: Date;
+    if (typeof value?.toDate === "function") {
+      // Firestore Timestamp instance
+      date = value.toDate();
+    } else if (typeof value?.seconds === "number") {
+      // Plain serialised Firestore Timestamp: { seconds, nanoseconds }
+      date = new Date(value.seconds * 1000);
+    } else {
+      // ISO string, numeric ms, or native Date
+      date = new Date(value);
+    }
     return Number.isNaN(date.getTime()) ? null : date;
   } catch {
     return null;
   }
+}
+
+/**
+ * Format any timestamp value as a locale date+time string.
+ *
+ * Handles:
+ *   • Firestore Timestamp instances (have .toDate())
+ *   • Plain serialised timestamps   ({ seconds, nanoseconds })
+ *   • ISO strings and numeric milliseconds
+ *
+ * Returns `fallback` (default "—") when the value is missing or unparseable.
+ */
+export function formatTimestamp(value: any, fallback = "—"): string {
+  const date = toValidDate(value);
+  if (!date) return fallback;
+  return date.toLocaleString();
 }
 
 export function formatTime(value: any): string {

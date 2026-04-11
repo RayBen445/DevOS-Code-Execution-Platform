@@ -705,8 +705,8 @@ export default function OrgPage() {
             <div className="bg-[#111] border border-gray-800 rounded-xl p-5 flex flex-col gap-1">
               <p className="text-gray-500 text-xs uppercase tracking-wider">Created</p>
               <p className="text-sm text-gray-300">
-                {org.createdAt?.seconds
-                  ? formatRelativeTime({ seconds: org.createdAt.seconds, nanoseconds: 0 } as any)
+                {org.createdAt
+                  ? formatRelativeTime(org.createdAt)
                   : "—"}
               </p>
             </div>
@@ -754,8 +754,8 @@ export default function OrgPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{m.username}</p>
                   <p className="text-xs text-gray-500">
-                    Joined {m.joinedAt?.seconds
-                      ? formatRelativeTime({ seconds: m.joinedAt.seconds, nanoseconds: 0 } as any)
+                    Joined {m.joinedAt
+                      ? formatRelativeTime(m.joinedAt)
                       : "recently"}
                   </p>
                 </div>
@@ -833,7 +833,7 @@ export default function OrgPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1 text-xs text-gray-600">
-                      <span>Updated {project.updatedAt?.seconds ? formatRelativeTime({ seconds: project.updatedAt.seconds, nanoseconds: 0 } as any) : "—"}</span>
+                      <span>Updated {project.updatedAt ? formatRelativeTime(project.updatedAt) : "—"}</span>
                     </div>
                     <button
                       onClick={() => navigate('/projects?open=' + project.id)}

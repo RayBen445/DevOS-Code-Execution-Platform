@@ -364,7 +364,7 @@ export default function ProjectView() {
                         <div className="flex-1 pb-5">
                           <p className="text-sm text-white font-medium">{ev.label}</p>
                           <p className="text-xs text-white/30 mt-1">
-                            {ev.ts?.seconds ? formatRelativeTime({ seconds: ev.ts.seconds, nanoseconds: 0 } as any) : "—"}
+                            {ev.ts ? formatRelativeTime(ev.ts) : "—"}
                           </p>
                         </div>
                       </div>
@@ -571,7 +571,7 @@ export default function ProjectView() {
                           <p className="text-xs text-white/40 mt-0.5 truncate max-w-sm">{ev.detail}</p>
                         )}
                         <p className="text-xs text-white/30 mt-1">
-                          {ev.ts?.seconds ? formatRelativeTime({ seconds: ev.ts.seconds, nanoseconds: 0 } as any) : "—"}
+                          {ev.ts ? formatRelativeTime(ev.ts) : "—"}
                         </p>
                       </div>
                     </div>

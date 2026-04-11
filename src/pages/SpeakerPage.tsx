@@ -20,14 +20,12 @@ import {
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
+import { toValidDate } from "../lib/utils";
+
 function formatDate(ts: any): string {
-  if (!ts) return "";
-  try {
-    const d: Date = ts?.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return "";
-  }
+  const d = toValidDate(ts);
+  if (!d) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function SpeakerPage() {
