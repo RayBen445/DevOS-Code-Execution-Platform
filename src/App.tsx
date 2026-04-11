@@ -40,6 +40,9 @@ import Portfolio from "./pages/Portfolio";
 import NotFoundPage from "./pages/NotFoundPage";
 import SubdomainRouter from "./components/SubdomainRouter";
 import SubdomainPreview from "./pages/SubdomainPreview";
+import LearnPage from "./pages/LearnPage";
+import LearnTopicPage from "./pages/LearnTopicPage";
+import LearnLessonPage from "./pages/LearnLessonPage";
 import EventsPage from "./pages/EventsPage";
 import EventPage from "./pages/EventPage";
 import CreateEventPage from "./pages/CreateEventPage";
@@ -420,6 +423,9 @@ export default function App() {
             <Route path="/orgs" element={withPageMaintenance("/orgs", <OrgsPage />)} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/learn" element={withPageMaintenance("/learn", <LearnPage />)} />
+            <Route path="/learn/:topicId" element={withPageMaintenance("/learn", <LearnTopicPage />)} />
+            <Route path="/learn/:topicId/:lessonId" element={withPageMaintenance("/learn", <LearnLessonPage />)} />
             <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
             <Route path="/events" element={withPageMaintenance("/events", <EventsPage />)} />
             <Route path="/events/create" element={withPageMaintenance("/events", <CreateEventPage />)} />
