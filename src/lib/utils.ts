@@ -13,7 +13,7 @@ export function toValidDate(value: any): Date | null {
       // Firestore Timestamp instance
       date = value.toDate();
     } else if (typeof value?.seconds === "number") {
-      // Plain serialised Firestore Timestamp: { seconds, nanoseconds }
+      // Plain serialized Firestore Timestamp: { seconds, nanoseconds }
       date = new Date(value.seconds * 1000);
     } else {
       // ISO string, numeric ms, or native Date
@@ -30,7 +30,7 @@ export function toValidDate(value: any): Date | null {
  *
  * Handles:
  *   • Firestore Timestamp instances (have .toDate())
- *   • Plain serialised timestamps   ({ seconds, nanoseconds })
+ *   • Plain serialized timestamps   ({ seconds, nanoseconds })
  *   • ISO strings and numeric milliseconds
  *
  * Returns `fallback` (default "—") when the value is missing or unparseable.
