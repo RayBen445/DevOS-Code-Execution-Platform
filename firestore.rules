@@ -763,5 +763,29 @@ service cloud.firestore {
       );
       allow delete: if isAdmin();
     }
+
+    // ── Passkeys ──────────────────────────────────────────────────────────────
+    // Each user stores WebAuthn credential records under their own sub-tree.
+    // Only the owning user may read, add, or remove their credentials.
+    match /passkeys/{userId}/credentials/{credentialId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ── Email Jobs ────────────────────────────────────────────────────────────
+    // Client-side code enqueues email jobs (e.g. welcome, deploy notifications).
+    // The actual sending runs via the server-side email-worker API (Admin SDK,
+    // bypasses these rules).  Admins can inspect and manage the queue.
+    match /email_jobs/{jobId} {
+      // Admins can read, retry, and purge any job.
+      allow read, update, delete: if isAdmin();
+      // Any authenticated user may create a job for their own account.
+      // The userId field is optional on the document; if present it must match
+      // the caller's uid so no user can queue jobs on behalf of another.
+      allow create: if isAuthenticated() && (
+        !('userId' in request.resource.data) ||
+        request.resource.data.userId == null ||
+        request.resource.data.userId == request.auth.uid
+      );
+    }
   }
 }
