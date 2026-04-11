@@ -4198,7 +4198,7 @@ User request: ${aiTestPrompt.trim()}`;
                               <p className="text-[10px] text-white/25 mt-1">
                                 by @{proj.ownerUsername ?? "—"}
                                 {" · "}
-                                <a href={`/project/${proj.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-400/60 hover:text-blue-400 transition-colors">Open in IDE ↗</a>
+                                <a href={`/projects?open=${proj.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-400/60 hover:text-blue-400 transition-colors">Open in IDE ↗</a>
                               </p>
                             </div>
                           </div>

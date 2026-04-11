@@ -1955,6 +1955,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       projectId={projectId}
                       readOnly={editorReadOnly}
                       onCursorChange={(line, col) => { setCursorLine(line); setCursorCol(col); }}
+                      showToolbar
                     />
                   ) : (
                     /* ── GitHub-style project homepage shown when no file is open ── */

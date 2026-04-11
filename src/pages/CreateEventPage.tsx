@@ -109,8 +109,9 @@ export default function CreateEventPage() {
       });
       toast.success("Event submitted for review! It will be visible once approved.");
       navigate("/events");
-    } catch {
-      toast.error("Failed to submit event. Please try again.");
+    } catch (err: any) {
+      console.error("Event creation failed:", err);
+      toast.error("Failed to submit event: " + (err?.message ?? "Unknown error"));
     } finally {
       setSubmitting(false);
     }
