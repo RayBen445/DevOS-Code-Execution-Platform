@@ -6,7 +6,8 @@ import admin from "firebase-admin";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
+import rateLimit from "express-rate-limit";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -107,6 +108,21 @@ const TERMINAL_RATE_WINDOW_MS = 60_000;
 const runProjectRateLimit = new Map<string, { count: number; resetAt: number }>();
 const RUN_PROJECT_RATE_MAX = 5;
 const RUN_PROJECT_RATE_WINDOW_MS = 60_000;
+
+const buildJobRateLimit = new Map<string, { count: number; resetAt: number }>();
+const BUILD_JOB_RATE_MAX = 10;
+const BUILD_JOB_RATE_WINDOW_MS = 60_000;
+
+const validateProjectRateLimit = new Map<string, { count: number; resetAt: number }>();
+const VALIDATE_RATE_MAX = 20;
+const VALIDATE_RATE_WINDOW_MS = 60_000;
+
+// Allowed output directories — used to prevent path traversal via user-supplied outputDir
+const ALLOWED_OUTPUT_DIRS = new Set(["dist", "build", ".next", "out", "public"]);
+// Max output file count and size (named constants for clarity)
+const MAX_OUTPUT_FILES = 300;
+const MAX_OUTPUT_FILE_SIZE = 1_048_576; // 1 MB
+const MAX_STORED_OUTPUT_FILES = 50;
 
 // Per-user persistent workspace directories for the terminal (lives for the process lifetime).
 // This lets successive commands (e.g. `npm install` then `node index.js`) share state.
@@ -688,15 +704,19 @@ app.post("/api/admin/send-email", async (req, res) => {
   const idToken = authHeader.split("Bearer ")[1];
 
   let uid: string;
+  let callerEmail: string | undefined;
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
     uid = decoded.uid;
+    callerEmail = decoded.email;
   } catch {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 
   // 3. Confirm caller is admin
-  let userDoc: FirebaseFirestore.DocumentSnapshot;
+  // Accepts either the platform-owner email or a Firestore role == 'admin'.
+  const PLATFORM_ADMIN_EMAIL = "oladoyeheritage445@gmail.com";
+  let userDoc: FirebaseFirestore.DocumentSnapshot | null = null;
   try {
     userDoc = await db.collection("users").doc(uid).get();
   } catch (err: any) {
@@ -708,7 +728,10 @@ app.post("/api/admin/send-email", async (req, res) => {
       .status(500)
       .json({ error: "Server configuration error. Please try again later." });
   }
-  if (userDoc.data()?.role !== "admin")
+  const isAdminUser =
+    callerEmail === PLATFORM_ADMIN_EMAIL ||
+    userDoc?.data()?.role === "admin";
+  if (!isAdminUser)
     return res.status(403).json({ error: "Forbidden: admin only" });
 
   // 4. Per-admin rate limit
@@ -745,35 +768,55 @@ app.post("/api/admin/send-email", async (req, res) => {
       .status(400)
       .json({ error: `Invalid email address: ${invalid}` });
 
-  // 6. Send via Gmail SMTP
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
-  if (!gmailPass)
-    return res
-      .status(500)
-      .json({ error: "GMAIL_APP_PASSWORD is not configured on the server." });
+  // 6. Send email — Gmail SMTP (nodemailer) is the primary transport.
+  //    Falls back to Resend when GMAIL_APP_PASSWORD is absent but
+  //    RESEND_API_KEY is present.  At least one must be configured.
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+  const resendApiKey = process.env.RESEND_API_KEY;
 
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    auth: { user: ADMIN_EMAIL_SENDER, pass: gmailPass },
-  });
+  if (!gmailPassword && !resendApiKey)
+    return res.status(500).json({
+      error:
+        "Email service is not configured. " +
+        "Set GMAIL_APP_PASSWORD (Gmail SMTP) or RESEND_API_KEY on the server.",
+    });
 
   try {
-    // `message` is admin-supplied HTML for the email body.
-    // This endpoint is restricted to authenticated admins only; the HTML is
-    // delivered to an email client, not rendered in a browser, so it is not
-    // an XSS surface for other users of the platform.
-    const info = await transporter.sendMail({
-      from: `"DevOS" <${ADMIN_EMAIL_SENDER}>`,
-      to: toAddresses.map((a) => a.trim()).join(", "),
-      subject,
-      html: message,
-    });
-    console.log(
-      `Admin email sent: ${info.messageId} to ${toAddresses.length} recipient(s).`
-    );
-    res.json({ success: true, messageId: info.messageId });
+    if (gmailPassword) {
+      // Primary: Gmail SMTP via nodemailer
+      // `message` is admin-supplied HTML for the email body.
+      // This endpoint is restricted to authenticated admins only; the HTML is
+      // delivered to an email client, not rendered in a browser, so it is not
+      // an XSS surface for other users of the platform.
+      const nodemailer = await import("nodemailer");
+      const transporter = nodemailer.default.createTransport({
+        service: "gmail",
+        auth: {
+          user: ADMIN_EMAIL_SENDER,
+          pass: gmailPassword,
+        },
+      });
+      const info = await transporter.sendMail({
+        from: `"DevOS" <${ADMIN_EMAIL_SENDER}>`,
+        to: toAddresses.map((a) => a.trim()).join(", "),
+        subject,
+        html: message,
+      });
+      console.log(`Admin email sent via Gmail: ${info.messageId} to ${toAddresses.length} recipient(s).`);
+      res.json({ success: true, messageId: info.messageId });
+    } else {
+      // Fallback: Resend
+      const resend = new Resend(resendApiKey!);
+      const { data, error: resendError } = await resend.emails.send({
+        from: "DevOS <noreply@devos.name.ng>",
+        to: toAddresses.map((a) => a.trim()),
+        subject,
+        html: message,
+      });
+      if (resendError) throw new Error(resendError.message);
+      console.log(`Admin email sent via Resend: ${data?.id} to ${toAddresses.length} recipient(s).`);
+      res.json({ success: true, messageId: data?.id });
+    }
   } catch (error: any) {
     console.error("Admin email send error:", error);
     res.status(500).json({ error: error.message || "Failed to send email" });
@@ -907,6 +950,218 @@ app.post("/api/terminal", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Build Job API  — queue worker + live log streaming via Socket.io
+// ---------------------------------------------------------------------------
+// MAX concurrent builds allowed at once (can be raised via env)
+const MAX_CONCURRENT_BUILDS = Number(process.env.MAX_CONCURRENT_BUILDS ?? 3);
+// Simple in-process counter (good enough for single-instance; use Firestore
+// transactions for multi-instance deployments)
+let activeBuildCount = 0;
+
+interface BuildJobPayload {
+  jobId: string;
+  projectId: string;
+  files: ProjectInputFile[];
+  framework?: string;
+  buildCommand?: string | null;
+  outputDir?: string | null;
+  commitHash?: string;
+  username?: string;
+  projectSlug?: string;
+}
+
+/**
+ * POST /api/build-job
+ *
+ * Processes one queued build job:
+ *   1. Verify auth + load job from Firestore
+ *   2. If MAX_CONCURRENT_BUILDS reached, return 429 (client should retry)
+ *   3. Mark job "running", write files to tmp dir
+ *   4. Run npm install + detected build command
+ *   5. Stream every log line to Socket.io room (projectId)
+ *   6. Mark job "success" | "failed", store previewUrl
+ */
+app.post("/api/build-job", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer "))
+    return res.status(401).json({ error: "Unauthorized" });
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let uid: string;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid = decoded.uid;
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  // Per-user rate limit for build jobs
+  const nowBj = Date.now();
+  const bjEntry = buildJobRateLimit.get(uid);
+  if (bjEntry && nowBj < bjEntry.resetAt) {
+    if (bjEntry.count >= BUILD_JOB_RATE_MAX)
+      return res.status(429).json({ error: "Rate limit exceeded. Try again in a moment." });
+    bjEntry.count++;
+  } else {
+    buildJobRateLimit.set(uid, { count: 1, resetAt: nowBj + BUILD_JOB_RATE_WINDOW_MS });
+  }
+
+  if (activeBuildCount >= MAX_CONCURRENT_BUILDS) {
+    return res.status(429).json({ error: "Build queue full — job remains queued" });
+  }
+
+  const {
+    jobId,
+    projectId,
+    files,
+    framework,
+    buildCommand,
+    outputDir: requestedOutputDir,
+    commitHash = "dev",
+    username,
+    projectSlug,
+  } = req.body as BuildJobPayload;
+
+  if (!jobId || !projectId || !Array.isArray(files) || files.length === 0) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  // Verify the job belongs to this user
+  const jobRef = db.collection("build_jobs").doc(jobId);
+  const jobSnap = await jobRef.get();
+  if (!jobSnap.exists) return res.status(404).json({ error: "Job not found" });
+  const jobData = jobSnap.data()!;
+  if (jobData.userId !== uid) return res.status(403).json({ error: "Forbidden" });
+  if (jobData.status !== "queued")
+    return res.status(409).json({ error: "Job is not in queued state" });
+
+  activeBuildCount++;
+  const logs: string[] = [];
+  const startedAt = Date.now();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `devos-build-${uid.slice(0, 8)}-`));
+
+  // Helper: emit a log line to the Socket.io room AND store it
+  // We defer io lookup to avoid top-level import (io is created at startup)
+  const emitLog = (level: "info" | "warning" | "error" | "success", message: string) => {
+    const line = `[${level.toUpperCase()}] ${message}`;
+    logs.push(line);
+    try {
+      // io is available as a module-level variable after server start
+      (globalThis as any).__devosIo?.to(projectId).emit("build-log", {
+        jobId,
+        projectId,
+        level,
+        message,
+        timestamp: new Date().toISOString(),
+      });
+    } catch {
+      // socket not available in Vercel serverless — ignore
+    }
+  };
+
+  try {
+    // Mark running
+    await jobRef.update({ status: "running", startedAt: admin.firestore.FieldValue.serverTimestamp() });
+    emitLog("info", `Build job ${jobId} started`);
+    emitLog("info", `Framework: ${framework ?? "Unknown"}`);
+
+    // Write files
+    for (const file of files) {
+      const rel = sanitizeRelativePath(file.name);
+      const dest = path.join(tmpDir, rel);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, String(file.content ?? ""), "utf-8");
+    }
+
+    const pkgPath = path.join(tmpDir, "package.json");
+    if (!fs.existsSync(pkgPath)) {
+      throw new Error("package.json not found");
+    }
+
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+    const scripts: Record<string, string> = pkg?.scripts ?? {};
+
+    // Determine build command — derive from package.json scripts (do NOT execute arbitrary user input)
+    // The client-provided buildCommand is only used as a hint to pick from allowed scripts.
+    const hasBuildScript = !!scripts.build;
+    if (!hasBuildScript) throw new Error("No build script found in package.json");
+    // Always use the fixed npm invocation to prevent command injection
+    const buildArgs = ["run", "build"];
+
+    emitLog("info", "Installing dependencies…");
+    const installResult = await runCommand("npm", ["install", "--ignore-scripts"], tmpDir, 60_000);
+    if (installResult.stderr) emitLog("warning", installResult.stderr.slice(0, 500));
+    emitLog("success", "Dependencies installed");
+
+    emitLog("info", "Running: npm run build");
+    const buildResult = await runCommand("npm", buildArgs, tmpDir, 60_000);
+    if (buildResult.stdout) buildResult.stdout.split("\n").forEach((l) => emitLog("info", l));
+    if (buildResult.stderr) buildResult.stderr.split("\n").forEach((l) => emitLog("warning", l));
+
+    // Detect output dir — only check against the allowed whitelist to prevent path traversal
+    const safeRequestedDir =
+      requestedOutputDir && ALLOWED_OUTPUT_DIRS.has(requestedOutputDir) ? requestedOutputDir : null;
+    const candidates = [safeRequestedDir, "dist", "build", ".next", "out"].filter(Boolean) as string[];
+    const outputDirName = candidates.find((d) => ALLOWED_OUTPUT_DIRS.has(d) && fs.existsSync(path.join(tmpDir, d)));
+    if (!outputDirName) throw new Error("Build output directory not found");
+
+    emitLog("success", `Build complete — output: ${outputDirName}`);
+
+    // Store output files back in Firestore under the job (capped to MAX_OUTPUT_FILES / MAX_OUTPUT_FILE_SIZE)
+    const outputDir = path.join(tmpDir, outputDirName);
+    const outputFiles = walkFiles(outputDir)
+      .filter((f) => fs.statSync(f).size <= MAX_OUTPUT_FILE_SIZE)
+      .slice(0, MAX_OUTPUT_FILES)
+      .map((fullPath) => ({
+        path: path.relative(outputDir, fullPath).replace(/\\/g, "/"),
+        content: fs.readFileSync(fullPath, "utf-8"),
+      }));
+
+    // Build preview URL
+    const short = String(commitHash).slice(0, 8);
+    const previewUrl =
+      username && projectSlug
+        ? `${process.env.APP_ORIGIN ?? "https://devos.name.ng"}/@${username}/${projectSlug}-${short}`
+        : null;
+
+    await jobRef.update({
+      status: "success",
+      previewUrl,
+      logs,
+      outputFiles: outputFiles.slice(0, MAX_STORED_OUTPUT_FILES),
+      finishedAt: admin.firestore.FieldValue.serverTimestamp(),
+      error: null,
+    });
+
+    emitLog("success", previewUrl ? `Preview URL: ${previewUrl}` : "Job complete");
+    (globalThis as any).__devosIo?.to(projectId).emit("build-complete", { jobId, status: "success", previewUrl });
+
+    return res.json({
+      success: true,
+      jobId,
+      previewUrl,
+      outputDir: outputDirName,
+      duration: Date.now() - startedAt,
+      logs,
+    });
+  } catch (error: any) {
+    const message = String(error?.message ?? "Build failed");
+    emitLog("error", message);
+    await jobRef.update({
+      status: "failed",
+      error: message,
+      logs,
+      finishedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    (globalThis as any).__devosIo?.to(projectId).emit("build-complete", { jobId, status: "failed", error: message });
+    return res.status(500).json({ success: false, jobId, error: message, logs, duration: Date.now() - startedAt });
+  } finally {
+    activeBuildCount--;
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* cleanup best effort */ }
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Run Code API
 // ---------------------------------------------------------------------------
 app.post("/api/run", async (req, res) => {
@@ -1002,6 +1257,337 @@ app.post("/api/run", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Validate Project API (TypeScript + Vite pre-flight checks)
+// ---------------------------------------------------------------------------
+app.post("/api/validate-project", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer "))
+    return res.status(401).json({ error: "Unauthorized" });
+  const idToken = authHeader.split("Bearer ")[1];
+
+  try {
+    await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const { files, checks } = req.body as {
+    projectId?: string;
+    files?: Array<{ name: string; content: string }>;
+    checks?: string[];
+  };
+
+  if (!Array.isArray(files) || files.length === 0)
+    return res.status(400).json({ error: "No files provided" });
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "devos-validate-"));
+  const startedAt = Date.now();
+
+  try {
+    for (const file of files) {
+      const rel = sanitizeRelativePath(file.name);
+      const dest = path.join(tmpDir, rel);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, String(file.content ?? ""), "utf-8");
+    }
+
+    const errors: Array<{ file: string; line: number; col: number; message: string; severity: string }> = [];
+    let rawOutput = "";
+    let status = "success";
+
+    const runCheck = (cmd: string, args: string[]): Promise<{ stdout: string; stderr: string }> =>
+      new Promise((resolve) => {
+        const { execFile } = require("child_process");
+        execFile(cmd, args, { timeout: 30_000, cwd: tmpDir }, (_err: any, stdout: string, stderr: string) => {
+          resolve({ stdout: stdout || "", stderr: stderr || "" });
+        });
+      });
+
+    if (checks?.includes("typescript") && fs.existsSync(path.join(tmpDir, "tsconfig.json"))) {
+      const result = await runCheck("npx", ["--yes", "typescript", "--noEmit"]).catch(() => ({ stdout: "", stderr: "" }));
+      const out = result.stdout + result.stderr;
+      rawOutput += out;
+      for (const line of out.split("\n")) {
+        const m = line.match(/^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+TS\d+:\s+(.+)$/);
+        if (m) {
+          errors.push({ file: m[1].replace(/\\/g, "/"), line: parseInt(m[2]), col: parseInt(m[3]), severity: m[4], message: m[5].trim() });
+        }
+      }
+      if (errors.some((e) => e.severity === "error")) status = "error";
+    }
+
+    if (checks?.includes("vite")) {
+      const pkgPath = path.join(tmpDir, "package.json");
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+        if (pkg?.scripts?.build) {
+          const result = await runCheck("npm", ["run", "build", "--", "--logLevel", "error"]).catch(() => ({ stdout: "", stderr: "" }));
+          const out = result.stdout + result.stderr;
+          rawOutput += "\n" + out;
+          for (const line of out.split("\n")) {
+            const m = line.match(/^([^:]+\.(?:ts|tsx|js|jsx|css|vue)):(\d+):(\d+):/);
+            if (m) {
+              const msg = line.slice(m[0].length).replace(/^\s*error:\s*/i, "").trim();
+              errors.push({ file: m[1].replace(/\\/g, "/"), line: parseInt(m[2]), col: parseInt(m[3]), severity: "error", message: msg || "Build error" });
+            }
+          }
+          if (errors.some((e) => e.severity === "error")) status = "error";
+        }
+      }
+    }
+
+    return res.json({ status, errors, rawOutput: rawOutput.slice(0, 10_000), durationMs: Date.now() - startedAt });
+  } catch (error: any) {
+    return res.status(500).json({ status: "error", errors: [], error: error.message });
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true }); } catch { /* ignore */ }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Email Worker API — processes queued email_jobs from Firestore
+// ---------------------------------------------------------------------------
+app.post("/api/email-worker", async (req, res) => {
+  const workerSecret = process.env.EMAIL_WORKER_SECRET;
+  if (workerSecret) {
+    const provided = req.headers["x-worker-secret"];
+    if (provided !== workerSecret)
+      return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const MAX_JOBS = 10;
+  const RETRY_DELAYS_MS = [60_000, 5 * 60_000, 15 * 60_000];
+
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey)
+    return res.status(500).json({ error: "RESEND_API_KEY not configured" });
+
+  const { Resend: ResendClient } = await import("resend");
+  const resend = new ResendClient(resendApiKey);
+
+  const { welcomeEmail } = await import("./src/emails/welcomeEmail.js").catch(() => ({ welcomeEmail: null }));
+  const { deploySuccessEmail, deployFailureEmail } = await import("./src/emails/deployEmail.js").catch(() => ({ deploySuccessEmail: null, deployFailureEmail: null }));
+
+  const templateMap: Record<string, ((p: any) => { subject: string; html: string }) | null> = {
+    welcome: welcomeEmail,
+    deploy_success: deploySuccessEmail,
+    deploy_failure: deployFailureEmail,
+  };
+
+  const now = admin.firestore.Timestamp.now();
+  const snap = await db.collection("email_jobs")
+    .where("status", "==", "queued")
+    .where("scheduledAt", "<=", now)
+    .orderBy("scheduledAt", "asc")
+    .limit(MAX_JOBS)
+    .get();
+
+  const results: Array<{ id: string; status: string; error?: string }> = [];
+
+  for (const jobDoc of snap.docs) {
+    const job = jobDoc.data();
+    const templateFn = templateMap[job.templateKey];
+
+    let subject = job.subject ?? "DevOS notification";
+    let html = job.html ?? "";
+
+    if (templateFn) {
+      try {
+        const rendered = templateFn(job.payload ?? {});
+        subject = rendered.subject;
+        html = rendered.html;
+      } catch (renderErr: any) {
+        await jobDoc.ref.update({ status: "failed", lastError: `Template render failed: ${renderErr.message}`, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        results.push({ id: jobDoc.id, status: "failed", error: renderErr.message });
+        continue;
+      }
+    }
+
+    if (!html) {
+      await jobDoc.ref.update({ status: "failed", lastError: "No HTML content", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      results.push({ id: jobDoc.id, status: "failed", error: "No HTML content" });
+      continue;
+    }
+
+    try {
+      const { error: sendError } = await resend.emails.send({
+        from: "DevOS <noreply@devos.name.ng>",
+        to: job.to,
+        subject,
+        html,
+      });
+      if (sendError) throw new Error(sendError.message);
+
+      await jobDoc.ref.update({ status: "sent", attempts: (job.attempts ?? 0) + 1, lastError: null, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      results.push({ id: jobDoc.id, status: "sent" });
+    } catch (sendErr: any) {
+      const attempts = (job.attempts ?? 0) + 1;
+      if (attempts >= (job.maxAttempts ?? 3)) {
+        await jobDoc.ref.update({ status: "failed", attempts, lastError: sendErr.message, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        results.push({ id: jobDoc.id, status: "failed", error: sendErr.message });
+      } else {
+        const delayMs = RETRY_DELAYS_MS[attempts - 1] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+        const retryAt = admin.firestore.Timestamp.fromMillis(Date.now() + delayMs);
+        await jobDoc.ref.update({ attempts, lastError: sendErr.message, scheduledAt: retryAt, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        results.push({ id: jobDoc.id, status: "retrying", error: sendErr.message });
+      }
+    }
+  }
+
+  return res.json({ processed: results.length, results });
+});
+
+// ---------------------------------------------------------------------------
+// DevOS AI — secure middleware between the frontend IDE chat and the
+// Hugging Face Serverless Inference API.
+//
+// POST /api/devos-ai
+// Authorization: Bearer <Firebase ID token>
+// Body: { prompt: string, maxTokens?: number }
+//
+// Returns: { text: string }
+// ---------------------------------------------------------------------------
+
+/** Rate-limiter: max 20 AI requests per user per 60 seconds (keyed by IP). */
+const aiRateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests — please wait before sending another message." },
+});
+
+app.post("/api/devos-ai", aiRateLimiter, async (req, res) => {
+  // ── 1. Authenticate the caller via Firebase ID token ──────────────────────
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer "))
+    return res.status(401).json({ error: "Unauthorized" });
+
+  const idToken = authHeader.slice(7);
+  let uid: string;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid = decoded.uid;
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  // ── 2. Validate the request body ──────────────────────────────────────────
+  const { prompt, maxTokens } = req.body as { prompt?: unknown; maxTokens?: unknown };
+  if (typeof prompt !== "string" || prompt.trim().length === 0)
+    return res.status(400).json({ error: "A non-empty 'prompt' string is required." });
+  if (prompt.length > 12_000)
+    return res.status(400).json({ error: "Prompt exceeds the maximum allowed length of 12 000 characters." });
+
+  const resolvedMaxTokens =
+    typeof maxTokens === "number" && maxTokens > 0 && maxTokens <= 4096
+      ? maxTokens
+      : 512;
+
+  // ── 3. Ensure the API key is configured ───────────────────────────────────
+  const hfApiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!hfApiKey)
+    return res.status(500).json({ error: "AI service is not configured. Please contact support." });
+
+  // ── 4. Call the Hugging Face Serverless Inference API ─────────────────────
+  /**
+   * Model preference list — we try each in order until one succeeds.
+   * Primary:  mistralai/Mistral-7B-Instruct-v0.3  (open-weights, no gating)
+   * Fallback: HuggingFaceH4/zephyr-7b-beta         (open, widely available)
+   */
+  const MODELS = [
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "HuggingFaceH4/zephyr-7b-beta",
+  ];
+
+  const systemPrompt =
+    "You are DevOS AI, a helpful, concise coding assistant embedded inside the DevOS cloud IDE. " +
+    "You specialise in TypeScript, React, Node.js, and Firebase. " +
+    "Provide clear, accurate answers. Format code blocks with the appropriate language tag.";
+
+  const { HfInference } = await import("@huggingface/inference");
+  const hf = new HfInference(hfApiKey);
+
+  let lastErr: any = null;
+
+  for (const model of MODELS) {
+    try {
+      const completion = await hf.chatCompletion({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt.trim() },
+        ],
+        max_tokens: resolvedMaxTokens,
+      });
+
+      const text = completion.choices?.[0]?.message?.content?.trim() ?? "";
+      return res.json({ text });
+    } catch (err: any) {
+      lastErr = err;
+      const statusCode: number = err?.response?.status ?? err?.statusCode ?? 0;
+
+      // 401 / 403 — key issue or gated model; try next model
+      if (statusCode === 401 || statusCode === 403) {
+        console.warn(`[devos-ai] Model ${model} returned ${statusCode} — trying next model`);
+        continue;
+      }
+
+      // 404 — model not found; try next
+      if (statusCode === 404) {
+        console.warn(`[devos-ai] Model ${model} not found — trying next model`);
+        continue;
+      }
+
+      // 503 — model cold-starting; try next model before giving up
+      if (statusCode === 503 || err?.message?.includes("loading") || err?.message?.includes("currently loading")) {
+        console.warn(`[devos-ai] Model ${model} is loading — trying next model`);
+        continue;
+      }
+
+      // 429 — rate limited on this model; try next
+      if (statusCode === 429) {
+        console.warn(`[devos-ai] Model ${model} rate-limited — trying next model`);
+        continue;
+      }
+
+      // Timeout — try next model
+      if (err?.code === "ETIMEDOUT" || err?.name === "TimeoutError" || err?.message?.includes("timeout")) {
+        console.warn(`[devos-ai] Model ${model} timed out — trying next model`);
+        continue;
+      }
+
+      // Any other error — stop trying, surface immediately
+      console.error(`[devos-ai] Unrecoverable error from ${model}:`, err?.message ?? err);
+      return res.status(502).json({
+        error: "The AI service encountered an error. Please try again shortly.",
+      });
+    }
+  }
+
+  // All models failed — surface the most useful message
+  const lastStatus: number = lastErr?.response?.status ?? lastErr?.statusCode ?? 0;
+  console.error("[devos-ai] All models failed. Last error:", lastErr?.message ?? lastErr);
+
+  if (lastStatus === 503 || lastErr?.message?.includes("loading")) {
+    return res.status(503).json({
+      error: "The AI models are warming up. Please try again in about 30 seconds.",
+      retryAfter: 30,
+    });
+  }
+  if (lastErr?.code === "ETIMEDOUT" || lastErr?.name === "TimeoutError" || lastErr?.message?.includes("timeout")) {
+    return res.status(504).json({ error: "The AI request timed out. Please try again." });
+  }
+  if (lastStatus === 429) {
+    return res.status(429).json({ error: "AI rate limit reached. Please wait a moment and try again." });
+  }
+
+  return res.status(502).json({
+    error: "The AI service is temporarily unavailable. Please try again shortly.",
+  });
+});
+
+// ---------------------------------------------------------------------------
 // In development, serve the Vite dev server; in production Vercel routes
 // static assets from the build output so this block is skipped.
 // ---------------------------------------------------------------------------
@@ -1034,6 +1620,8 @@ if (process.env.VERCEL !== "1") {
 
   const httpServer = createServer(app);
   const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
+  // Expose io globally so the /api/build-job route can stream logs
+  (globalThis as any).__devosIo = io;
 
   io.on("connection", (socket) => {
     socket.on("join-project", (projectId: string) => {

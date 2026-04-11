@@ -12,13 +12,23 @@ import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
-import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem } from "../types";
+import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem, DetectionResult, BuildJob } from "../types";
 import { cn } from "../lib/utils";
 import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
+import { canPerform } from "../lib/rbacService";
+import { logAudit } from "../lib/auditService";
+import { detectProject, FRAMEWORK_BADGE_COLORS } from "../lib/detectionService";
+import { hashFiles, shortHash } from "../lib/buildCacheService";
+import { enqueueJob, subscribeProjectBuildJobs, buildPreviewUrl } from "../lib/buildQueueService";
+import DeploymentDashboard from "./DeploymentDashboard";
+import BuildStatusBadge from "./BuildStatusBadge";
 import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { emitBotEvent } from "../lib/botEngine";
+import ErrorPanel from "./ErrorPanel";
+import { validateProject } from "../lib/validationService";
+import { ValidationResult } from "../types";
 
 interface IDEProps {
   projectId: string;
@@ -80,6 +90,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const terminalDragStartH = useRef<number>(0);
   const [cursorLine, setCursorLine] = useState(1);
   const [cursorCol, setCursorCol] = useState(1);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [validationHash, setValidationHash] = useState<string | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
 
   // Mobile top-nav state (replaces slide-in drawer)
   type MobileTabId = "editor" | "files" | "preview" | "git" | "terminal" | "settings" | "collaborators";
@@ -98,6 +111,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const orgMembersRef = useRef<OrgMember[]>([]); // stable ref for use in closures
   const notifiedActivityIds = useRef<Set<string>>(new Set()); // prevents duplicate toasts
   const editDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Framework / command / output-dir detection — updated whenever files change
+  const [detection, setDetection] = useState<DetectionResult | null>(null);
+
+  // Build queue state
+  const [buildJobs, setBuildJobs] = useState<BuildJob[]>([]);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const botDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [botSuggestions, setBotSuggestions] = useState<string[]>([]);
 
@@ -139,6 +159,65 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     setRunOutput(prev => [...prev, { type, message, timestamp }]);
   };
 
+  // Re-detect project type whenever the file list changes
+  useEffect(() => {
+    if (files.length > 0) {
+      setDetection(detectProject(files));
+    }
+  }, [files]);
+
+  // Audit log: preview_project when the preview panel is opened
+  const prevActivePanel = useRef<string | null>(null);
+  useEffect(() => {
+    if (activePanel === "preview" && prevActivePanel.current !== "preview" && user && projectId) {
+      logAudit({
+        userId: user.uid,
+        action: "preview_project",
+        projectId,
+        orgId: project?.ownerOrgId ?? null,
+        metadata: { framework: detection?.framework ?? "Unknown" },
+      });
+    }
+    prevActivePanel.current = activePanel;
+  }, [activePanel]);
+
+  // Subscribe to build jobs for this project
+  useEffect(() => {
+    if (!projectId) return;
+    return subscribeProjectBuildJobs(projectId, setBuildJobs);
+  }, [projectId]);
+
+  // Listen for real-time build log events from the server via Socket.io
+  useEffect(() => {
+    const handleBuildLog = (payload: { jobId: string; level: string; message: string }) => {
+      const typeMap: Record<string, LogEntry["type"]> = {
+        info: "info",
+        warning: "warning",
+        error: "error",
+        success: "success",
+      };
+      addLog(typeMap[payload.level] ?? "output", `[build] ${payload.message}`);
+    };
+
+    const handleBuildComplete = (payload: { jobId: string; status: string; previewUrl?: string }) => {
+      if (payload.status === "success") {
+        addLog("success", `✔ Build ${payload.jobId.slice(0, 8)} complete`);
+        if (payload.previewUrl) addLog("info", `🔗 Preview: ${payload.previewUrl}`);
+        toast.success("Build complete!");
+      } else {
+        addLog("error", `✖ Build ${payload.jobId.slice(0, 8)} failed`);
+        toast.error("Build failed — check terminal");
+      }
+    };
+
+    socket.on("build-log", handleBuildLog);
+    socket.on("build-complete", handleBuildComplete);
+    return () => {
+      socket.off("build-log", handleBuildLog);
+      socket.off("build-complete", handleBuildComplete);
+    };
+  }, []);
+
   const updateLastLog = (type: LogEntry["type"], message: string) => {
     setRunOutput(prev => {
       if (prev.length === 0) return prev;
@@ -178,11 +257,23 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   };
 
   const handleTerminalDeploy = async () => {
-    const hasIndexHtml = files.some(f => f.name.toLowerCase() === "index.html");
-    if (!hasIndexHtml) {
-      addLog("error", "✖ Deployment failed");
-      addLog("error", "Reason: Missing index.html");
+    // Permission check via RBAC
+    if (isOrgProject && !canPerform(orgRole, "deploy_project")) {
+      addLog("error", "✖ Permission denied");
+      addLog("error", "Reason: deploy_project requires developer role or higher.");
       return;
+    }
+
+    const det = detection ?? detectProject(files);
+    const hasIndexHtml = files.some(f => f.name.toLowerCase() === "index.html");
+    if (!hasIndexHtml && !det.hasPackageJson) {
+      addLog("error", "✖ Deployment failed");
+      addLog("error", "Reason: Missing both index.html and package.json — cannot determine deploy strategy");
+      return;
+    }
+
+    if (det.framework !== "Unknown" && det.framework !== "Static") {
+      addLog("info", `⚡ Detected framework: ${det.framework}`);
     }
 
     await animateStep("Preparing project...");
@@ -218,9 +309,37 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
       addLog("success", "✔ Deployment successful");
       addLog("info", `🌐 ${url}`);
+
+      // Audit: deploy_project
+      logAudit({
+        userId: auth.currentUser.uid,
+        action: "deploy_project",
+        projectId,
+        orgId: project?.ownerOrgId ?? null,
+        metadata: {
+          framework: det.framework,
+          buildCommand: det.buildCommand,
+          outputDir: det.outputDir,
+          status: "success",
+          url,
+        },
+      });
     } catch (error: any) {
       addLog("error", "✖ Deployment failed");
       addLog("error", `Reason: ${error.message}`);
+      if (auth.currentUser) {
+        logAudit({
+          userId: auth.currentUser.uid,
+          action: "deploy_project",
+          projectId,
+          orgId: project?.ownerOrgId ?? null,
+          metadata: {
+            framework: det.framework,
+            status: "failed",
+            error: error.message,
+          },
+        });
+      }
     }
   };
 
@@ -389,18 +508,19 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     if (!project || !user) return true;
     if (project.ownerId === user.uid) return false; // owner always has full access
     if (isOrgProject) {
-      // In an org project, members can edit; non-members are read-only
-      return orgRole === null;
+      // In an org project, check update_project permission via RBAC
+      if (orgRole === null) return true;
+      return !canPerform(orgRole, "update_project");
     }
     // Personal project: must be owner or collaborator
     return !project.collaborators.includes(user.uid);
   })();
 
-  // Can deploy: owner always; in org projects, org admin only
+  // Can deploy: owner always; in org projects use RBAC deploy_project permission
   const canDeploy = (() => {
     if (!project || !user) return false;
     if (project.ownerId === user.uid) return true;
-    if (isOrgProject) return orgRole === "admin";
+    if (isOrgProject) return canPerform(orgRole, "deploy_project");
     return project.collaborators.includes(user.uid);
   })();
   const isDeployed = !!project?.deployUrl;
@@ -683,6 +803,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       setPreviewSaveKey(k => k + 1);
       if (!silent) toast.success("Project saved");
 
+      // Run validation in the background after every manual save.
+      if (!silent && files.length > 0) {
+        validateProject(files, projectId, validationHash).then((res) => {
+          setValidationResult(res);
+          setValidationHash(res.hash);
+          if (res.errors?.some((e) => e.severity === "error")) setShowErrors(true);
+        }).catch(() => { /* validation is best-effort */ });
+      }
+
       // Create a version snapshot on every manual save (not auto-save).
       // Best-effort: a version failure must never block the normal save flow.
       if (!silent && files.length > 0) {
@@ -731,12 +860,126 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
   };
 
+  /**
+   * Queue a build job and immediately dispatch it to the server.
+   * Streams live logs via Socket.io; UI updates via subscribeProjectBuildJobs.
+   */
+  const handleQueueDeploy = async (branch = "main") => {
+    if (!user || !project) return;
+
+    // Permission check
+    if (isOrgProject && !canPerform(orgRole, "deploy_project")) {
+      toast.error("Permission denied: deploy requires developer role or higher");
+      return;
+    }
+
+    const det = detection ?? detectProject(files);
+    const hash = await hashFiles(files);
+    const short = shortHash(hash);
+
+    setActivePanel("terminal");
+    addLog("system", `devos ▶ ${project.name} $ deploy --branch ${branch}`);
+    addLog("info", `Detected: ${det.framework}`);
+    addLog("info", `Commit: ${short}`);
+
+    // Get username for preview URL
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    const username = userDoc.exists() ? userDoc.data().username : null;
+    const slug = project.projectSlug || project.name.toLowerCase().replace(/\s+/g, "-");
+
+    const previewUrl = username
+      ? buildPreviewUrl(window.location.origin, username, slug, hash)
+      : null;
+
+    try {
+      // Enqueue
+      const jobId = await enqueueJob({
+        projectId,
+        userId: user.uid,
+        commitHash: short,
+        framework: det.framework,
+        buildCommand: det.buildCommand,
+        outputDir: det.outputDir,
+        priority: "normal",
+      });
+
+      setActiveJobId(jobId);
+      addLog("info", `Build job queued: ${jobId.slice(0, 8)}`);
+
+      logAudit({
+        userId: user.uid,
+        action: "build_queued",
+        projectId,
+        orgId: project.ownerOrgId ?? null,
+        metadata: { jobId, framework: det.framework, branch, commitHash: short },
+      });
+
+      // Dispatch to server
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch("/api/build-job", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
+        body: JSON.stringify({
+          jobId,
+          projectId,
+          files: files.map((f) => ({
+            name: (f.path || f.name || "").replace(/^\/+/, ""),
+            content: f.content ?? "",
+          })),
+          framework: det.framework,
+          buildCommand: det.buildCommand,
+          outputDir: det.outputDir,
+          commitHash: short,
+          username,
+          projectSlug: slug,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          addLog("warning", "⚠ Build queue full — job will run when a slot opens");
+          toast("Build queued — waiting for slot");
+        } else {
+          addLog("error", `✖ Dispatch failed: ${err.error ?? response.statusText}`);
+        }
+      }
+    } catch (err: any) {
+      addLog("error", `✖ ${err.message}`);
+    }
+  };
+
   const handleRun = async () => {
     if (!activeFile) return;
+
+    // Permission check for org projects
+    if (isOrgProject && !canPerform(orgRole, "run_project")) {
+      toast.error("Permission denied: run_project requires developer role or higher.");
+      return;
+    }
+
+    const det = detection ?? detectProject(files);
 
     setIsRunning(true);
     setActivePanel("terminal");
     addLog("system", `devos ▶ ${project?.name || "project"} $ run`);
+    if (det.framework !== "Unknown") {
+      addLog("info", `⚡ Framework: ${det.framework}`);
+    }
+
+    // Audit: run_project
+    if (user) {
+      logAudit({
+        userId: user.uid,
+        action: "run_project",
+        projectId,
+        orgId: project?.ownerOrgId ?? null,
+        metadata: { framework: det.framework, file: activeFile.name },
+      });
+    }
 
     const packageFile = files.find((f) => f.name === "package.json" || f.path === "/package.json");
     if (packageFile) {
@@ -1155,6 +1398,19 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   {project?.name}
                 </a>
 
+                {/* Framework badge */}
+                {detection && detection.framework !== "Unknown" && (
+                  <span
+                    className={cn(
+                      "hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border flex-shrink-0",
+                      FRAMEWORK_BADGE_COLORS[detection.framework]
+                    )}
+                    title={`Detected: ${detection.framework}`}
+                  >
+                    {detection.framework}
+                  </span>
+                )}
+
                 {/* File path */}
                 {breadcrumbFilePath && (
                   <>
@@ -1297,13 +1553,23 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 Share
               </button>
               {!isReadOnly && canDeploy && (
-                <button 
-                  onClick={() => setIsDeployModalOpen(true)}
-                  className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
-                >
-                  {isDeployed ? <Globe className="w-3.5 h-3.5" /> : <Rocket className="w-3.5 h-3.5" />}
-                  <span className="hidden sm:inline">{isDeployed ? "Sync" : "Deploy"}</span>
-                </button>
+                <>
+                  {/* Active job badge */}
+                  {activeJobId && (
+                    <BuildStatusBadge jobId={activeJobId} className="hidden md:inline-flex" />
+                  )}
+                  <button
+                    onClick={() =>
+                      detection?.hasPackageJson
+                        ? handleQueueDeploy("main")
+                        : setIsDeployModalOpen(true)
+                    }
+                    className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+                  >
+                    {isDeployed ? <Globe className="w-3.5 h-3.5" /> : <Rocket className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline">{isDeployed ? "Sync" : "Deploy"}</span>
+                  </button>
+                </>
               )}
             </>
           )}
@@ -1591,6 +1857,23 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 </div>
               )}
 
+              {/* Deployments Panel — shows history, rollback, branch deployments */}
+              {project?.systemType !== 'portfolio' && activePanel === "settings" && !isFocusMode && canDeploy && (
+                <div className="hidden md:flex w-80 border-r border-white/5 flex-col overflow-y-auto">
+                  <div className="p-4 border-b border-white/5">
+                    <h3 className="text-xs font-bold text-white/60 uppercase tracking-wider">Deployments</h3>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3">
+                    <DeploymentDashboard
+                      projectId={projectId}
+                      userId={user?.uid ?? ""}
+                      activeDeploymentId={project?.activeDeploymentId}
+                      canManage={canDeploy}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Editor Area */}
               <main
                 className="flex-1 relative bg-[#0D1117] flex flex-col overflow-hidden"
@@ -1829,6 +2112,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     <Loader2 className="w-3 h-3 text-white/30 animate-spin flex-shrink-0" />
                   )}
                 </form>
+
+                {/* Validation errors panel — shown when there are build/type errors */}
+                {showErrors && validationResult && (
+                  <ErrorPanel
+                    result={validationResult}
+                    isRunning={isRunning || isExecRunning}
+                  />
+                )}
               </motion.div>
             )}
           </div>

@@ -19,7 +19,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
-import { getAllEvents, setEventStatus, deleteEvent as deleteEventDoc } from "../lib/eventsService";
+import { getAllEvents, setEventStatus, deleteEvent as deleteEventDoc, createEvent, getEventRegistrations } from "../lib/eventsService";
 import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits, getMaintenanceConfig, saveMaintenanceConfig, MaintenanceConfig, getSiteConfig, saveSiteConfig, SiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
@@ -28,8 +28,9 @@ import { banUser, suspendUser, reinstateUser, adminChangeUsername, checkUsername
 import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollService";
 import { updateCommunity, deleteCommunity, createCommunity, batchAddAllUsersToCommunity } from "../lib/communityService";
 import { getAllOrgs, deleteOrg, updateOrg, createOrg, batchAddAllUsersToOrg } from "../lib/orgService";
-import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization, Project } from "../types";
-import { Event as DevEvent, EventStatus } from "../types";
+import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization, Project, EventRegistration } from "../types";
+import { useDevOSAI } from "../hooks/useDevOSAI";
+import { Event as DevEvent, EventStatus, EventType } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -85,6 +86,8 @@ import {
   FolderPlus,
   Calendar,
   MapPin,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -351,6 +354,34 @@ export default function AdminDashboard() {
   const [updatingEventId, setUpdatingEventId] = useState<string | null>(null);
   const [deleteEventConfirm, setDeleteEventConfirm] = useState<string | null>(null);
   const [deletingEvent, setDeletingEvent] = useState(false);
+
+  // RSVP viewer state
+  const [expandedRsvpEventId, setExpandedRsvpEventId] = useState<string | null>(null);
+  const [eventRsvps, setEventRsvps] = useState<Record<string, EventRegistration[]>>({});
+  const [loadingRsvpEventId, setLoadingRsvpEventId] = useState<string | null>(null);
+
+  // Create event state (admin)
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [newEvTitle, setNewEvTitle] = useState("");
+  const [newEvDesc, setNewEvDesc] = useState("");
+  const [newEvType, setNewEvType] = useState<EventType>("online");
+  const [newEvStart, setNewEvStart] = useState("");
+  const [newEvEnd, setNewEvEnd] = useState("");
+  const [newEvLink, setNewEvLink] = useState("");
+  const [newEvVenue, setNewEvVenue] = useState("");
+  const [newEvAddress, setNewEvAddress] = useState("");
+  const [newEvPremium, setNewEvPremium] = useState(false);
+  const [creatingAdminEvent, setCreatingAdminEvent] = useState(false);
+
+  // AI Template Generator state (templates tab)
+  const [aiTestPrompt, setAiTestPrompt] = useState("");
+  const [aiGenName, setAiGenName] = useState("");
+  const [aiGenDesc, setAiGenDesc] = useState("");
+  const [aiGenTags, setAiGenTags] = useState("");
+  const [aiGenFiles, setAiGenFiles] = useState<Template["files"]>([]);
+  const [aiGenReady, setAiGenReady] = useState(false);
+  const [savingAiTemplate, setSavingAiTemplate] = useState(false);
+  const { ask: askAI, isLoading: aiTesting, error: aiTestError, reset: resetAiTest } = useDevOSAI();
 
   // Admin projects state
   const [adminProjects, setAdminProjects] = useState<Project[]>([]);
@@ -1605,6 +1636,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleRsvps = async (eventId: string) => {
+    if (expandedRsvpEventId === eventId) {
+      setExpandedRsvpEventId(null);
+      return;
+    }
+    setExpandedRsvpEventId(eventId);
+    if (eventRsvps[eventId]) return; // already loaded
+    setLoadingRsvpEventId(eventId);
+    try {
+      const regs = await getEventRegistrations(eventId);
+      setEventRsvps((prev) => ({ ...prev, [eventId]: regs }));
+    } catch {
+      toast.error("Failed to load RSVPs.");
+    } finally {
+      setLoadingRsvpEventId(null);
+    }
+  };
+
   const confirmDeleteEvent = async () => {
     if (!deleteEventConfirm) return;
     setDeletingEvent(true);
@@ -1619,6 +1668,113 @@ export default function AdminDashboard() {
       setDeletingEvent(false);
     }
   };
+
+  const handleCreateAdminEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setCreatingAdminEvent(true);
+    try {
+      const slug = newEvTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .slice(0, 80);
+      const userData = (await getDoc(doc(db, "users", user.uid))).data();
+      const id = await createEvent({
+        title: newEvTitle.trim(),
+        slug: `${slug}-${Date.now()}`,
+        description: newEvDesc.trim(),
+        type: newEvType,
+        startDate: new Date(newEvStart),
+        endDate: new Date(newEvEnd),
+        ...(newEvType === "online" && newEvLink ? { eventLink: newEvLink.trim() } : {}),
+        ...(newEvType === "physical" && newEvVenue ? { venueName: newEvVenue.trim() } : {}),
+        ...(newEvType === "physical" && newEvAddress ? { address: newEvAddress.trim() } : {}),
+        createdBy: user.uid,
+        createdByUsername: userData?.username ?? user.email ?? "",
+        isPremium: newEvPremium,
+      });
+      // Auto-approve admin-created events
+      await setEventStatus(id, "approved");
+      toast.success("Event created and approved!");
+      setShowCreateEvent(false);
+      setNewEvTitle(""); setNewEvDesc(""); setNewEvType("online");
+      setNewEvStart(""); setNewEvEnd(""); setNewEvLink("");
+      setNewEvVenue(""); setNewEvAddress(""); setNewEvPremium(false);
+      await loadAdminEvents();
+    } catch (err) {
+      toast.error("Failed to create event.");
+      console.error(err);
+    } finally {
+      setCreatingAdminEvent(false);
+    }
+  };
+
+  const handleAiGenerateTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiTestPrompt.trim()) return;
+    resetAiTest();
+    setAiGenReady(false);
+    setAiGenFiles([]);
+    setAiGenName("");
+    setAiGenDesc("");
+    setAiGenTags("");
+
+    const systemPrompt = `You are a web template generator for DevOS, a browser-based code IDE.
+Return ONLY valid JSON — no markdown fences, no explanation — in this exact shape:
+{
+  "name": "<short template name>",
+  "description": "<one sentence>",
+  "tags": ["tag1","tag2"],
+  "files": [
+    { "name": "index.html", "path": "index.html", "content": "<full file content>", "language": "html" }
+  ]
+}
+Include all necessary files (HTML, CSS, JS). Keep file content complete and functional.
+User request: ${aiTestPrompt.trim()}`;
+
+    const raw = await askAI(systemPrompt, { maxTokens: 2048 });
+    if (!raw) return;
+
+    try {
+      // Strip possible markdown code fences
+      const clean = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+      const parsed = JSON.parse(clean);
+      if (!parsed.files || !Array.isArray(parsed.files)) throw new Error("No files array");
+      setAiGenName(parsed.name ?? "AI Template");
+      setAiGenDesc(parsed.description ?? "");
+      setAiGenTags((parsed.tags ?? []).join(", "));
+      setAiGenFiles(parsed.files);
+      setAiGenReady(true);
+    } catch {
+      toast.error("AI returned invalid JSON. Try rephrasing your prompt.");
+    }
+  };
+
+  const handleSaveAiTemplate = async () => {
+    if (!aiGenName.trim() || aiGenFiles.length === 0) return;
+    setSavingAiTemplate(true);
+    try {
+      await createOfficialTemplate({
+        name: aiGenName.trim(),
+        description: aiGenDesc.trim(),
+        files: aiGenFiles,
+        tags: aiGenTags.split(",").map((t) => t.trim()).filter(Boolean),
+      });
+      toast.success("AI template created and approved!");
+      setAiTestPrompt(""); setAiGenReady(false);
+      setAiGenName(""); setAiGenDesc(""); setAiGenTags(""); setAiGenFiles([]);
+      resetAiTest();
+      await loadData();
+    } catch {
+      toast.error("Failed to save template.");
+    } finally {
+      setSavingAiTemplate(false);
+    }
+  };
+
+  const handleAiTest = handleAiGenerateTemplate;
 
   if (!user) {
     return (
@@ -2202,6 +2358,93 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── AI Template Generator ──────────────────────── */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-5">
+                      <div className="flex items-center gap-2">
+                        <Bot className="w-4 h-4 text-purple-400" />
+                        <h2 className="text-sm font-bold text-white">Generate Template with AI</h2>
+                        <span className="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-400 text-[10px] font-bold uppercase border border-purple-500/20">Beta</span>
+                      </div>
+                      <p className="text-xs text-white/40">Describe the template you want. The AI will generate all the files. Review and edit before publishing.</p>
+
+                      <form onSubmit={handleAiGenerateTemplate} className="space-y-3">
+                        <textarea
+                          value={aiTestPrompt}
+                          onChange={(e) => setAiTestPrompt(e.target.value)}
+                          placeholder="e.g. A dark-themed SaaS landing page with hero, features, and pricing sections"
+                          rows={3}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                          required
+                        />
+                        <div className="flex items-center gap-3">
+                          <button type="submit" disabled={aiTesting || !aiTestPrompt.trim()} className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700 transition-all active:scale-95 disabled:opacity-50">
+                            {aiTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                            {aiTesting ? "Generating…" : "Generate with AI"}
+                          </button>
+                          {aiGenReady && (
+                            <button type="button" onClick={() => { setAiGenReady(false); setAiGenFiles([]); setAiTestPrompt(""); resetAiTest(); }} className="px-4 py-2.5 rounded-xl font-bold text-white/40 hover:text-white text-sm transition-colors">
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      </form>
+
+                      {aiTestError && (
+                        <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                          <span>{aiTestError}</span>
+                        </div>
+                      )}
+
+                      {aiGenReady && (
+                        <div className="space-y-4 border-t border-white/10 pt-5">
+                          <p className="text-xs font-bold text-white/30 uppercase tracking-widest">Review & Edit Before Publishing</p>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Template Name</label>
+                              <input value={aiGenName} onChange={(e) => setAiGenName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Description</label>
+                              <input value={aiGenDesc} onChange={(e) => setAiGenDesc(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Tags (comma-separated)</label>
+                              <input value={aiGenTags} onChange={(e) => setAiGenTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors" />
+                            </div>
+                          </div>
+
+                          {/* Generated files */}
+                          <div className="space-y-2">
+                            <p className="text-xs font-bold text-white/30 uppercase tracking-widest">{aiGenFiles.length} file{aiGenFiles.length !== 1 ? "s" : ""} generated</p>
+                            {aiGenFiles.map((f, i) => (
+                              <div key={i} className="border border-white/10 rounded-xl overflow-hidden">
+                                <div className="flex items-center justify-between px-3 py-2 bg-white/3">
+                                  <span className="text-xs font-mono text-blue-300">{f.name}</span>
+                                  <span className="text-[10px] text-white/30">{f.language}</span>
+                                </div>
+                                <textarea
+                                  value={f.content}
+                                  onChange={(e) => setAiGenFiles((prev) => prev.map((file, idx) => idx === i ? { ...file, content: e.target.value } : file))}
+                                  rows={6}
+                                  className="w-full bg-black/60 px-3 py-2 text-xs text-white/80 font-mono focus:outline-none resize-y"
+                                />
+                              </div>
+                            ))}
+                          </div>
+
+                          <button
+                            onClick={handleSaveAiTemplate}
+                            disabled={savingAiTemplate || !aiGenName.trim()}
+                            className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            {savingAiTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                            {savingAiTemplate ? "Publishing…" : "Create & Approve Template"}
+                          </button>
                         </div>
                       )}
                     </div>
@@ -3968,6 +4211,84 @@ export default function AdminDashboard() {
                 {/* Events Management Tab */}
                 {activeTab === "events" && (
                   <div className="space-y-6">
+                    {/* Create Event */}
+                    <div className="bg-[#111827] border border-white/10 rounded-2xl overflow-hidden">
+                      <button
+                        onClick={() => setShowCreateEvent((v) => !v)}
+                        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Plus className="w-4 h-4 text-green-400" />
+                          <span className="text-sm font-bold text-white">Create Event</span>
+                          <span className="text-xs text-white/30">(auto-approved)</span>
+                        </div>
+                        {showCreateEvent ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
+                      </button>
+
+                      {showCreateEvent && (
+                        <form onSubmit={handleCreateAdminEvent} className="border-t border-white/10 px-5 pb-5 pt-4 space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="sm:col-span-2">
+                              <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Title *</label>
+                              <input value={newEvTitle} onChange={(e) => setNewEvTitle(e.target.value)} required placeholder="e.g. DevOS Hackathon 2025" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Description *</label>
+                              <textarea value={newEvDesc} onChange={(e) => setNewEvDesc(e.target.value)} required rows={3} placeholder="What's this event about?" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors resize-none" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Type</label>
+                              <select value={newEvType} onChange={(e) => setNewEvType(e.target.value as EventType)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors">
+                                <option value="online">Online</option>
+                                <option value="physical">Physical</option>
+                                <option value="hybrid">Hybrid</option>
+                              </select>
+                            </div>
+                            <div className="flex items-center gap-3 pt-5">
+                              <button type="button" onClick={() => setNewEvPremium((v) => !v)} className={cn("relative w-10 h-5 rounded-full transition-all shrink-0", newEvPremium ? "bg-yellow-500" : "bg-white/10")}>
+                                <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all", newEvPremium ? "left-5" : "left-0.5")} />
+                              </button>
+                              <span className="text-sm text-white/60">Premium event</span>
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Start Date *</label>
+                              <input type="datetime-local" value={newEvStart} onChange={(e) => setNewEvStart(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">End Date *</label>
+                              <input type="datetime-local" value={newEvEnd} onChange={(e) => setNewEvEnd(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                            </div>
+                            {(newEvType === "online" || newEvType === "hybrid") && (
+                              <div className="sm:col-span-2">
+                                <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Event Link</label>
+                                <input type="url" value={newEvLink} onChange={(e) => setNewEvLink(e.target.value)} placeholder="https://meet.google.com/..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                              </div>
+                            )}
+                            {(newEvType === "physical" || newEvType === "hybrid") && (
+                              <>
+                                <div>
+                                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Venue Name</label>
+                                  <input value={newEvVenue} onChange={(e) => setNewEvVenue(e.target.value)} placeholder="Tech Hub Lagos" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Address</label>
+                                  <input value={newEvAddress} onChange={(e) => setNewEvAddress(e.target.value)} placeholder="123 Tech Street" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 pt-1">
+                            <button type="button" onClick={() => setShowCreateEvent(false)} className="px-5 py-2.5 rounded-xl font-bold text-white/40 hover:text-white transition-colors text-sm">Cancel</button>
+                            <button type="submit" disabled={creatingAdminEvent} className="flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-60">
+                              {creatingAdminEvent ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+                              {creatingAdminEvent ? "Creating…" : "Create & Approve"}
+                            </button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+
+                    {/* Filters */}
                     <div className="flex items-center justify-between flex-wrap gap-3">
                       <div className="flex items-center gap-2">
                         {(["all", "pending", "under_review", "approved", "rejected"] as const).map((s) => (
@@ -4076,6 +4397,20 @@ export default function AdminDashboard() {
                                     </button>
                                   )}
                                   <button
+                                    onClick={() => handleToggleRsvps(ev.id)}
+                                    className={cn(
+                                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors",
+                                      expandedRsvpEventId === ev.id
+                                        ? "bg-purple-600/30 text-purple-300"
+                                        : "bg-white/5 text-white/40 hover:bg-purple-600/20 hover:text-purple-300"
+                                    )}
+                                  >
+                                    {loadingRsvpEventId === ev.id
+                                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                                      : <Users className="w-3 h-3" />}
+                                    RSVPs {eventRsvps[ev.id] ? `(${eventRsvps[ev.id].length})` : ""}
+                                  </button>
+                                  <button
                                     onClick={() => setDeleteEventConfirm(ev.id)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-white/40 hover:bg-red-600/20 hover:text-red-400 transition-colors"
                                   >
@@ -4084,6 +4419,51 @@ export default function AdminDashboard() {
                                   </button>
                                 </div>
                               </div>
+
+                              {/* RSVP panel */}
+                              {expandedRsvpEventId === ev.id && (
+                                <div className="mt-4 border-t border-white/10 pt-4">
+                                  {loadingRsvpEventId === ev.id ? (
+                                    <div className="flex items-center gap-2 text-white/40 text-xs py-2">
+                                      <Loader2 className="w-4 h-4 animate-spin" /> Loading RSVPs…
+                                    </div>
+                                  ) : (eventRsvps[ev.id] ?? []).length === 0 ? (
+                                    <p className="text-xs text-white/30 py-2">No RSVPs yet.</p>
+                                  ) : (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-xs">
+                                        <thead>
+                                          <tr className="text-white/30 uppercase text-[10px] tracking-widest">
+                                            <th className="text-left pb-2 pr-4">Name</th>
+                                            <th className="text-left pb-2 pr-4">Email</th>
+                                            <th className="text-left pb-2 pr-4">Phone</th>
+                                            <th className="text-left pb-2">Source</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {(eventRsvps[ev.id] ?? []).map((reg) => (
+                                            <tr key={reg.id} className="border-t border-white/5">
+                                              <td className="py-2 pr-4 text-white/80">{reg.name}</td>
+                                              <td className="py-2 pr-4 text-white/60">{reg.email}</td>
+                                              <td className="py-2 pr-4 text-white/40">{reg.phone ?? "—"}</td>
+                                              <td className="py-2">
+                                                <span className={cn(
+                                                  "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
+                                                  reg.source === "user"
+                                                    ? "bg-blue-600/20 text-blue-400"
+                                                    : "bg-white/10 text-white/40"
+                                                )}>
+                                                  {reg.source}
+                                                </span>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ))}
                         {adminEvents.filter((e) => eventStatusFilter === "all" || e.status === eventStatusFilter).length === 0 && (

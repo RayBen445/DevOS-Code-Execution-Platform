@@ -49,6 +49,8 @@ export interface Project {
   tags?: string[];
   parentTemplateId?: string;
   group?: string;            // user-defined project group name
+  /** ID of the currently active deployment (used for instant rollback) */
+  activeDeploymentId?: string | null;
 }
 
 export interface ProjectVersion {
@@ -127,6 +129,7 @@ export interface UserSettings {
     deployments?: boolean;
     adminAnnouncements?: boolean;
   };
+  bottomNavButtons?: string[];
   updatedAt?: any;
   isOfficial?: boolean;
 }
@@ -319,7 +322,31 @@ export interface ReferralStats {
 
 // ── Organization System ─────────────────────────────────────────────────────
 
-export type OrgMemberRole = "member" | "moderator" | "admin";
+/**
+ * RBAC roles for organization members.
+ * Precedence (highest → lowest): owner > admin > developer > viewer
+ * Legacy values "member" and "moderator" are kept for backward compatibility;
+ * they are treated as "developer" and "admin" respectively in permission checks.
+ */
+export type OrgMemberRole =
+  | "owner"
+  | "admin"
+  | "developer"
+  | "viewer"
+  // Legacy — kept for backward compatibility
+  | "member"
+  | "moderator";
+
+/** Actions that can be checked via checkPermission() */
+export type OrgPermission =
+  | "create_project"
+  | "deploy_project"
+  | "run_project"
+  | "preview_project"
+  | "manage_members"
+  | "view_project"
+  | "delete_project"
+  | "update_project";
 
 export interface Organization {
   id: string;
@@ -452,9 +479,18 @@ export interface Deployment {
   username: string;
   /** Public URL of the deployed project, e.g. https://username.devos.name.ng */
   url: string;
+  /** Per-commit preview URL, e.g. /@username/slug-a1b2c3 */
+  previewUrl?: string | null;
+  /** Git branch this deployment belongs to (default: "main") */
+  branch?: string;
+  /** Short commit hash (8 chars) used for preview URL generation */
+  commitHash?: string;
+  /** Whether this is the currently active (live) deployment for its branch */
+  isActive?: boolean;
   status: 'building' | 'ready' | 'failed';
   buildCommand?: string;
   outputDir?: string;
+  framework?: string;
   createdAt: any;
   completedAt?: any;
   error?: string;
@@ -584,4 +620,203 @@ export interface EventSpeaker {
   eventId: string;
   speakerId: string;
   role: "speaker" | "host" | "panelist";
+}
+
+// ── Audit Log ────────────────────────────────────────────────────────────────
+
+export type AuditAction =
+  | "create_project"
+  | "update_project"
+  | "delete_project"
+  | "run_project"
+  | "preview_project"
+  | "deploy_project"
+  | "login"
+  | "switch_workspace"
+  // Build system
+  | "build_queued"
+  | "build_started"
+  | "build_completed"
+  | "build_failed"
+  // Cache & diff
+  | "cache_hit"
+  | "cache_miss"
+  | "diff_detected"
+  | "deployment_size_reduced"
+  // Rollback & branch
+  | "rollback_triggered"
+  | "branch_deployed"
+  | "deployment_promoted"
+  // Validation
+  | "type_check_started"
+  | "type_check_passed"
+  | "type_check_failed"
+  | "build_check_failed"
+  // Email
+  | "email_queued"
+  | "email_sent"
+  | "email_failed"
+  | "email_retried";
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  orgId?: string | null;
+  projectId?: string | null;
+  action: AuditAction;
+  /** Arbitrary JSON metadata, e.g. framework, status, build command */
+  metadata?: Record<string, any>;
+  createdAt: any;
+}
+
+// ── Execution Detection ──────────────────────────────────────────────────────
+
+export type DetectedFramework =
+  | "Next.js"
+  | "React"
+  | "Vue"
+  | "Vite"
+  | "Node.js"
+  | "Static"
+  | "Unknown";
+
+export interface DetectionResult {
+  framework: DetectedFramework;
+  buildCommand: string | null;
+  devCommand: string | null;
+  startCommand: string | null;
+  outputDir: string | null;
+  /** true when a package.json was found */
+  hasPackageJson: boolean;
+  /** true when an index.html was found at root or public/ */
+  hasIndexHtml: boolean;
+}
+
+// ── Build Cache ──────────────────────────────────────────────────────────────
+
+/**
+ * Cached build record keyed by a SHA-256 hash of all source files.
+ * Stored in `build_cache/{hash}`.
+ */
+export interface BuildCache {
+  id: string;            // === hash (document ID)
+  projectId: string;
+  hash: string;
+  framework: DetectedFramework;
+  outputDir: string | null;
+  /** Serialised output files (path → content) — capped at ~1 MB */
+  outputFiles: Array<{ path: string; content: string }>;
+  createdAt: any;
+}
+
+// ── Deployment Diffing ───────────────────────────────────────────────────────
+
+/**
+ * Per-file hash snapshot from the last successful deployment.
+ * Stored in `deployment_files/{projectId}`.
+ */
+export interface DeploymentSnapshot {
+  projectId: string;
+  /** map of normalised file path → SHA-256 hex digest of content */
+  fileHashes: Record<string, string>;
+  updatedAt: any;
+}
+
+export interface DeployDiffResult {
+  added: string[];
+  modified: string[];
+  deleted: string[];
+  unchanged: string[];
+  /** true when there are no changes — skip deploy */
+  isIdentical: boolean;
+}
+
+// ── Build Queue ──────────────────────────────────────────────────────────────
+
+export type BuildJobStatus = "queued" | "running" | "success" | "failed";
+export type BuildJobPriority = "normal" | "high";
+
+export interface BuildJob {
+  id: string;
+  projectId: string;
+  userId: string;
+  /** Short hash of the source files at the time of queuing */
+  commitHash: string;
+  status: BuildJobStatus;
+  priority: BuildJobPriority;
+  framework?: DetectedFramework;
+  buildCommand?: string | null;
+  outputDir?: string | null;
+  /** Preview URL generated after a successful build */
+  previewUrl?: string | null;
+  logs?: string[];
+  createdAt: any;
+  startedAt?: any | null;
+  finishedAt?: any | null;
+  error?: string | null;
+}
+
+// ── Project Validation ───────────────────────────────────────────────────────
+
+export interface ValidationError {
+  file: string;
+  line: number;
+  col: number;
+  message: string;
+  severity: "error" | "warning";
+}
+
+export interface ValidationResult {
+  status: "success" | "error" | "warning" | "skipped";
+  errors: ValidationError[];
+  /** Full raw output for display */
+  rawOutput?: string;
+  /** Hash of files at the time of last check — for cache skipping */
+  cachedHash?: string;
+  durationMs?: number;
+}
+
+// ── Email System ─────────────────────────────────────────────────────────────
+
+export type EmailJobStatus = "queued" | "processing" | "sent" | "failed";
+
+export interface EmailJob {
+  id: string;
+  to: string;
+  subject?: string;
+  templateKey: string;
+  payload: Record<string, any>;
+  status: EmailJobStatus;
+  attempts: number;
+  maxAttempts: number;
+  lastError?: string | null;
+  scheduledAt: any;
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface EmailTemplate {
+  id: string;
+  key: string;           // unique slug, e.g. "welcome", "forgot_password"
+  name: string;
+  subject: string;
+  html: string;          // raw HTML with {{variable}} placeholders
+  version: number;
+  isActive: boolean;
+  createdAt: any;
+  updatedAt: any;
+}
+
+// ── Notification Settings ────────────────────────────────────────────────────
+
+export interface UserNotificationSettings {
+  userId: string;
+  emailEnabled: boolean;
+  types: {
+    deploy?: boolean;
+    event?: boolean;
+    comment?: boolean;
+    bot?: boolean;
+    system?: boolean;
+  };
 }

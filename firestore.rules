@@ -112,7 +112,7 @@ service cloud.firestore {
 
     function isValidProject(data) {
       let requiredFields = ['name', 'ownerId', 'createdAt', 'updatedAt', 'isPublic', 'isTemplate', 'forksCount', 'collaborators'];
-      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'parentTemplateId', 'forkedFrom', 'forkedFromOwner', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'savedAt', 'env', 'ownerType', 'ownerOrgId']);
+      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'parentTemplateId', 'forkedFrom', 'forkedFromOwner', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'savedAt', 'env', 'ownerType', 'ownerOrgId', 'activeDeploymentId', 'isOfficial', 'group', 'tags', 'ownerOrgSlug', 'ownerOrgName', 'slug', 'deployed']);
       return data.keys().hasAll(requiredFields) &&
              data.keys().hasOnly(allowedFields) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
@@ -183,7 +183,7 @@ service cloud.firestore {
     }
 
     function isValidUserSettings(data) {
-      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId', 'links', 'preferences', 'notifications', 'skills', 'birthday'];
+      let allowedFields = ['githubToken', 'vercelToken', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'githubInstallationId', 'links', 'preferences', 'notifications', 'skills', 'birthday', 'bottomNavButtons'];
       return data.keys().hasOnly(allowedFields) &&
              (!('githubToken' in data) || data.githubToken is string) &&
              (!('vercelToken' in data) || data.vercelToken is string) &&
@@ -198,7 +198,8 @@ service cloud.firestore {
              (!('links' in data) || data.links is map) &&
              (!('skills' in data) || data.skills is list) &&
              (!('preferences' in data) || data.preferences is map) &&
-             (!('notifications' in data) || data.notifications is map);
+             (!('notifications' in data) || data.notifications is map) &&
+             (!('bottomNavButtons' in data) || (data.bottomNavButtons is list && data.bottomNavButtons.size() <= 4));
     }
 
     // Rules
@@ -219,7 +220,7 @@ service cloud.firestore {
 
     match /projects/{projectId} {
       allow read: if canReadProject(projectId, resource.data);
-      allow create: if isAuthenticated() && isValidProject(request.resource.data) && (
+      allow create: if isAuthenticated() && request.auth.token.email_verified == true && isValidProject(request.resource.data) && (
         request.resource.data.ownerId == request.auth.uid ||
         isAdmin() ||
         // Org member creating a project under their organization
@@ -227,7 +228,7 @@ service cloud.firestore {
          request.resource.data.get('ownerOrgId', '') != '' &&
          exists(/databases/$(database)/documents/organizations/$(request.resource.data.ownerOrgId)/members/$(request.auth.uid)))
       );
-      allow update: if canWriteProject(projectId, resource.data) && isValidProject(request.resource.data);
+      allow update: if isAdmin() || (canWriteProject(projectId, resource.data) && isValidProject(request.resource.data));
       allow delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin()) && resource.data.get('isDeletable', true) == true;
 
       match /files/{fileId} {
@@ -539,17 +540,27 @@ service cloud.firestore {
     match /polls/{pollId} {
       // Any authenticated user (or public) can read polls
       allow read: if true;
-      // Only admins may create or modify polls
-      allow create, update, delete: if isAdmin();
+      // Only admins may create or delete polls
+      allow create, delete: if isAdmin();
+      // Admins may update any field; authenticated users may update only the
+      // `options` and `totalVotes` counters as part of the vote transaction.
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['options', 'totalVotes']) &&
+        request.resource.data.totalVotes is int &&
+        request.resource.data.totalVotes == resource.data.totalVotes + 1
+      );
 
       // Votes subcollection — document ID is the voter's uid
       match /votes/{userId} {
         // Poll voters can read their own vote; admins can read all
         allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-        // Each user can write exactly one vote doc (their own uid as doc ID)
+        // Authenticated users can cast their first vote (create) on any poll.
         allow create: if isAuthenticated() && request.auth.uid == userId;
-        // No updates or deletes by regular users
-        allow update, delete: if isAdmin();
+        // Allow overwriting a previous vote when the poll permits multiple votes
+        // (allowMultipleVotes == true). The voter may only update their own doc.
+        allow update: if isAuthenticated() && request.auth.uid == userId;
+        allow delete: if isAdmin();
       }
     }
 
@@ -569,12 +580,12 @@ service cloud.firestore {
         request.resource.data.slug.size() > 0 &&
         request.resource.data.description is string;
 
-      // Org admins or platform admins can update metadata.
+      // Org owners/admins or platform admins can update metadata.
       // Any authenticated member may update memberCount only (join/leave).
       allow update: if isAdmin() || (
         isAuthenticated() &&
         exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
+        get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role in ['admin', 'owner']
       ) || (
         isAuthenticated() &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount']) &&
@@ -584,7 +595,7 @@ service cloud.firestore {
       allow delete: if isAdmin() || (
         isAuthenticated() &&
         exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
+        get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role in ['admin', 'owner']
       );
 
       // Member subcollection — document ID is the user's uid
@@ -595,19 +606,19 @@ service cloud.firestore {
           request.auth.uid == userId ||
           isAdmin()
         );
-        // Role updates by org admin or platform admin
+        // Role updates by org owner/admin or platform admin
         allow update: if isAdmin() || (
           isAuthenticated() &&
           exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
+          get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role in ['admin', 'owner']
         );
-        // User can leave (delete own) or org/platform admin can remove
+        // User can leave (delete own) or org owner/admin can remove
         allow delete: if isAuthenticated() && (
           request.auth.uid == userId ||
           isAdmin() ||
           (
             exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)) &&
-            get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role == 'admin'
+            get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data.role in ['admin', 'owner']
           )
         );
       }
@@ -680,11 +691,12 @@ service cloud.firestore {
     match /events/{eventId} {
       allow read: if true;
       allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
-      // Creator can update their own pending event; admin can update any
+      // Creator can update their own event while it is pending or under review;
+      // admin can update any event at any time.
       allow update: if isAdmin() || (
         isAuthenticated() &&
         resource.data.createdBy == request.auth.uid &&
-        resource.data.status == 'pending'
+        resource.data.status in ['pending', 'under_review']
       );
       allow delete: if isAdmin();
     }
@@ -717,6 +729,75 @@ service cloud.firestore {
       // Only the owning user (or server via admin SDK) may write
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if false;
+    }
+
+    // ── Audit Logs ────────────────────────────────────────────────────────────
+    match /audit_logs/{logId} {
+      // Only admins or the owning user may read audit entries
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      // Authenticated users may append their own audit entries (no update/delete)
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ── Build Jobs ────────────────────────────────────────────────────────────
+    match /build_jobs/{jobId} {
+      // Owner or admin can read
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      // Owner can create their own jobs
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Server (via Admin SDK) updates status; owner may not directly mutate
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Build Cache ───────────────────────────────────────────────────────────
+    match /build_cache/{hash} {
+      // Any authenticated user can read (cache is keyed by content hash — no secrets)
+      allow read: if isAuthenticated();
+      // Only write via Admin SDK / server; clients use the API
+      allow write: if false;
+    }
+
+    // ── Deployment Files (diff snapshots) ────────────────────────────────────
+    match /deployment_files/{projectId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // written by server/Admin SDK only
+    }
+
+    // ── Deployments ───────────────────────────────────────────────────────────
+    match /deployments/{deploymentId} {
+      // Public read for public projects; private restricts to owner/admin
+      allow read: if true;
+      // Owner may create; updates (rollback/promote) only via server or admin
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (
+        isAuthenticated() && resource.data.userId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ── Passkeys ──────────────────────────────────────────────────────────────
+    // Each user stores WebAuthn credential records under their own sub-tree.
+    // Only the owning user may read, add, or remove their credentials.
+    match /passkeys/{userId}/credentials/{credentialId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ── Email Jobs ────────────────────────────────────────────────────────────
+    // Client-side code enqueues email jobs (e.g. welcome, deploy notifications).
+    // The actual sending runs via the server-side email-worker API (Admin SDK,
+    // bypasses these rules).  Admins can inspect and manage the queue.
+    match /email_jobs/{jobId} {
+      // Admins can read, retry, and purge any job.
+      allow read, update, delete: if isAdmin();
+      // Any authenticated user may create a job for their own account.
+      // The userId field is optional on the document; if present it must match
+      // the caller's uid so no user can queue jobs on behalf of another.
+      allow create: if isAuthenticated() && (
+        !('userId' in request.resource.data) ||
+        request.resource.data.userId == null ||
+        request.resource.data.userId == request.auth.uid
+      );
     }
   }
 }

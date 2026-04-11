@@ -44,11 +44,11 @@ export async function createOrg(params: {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  // Add creator as admin member — use userId as doc ID (matches security rules)
+  // Add creator as owner member — use userId as doc ID (matches security rules)
   await setDoc(doc(db, "organizations", ref.id, "members", params.createdBy), {
     userId: params.createdBy,
     username: params.createdByUsername,
-    role: "admin" as OrgMemberRole,
+    role: "owner" as OrgMemberRole,
     joinedAt: serverTimestamp(),
   });
   return ref.id;

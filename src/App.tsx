@@ -151,6 +151,14 @@ export default function App() {
 
   const closeAuth = () => { setShowLogin(false); setShowSignup(false); };
 
+  // Open a specific project directly when navigating to /projects?open=<projectId>
+  useEffect(() => {
+    if (location.pathname !== "/projects") return;
+    const params = new URLSearchParams(location.search);
+    const openId = params.get("open");
+    if (openId && user) setSelectedProjectId(openId);
+  }, [location.pathname, location.search, user]);
+
   // Keep sessionStorage in sync with the active project
   useEffect(() => {
     try {

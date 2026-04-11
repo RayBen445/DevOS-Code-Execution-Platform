@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
-import { signInWithGoogle, signInWithGithub, signUpWithEmail, signInWithEmail } from "../lib/firebase";
-import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
+import {
+  signInWithGoogle,
+  signInWithGithub,
+  signUpWithEmail,
+  signInWithEmail,
+  sendVerificationEmail,
+  sendPasswordReset,
+  getMfaResolver,
+  resolveTotpSignIn,
+  type MultiFactorResolver,
+} from "../lib/firebase";
+import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign, Eye, EyeOff, CheckCircle2, XCircle, ShieldCheck, KeyRound, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { registerUserProfile, checkUsernameAvailable, skipNextInitialize } from "../lib/userService";
 import { getAuthErrorMessage } from "../lib/errorMessages";
@@ -11,8 +21,10 @@ interface LoginProps {
   initialMode?: "login" | "signup";
 }
 
+type AuthStep = "social" | "email" | "forgot" | "mfa" | "verify-sent";
+
 export default function Login({ onClose, initialMode = "login" }: LoginProps) {
-  const [isEmailMode, setIsEmailMode] = useState(initialMode === "signup");
+  const [step, setStep] = useState<AuthStep>("social");
   const [isSignUp, setIsSignUp] = useState(initialMode === "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,6 +33,9 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  const [forgotEmail, setForgotEmail] = useState("");
 
   // Live username availability
   type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "error";
@@ -37,18 +52,16 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
   // Autofocus first field when email mode activates
   const firstFieldRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (isEmailMode) {
+    if (step === "email") {
       setTimeout(() => firstFieldRef.current?.focus(), 50);
     }
-  }, [isEmailMode]);
+  }, [step]);
 
   // Debounced username availability check
   useEffect(() => {
     if (!isSignUp) return;
     if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
 
-    // Always work with the lowercased value so uppercase input doesn't
-    // incorrectly trigger "invalid" status
     const uname = username.trim().toLowerCase();
     if (!uname) { setUsernameStatus("idle"); return; }
     if (!/^[a-z0-9_-]{3,20}$/.test(uname)) { setUsernameStatus("invalid"); return; }
@@ -65,8 +78,6 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
           setUsernameSuggestions(generateSuggestions(uname));
         }
       } catch {
-        // Show a non-blocking error so the user knows something went wrong
-        // with the check, but don't prevent them from proceeding
         setUsernameStatus("error");
       }
     }, 400);
@@ -93,10 +104,6 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
           setLoading(false);
           return;
         }
-        // Final availability guard — runs only when the debounce hasn't
-        // resolved yet (status is still "idle", "checking", or "error").
-        // We keep this in its own try/catch so a Firestore failure here
-        // never causes a misleading "something went wrong" auth error.
         if (usernameStatus !== "available") {
           try {
             const available = await checkUsernameAvailable(uname);
@@ -106,16 +113,13 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
               return;
             }
           } catch {
-            // Username service unavailable — proceed with sign-up.
-            // The username uniqueness constraint in Firestore will still
-            // enforce correctness at write time if needed.
+            // proceed
           }
         }
 
-        // ── Firebase Auth create user ──────────────────────────────
         let cred;
         try {
-          skipNextInitialize(); // prevent initializeUser from racing with registerUserProfile
+          skipNextInitialize();
           cred = await signUpWithEmail(email, password);
         } catch (authErr: any) {
           setError(getAuthErrorMessage(authErr));
@@ -123,18 +127,35 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
           return;
         }
 
-        // ── Write Firestore profile (best-effort; auth already succeeded) ──
         try {
           await registerUserProfile(cred.user, { fullName: fullName.trim(), username: uname });
         } catch (profileErr: any) {
           console.error("Profile setup error (non-fatal):", profileErr);
-          // Auth succeeded — user is signed in. Profile writes failing
-          // shouldn't block the user from entering the app.
         }
+
+        // Send verification email (non-blocking)
+        try {
+          await sendVerificationEmail(cred.user);
+        } catch {
+          // ignore — user is logged in regardless
+        }
+
+        // Show "verify your email" notice before closing
+        setStep("verify-sent");
+        setLoading(false);
+        return;
       } else {
         try {
           await signInWithEmail(email, password);
         } catch (authErr: any) {
+          // Check if this is an MFA challenge
+          const resolver = getMfaResolver(authErr);
+          if (resolver) {
+            setMfaResolver(resolver);
+            setStep("mfa");
+            setLoading(false);
+            return;
+          }
           setError(getAuthErrorMessage(authErr));
           setLoading(false);
           return;
@@ -149,16 +170,51 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
     }
   };
 
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaResolver) return;
+    setLoading(true);
+    setError("");
+    try {
+      await resolveTotpSignIn(mfaResolver, otpCode.trim());
+      onClose();
+    } catch (err: any) {
+      setError("Invalid code. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      await sendPasswordReset(forgotEmail.trim());
+      setStep("verify-sent");
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const switchMode = () => {
     setIsSignUp(v => !v);
     setError("");
     setUsernameStatus("idle");
     setUsername("");
+    setStep("social");
   };
 
-  const heading = isSignUp ? "Create your account" : "Welcome back";
-  const subheading = isSignUp
+  const heading = isSignUp ? "Create your account" : step === "mfa" ? "Two-factor auth" : step === "forgot" ? "Reset password" : step === "verify-sent" ? "Check your email" : "Welcome back";
+  const subheading = isSignUp && step !== "verify-sent"
     ? "Join DevOS — the professional cloud IDE."
+    : step === "mfa" ? "Enter the 6-digit code from your authenticator app."
+    : step === "forgot" ? "We'll send a reset link to your email."
+    : step === "verify-sent" && isSignUp ? "We've sent a verification link. Check your inbox to activate your account."
+    : step === "verify-sent" ? "Password reset email sent. Check your inbox."
     : "Sign in to continue building on DevOS.";
 
   return (
@@ -191,14 +247,82 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
 
         <div className="flex flex-col items-center mb-8 relative">
           <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-600/30 pulse-glow">
-            <Zap className="w-8 h-8 text-white" />
+            {step === "mfa" ? <ShieldCheck className="w-8 h-8 text-white" /> : step === "verify-sent" ? <CheckCircle2 className="w-8 h-8 text-white" /> : <Zap className="w-8 h-8 text-white" />}
           </div>
           <h1 className="text-2xl font-black text-white mb-1 tracking-tight">{heading}</h1>
           <p className="text-white/40 text-center text-sm">{subheading}</p>
         </div>
 
         <AnimatePresence mode="wait">
-          {!isEmailMode ? (
+
+          {/* ── Verify-sent / password-reset-sent confirmation ── */}
+          {step === "verify-sent" && (
+            <motion.div key="verify-sent" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all active:scale-[0.98]"
+              >
+                Got it, close
+              </button>
+            </motion.div>
+          )}
+
+          {/* ── MFA OTP step ── */}
+          {step === "mfa" && (
+            <motion.form key="mfa" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} onSubmit={handleMfaSubmit} className="space-y-4">
+              <div className="relative">
+                <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  required
+                  placeholder="6-digit code"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white text-center tracking-widest text-xl font-mono focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              {error && <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3">{error}</p>}
+              <button type="submit" disabled={loading || otpCode.length !== 6} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50">
+                {loading && <Loader2 className="w-5 h-5 animate-spin" />}
+                Verify & Sign In
+              </button>
+              <button type="button" onClick={() => { setStep("email"); setError(""); setOtpCode(""); }} className="w-full text-sm text-white/40 hover:text-white transition-colors flex items-center justify-center gap-1">
+                <ArrowLeft className="w-3 h-3" /> Back
+              </button>
+            </motion.form>
+          )}
+
+          {/* ── Forgot password step ── */}
+          {step === "forgot" && (
+            <motion.form key="forgot" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
+                <input
+                  type="email"
+                  required
+                  placeholder="Your email address"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              {error && <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3">{error}</p>}
+              <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50">
+                {loading && <Loader2 className="w-5 h-5 animate-spin" />}
+                Send Reset Email
+              </button>
+              <button type="button" onClick={() => { setStep("email"); setError(""); }} className="w-full text-sm text-white/40 hover:text-white transition-colors flex items-center justify-center gap-1">
+                <ArrowLeft className="w-3 h-3" /> Back to sign in
+              </button>
+            </motion.form>
+          )}
+
+          {/* ── Social chooser ── */}
+          {step === "social" && (
             <motion.div
               key="social"
               initial={{ opacity: 0, x: -20 }}
@@ -207,7 +331,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
               className="space-y-4"
             >
               <button
-                onClick={() => { setIsEmailMode(true); }}
+                onClick={() => { setStep("email"); }}
                 className="w-full py-4 bg-white/5 text-white/60 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-white/10 transition-all active:scale-[0.98]"
               >
                 <Mail className="w-5 h-5" />
@@ -224,7 +348,10 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                 </button>
               </div>
             </motion.div>
-          ) : (
+          )}
+
+          {/* ── Email / password form ── */}
+          {step === "email" && (
             <motion.form
               key="email"
               initial={{ opacity: 0, x: 20 }}
@@ -278,7 +405,6 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                           {usernameStatus === "error" && <XCircle className="w-4 h-4 text-yellow-400" />}
                         </span>
                       </div>
-                      {/* Inline status message */}
                       {usernameStatus === "available" && (
                         <p className="text-[11px] text-green-400 px-1 mt-1">✓ Username available</p>
                       )}
@@ -318,36 +444,20 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                 )}
 
                 {/* Email */}
-                {!isSignUp && (
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
-                    <input
-                      ref={isSignUp ? undefined : firstFieldRef}
-                      type="email"
-                      required
-                      placeholder="Email address"
-                      value={email}
-                      autoFocus={!isSignUp}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                    />
-                  </div>
-                )}
-                {isSignUp && (
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="Email address"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                    />
-                  </div>
-                )}
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
+                  <input
+                    ref={isSignUp ? undefined : firstFieldRef}
+                    type="email"
+                    required
+                    placeholder="Email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
 
-                {/* Password with visibility toggle */}
+                {/* Password */}
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
                   <input
@@ -388,12 +498,21 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                 >
                   {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
                 </button>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => { setStep("forgot"); setForgotEmail(email); setError(""); }}
+                    className="text-sm text-blue-500 hover:text-blue-400 transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => setIsEmailMode(false)}
-                  className="text-sm text-blue-500 hover:text-blue-400 transition-colors"
+                  onClick={() => setStep("social")}
+                  className="text-sm text-white/30 hover:text-white/60 transition-colors flex items-center justify-center gap-1"
                 >
-                  Back to login options
+                  <ArrowLeft className="w-3 h-3" /> Back
                 </button>
               </div>
             </motion.form>
@@ -409,3 +528,14 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
     </div>
   );
 }
+
+import { motion, AnimatePresence } from "framer-motion";
+import { registerUserProfile, checkUsernameAvailable, skipNextInitialize } from "../lib/userService";
+import { getAuthErrorMessage } from "../lib/errorMessages";
+
+interface LoginProps {
+  onClose: () => void;
+  /** Open directly in signup or login mode. Defaults to "login". */
+  initialMode?: "login" | "signup";
+}
+

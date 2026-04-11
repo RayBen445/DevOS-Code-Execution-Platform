@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, db } from "../lib/firebase";
+import { auth, db, sendVerificationEmail } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import {
   doc,
@@ -28,6 +28,7 @@ import {
   Settings,
   Bell,
   ShieldAlert,
+  ShieldCheck,
   Loader2,
   Save,
   Upload,
@@ -52,6 +53,9 @@ import {
   Mail,
   CheckCircle2,
   XCircle,
+  Smartphone,
+  GripVertical,
+  Minus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -69,6 +73,8 @@ import { UsernameChangeRequest } from "../types";
 import UIThemeSwitcher from "../components/UIThemeSwitcher";
 import { ReferralStats } from "../types";
 import CustomSelect from "../components/CustomSelect";
+import TwoFactorSetup from "../components/TwoFactorSetup";
+import { ALL_NAV_OPTIONS, NavOptionId } from "../components/MobileBottomNav";
 
 type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
 
@@ -821,6 +827,31 @@ function SecurityTab() {
         <p className="text-white/40 text-sm mt-1">Keep your account safe.</p>
       </div>
 
+      {/* Email verification status */}
+      <div className="p-5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Mail className="w-4 h-4 text-white/40" />
+          <span className="text-sm text-white/80">Email address</span>
+          <span className="text-sm text-white/40 font-mono">{user?.email}</span>
+        </div>
+        {user?.emailVerified ? (
+          <span className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-500/10 px-3 py-1 rounded-full">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Verified
+          </span>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-full">⚠ Not verified</span>
+            <button
+              onClick={() => user && sendVerificationEmail(user).then(() => toast.success("Verification email sent.")).catch((e: any) => toast.error(e?.message ?? "Failed to send email."))}
+              className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Resend verification email
+            </button>
+          </div>
+        )}
+      </div>
+
       {!isEmailProvider ? (
         <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
           <p className="text-white/60 text-sm">
@@ -843,6 +874,12 @@ function SecurityTab() {
           </button>
         </form>
       )}
+
+      {/* Two-Factor Authentication */}
+      <div className="space-y-3">
+        <h2 className="text-base font-bold text-white">Two-Factor Authentication</h2>
+        <TwoFactorSetup />
+      </div>
     </div>
   );
 }
@@ -854,16 +891,21 @@ function PreferencesTab() {
   const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingNav, setSavingNav] = useState(false);
   const [fontSize, setFontSize] = useState(14);
   const [tabSize, setTabSize] = useState(2);
+  const [navButtons, setNavButtons] = useState<NavOptionId[]>(["home", "projects", "explore", "profile"]);
 
   useEffect(() => {
     if (!user) return;
     getDoc(doc(db, "user_settings", user.uid)).then((snap) => {
       if (snap.exists()) {
-        const prefs = snap.data().preferences || {};
+        const data = snap.data();
+        const prefs = data.preferences || {};
         setFontSize(prefs.fontSize ?? 14);
         setTabSize(prefs.tabSize ?? 2);
+        const saved: NavOptionId[] = data.bottomNavButtons ?? [];
+        if (saved.length >= 1 && saved.length <= 4) setNavButtons(saved);
       }
       setLoading(false);
     });
@@ -882,10 +924,48 @@ function PreferencesTab() {
     }
   };
 
+  const toggleNavButton = (id: NavOptionId) => {
+    setNavButtons((prev) => {
+      if (prev.includes(id)) {
+        if (prev.length === 1) return prev; // keep at least 1
+        return prev.filter((b) => b !== id);
+      }
+      if (prev.length >= 4) {
+        toast.error("Maximum 4 buttons allowed.");
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
+
+  const moveNavButton = (id: NavOptionId, dir: -1 | 1) => {
+    setNavButtons((prev) => {
+      const idx = prev.indexOf(id);
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      return next;
+    });
+  };
+
+  const handleSaveNav = async () => {
+    if (!user) return;
+    setSavingNav(true);
+    try {
+      await setDoc(doc(db, "user_settings", user.uid), { bottomNavButtons: navButtons, updatedAt: serverTimestamp() }, { merge: true });
+      toast.success("Bottom navigation saved.");
+    } catch {
+      toast.error("Failed to save navigation.");
+    } finally {
+      setSavingNav(false);
+    }
+  };
+
   if (loading) return <LoadingPanel />;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div>
         <h1 className="text-2xl font-bold text-white">Preferences</h1>
         <p className="text-white/40 text-sm mt-1">Customize your editor and visual experience.</p>
@@ -921,6 +1001,99 @@ function PreferencesTab() {
         <UIThemeSwitcher />
 
         <SaveButton loading={saving} onClick={handleSave} />
+      </div>
+
+      {/* ── Bottom Navigation Customisation ───────────────────── */}
+      <div className="border-t border-white/[0.06] pt-8 max-w-lg">
+        <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1 flex items-center gap-2">
+          <Smartphone className="w-3.5 h-3.5" />Mobile Bottom Navigation
+        </p>
+        <p className="text-xs text-white/30 mb-5">Choose 1 – 4 shortcuts that appear in the bottom bar on mobile. Tap to toggle, use arrows to reorder.</p>
+
+        {/* All available options */}
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          {ALL_NAV_OPTIONS.map(({ id, label, icon: Icon }) => {
+            const selected = navButtons.includes(id);
+            const pos = navButtons.indexOf(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => toggleNavButton(id)}
+                className={cn(
+                  "relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border text-xs font-semibold transition-all",
+                  selected
+                    ? "bg-blue-600/15 border-blue-500/40 text-blue-300"
+                    : "bg-white/3 border-white/8 text-white/40 hover:bg-white/8 hover:text-white/70"
+                )}
+              >
+                {selected && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-black flex items-center justify-center">
+                    {pos + 1}
+                  </span>
+                )}
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Selected order with reorder controls */}
+        {navButtons.length > 0 && (
+          <div className="space-y-2 mb-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-2">Current order</p>
+            {navButtons.map((id, idx) => {
+              const opt = ALL_NAV_OPTIONS.find((o) => o.id === id)!;
+              const Icon = opt.icon;
+              return (
+                <div key={id} className="flex items-center gap-3 bg-white/4 border border-white/8 rounded-xl px-3 py-2.5">
+                  <GripVertical className="w-4 h-4 text-white/20 shrink-0" />
+                  <Icon className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span className="flex-1 text-sm text-white font-medium">{opt.label}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveNavButton(id, -1)}
+                      disabled={idx === 0}
+                      className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all"
+                      aria-label="Move up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveNavButton(id, 1)}
+                      disabled={idx === navButtons.length - 1}
+                      className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all"
+                      aria-label="Move down"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleNavButton(id)}
+                      disabled={navButtons.length === 1}
+                      className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-20 transition-all"
+                      aria-label="Remove"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <button
+          onClick={handleSaveNav}
+          disabled={savingNav}
+          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-60"
+        >
+          {savingNav ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {savingNav ? "Saving…" : "Save Navigation"}
+        </button>
       </div>
     </div>
   );

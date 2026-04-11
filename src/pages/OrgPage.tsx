@@ -836,7 +836,7 @@ export default function OrgPage() {
                       <span>Updated {project.updatedAt?.seconds ? formatRelativeTime({ seconds: project.updatedAt.seconds, nanoseconds: 0 } as any) : "—"}</span>
                     </div>
                     <button
-                      onClick={() => navigate('/project/' + project.id)}
+                      onClick={() => navigate('/projects?open=' + project.id)}
                       className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 transition-all text-xs font-bold"
                     >
                       <FolderCode className="w-3.5 h-3.5" />
