@@ -19,7 +19,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
-import { getAllEvents, setEventStatus, deleteEvent as deleteEventDoc } from "../lib/eventsService";
+import { getAllEvents, setEventStatus, deleteEvent as deleteEventDoc, createEvent } from "../lib/eventsService";
 import { adjustCredits, getCreditConfig, saveCreditConfig, CreditConfig, giftCredits, giftUnlimitedCredits, getMaintenanceConfig, saveMaintenanceConfig, MaintenanceConfig, getSiteConfig, saveSiteConfig, SiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import { sendNotification } from "../lib/notificationService";
 import { createRedeemCode, toggleRedeemCode, deleteRedeemCode } from "../lib/redeemCodeService";
@@ -29,7 +29,8 @@ import { createPoll, getAllPolls, closePoll, deletePoll } from "../lib/pollServi
 import { updateCommunity, deleteCommunity, createCommunity, batchAddAllUsersToCommunity } from "../lib/communityService";
 import { getAllOrgs, deleteOrg, updateOrg, createOrg, batchAddAllUsersToOrg } from "../lib/orgService";
 import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization, Project } from "../types";
-import { Event as DevEvent, EventStatus } from "../types";
+import { useDevOSAI } from "../hooks/useDevOSAI";
+import { Event as DevEvent, EventStatus, EventType } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -85,6 +86,8 @@ import {
   FolderPlus,
   Calendar,
   MapPin,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -351,6 +354,24 @@ export default function AdminDashboard() {
   const [updatingEventId, setUpdatingEventId] = useState<string | null>(null);
   const [deleteEventConfirm, setDeleteEventConfirm] = useState<string | null>(null);
   const [deletingEvent, setDeletingEvent] = useState(false);
+
+  // Create event state (admin)
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [newEvTitle, setNewEvTitle] = useState("");
+  const [newEvDesc, setNewEvDesc] = useState("");
+  const [newEvType, setNewEvType] = useState<EventType>("online");
+  const [newEvStart, setNewEvStart] = useState("");
+  const [newEvEnd, setNewEvEnd] = useState("");
+  const [newEvLink, setNewEvLink] = useState("");
+  const [newEvVenue, setNewEvVenue] = useState("");
+  const [newEvAddress, setNewEvAddress] = useState("");
+  const [newEvPremium, setNewEvPremium] = useState(false);
+  const [creatingAdminEvent, setCreatingAdminEvent] = useState(false);
+
+  // AI tester state (templates tab)
+  const [aiTestPrompt, setAiTestPrompt] = useState("");
+  const [aiTestResponse, setAiTestResponse] = useState<string | null>(null);
+  const { ask: askAI, isLoading: aiTesting, error: aiTestError, reset: resetAiTest } = useDevOSAI();
 
   // Admin projects state
   const [adminProjects, setAdminProjects] = useState<Project[]>([]);
@@ -1618,6 +1639,57 @@ export default function AdminDashboard() {
     } finally {
       setDeletingEvent(false);
     }
+  };
+
+  const handleCreateAdminEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setCreatingAdminEvent(true);
+    try {
+      const slug = newEvTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .slice(0, 80);
+      const userData = (await getDoc(doc(db, "users", user.uid))).data();
+      const id = await createEvent({
+        title: newEvTitle.trim(),
+        slug: `${slug}-${Date.now()}`,
+        description: newEvDesc.trim(),
+        type: newEvType,
+        startDate: new Date(newEvStart),
+        endDate: new Date(newEvEnd),
+        ...(newEvType === "online" && newEvLink ? { eventLink: newEvLink.trim() } : {}),
+        ...(newEvType === "physical" && newEvVenue ? { venueName: newEvVenue.trim() } : {}),
+        ...(newEvType === "physical" && newEvAddress ? { address: newEvAddress.trim() } : {}),
+        createdBy: user.uid,
+        createdByUsername: userData?.username ?? user.email ?? "",
+        isPremium: newEvPremium,
+      });
+      // Auto-approve admin-created events
+      await setEventStatus(id, "approved");
+      toast.success("Event created and approved!");
+      setShowCreateEvent(false);
+      setNewEvTitle(""); setNewEvDesc(""); setNewEvType("online");
+      setNewEvStart(""); setNewEvEnd(""); setNewEvLink("");
+      setNewEvVenue(""); setNewEvAddress(""); setNewEvPremium(false);
+      await loadAdminEvents();
+    } catch (err) {
+      toast.error("Failed to create event.");
+      console.error(err);
+    } finally {
+      setCreatingAdminEvent(false);
+    }
+  };
+
+  const handleAiTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiTestPrompt.trim()) return;
+    resetAiTest();
+    setAiTestResponse(null);
+    const result = await askAI(aiTestPrompt.trim(), { maxTokens: 512 });
+    if (result !== null) setAiTestResponse(result);
   };
 
   if (!user) {
