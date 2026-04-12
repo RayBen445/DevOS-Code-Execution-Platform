@@ -288,6 +288,12 @@ service cloud.firestore {
           request.resource.data.daily == resource.data.daily + 25
         );
       allow delete: if isAdmin();
+
+      match /transactions/{txId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid) || isAdmin();
+        allow update, delete: if isAdmin();
+      }
     }
 
     match /notifications/{notifId} {

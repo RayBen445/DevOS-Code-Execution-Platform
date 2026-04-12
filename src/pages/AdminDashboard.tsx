@@ -32,6 +32,8 @@ import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Com
 import { useDevOSAI } from "../hooks/useDevOSAI";
 import { Event as DevEvent, EventStatus, EventType } from "../types";
 import { TOPICS } from "../lib/learnData";
+import { getAllLessons, createLesson, updateLesson, deleteLesson, slugifyTitle, DynamicLesson } from "../lib/learnService";
+import { enqueueEmail } from "../lib/emailQueueService";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -318,6 +320,20 @@ export default function AdminDashboard() {
 
   // Site settings state
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(SITE_CONFIG_DEFAULTS);
+
+  // Learn lessons state
+  const [dynamicLessons, setDynamicLessons] = useState<DynamicLesson[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(false);
+  const [showLessonForm, setShowLessonForm] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<DynamicLesson | null>(null);
+  const [lessonForm, setLessonForm] = useState({
+    title: "", slug: "", description: "", codeExample: "",
+    language: "javascript" as DynamicLesson["language"],
+    explanation: "", expectedOutput: "", published: true,
+  });
+  const [savingLesson, setSavingLesson] = useState(false);
+  const [deleteLessonConfirm, setDeleteLessonConfirm] = useState<string | null>(null);
+  const [deletingLesson, setDeletingLesson] = useState(false);
   const [loadingSiteConfig, setLoadingSiteConfig] = useState(false);
   const [savingSiteConfig, setSavingSiteConfig] = useState(false);
 
@@ -443,6 +459,10 @@ export default function AdminDashboard() {
     }
     if (activeTab === "events" && isAdmin) {
       loadAdminEvents();
+    }
+    if (activeTab === "learn" && isAdmin) {
+      setLoadingLessons(true);
+      getAllLessons().then(setDynamicLessons).catch(() => {}).finally(() => setLoadingLessons(false));
     }
   }, [activeTab, isAdmin]);
 
@@ -1203,6 +1223,8 @@ export default function AdminDashboard() {
     }
   };
 
+    // ── Send email via queue (same as verification email flow) ────────────────
+
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -1212,30 +1234,86 @@ export default function AdminDashboard() {
     if (!emailMessage.trim()) { toast.error("Message body is required."); return; }
     setSendingEmail(true);
     try {
-      const idToken = await user.getIdToken();
-      const res = await fetch("/api/admin/send-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ to: toList, subject: emailSubject.trim(), message: emailMessage }),
-      });
-      const rawText = await res.text();
-      let data: { error?: string; success?: boolean; messageId?: string } = {};
-      try {
-        data = JSON.parse(rawText);
-      } catch {
-        if (!res.ok) throw new Error(rawText.slice(0, 200) || "Failed to send email");
-      }
-      if (!res.ok) throw new Error(data.error || "Failed to send email");
-      toast.success(`Email sent to ${toList.length} recipient${toList.length !== 1 ? "s" : ""}.`);
+      await Promise.all(
+        toList.map((to) =>
+          enqueueEmail({
+            to,
+            templateKey: "admin_custom",
+            payload: { subject: emailSubject.trim(), body: emailMessage },
+            userId: user.uid,
+          })
+        )
+      );
+      toast.success(`Email queued for ${toList.length} recipient${toList.length !== 1 ? "s" : ""}.`);
       setEmailTo(""); setEmailSubject(""); setEmailMessage("");
     } catch (err: any) {
-      toast.error(err.message || "Failed to send email.");
+      toast.error(err.message || "Failed to queue email.");
     } finally {
       setSendingEmail(false);
     }
+  };
+
+  // ── Learn lesson handlers ────────────────────────────────────────────────
+
+  const openNewLessonForm = () => {
+    setEditingLesson(null);
+    setLessonForm({ title: "", slug: "", description: "", codeExample: "", language: "javascript", explanation: "", expectedOutput: "", published: true });
+    setShowLessonForm(true);
+  };
+
+  const openEditLessonForm = (lesson: DynamicLesson) => {
+    setEditingLesson(lesson);
+    setLessonForm({
+      title: lesson.title,
+      slug: lesson.slug,
+      description: lesson.description,
+      codeExample: lesson.codeExample,
+      language: lesson.language,
+      explanation: lesson.explanation,
+      expectedOutput: (lesson.expectedOutput ?? []).join("\n"),
+      published: lesson.published,
+    });
+    setShowLessonForm(true);
+  };
+
+  const handleSaveLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lessonForm.title.trim()) { toast.error("Title is required."); return; }
+    setSavingLesson(true);
+    try {
+      const payload = {
+        title: lessonForm.title.trim(),
+        slug: lessonForm.slug.trim() || slugifyTitle(lessonForm.title.trim()),
+        description: lessonForm.description.trim(),
+        codeExample: lessonForm.codeExample,
+        language: lessonForm.language,
+        explanation: lessonForm.explanation.trim(),
+        expectedOutput: lessonForm.expectedOutput.split("\n").map((s) => s.trim()).filter(Boolean),
+        published: lessonForm.published,
+      };
+      if (editingLesson) {
+        await updateLesson(editingLesson.id, payload);
+        toast.success("Lesson updated.");
+      } else {
+        await createLesson(payload);
+        toast.success("Lesson created.");
+      }
+      setShowLessonForm(false);
+      setEditingLesson(null);
+      setDynamicLessons(await getAllLessons());
+    } catch { toast.error("Failed to save lesson."); }
+    finally { setSavingLesson(false); }
+  };
+
+  const handleDeleteLesson = async () => {
+    if (!deleteLessonConfirm) return;
+    setDeletingLesson(true);
+    try {
+      await deleteLesson(deleteLessonConfirm);
+      toast.success("Lesson deleted.");
+      setDynamicLessons((prev) => prev.filter((l) => l.id !== deleteLessonConfirm));
+    } catch { toast.error("Failed to delete lesson."); }
+    finally { setDeletingLesson(false); setDeleteLessonConfirm(null); }
   };
 
   const handleCreatePoll = async (e: React.FormEvent) => {
@@ -3781,8 +3859,8 @@ User request: ${aiTestPrompt.trim()}`;
                           className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all"
                         >
                           {sendingEmail
-                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
-                            : <><Send className="w-4 h-4" /> Send Email</>}
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Queueing…</>
+                            : <><Send className="w-4 h-4" /> Queue Email</>}
                         </button>
                       </form>
                     </div>
@@ -4484,41 +4562,207 @@ User request: ${aiTestPrompt.trim()}`;
                 {/* Learn Tab */}
                 {activeTab === "learn" && (
                   <div className="space-y-6">
-                    <div className="flex items-center justify-between">
+                    {/* Header */}
+                    <div className="flex items-center justify-between flex-wrap gap-3">
                       <div>
-                        <p className="text-sm text-white/50">{TOPICS.length} topics · {TOPICS.reduce((acc, t) => acc + t.lessons.length, 0)} lessons total</p>
+                        <p className="text-sm text-white/50">
+                          {TOPICS.length} built-in topics · {dynamicLessons.length} custom lesson{dynamicLessons.length !== 1 ? "s" : ""}
+                        </p>
                       </div>
-                      <a
-                        href="/learn"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition-all text-sm font-bold"
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        Visit Learn Page
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { setLoadingLessons(true); getAllLessons().then(setDynamicLessons).catch(() => {}).finally(() => setLoadingLessons(false)); }}
+                          disabled={loadingLessons}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${loadingLessons ? "animate-spin" : ""}`} />
+                          Refresh
+                        </button>
+                        <a href="/learn" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition-all text-xs font-bold">
+                          <BookOpen className="w-3.5 h-3.5" />
+                          Visit Learn
+                        </a>
+                        <button onClick={openNewLessonForm} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+                          <Plus className="w-3.5 h-3.5" />
+                          New Lesson
+                        </button>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {TOPICS.map((topic) => (
-                        <div key={topic.id} className="bg-[#111827] border border-white/5 rounded-2xl p-5">
-                          <div className="flex items-start justify-between mb-2">
-                            <p className="font-bold text-white">{topic.title}</p>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 bg-white/5 px-2 py-0.5 rounded-md">
-                              {topic.lessons.length} lessons
-                            </span>
+
+                    {/* Lesson create/edit form */}
+                    {showLessonForm && (
+                      <form onSubmit={handleSaveLesson} className="bg-[#111827] border border-blue-500/30 rounded-2xl p-5 space-y-4">
+                        <p className="text-sm font-bold text-white flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-blue-400" />
+                          {editingLesson ? "Edit Lesson" : "New Lesson"}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Title *</label>
+                            <input
+                              value={lessonForm.title}
+                              onChange={(e) => setLessonForm((f) => ({ ...f, title: e.target.value, slug: slugifyTitle(e.target.value) }))}
+                              placeholder="e.g. Variables & Data Types"
+                              required
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                            />
                           </div>
-                          <p className="text-xs text-white/40 mb-3 line-clamp-2">{topic.description}</p>
-                          <ul className="space-y-1">
-                            {topic.lessons.map((lesson) => (
-                              <li key={lesson.id} className="flex items-center gap-2 text-xs text-white/50">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/20 flex-shrink-0" />
-                                {lesson.title}
-                              </li>
-                            ))}
-                          </ul>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Slug</label>
+                            <input
+                              value={lessonForm.slug}
+                              onChange={(e) => setLessonForm((f) => ({ ...f, slug: e.target.value }))}
+                              placeholder="auto-generated from title"
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/70 font-mono placeholder-white/20 focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
                         </div>
-                      ))}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Description</label>
+                          <input
+                            value={lessonForm.description}
+                            onChange={(e) => setLessonForm((f) => ({ ...f, description: e.target.value }))}
+                            placeholder="Short description of this lesson"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Language</label>
+                          <select
+                            value={lessonForm.language}
+                            onChange={(e) => setLessonForm((f) => ({ ...f, language: e.target.value as DynamicLesson["language"] }))}
+                            className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="html">HTML</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Code Example</label>
+                          <textarea
+                            value={lessonForm.codeExample}
+                            onChange={(e) => setLessonForm((f) => ({ ...f, codeExample: e.target.value }))}
+                            rows={6}
+                            placeholder="// Paste the runnable code example here"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono placeholder-white/20 focus:outline-none focus:border-blue-500 resize-y"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Explanation (markdown)</label>
+                          <textarea
+                            value={lessonForm.explanation}
+                            onChange={(e) => setLessonForm((f) => ({ ...f, explanation: e.target.value }))}
+                            rows={4}
+                            placeholder="Explain the key concepts in this lesson…"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-y"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Expected Output (one line per entry)</label>
+                          <textarea
+                            value={lessonForm.expectedOutput}
+                            onChange={(e) => setLessonForm((f) => ({ ...f, expectedOutput: e.target.value }))}
+                            rows={3}
+                            placeholder={"DevOS\n42\ntrue"}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono placeholder-white/20 focus:outline-none focus:border-blue-500 resize-y"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setLessonForm((f) => ({ ...f, published: !f.published }))}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${lessonForm.published ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}
+                          >
+                            {lessonForm.published ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                            {lessonForm.published ? "Published" : "Draft"}
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button type="submit" disabled={savingLesson} className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-all">
+                            {savingLesson ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            {editingLesson ? "Update" : "Create"}
+                          </button>
+                          <button type="button" onClick={() => { setShowLessonForm(false); setEditingLesson(null); }} className="px-4 py-2 rounded-xl text-sm text-white/50 hover:text-white bg-white/5 hover:bg-white/10 transition-all">Cancel</button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Custom lessons list */}
+                    {loadingLessons ? (
+                      <div className="flex items-center gap-2 text-white/30 py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
+                    ) : dynamicLessons.length === 0 ? (
+                      <div className="bg-[#111827] border border-white/5 rounded-2xl p-8 text-center">
+                        <BookOpen className="w-8 h-8 text-white/10 mx-auto mb-2" />
+                        <p className="text-white/40 text-sm">No custom lessons yet. Click <strong>New Lesson</strong> to add one.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-2">Custom Lessons ({dynamicLessons.length})</p>
+                        {dynamicLessons.map((lesson) => (
+                          <div key={lesson.id} className="flex items-center justify-between gap-3 bg-[#111827] border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 transition-all">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-bold text-white truncate">{lesson.title}</p>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/5 text-white/30 font-mono">{lesson.language}</span>
+                                {lesson.published ? (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-green-500/10 text-green-400 font-bold">published</span>
+                                ) : (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/5 text-white/30 font-bold">draft</span>
+                                )}
+                              </div>
+                              {lesson.description && <p className="text-xs text-white/30 mt-0.5 truncate">{lesson.description}</p>}
+                              <p className="text-[10px] text-white/20 font-mono mt-0.5">/learn/l/{lesson.slug}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button onClick={() => openEditLessonForm(lesson)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white transition-colors">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => setDeleteLessonConfirm(lesson.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Built-in topics (read-only) */}
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-2">Built-in Topics ({TOPICS.length})</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {TOPICS.map((topic) => (
+                          <div key={topic.id} className="bg-[#111827] border border-white/5 rounded-2xl p-5">
+                            <div className="flex items-start justify-between mb-2">
+                              <p className="font-bold text-white">{topic.title}</p>
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 bg-white/5 px-2 py-0.5 rounded-md">
+                                {topic.lessons.length} lessons
+                              </span>
+                            </div>
+                            <p className="text-xs text-white/40 mb-3 line-clamp-2">{topic.description}</p>
+                            <ul className="space-y-1">
+                              {topic.lessons.map((lesson) => (
+                                <li key={lesson.id} className="flex items-center gap-2 text-xs text-white/50">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white/20 flex-shrink-0" />
+                                  {lesson.title}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Delete confirmation */}
+                    <ConfirmModal
+                      isOpen={!!deleteLessonConfirm}
+                      title="Delete Lesson"
+                      message="This will permanently delete the lesson. This cannot be undone."
+                      confirmLabel={deletingLesson ? "Deleting…" : "Delete"}
+                      onConfirm={handleDeleteLesson}
+                      onCancel={() => setDeleteLessonConfirm(null)}
+                      isDangerous
+                    />
                   </div>
                 )}
 

@@ -56,6 +56,9 @@ import {
   Smartphone,
   GripVertical,
   Minus,
+  ArrowUpRight,
+  ArrowDownRight,
+  History,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -68,6 +71,8 @@ import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 import { getReferralStats, REFERRER_BONUS, REFERRED_BONUS } from "../lib/referralService";
 import { redeemCode } from "../lib/redeemCodeService";
+import { getCreditTransactions, getCredits } from "../lib/creditsService";
+import { CreditTransaction, Credits } from "../types";
 import { deactivateAccount, requestAccountDeletion, requestUsernameChange, getUserOwnUsernameRequest, checkUsernameAvailable } from "../lib/userService";
 import { UsernameChangeRequest } from "../types";
 import UIThemeSwitcher from "../components/UIThemeSwitcher";
@@ -702,6 +707,25 @@ function AccountTab() {
   const [user] = useAuthState(auth);
   const [redeemCodeValue, setRedeemCodeValue] = useState("");
   const [redeeming, setRedeeming] = useState(false);
+  const [credits, setCredits] = useState<Credits | null>(null);
+  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setTxLoading(true);
+    Promise.all([
+      getCredits(user.uid),
+      getCreditTransactions(user.uid, 30),
+    ]).then(([cr, txs]) => {
+      if (!cancelled) {
+        setCredits(cr);
+        setTransactions(txs);
+      }
+    }).catch(() => {}).finally(() => { if (!cancelled) setTxLoading(false); });
+    return () => { cancelled = true; };
+  }, [user?.uid]);
 
   const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -712,6 +736,9 @@ function AccountTab() {
       if (result.success) {
         toast.success(`Code redeemed! +${result.value} credits added.`);
         setRedeemCodeValue("");
+        // Refresh balance + transactions
+        const [cr, txs] = await Promise.all([getCredits(user.uid), getCreditTransactions(user.uid, 30)]);
+        setCredits(cr); setTransactions(txs);
       } else {
         toast.error((result as { success: false; error: string }).error);
       }
@@ -744,6 +771,75 @@ function AccountTab() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Credit Balance */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-yellow-400" />
+          <h2 className="text-sm font-bold text-white uppercase tracking-widest">Credits</h2>
+        </div>
+        {credits ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Daily</p>
+              <p className="text-2xl font-black text-white">{credits.daily}</p>
+              <p className="text-[10px] text-white/30 mt-0.5">resets every 24 h</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Monthly</p>
+              <p className="text-2xl font-black text-white">{credits.monthly}</p>
+              <p className="text-[10px] text-white/30 mt-0.5">resets each month</p>
+            </div>
+            {credits.gifted && credits.gifted.length > 0 && (
+              <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-400/60 mb-1">Gifted</p>
+                <p className="text-2xl font-black text-yellow-300">{credits.gifted.reduce((s, g) => s + g.amount, 0)}</p>
+                <p className="text-[10px] text-white/30 mt-0.5">bonus credits</p>
+              </div>
+            )}
+          </div>
+        ) : txLoading ? (
+          <div className="flex items-center gap-2 text-white/30 text-sm py-2"><Loader2Icon className="w-4 h-4 animate-spin" /> Loading…</div>
+        ) : null}
+      </div>
+
+      {/* Credit Transaction History */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <History className="w-4 h-4 text-blue-400" />
+          <h2 className="text-sm font-bold text-white uppercase tracking-widest">Transaction History</h2>
+        </div>
+        {txLoading ? (
+          <div className="flex items-center gap-2 text-white/30 text-sm py-4 justify-center"><Loader2Icon className="w-4 h-4 animate-spin" /> Loading…</div>
+        ) : transactions.length === 0 ? (
+          <p className="text-sm text-white/30 py-4 text-center">No transactions yet — they appear after you spend or receive credits.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {transactions.map((tx) => {
+              const isPositive = tx.delta >= 0;
+              const ts = tx.createdAt?.toDate ? tx.createdAt.toDate() : tx.createdAt ? new Date(tx.createdAt) : null;
+              return (
+                <div key={tx.id} className="flex items-center justify-between gap-3 bg-white/3 hover:bg-white/5 border border-white/5 rounded-xl px-4 py-3 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${isPositive ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                      {isPositive
+                        ? <ArrowUpRight className="w-3.5 h-3.5 text-green-400" />
+                        : <ArrowDownRight className="w-3.5 h-3.5 text-red-400" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm text-white/80 truncate capitalize">{tx.label}</p>
+                      {ts && <p className="text-[10px] text-white/30">{ts.toLocaleDateString()} {ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>}
+                    </div>
+                  </div>
+                  <span className={`text-sm font-bold shrink-0 ${isPositive ? "text-green-400" : "text-red-400"}`}>
+                    {isPositive ? "+" : ""}{tx.delta}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Redeem Code */}
