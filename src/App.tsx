@@ -133,6 +133,12 @@ function AtUsernameRoute() {
   return null;
 }
 
+/** Redirect /communities/:slug → /c/:slug (and /chat variant) */
+function CommunitySlugRedirect({ chat = false }: { chat?: boolean }) {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/c/${slug}${chat ? "/chat" : ""}`} replace />;
+}
+
 export default function App() {
   // Subdomain routing: *.devos.name.ng → render the appropriate component
   // without full app chrome and without changing the browser URL.
@@ -434,8 +440,10 @@ export default function App() {
             <Route path="/learn/:topicId/:lessonId" element={withPageMaintenance("/learn", <LearnLessonPage />)} />
             <Route path="/learn/l/:slug" element={withPageMaintenance("/learn", <LearnDynamicLessonPage />)} />
             <Route path="/communities" element={withPageMaintenance("/communities", <CommunitiesPage />)} />
-            <Route path="/communities/:slug" element={withPageMaintenance("/communities", <CommunityPage />)} />
-            <Route path="/communities/:slug/chat" element={withPageMaintenance("/communities", <CommunityChatPage />)} />
+            <Route path="/communities/:slug" element={<CommunitySlugRedirect />} />
+            <Route path="/communities/:slug/chat" element={<CommunitySlugRedirect chat />} />
+            <Route path="/c/:slug" element={withPageMaintenance("/communities", <CommunityPage />)} />
+            <Route path="/c/:slug/chat" element={withPageMaintenance("/communities", <CommunityChatPage />)} />
             <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
             <Route path="/events" element={withPageMaintenance("/events", <EventsPage />)} />
             <Route path="/events/create" element={withPageMaintenance("/events", <CreateEventPage />)} />

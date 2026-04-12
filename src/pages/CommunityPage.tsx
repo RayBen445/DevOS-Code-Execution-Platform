@@ -796,7 +796,7 @@ export default function CommunityPage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/30">Community Chat</span>
                 <Link
-                  to={`/communities/${community.slug}/chat`}
+                  to={`/c/${community.slug}/chat`}
                   className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />

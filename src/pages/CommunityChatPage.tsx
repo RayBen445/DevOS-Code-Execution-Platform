@@ -159,7 +159,7 @@ export default function CommunityChatPage() {
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07] bg-[#0d1117] shrink-0">
         <Link
-          to={`/communities/${slug}`}
+          to={`/c/${slug}`}
           className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/70 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />

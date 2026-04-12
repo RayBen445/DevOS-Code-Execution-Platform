@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { FormEvent } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useActiveContext } from "../hooks/useActiveContext";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "../lib/firebase";
 import { doc, onSnapshot, addDoc, collection, serverTimestamp, getDocs, query, where } from "firebase/firestore";
@@ -82,6 +83,7 @@ export default function OrgPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [user] = useAuthState(auth);
+  const { setOrgContext } = useActiveContext();
 
   const [org, setOrg] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
@@ -734,7 +736,10 @@ export default function OrgPage() {
                       <span>Updated {project.updatedAt ? formatRelativeTime(project.updatedAt) : "—"}</span>
                     </div>
                     <button
-                      onClick={() => navigate('/projects?open=' + project.id)}
+                      onClick={() => {
+                        setOrgContext(org.id, org.slug, org.name);
+                        navigate('/projects?open=' + project.id);
+                      }}
                       className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 transition-all text-xs font-bold"
                     >
                       <FolderCode className="w-3.5 h-3.5" />
