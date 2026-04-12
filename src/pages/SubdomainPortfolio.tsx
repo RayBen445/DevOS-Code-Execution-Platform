@@ -113,7 +113,7 @@ export default function SubdomainPortfolio({ username }: Props) {
       <div className="max-w-3xl mx-auto px-4 pt-16 pb-10">
         <div className="flex items-center gap-5">
           <img
-            src={resolveAvatar(userSettings.avatarUrl, userSettings.displayName || userSettings.username)}
+            src={resolveAvatar(userSettings.avatarUrl)}
             alt={userSettings.displayName || username}
             className="w-20 h-20 rounded-full ring-2 ring-white/10 object-cover"
           />

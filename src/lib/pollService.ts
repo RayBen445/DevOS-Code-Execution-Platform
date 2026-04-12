@@ -67,9 +67,9 @@ export const voteOnPoll = async (
     if (!pollSnap.exists()) throw new Error("Poll not found");
 
     const voteSnap = await tx.get(voteRef);
-    if (voteSnap.exists() && !poll.allowMultipleVotes) throw new Error("Already voted");
 
     const poll = pollSnap.data() as Poll;
+    if (voteSnap.exists() && !poll.allowMultipleVotes) throw new Error("Already voted");
     if (!poll.isOpen) throw new Error("Poll is closed");
     if (poll.expiresAt && poll.expiresAt.toMillis() < Date.now()) {
       throw new Error("Poll has expired");
