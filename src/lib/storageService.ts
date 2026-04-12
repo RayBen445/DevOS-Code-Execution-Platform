@@ -92,10 +92,10 @@ function uploadToFirebase(
   });
 }
 
-/** Generate a unique storage path for an avatar image. */
+/** Generate a unique storage path for a user avatar image. */
 export function avatarPath(uid: string, file: File): string {
   const ext = file.name.split(".").pop() ?? "jpg";
-  return `avatars/${uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  return `users/${uid}/avatars/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 }
 
 /** Generate a unique storage path for an event banner. */

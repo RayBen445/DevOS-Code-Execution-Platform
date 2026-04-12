@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar, Check } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar, Check, BookOpen, Sun, Moon } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -23,6 +23,7 @@ import {
   type SavedAccount,
 } from "../lib/sessionManager";
 import { useActiveContext } from "../hooks/useActiveContext";
+import { useUITheme } from "../hooks/useUITheme";
 
 interface NavbarProps {
   onSignIn?: () => void;
@@ -51,6 +52,8 @@ export default function Navbar({ onSignIn }: NavbarProps) {
 
   // Active org/user context
   const { context, setUserContext, setOrgContext } = useActiveContext();
+  const { theme, changeTheme } = useUITheme();
+  const isLightTheme = theme === "light";
 
   useEffect(() => {
     if (!user) {
@@ -170,6 +173,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               Templates
             </Link>
             <Link
+              to="/communities"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <Users className="w-4 h-4" />
+              Communities
+            </Link>
+            <Link
               to="/projects"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
             >
@@ -189,6 +199,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             >
               <Calendar className="w-4 h-4" />
               Events
+            </Link>
+            <Link
+              to="/learn"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <BookOpen className="w-4 h-4" />
+              Learn
             </Link>
             {/* Organisations dropdown */}
             <div className="relative" ref={orgsDropdownRef}>
@@ -376,6 +393,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             >
               <Search className="w-5 h-5" />
             </Link>
+            {/* Theme quick-toggle */}
+            <button
+              onClick={() => changeTheme(isLightTheme ? "dark" : "light")}
+              title={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
+              className="p-2 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
+            >
+              {isLightTheme ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </button>
             <NotificationBell />
 
             {/* Feedback button — desktop only */}
@@ -727,6 +752,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   Templates
                 </Link>
                 <Link
+                  to="/communities"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <Users className="w-4 h-4" />
+                  Communities
+                </Link>
+                <Link
                   to="/projects"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
@@ -749,6 +782,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 >
                   <Calendar className="w-4 h-4" />
                   Events
+                </Link>
+                <Link
+                  to="/learn"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Learn
                 </Link>
                 {isAdmin && (
                   <Link
@@ -854,6 +895,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     ))}
                   </>
                 )}
+                <button
+                  onClick={() => changeTheme(isLightTheme ? "dark" : "light")}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"
+                >
+                  {isLightTheme ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                  {isLightTheme ? "Dark Mode" : "Light Mode"}
+                </button>
                 <button
                   onClick={() => { setIsMobileMenuOpen(false); setIsFeedbackOpen(true); }}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"

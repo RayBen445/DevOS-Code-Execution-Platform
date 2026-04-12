@@ -1,6 +1,6 @@
 import { db, auth } from "./firebase";
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp, arrayUnion, runTransaction } from "firebase/firestore";
-import { Credits, GiftedCredit } from "../types";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp, arrayUnion, runTransaction, collection, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { Credits, GiftedCredit, CreditTransactionType, CreditTransaction } from "../types";
 
 export const DAILY_CREDITS_AMOUNT = 50;
 export const MONTHLY_CREDITS_AMOUNT = 200;
@@ -115,6 +115,17 @@ export const getCredits = async (uid: string): Promise<Credits> => {
   return data;
 };
 
+/** Fetch the most recent credit transactions for a user (newest first) */
+export const getCreditTransactions = async (uid: string, maxCount = 50): Promise<CreditTransaction[]> => {
+  const q = query(
+    collection(db, "user_credits", uid, "transactions"),
+    orderBy("createdAt", "desc"),
+    limit(maxCount)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as CreditTransaction));
+};
+
 /** Returns true if credits were deducted, false if insufficient */
 export const deductCredits = async (uid: string, action: CreditAction): Promise<boolean> => {
   // Admins bypass all credit checks
@@ -137,7 +148,7 @@ export const deductCredits = async (uid: string, action: CreditAction): Promise<
 
   // Wrap the balance check and deduction in a transaction to prevent race conditions
   // (concurrent calls cannot race and over-spend or clobber each other's writes).
-  return runTransaction(db, async (transaction) => {
+  const success = await runTransaction(db, async (transaction) => {
     const snap = await transaction.get(creditsRef);
     if (!snap.exists()) {
       return false;
@@ -187,7 +198,32 @@ export const deductCredits = async (uid: string, action: CreditAction): Promise<
     transaction.update(creditsRef, updates);
     return true;
   });
+
+  // Log transaction outside the Firestore transaction (non-critical)
+  if (success) {
+    logCreditTransaction(uid, "deduct", -cost, action);
+  }
+  return success;
 };
+
+/** Write a single transaction record to user_credits/{uid}/transactions (exported for use by other services) */
+export async function logCreditTransaction(
+  uid: string,
+  type: CreditTransactionType,
+  delta: number,
+  label: string
+): Promise<void> {
+  try {
+    await addDoc(collection(db, "user_credits", uid, "transactions"), {
+      type,
+      delta,
+      label,
+      createdAt: serverTimestamp(),
+    });
+  } catch {
+    // non-critical — never block the caller
+  }
+}
 
 export const adjustCredits = async (
   uid: string,
@@ -211,6 +247,10 @@ export const adjustCredits = async (
   }
 
   await updateDoc(creditsRef, updates);
+  const totalDelta = (delta.daily ?? 0) + (delta.monthly ?? 0);
+  if (totalDelta !== 0) {
+    logCreditTransaction(uid, "adjust", totalDelta, `admin adjustment (daily:${delta.daily ?? 0} monthly:${delta.monthly ?? 0})`);
+  }
 };
 
 /**
@@ -235,6 +275,7 @@ export const giftCredits = async (uid: string, amount: number, expiresAt: Date |
   await updateDoc(creditsRef, {
     gifted: arrayUnion(giftEntry),
   });
+  logCreditTransaction(uid, "gift", amount, `gift${expiresAt ? ` (expires ${expiresAt.toLocaleDateString()})` : " (no expiry)"}`);
 };
 
 /**
@@ -251,6 +292,7 @@ export const giftUnlimitedCredits = async (uid: string, untilDate: Date): Promis
   await updateDoc(creditsRef, {
     creditsUnlimitedUntil: Timestamp.fromDate(untilDate),
   });
+  logCreditTransaction(uid, "unlimited_grant", 0, `unlimited credits until ${untilDate.toLocaleDateString()}`);
 };
 
 // ── Maintenance mode ────────────────────────────────────────────────────────

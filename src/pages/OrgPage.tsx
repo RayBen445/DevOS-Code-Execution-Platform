@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { FormEvent } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useActiveContext } from "../hooks/useActiveContext";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "../lib/firebase";
 import { doc, onSnapshot, addDoc, collection, serverTimestamp, getDocs, query, where } from "firebase/firestore";
@@ -61,13 +62,14 @@ import {
   Loader2,
   FolderPlus,
   FolderCode,
+  MessageSquare,
   Phone,
 } from "lucide-react";
 import { formatRelativeTime, formatTime } from "../lib/utils";
 import { cn } from "../lib/utils";
-import { DEVOS_EMOJI_LIST, renderDevosEmojiText } from "../lib/devosEmoji";
+import { renderDevosEmojiText } from "../lib/devosEmoji";
 import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
-import socket from "../lib/socket";
+import { useVoiceCall } from "../hooks/useVoiceCall";
 
 type OrgTab = "overview" | "posts" | "chat" | "members" | "projects" | "settings";
 
@@ -81,6 +83,7 @@ export default function OrgPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [user] = useAuthState(auth);
+  const { setOrgContext } = useActiveContext();
 
   const [org, setOrg] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
@@ -101,12 +104,6 @@ export default function OrgPage() {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [orgProjects, setOrgProjects] = useState<Project[]>([]);
   const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
-  const [inVoiceCall, setInVoiceCall] = useState(false);
-  const [voicePeers, setVoicePeers] = useState<string[]>([]);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const peerMapRef = useRef<Record<string, RTCPeerConnection>>({});
-  const remoteAudioRef = useRef<Record<string, HTMLAudioElement>>({});
-  const voiceHandlersRef = useRef<Partial<Record<string, (...args: any[]) => void>>>({});
 
   const copyOrgLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}/org/${slug}`).then(() => {
@@ -214,121 +211,10 @@ export default function OrgPage() {
 
   const roomId = org?.id ? `org-${org.id}` : "";
 
-  const cleanupVoiceCall = () => {
-    Object.values(peerMapRef.current).forEach((pc) => pc.close());
-    peerMapRef.current = {};
-    Object.values(remoteAudioRef.current).forEach((el) => {
-      el.srcObject = null;
-      el.remove();
-    });
-    remoteAudioRef.current = {};
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((t) => t.stop());
-      localStreamRef.current = null;
-    }
-    setVoicePeers([]);
-    setInVoiceCall(false);
-  };
-
-  const buildPeer = (targetUserId: string, meId: string, initiator: boolean) => {
-    if (peerMapRef.current[targetUserId]) return peerMapRef.current[targetUserId];
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-    localStreamRef.current?.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current!));
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit("voice-ice-candidate", { roomId, targetUserId, fromUserId: meId, candidate: event.candidate });
-      }
-    };
-    pc.ontrack = (event) => {
-      let audio = remoteAudioRef.current[targetUserId];
-      if (!audio) {
-        audio = new Audio();
-        audio.autoplay = true;
-        remoteAudioRef.current[targetUserId] = audio;
-      }
-      audio.srcObject = event.streams[0];
-    };
-    peerMapRef.current[targetUserId] = pc;
-    if (initiator) {
-      pc.createOffer()
-        .then((offer) => pc.setLocalDescription(offer).then(() => offer))
-        .then((offer) => socket.emit("voice-offer", { roomId, targetUserId, fromUserId: meId, offer }))
-        .catch(() => {});
-    }
-    return pc;
-  };
-
-  const startVoiceCall = async () => {
-    if (!user || !roomId || inVoiceCall) return;
-    try {
-      localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-      socket.connect();
-      const meId = user.uid;
-      socket.emit("join-voice-room", { roomId, userId: meId, name: userSettings?.displayName || userSettings?.username || "User" });
-      setInVoiceCall(true);
-
-      const onVoiceUserJoined = ({ userId }: { userId: string }) => {
-        if (!userId || userId === meId) return;
-        setVoicePeers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
-        buildPeer(userId, meId, true);
-      };
-      const onVoiceOffer = async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
-        const pc = buildPeer(fromUserId, meId, false);
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit("voice-answer", { roomId, targetUserId: fromUserId, fromUserId: meId, answer });
-        setVoicePeers((prev) => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
-      };
-      const onVoiceAnswer = async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
-        const pc = peerMapRef.current[fromUserId];
-        if (!pc) return;
-        await pc.setRemoteDescription(new RTCSessionDescription(answer));
-      };
-      const onVoiceIceCandidate = async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
-        const pc = peerMapRef.current[fromUserId];
-        if (!pc) return;
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      };
-      const onVoiceUserLeft = ({ userId }: { userId: string }) => {
-        peerMapRef.current[userId]?.close();
-        delete peerMapRef.current[userId];
-        remoteAudioRef.current[userId]?.remove();
-        delete remoteAudioRef.current[userId];
-        setVoicePeers((prev) => prev.filter((p) => p !== userId));
-      };
-
-      voiceHandlersRef.current = {
-        "voice-user-joined": onVoiceUserJoined,
-        "voice-offer": onVoiceOffer,
-        "voice-answer": onVoiceAnswer,
-        "voice-ice-candidate": onVoiceIceCandidate,
-        "voice-user-left": onVoiceUserLeft,
-      };
-      socket.on("voice-user-joined", onVoiceUserJoined);
-      socket.on("voice-offer", onVoiceOffer);
-      socket.on("voice-answer", onVoiceAnswer);
-      socket.on("voice-ice-candidate", onVoiceIceCandidate);
-      socket.on("voice-user-left", onVoiceUserLeft);
-    } catch {
-      toast.error("Could not start voice call. Microphone permission may be blocked.");
-      cleanupVoiceCall();
-    }
-  };
-
-  const endVoiceCall = () => {
-    if (user && roomId) socket.emit("leave-voice-room", { roomId, userId: user.uid });
-    const handlers = voiceHandlersRef.current;
-    if (handlers["voice-user-joined"]) socket.off("voice-user-joined", handlers["voice-user-joined"]);
-    if (handlers["voice-offer"]) socket.off("voice-offer", handlers["voice-offer"]);
-    if (handlers["voice-answer"]) socket.off("voice-answer", handlers["voice-answer"]);
-    if (handlers["voice-ice-candidate"]) socket.off("voice-ice-candidate", handlers["voice-ice-candidate"]);
-    if (handlers["voice-user-left"]) socket.off("voice-user-left", handlers["voice-user-left"]);
-    voiceHandlersRef.current = {};
-    cleanupVoiceCall();
-  };
-
-  useEffect(() => () => endVoiceCall(), [roomId, user?.uid]);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const voiceDisplayName = userSettings?.displayName || userSettings?.username || "User";
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { inVoiceCall, callParticipants, muted, joinOrStartCall, endCall: endVoiceCall, toggleMute } = useVoiceCall(roomId || null, user?.uid, voiceDisplayName);
 
   const handleJoin = async () => {
     if (!user || !org) return;
@@ -667,25 +553,39 @@ export default function OrgPage() {
 
         {/* Chat tab */}
         {activeTab === "chat" && org.chatEnabled !== false && (
-          <GroupChat
-            messages={chatMessages}
-            currentUserId={user?.uid}
-            currentAvatarUrl={userSettings?.avatarUrl}
-            accentColor="blue"
-            onSend={handleSendChat}
-            onDelete={(msgId) => org?.id && deleteOrgChatMessage(org.id, msgId)}
-            canDelete={(msg) => msg.userId === user?.uid || isAdmin}
-            voiceCallEnabled={(org.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls}
-            inVoiceCall={inVoiceCall}
-            voicePeerCount={voicePeers.length}
-            onStartVoiceCall={startVoiceCall}
-            onEndVoiceCall={endVoiceCall}
-            emptyLabel="No messages yet. Say hello! 👋"
-            notMemberLabel="Join this organization to chat."
-            isMember={!!myMember}
-            onJoin={handleJoin}
-            joining={joining}
-          />
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/30">Organization Chat</span>
+              <Link
+                to={`/org/${org.slug}/chat`}
+                className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                Open full chat page
+              </Link>
+            </div>
+            <GroupChat
+              messages={chatMessages}
+              currentUserId={user?.uid}
+              currentAvatarUrl={userSettings?.avatarUrl}
+              accentColor="blue"
+              onSend={handleSendChat}
+              onDelete={(msgId) => org?.id && deleteOrgChatMessage(org.id, msgId)}
+              canDelete={(msg) => msg.userId === user?.uid || isAdmin}
+              voiceCallEnabled={(org.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls}
+              callParticipants={callParticipants}
+              inVoiceCall={inVoiceCall}
+              muted={muted}
+              onJoinOrStartCall={joinOrStartCall}
+              onLeaveCall={endVoiceCall}
+              onToggleMute={toggleMute}
+              emptyLabel="No messages yet. Say hello! 👋"
+              notMemberLabel="Join this organization to chat."
+              isMember={!!myMember}
+              onJoin={handleJoin}
+              joining={joining}
+            />
+          </div>
         )}
 
         {/* Overview tab */}
@@ -705,8 +605,8 @@ export default function OrgPage() {
             <div className="bg-[#111] border border-gray-800 rounded-xl p-5 flex flex-col gap-1">
               <p className="text-gray-500 text-xs uppercase tracking-wider">Created</p>
               <p className="text-sm text-gray-300">
-                {org.createdAt?.seconds
-                  ? formatRelativeTime({ seconds: org.createdAt.seconds, nanoseconds: 0 } as any)
+                {org.createdAt
+                  ? formatRelativeTime(org.createdAt)
                   : "—"}
               </p>
             </div>
@@ -754,8 +654,8 @@ export default function OrgPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{m.username}</p>
                   <p className="text-xs text-gray-500">
-                    Joined {m.joinedAt?.seconds
-                      ? formatRelativeTime({ seconds: m.joinedAt.seconds, nanoseconds: 0 } as any)
+                    Joined {m.joinedAt
+                      ? formatRelativeTime(m.joinedAt)
                       : "recently"}
                   </p>
                 </div>
@@ -833,10 +733,13 @@ export default function OrgPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1 text-xs text-gray-600">
-                      <span>Updated {project.updatedAt?.seconds ? formatRelativeTime({ seconds: project.updatedAt.seconds, nanoseconds: 0 } as any) : "—"}</span>
+                      <span>Updated {project.updatedAt ? formatRelativeTime(project.updatedAt) : "—"}</span>
                     </div>
                     <button
-                      onClick={() => navigate('/projects?open=' + project.id)}
+                      onClick={() => {
+                        setOrgContext(org.id, org.slug, org.name);
+                        navigate('/projects?open=' + project.id);
+                      }}
                       className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 transition-all text-xs font-bold"
                     >
                       <FolderCode className="w-3.5 h-3.5" />

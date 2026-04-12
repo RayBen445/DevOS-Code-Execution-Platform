@@ -39,11 +39,20 @@ import BotsPage from "./pages/BotsPage";
 import Portfolio from "./pages/Portfolio";
 import NotFoundPage from "./pages/NotFoundPage";
 import SubdomainRouter from "./components/SubdomainRouter";
+import SubdomainPreview from "./pages/SubdomainPreview";
+import CommunitiesPage from "./pages/CommunitiesPage";
+import CommunityPage from "./pages/CommunityPage";
+import LearnPage from "./pages/LearnPage";
+import LearnTopicPage from "./pages/LearnTopicPage";
+import LearnLessonPage from "./pages/LearnLessonPage";
+import LearnDynamicLessonPage from "./pages/LearnDynamicLessonPage";
 import EventsPage from "./pages/EventsPage";
 import EventPage from "./pages/EventPage";
 import CreateEventPage from "./pages/CreateEventPage";
 import SpeakersPage from "./pages/SpeakersPage";
 import SpeakerPage from "./pages/SpeakerPage";
+import CommunityChatPage from "./pages/CommunityChatPage";
+import OrgChatPage from "./pages/OrgChatPage";
 import { Zap, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, Navigate, useParams, useLocation, useNavigate } from "react-router-dom";
@@ -124,14 +133,32 @@ function AtUsernameRoute() {
   return null;
 }
 
+/** Redirect /communities/:slug → /c/:slug (and /chat variant) */
+function CommunitySlugRedirect({ chat = false }: { chat?: boolean }) {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/c/${slug}${chat ? "/chat" : ""}`} replace />;
+}
+
 export default function App() {
-  // Subdomain routing: *.devos.name.ng → render SubdomainRouter without full app chrome
+  // Subdomain routing: *.devos.name.ng → render the appropriate component
+  // without full app chrome and without changing the browser URL.
+  //
+  //   username.devos.name.ng          (4 parts) → SubdomainRouter (portfolio / project)
+  //   previewId.username.devos.name.ng (5 parts) → SubdomainPreview (project preview)
+  //
   const hostname = window.location.hostname;
   const hostParts = hostname.split(".");
-  // devos.name.ng is 3 parts; a subdomain makes it 4+ parts
-  if (hostParts.length >= 4 && hostname.endsWith(".devos.name.ng")) {
-    const subdomain = hostParts[0];
-    return <SubdomainRouter subdomain={subdomain} />;
+  if (hostname.endsWith(".devos.name.ng")) {
+    if (hostParts.length === 5) {
+      // previewId.username.devos.name.ng
+      const [previewId, username] = hostParts;
+      return <SubdomainPreview username={username} previewId={previewId} />;
+    }
+    if (hostParts.length === 4) {
+      // username.devos.name.ng
+      const [username] = hostParts;
+      return <SubdomainRouter subdomain={username} />;
+    }
   }
 
   const [user, loading] = useAuthState(auth);
@@ -404,9 +431,19 @@ export default function App() {
             <Route path="/search" element={withPageMaintenance("/search", <SearchPage />)} />
             <Route path="/explore" element={withPageMaintenance("/explore", <ExplorePage />)} />
             <Route path="/org/:slug" element={withPageMaintenance("/org", <OrgPage />)} />
+            <Route path="/org/:slug/chat" element={withPageMaintenance("/org", <OrgChatPage />)} />
             <Route path="/orgs" element={withPageMaintenance("/orgs", <OrgsPage />)} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/learn" element={withPageMaintenance("/learn", <LearnPage />)} />
+            <Route path="/learn/:topicId" element={withPageMaintenance("/learn", <LearnTopicPage />)} />
+            <Route path="/learn/:topicId/:lessonId" element={withPageMaintenance("/learn", <LearnLessonPage />)} />
+            <Route path="/learn/l/:slug" element={withPageMaintenance("/learn", <LearnDynamicLessonPage />)} />
+            <Route path="/communities" element={withPageMaintenance("/communities", <CommunitiesPage />)} />
+            <Route path="/communities/:slug" element={<CommunitySlugRedirect />} />
+            <Route path="/communities/:slug/chat" element={<CommunitySlugRedirect chat />} />
+            <Route path="/c/:slug" element={withPageMaintenance("/communities", <CommunityPage />)} />
+            <Route path="/c/:slug/chat" element={withPageMaintenance("/communities", <CommunityChatPage />)} />
             <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
             <Route path="/events" element={withPageMaintenance("/events", <EventsPage />)} />
             <Route path="/events/create" element={withPageMaintenance("/events", <CreateEventPage />)} />

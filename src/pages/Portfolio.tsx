@@ -7,7 +7,7 @@ import { UserSettings, Project, FeedPost } from "../types";
 import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil, Flame, BadgeCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { cn, formatRelativeTime } from "../lib/utils";
+import { cn, formatRelativeTime, toValidDate } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import Footer from "../components/Footer";
@@ -546,7 +546,7 @@ export default function Portfolio() {
                     {project.updatedAt && (
                       <div className="flex items-center gap-2 text-[10px] text-white/20 font-bold uppercase tracking-widest">
                         <Calendar className="w-3 h-3" />
-                        {new Date(project.updatedAt.seconds * 1000).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                        {toValidDate(project.updatedAt)?.toLocaleDateString(undefined, { month: "short", year: "numeric" }) ?? "—"}
                       </div>
                     )}
                   </div>

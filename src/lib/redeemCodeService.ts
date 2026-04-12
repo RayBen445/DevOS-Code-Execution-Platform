@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { RedeemCode } from "../types";
+import { logCreditTransaction } from "./creditsService";
 
 export type RedeemResult =
   | { success: true; value: number }
@@ -65,6 +66,7 @@ export async function redeemCode(
   if (data.type === "credits") {
     const creditsRef = doc(db, "user_credits", uid);
     await setDoc(creditsRef, { daily: increment(data.value) }, { merge: true });
+    logCreditTransaction(uid, "redeem", data.value, `redeem code +${data.value} credits`);
   }
 
   // Record redemption

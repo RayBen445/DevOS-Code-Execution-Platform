@@ -288,6 +288,12 @@ service cloud.firestore {
           request.resource.data.daily == resource.data.daily + 25
         );
       allow delete: if isAdmin();
+
+      match /transactions/{txId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid) || isAdmin();
+        allow update, delete: if isAdmin();
+      }
     }
 
     match /notifications/{notifId} {
@@ -798,6 +804,22 @@ service cloud.firestore {
         request.resource.data.userId == null ||
         request.resource.data.userId == request.auth.uid
       );
+    }
+
+    // ── Voice Rooms — real-time call presence ─────────────────────────────────
+    // Written exclusively by the server (Admin SDK) on join/leave.
+    // Any authenticated user may read so the chat header can show the call banner.
+    match /voice_rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ── Learn Lessons — admin-managed content ─────────────────────────────────
+    // Public read (so learners don't need to be logged in).
+    // Only admins may create, update, or delete lessons.
+    match /learn_lessons/{lessonId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
   }
 }

@@ -29,6 +29,11 @@ import {
   Flame,
   Users,
   BarChart2,
+  Bold,
+  Italic,
+  Link,
+  List,
+  Quote,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -797,12 +802,50 @@ function PostComposerModal({
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {/* Markdown formatting toolbar */}
+              <div className="flex items-center gap-0.5 border-b border-white/[0.06] pb-2">
+                {([
+                  { icon: Bold,   title: "Bold",        wrap: ["**", "**"],    placeholder: "bold text" },
+                  { icon: Italic, title: "Italic",      wrap: ["*", "*"],      placeholder: "italic text" },
+                  { icon: Code2,  title: "Inline code", wrap: ["`", "`"],      placeholder: "code" },
+                  { icon: Link,   title: "Link",        wrap: ["[", "](url)"], placeholder: "link text" },
+                  { icon: List,   title: "List item",   wrap: ["- ", ""],      placeholder: "item" },
+                  { icon: Quote,  title: "Blockquote",  wrap: ["> ", ""],      placeholder: "quote" },
+                ] as const).map(({ icon: Icon, title, wrap, placeholder }) => (
+                  <button
+                    key={title}
+                    type="button"
+                    title={title}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const el = textareaRef.current;
+                      if (!el) return;
+                      const start = el.selectionStart ?? 0;
+                      const end = el.selectionEnd ?? 0;
+                      const selected = postText.slice(start, end) || placeholder;
+                      const before = postText.slice(0, start);
+                      const after = postText.slice(end);
+                      const newText = before + wrap[0] + selected + wrap[1] + after;
+                      setPostText(newText);
+                      requestAnimationFrame(() => {
+                        el.focus();
+                        const cursor = start + wrap[0].length + selected.length + wrap[1].length;
+                        el.setSelectionRange(cursor, cursor);
+                      });
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                  </button>
+                ))}
+              </div>
+
               {/* Textarea */}
               <textarea
                 ref={textareaRef}
                 value={postText}
                 onChange={(e) => setPostText(e.target.value)}
-                placeholder="What are you building?"
+                placeholder="What are you building? **bold** *italic* `code` - list"
                 rows={4}
                 autoFocus
                 className="w-full bg-transparent text-white placeholder-white/25 text-base leading-relaxed resize-none focus:outline-none"

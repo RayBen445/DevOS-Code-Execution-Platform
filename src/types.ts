@@ -169,6 +169,25 @@ export interface GiftedCredit {
   grantedAt: any;
 }
 
+export type CreditTransactionType =
+  | "deduct"
+  | "daily_reset"
+  | "monthly_reset"
+  | "gift"
+  | "unlimited_grant"
+  | "adjust"
+  | "redeem";
+
+export interface CreditTransaction {
+  id: string;
+  type: CreditTransactionType;
+  /** Positive = credit added, negative = credit deducted */
+  delta: number;
+  /** Human-readable label, e.g. "createProject", "gift", "redeem DEVOS24" */
+  label: string;
+  createdAt: any;
+}
+
 export interface Credits {
   daily: number;
   monthly: number;

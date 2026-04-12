@@ -21,11 +21,11 @@ import {
   UserMinus,
   Link2,
   Check,
-  Phone,
   ToggleLeft,
   ToggleRight,
   Send,
   Trash2,
+  MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -61,7 +61,8 @@ import {
 } from "../lib/feedService";
 import { useSEO } from "../hooks/useSEO";
 import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
-import socket from "../lib/socket";
+import { useVoiceCall } from "../hooks/useVoiceCall";
+import { getUserSettings } from "../lib/userService";
 
 type CommunityTab = "posts" | "members" | "chat" | "settings";
 
@@ -387,12 +388,6 @@ export default function CommunityPage() {
   const [members, setMembers] = useState<CommunityMember[]>([]);
   const [chatMessages, setChatMessages] = useState<CommunityChatMessage[]>([]);
   const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
-  const [inVoiceCall, setInVoiceCall] = useState(false);
-  const [voicePeers, setVoicePeers] = useState<string[]>([]);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const peerMapRef = useRef<Record<string, RTCPeerConnection>>({});
-  const remoteAudioRef = useRef<Record<string, HTMLAudioElement>>({});
-  const voiceHandlersRef = useRef<Partial<Record<string, (...args: any[]) => void>>>({});
   const [userSettings, setUserSettings] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<CommunityTab>("posts");
   const [loading, setLoading] = useState(true);
@@ -469,6 +464,11 @@ export default function CommunityPage() {
     });
     return unsub;
   }, [user]);
+
+  // Voice call — must be called unconditionally before any early returns
+  const roomId = community?.id ? `community-${community.id}` : null;
+  const voiceDisplayName = userSettings?.displayName || userSettings?.username || "User";
+  const { inVoiceCall, callParticipants, muted, joinOrStartCall, endCall: endVoiceCall, toggleMute } = useVoiceCall(roomId, user?.uid, voiceDisplayName);
 
   // Sync settings form when community loads or settings tab is opened
   useEffect(() => {
@@ -585,124 +585,6 @@ export default function CommunityPage() {
     { id: "members", label: "Members", count: community.memberCount },
     ...(memberRole === "admin" ? [{ id: "settings" as CommunityTab, label: "Settings", icon: <Settings className="w-3.5 h-3.5" /> }] : []),
   ];
-
-  const roomId = community?.id ? `community-${community.id}` : "";
-
-  const cleanupVoiceCall = () => {
-    Object.values(peerMapRef.current).forEach((pc) => pc.close());
-    peerMapRef.current = {};
-    Object.values(remoteAudioRef.current).forEach((el) => {
-      el.srcObject = null;
-      el.remove();
-    });
-    remoteAudioRef.current = {};
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((t) => t.stop());
-      localStreamRef.current = null;
-    }
-    setVoicePeers([]);
-    setInVoiceCall(false);
-  };
-
-  const buildPeer = (targetUserId: string, meId: string, initiator: boolean) => {
-    if (peerMapRef.current[targetUserId]) return peerMapRef.current[targetUserId];
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-    localStreamRef.current?.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current!));
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit("voice-ice-candidate", { roomId, targetUserId, fromUserId: meId, candidate: event.candidate });
-      }
-    };
-    pc.ontrack = (event) => {
-      let audio = remoteAudioRef.current[targetUserId];
-      if (!audio) {
-        audio = new Audio();
-        audio.autoplay = true;
-        remoteAudioRef.current[targetUserId] = audio;
-      }
-      audio.srcObject = event.streams[0];
-    };
-    peerMapRef.current[targetUserId] = pc;
-    if (initiator) {
-      pc.createOffer()
-        .then((offer) => pc.setLocalDescription(offer).then(() => offer))
-        .then((offer) => socket.emit("voice-offer", { roomId, targetUserId, fromUserId: meId, offer }))
-        .catch(() => {});
-    }
-    return pc;
-  };
-
-  const startVoiceCall = async () => {
-    if (!user || !roomId || inVoiceCall) return;
-    try {
-      localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-      socket.connect();
-      const meId = user.uid;
-      socket.emit("join-voice-room", { roomId, userId: meId, name: userSettings?.displayName || userSettings?.username || "User" });
-      setInVoiceCall(true);
-
-      const onVoiceUserJoined = ({ userId }: { userId: string }) => {
-        if (!userId || userId === meId) return;
-        setVoicePeers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
-        buildPeer(userId, meId, true);
-      };
-      const onVoiceOffer = async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
-        const pc = buildPeer(fromUserId, meId, false);
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit("voice-answer", { roomId, targetUserId: fromUserId, fromUserId: meId, answer });
-        setVoicePeers((prev) => (prev.includes(fromUserId) ? prev : [...prev, fromUserId]));
-      };
-      const onVoiceAnswer = async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
-        const pc = peerMapRef.current[fromUserId];
-        if (!pc) return;
-        await pc.setRemoteDescription(new RTCSessionDescription(answer));
-      };
-      const onVoiceIceCandidate = async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
-        const pc = peerMapRef.current[fromUserId];
-        if (!pc) return;
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      };
-      const onVoiceUserLeft = ({ userId }: { userId: string }) => {
-        peerMapRef.current[userId]?.close();
-        delete peerMapRef.current[userId];
-        remoteAudioRef.current[userId]?.remove();
-        delete remoteAudioRef.current[userId];
-        setVoicePeers((prev) => prev.filter((p) => p !== userId));
-      };
-
-      voiceHandlersRef.current = {
-        "voice-user-joined": onVoiceUserJoined,
-        "voice-offer": onVoiceOffer,
-        "voice-answer": onVoiceAnswer,
-        "voice-ice-candidate": onVoiceIceCandidate,
-        "voice-user-left": onVoiceUserLeft,
-      };
-      socket.on("voice-user-joined", onVoiceUserJoined);
-      socket.on("voice-offer", onVoiceOffer);
-      socket.on("voice-answer", onVoiceAnswer);
-      socket.on("voice-ice-candidate", onVoiceIceCandidate);
-      socket.on("voice-user-left", onVoiceUserLeft);
-    } catch {
-      toast.error("Could not start voice call. Microphone permission may be blocked.");
-      cleanupVoiceCall();
-    }
-  };
-
-  const endVoiceCall = () => {
-    if (user && roomId) socket.emit("leave-voice-room", { roomId, userId: user.uid });
-    const handlers = voiceHandlersRef.current;
-    if (handlers["voice-user-joined"]) socket.off("voice-user-joined", handlers["voice-user-joined"]);
-    if (handlers["voice-offer"]) socket.off("voice-offer", handlers["voice-offer"]);
-    if (handlers["voice-answer"]) socket.off("voice-answer", handlers["voice-answer"]);
-    if (handlers["voice-ice-candidate"]) socket.off("voice-ice-candidate", handlers["voice-ice-candidate"]);
-    if (handlers["voice-user-left"]) socket.off("voice-user-left", handlers["voice-user-left"]);
-    voiceHandlersRef.current = {};
-    cleanupVoiceCall();
-  };
-
-  useEffect(() => () => endVoiceCall(), [roomId, user?.uid]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
@@ -910,25 +792,39 @@ export default function CommunityPage() {
           )}
 
           {activeTab === "chat" && community.chatEnabled !== false && (
-            <GroupChat
-              messages={chatMessages}
-              currentUserId={user?.uid}
-              currentAvatarUrl={userSettings?.avatarUrl}
-              accentColor="indigo"
-              onSend={handleSendChat}
-              onDelete={(msgId) => community?.id && deleteChatMessage(community.id, msgId)}
-              canDelete={(msg) => msg.userId === user?.uid || memberRole === "admin" || memberRole === "moderator"}
-              voiceCallEnabled={(community.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls}
-              inVoiceCall={inVoiceCall}
-              voicePeerCount={voicePeers.length}
-              onStartVoiceCall={startVoiceCall}
-              onEndVoiceCall={endVoiceCall}
-              emptyLabel="No messages yet. Say hello! 👋"
-              notMemberLabel="Join the community to chat."
-              isMember={isMember}
-              onJoin={handleJoin}
-              joining={joining}
-            />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-white/30">Community Chat</span>
+                <Link
+                  to={`/c/${community.slug}/chat`}
+                  className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Open full chat page
+                </Link>
+              </div>
+              <GroupChat
+                messages={chatMessages}
+                currentUserId={user?.uid}
+                currentAvatarUrl={userSettings?.avatarUrl}
+                accentColor="indigo"
+                onSend={handleSendChat}
+                onDelete={(msgId) => community?.id && deleteChatMessage(community.id, msgId)}
+                canDelete={(msg) => msg.userId === user?.uid || memberRole === "admin" || memberRole === "moderator"}
+                voiceCallEnabled={(community.voiceCallsEnabled ?? true) && siteConfig.allowVoiceCalls}
+                callParticipants={callParticipants}
+                inVoiceCall={inVoiceCall}
+                muted={muted}
+                onJoinOrStartCall={joinOrStartCall}
+                onLeaveCall={endVoiceCall}
+                onToggleMute={toggleMute}
+                emptyLabel="No messages yet. Say hello! 👋"
+                notMemberLabel="Join the community to chat."
+                isMember={isMember}
+                onJoin={handleJoin}
+                joining={joining}
+              />
+            </div>
           )}
 
           {activeTab === "settings" && memberRole === "admin" && (

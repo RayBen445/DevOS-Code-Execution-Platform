@@ -16,10 +16,11 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Smile, Reply, Copy, Trash2, X, Phone, Check, CheckCheck } from "lucide-react";
+import { Send, Smile, Reply, Copy, Trash2, X, Phone, PhoneOff, Mic, MicOff, Check, CheckCheck, Users } from "lucide-react";
 import { cn } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
-import { DEVOS_EMOJI_LIST, renderDevosEmojiText } from "../lib/devosEmoji";
+import { renderDevosEmojiText } from "../lib/devosEmoji";
+import EmojiPicker from "./EmojiPicker";
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 
@@ -45,9 +46,20 @@ interface GroupChatProps {
   onDelete?: (msgId: string) => void;
   canDelete?: (msg: ChatMessage) => boolean;
   voiceCallEnabled?: boolean;
+  /** All active call participants (userId → displayName) from Firestore */
+  callParticipants?: Record<string, string>;
+  /** Whether THIS user is currently in the call */
   inVoiceCall?: boolean;
+  /** Whether the local mic is muted */
+  muted?: boolean;
+  onJoinOrStartCall?: () => void;
+  onLeaveCall?: () => void;
+  onToggleMute?: () => void;
+  /** @deprecated use callParticipants */
   voicePeerCount?: number;
+  /** @deprecated use onJoinOrStartCall */
   onStartVoiceCall?: () => void;
+  /** @deprecated use onLeaveCall */
   onEndVoiceCall?: () => void;
   emptyLabel?: string;
   notMemberLabel?: string;
@@ -57,12 +69,6 @@ interface GroupChatProps {
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
-
-const COMMON_EMOJIS = [
-  "😀","😂","🥰","😍","😎","😅","🤔","😢","😡","🤯",
-  "👍","👎","❤️","🔥","🎉","✅","❌","💯","🙏","👏",
-  "🚀","💡","🛠️","⚡","🌟","💬","📌","🔗","🎯","⏱️",
-];
 
 function resolveTimestamp(ts: any): Date | null {
   if (!ts) return null;
@@ -120,8 +126,13 @@ export default function GroupChat({
   onDelete,
   canDelete,
   voiceCallEnabled = false,
+  callParticipants = {},
   inVoiceCall = false,
-  voicePeerCount = 0,
+  muted = false,
+  onJoinOrStartCall,
+  onLeaveCall,
+  onToggleMute,
+  // deprecated shims
   onStartVoiceCall,
   onEndVoiceCall,
   emptyLabel = "No messages yet. Say hello! 👋",
@@ -252,6 +263,89 @@ export default function GroupChat({
         </div>
       ) : (
         <>
+          {/* ── Call bar (header) ─────────────────────────────────────────── */}
+          {voiceCallEnabled && (() => {
+            const participantCount = Object.keys(callParticipants).length;
+            const callActive = participantCount > 0;
+            const handleJoinOrStart = onJoinOrStartCall ?? onStartVoiceCall;
+            const handleLeave = onLeaveCall ?? onEndVoiceCall;
+
+            if (inVoiceCall) {
+              // Active call bar — user is in the call
+              return (
+                <div className="relative flex items-center gap-2 px-3 py-2 bg-green-500/10 border-b border-green-500/20 z-10">
+                  <span className="flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  </span>
+                  <span className="text-xs text-green-300 font-semibold flex-1">
+                    Call in progress · {participantCount} participant{participantCount !== 1 ? "s" : ""}
+                  </span>
+                  {/* Participant name pills */}
+                  <div className="hidden sm:flex items-center gap-1 mr-1">
+                    {Object.values(callParticipants).slice(0, 3).map((name, i) => (
+                      <span key={i} className="text-[10px] bg-green-500/15 text-green-300 px-2 py-0.5 rounded-full border border-green-500/20 max-w-[70px] truncate">{name}</span>
+                    ))}
+                    {participantCount > 3 && (
+                      <span className="text-[10px] text-green-400">+{participantCount - 3}</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={onToggleMute}
+                    title={muted ? "Unmute" : "Mute"}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-colors",
+                      muted ? "bg-red-500/20 text-red-300 hover:bg-red-500/30" : "bg-green-500/15 text-green-300 hover:bg-green-500/25"
+                    )}
+                  >
+                    {muted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    onClick={handleLeave}
+                    title="Leave call"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 rounded-lg text-xs font-semibold transition-colors border border-red-500/20"
+                  >
+                    <PhoneOff className="w-3.5 h-3.5" /> Leave
+                  </button>
+                </div>
+              );
+            }
+
+            if (callActive) {
+              // Call is ongoing but this user hasn't joined
+              return (
+                <div className="relative flex items-center gap-2 px-3 py-2 bg-blue-500/10 border-b border-blue-500/20 z-10">
+                  <span className="flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                  </span>
+                  <span className="text-xs text-blue-300 flex-1">
+                    <span className="font-semibold">Call in progress</span>
+                    {" · "}{participantCount} in call
+                  </span>
+                  <button
+                    onClick={handleJoinOrStart}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+                  >
+                    <Phone className="w-3.5 h-3.5" /> Join Call
+                  </button>
+                </div>
+              );
+            }
+
+            // No active call — subtle start button
+            return (
+              <div className="relative flex items-center justify-end px-3 py-1.5 border-b border-white/[0.04] z-10">
+                <button
+                  onClick={handleJoinOrStart}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] text-white/40 hover:text-white/70 transition-all border border-white/[0.06]"
+                >
+                  <Phone className="w-3 h-3" /> Start Call
+                </button>
+              </div>
+            );
+          })()}
+
           {/* ── messages area ────────────────────────────────────────────── */}
           <div className="relative flex-1 overflow-y-auto min-h-0 px-3 pt-3 pb-1 space-y-0.5">
 
@@ -428,24 +522,6 @@ export default function GroupChat({
           {/* ── Bottom area ───────────────────────────────────────────────── */}
           <div className="relative px-3 pb-3 pt-2 space-y-2 border-t border-white/[0.06] bg-[#0d1117]/60 backdrop-blur-sm">
 
-            {/* Voice call bar */}
-            {voiceCallEnabled && (
-              <div>
-                <button
-                  onClick={inVoiceCall ? onEndVoiceCall : onStartVoiceCall}
-                  className={cn(
-                    "text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors font-medium",
-                    inVoiceCall
-                      ? "bg-red-600/20 border border-red-500/30 text-red-300 hover:bg-red-600/30"
-                      : "bg-emerald-600/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-600/25",
-                  )}
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  {inVoiceCall ? `End Call (${voicePeerCount + 1} in call)` : "Start Voice Call"}
-                </button>
-              </div>
-            )}
-
             {/* Reply preview */}
             {replyTo && (
               <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2">
@@ -462,21 +538,13 @@ export default function GroupChat({
               </div>
             )}
 
-            {/* Emoji picker */}
+            {/* Full emoji picker */}
             {showEmoji && (
-              <div className="bg-[#111827] border border-white/[0.08] rounded-xl p-3 grid grid-cols-10 gap-1.5">
-                {/* DevOS emojis */}
-                {DEVOS_EMOJI_LIST.map(({ code, value }) => (
-                  <button key={code} title={code} onClick={() => insertEmoji(value)} className="text-lg hover:scale-125 transition-transform leading-none">
-                    {value}
-                  </button>
-                ))}
-                <div className="col-span-10 h-px bg-white/[0.06] my-1" />
-                {COMMON_EMOJIS.map((e) => (
-                  <button key={e} onClick={() => insertEmoji(e)} className="text-lg hover:scale-125 transition-transform leading-none">
-                    {e}
-                  </button>
-                ))}
+              <div className="absolute bottom-full left-3 right-3 mb-2 z-30">
+                <EmojiPicker
+                  onSelect={(e) => { insertEmoji(e); setShowEmoji(false); }}
+                  onClose={() => setShowEmoji(false)}
+                />
               </div>
             )}
 
