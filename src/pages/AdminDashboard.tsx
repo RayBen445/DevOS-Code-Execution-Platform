@@ -31,6 +31,7 @@ import { getAllOrgs, deleteOrg, updateOrg, createOrg, batchAddAllUsersToOrg } fr
 import { Template, UserProfile, Credits, RedeemCode, NotificationType, Poll, Community, Organization, Project, EventRegistration } from "../types";
 import { useDevOSAI } from "../hooks/useDevOSAI";
 import { Event as DevEvent, EventStatus, EventType } from "../types";
+import { TOPICS } from "../lib/learnData";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -88,6 +89,7 @@ import {
   MapPin,
   Bot,
   Sparkles,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -95,7 +97,7 @@ import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 import CustomSelect from "../components/CustomSelect";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events";
+type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events" | "learn";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -1825,6 +1827,7 @@ User request: ${aiTestPrompt.trim()}`;
     { id: "organizations", label: "Organizations", icon: <Building2 className="w-4 h-4" /> },
     { id: "projects", label: "Projects", icon: <FolderPlus className="w-4 h-4" /> },
     { id: "events", label: "Events", icon: <Calendar className="w-4 h-4" /> },
+    { id: "learn", label: "Learn", icon: <BookOpen className="w-4 h-4" /> },
     { id: "site", label: "Site Settings", icon: <Globe className="w-4 h-4" /> },
   ];
 
@@ -1971,6 +1974,7 @@ User request: ${aiTestPrompt.trim()}`;
                   {activeTab === "organizations" && "View, create, edit and delete all platform organizations"}
                   {activeTab === "projects" && "Create and manage official DevOS projects"}
                   {activeTab === "events" && "Approve, reject, or delete developer events submitted by users"}
+                  {activeTab === "learn" && "Browse the learning topics and lessons available on the platform"}
                   {activeTab === "site" && "Edit branding, links, footer text, and global voice-call availability"}
                 </p>
               </div>
@@ -4474,6 +4478,47 @@ User request: ${aiTestPrompt.trim()}`;
                         )}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Learn Tab */}
+                {activeTab === "learn" && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-white/50">{TOPICS.length} topics · {TOPICS.reduce((acc, t) => acc + t.lessons.length, 0)} lessons total</p>
+                      </div>
+                      <a
+                        href="/learn"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white transition-all text-sm font-bold"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        Visit Learn Page
+                      </a>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {TOPICS.map((topic) => (
+                        <div key={topic.id} className="bg-[#111827] border border-white/5 rounded-2xl p-5">
+                          <div className="flex items-start justify-between mb-2">
+                            <p className="font-bold text-white">{topic.title}</p>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 bg-white/5 px-2 py-0.5 rounded-md">
+                              {topic.lessons.length} lessons
+                            </span>
+                          </div>
+                          <p className="text-xs text-white/40 mb-3 line-clamp-2">{topic.description}</p>
+                          <ul className="space-y-1">
+                            {topic.lessons.map((lesson) => (
+                              <li key={lesson.id} className="flex items-center gap-2 text-xs text-white/50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/20 flex-shrink-0" />
+                                {lesson.title}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
