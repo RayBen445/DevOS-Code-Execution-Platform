@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar, Check } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar, Check, BookOpen } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -189,6 +189,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             >
               <Calendar className="w-4 h-4" />
               Events
+            </Link>
+            <Link
+              to="/learn"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
+            >
+              <BookOpen className="w-4 h-4" />
+              Learn
             </Link>
             {/* Organisations dropdown */}
             <div className="relative" ref={orgsDropdownRef}>
@@ -749,6 +756,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 >
                   <Calendar className="w-4 h-4" />
                   Events
+                </Link>
+                <Link
+                  to="/learn"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Learn
                 </Link>
                 {isAdmin && (
                   <Link

@@ -59,6 +59,7 @@ export default function Footer() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Platform</p>
             <FooterLink to="/">Explore</FooterLink>
             <FooterLink to="/templates">Templates</FooterLink>
+            <FooterLink to="/learn">Learn</FooterLink>
             <FooterLink to="/communities">Communities</FooterLink>
             <FooterLink to="/orgs">Organizations</FooterLink>
             <FooterLink to="/docs">Docs</FooterLink>
