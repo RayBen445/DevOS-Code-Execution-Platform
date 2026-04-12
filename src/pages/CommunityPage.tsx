@@ -60,6 +60,8 @@ import {
   deletePost,
 } from "../lib/feedService";
 import { useSEO } from "../hooks/useSEO";
+import ImageUpload from "../components/ImageUpload";
+import { uploadImage, communityAvatarPath, communityBannerPath } from "../lib/storageService";
 import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import { useVoiceCall } from "../hooks/useVoiceCall";
 import { getUserSettings } from "../lib/userService";
@@ -402,6 +404,8 @@ export default function CommunityPage() {
   const [settingsBanner, setSettingsBanner] = useState("");
   const [settingsIsPublic, setSettingsIsPublic] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
 
   useSEO({
     title: community ? `${community.name} — DevOS` : "Community — DevOS",
@@ -507,6 +511,34 @@ export default function CommunityPage() {
       toast.error("Failed to save settings");
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const handleAvatarFile = async (file: File) => {
+    if (!community) return;
+    setAvatarUploading(true);
+    try {
+      const url = await uploadImage(file, communityAvatarPath(community.id, file));
+      setSettingsAvatar(url);
+      toast.success("Avatar uploaded!");
+    } catch (err: any) {
+      toast.error("Avatar upload failed: " + (err?.message ?? "Unknown error"));
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleBannerFile = async (file: File) => {
+    if (!community) return;
+    setBannerUploading(true);
+    try {
+      const url = await uploadImage(file, communityBannerPath(community.id, file));
+      setSettingsBanner(url);
+      toast.success("Banner uploaded!");
+    } catch (err: any) {
+      toast.error("Banner upload failed: " + (err?.message ?? "Unknown error"));
+    } finally {
+      setBannerUploading(false);
     }
   };
 
@@ -902,27 +934,34 @@ export default function CommunityPage() {
                   />
                 </div>
 
-                {/* Avatar URL */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Avatar URL</label>
-                  <input
-                    type="url"
-                    value={settingsAvatar}
-                    onChange={(e) => setSettingsAvatar(e.target.value)}
-                    placeholder="https://…"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
-                  />
+                {/* Avatar */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Community Avatar</label>
+                  <div className="flex items-center gap-4">
+                    <ImageUpload
+                      shape="circle"
+                      value={settingsAvatar}
+                      onFile={handleAvatarFile}
+                      onRemove={() => setSettingsAvatar("")}
+                      uploading={avatarUploading}
+                      maxSizeMB={3}
+                    />
+                    <p className="text-xs text-white/30">Drop or click to upload · max 3 MB</p>
+                  </div>
                 </div>
 
-                {/* Banner URL */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Banner URL</label>
-                  <input
-                    type="url"
+                {/* Banner */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Community Banner</label>
+                  <ImageUpload
+                    shape="banner"
                     value={settingsBanner}
-                    onChange={(e) => setSettingsBanner(e.target.value)}
-                    placeholder="https://…"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                    onFile={handleBannerFile}
+                    onRemove={() => setSettingsBanner("")}
+                    uploading={bannerUploading}
+                    maxSizeMB={8}
+                    label="Drop banner image or click to upload"
+                    hint="JPG, PNG, WEBP — recommended 1500×500 px"
                   />
                 </div>
 

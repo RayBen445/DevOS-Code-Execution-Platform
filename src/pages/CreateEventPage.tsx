@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "../lib/firebase";
@@ -8,10 +8,11 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
-import { ArrowLeft, Loader2, Calendar, Globe, MapPin, Lock, Info, Upload, ImageIcon } from "lucide-react";
+import { ArrowLeft, Loader2, Calendar, Globe, MapPin, Lock, Info } from "lucide-react";
 import { toast } from "sonner";
 import { getUserSettings } from "../lib/userService";
 import { uploadImage, eventBannerPath } from "../lib/storageService";
+import ImageUpload from "../components/ImageUpload";
 
 /** Convert a title to a URL-safe slug */
 function slugify(str: string): string {
@@ -32,7 +33,6 @@ export default function CreateEventPage() {
   const [description, setDescription] = useState("");
   const [bannerImage, setBannerImage] = useState("");
   const [bannerUploading, setBannerUploading] = useState(false);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState<EventType>("online");
   const [eventLink, setEventLink] = useState("");
   const [venueName, setVenueName] = useState("");
@@ -59,11 +59,7 @@ export default function CreateEventPage() {
     }
   }, [authLoading, user, navigate]);
 
-  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error("Banner must be under 5 MB."); return; }
-    if (!file.type.startsWith("image/")) { toast.error("Please upload an image."); return; }
+  const handleBannerUpload = async (file: File) => {
     setBannerUploading(true);
     try {
       const path = eventBannerPath(`tmp-${user?.uid ?? "anon"}`, file);
@@ -185,50 +181,18 @@ export default function CreateEventPage() {
             />
           </div>
 
-          {/* Banner Image Upload */}
+          {/* Event Banner */}
           <div>
-            <label className="block text-sm font-medium text-white/70 mb-1.5">
-              Banner Image (optional)
-            </label>
-            <input
-              ref={bannerInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleBannerUpload}
-              onClick={(e) => { (e.target as HTMLInputElement).value = ""; }}
-            />
-            {bannerImage ? (
-              <div className="relative rounded-xl overflow-hidden border border-white/10 h-36">
-                <img src={bannerImage} alt="Banner preview" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setBannerImage("")}
-                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white text-xs px-2 py-1 rounded-lg transition-colors"
-                >
-                  Remove
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => bannerInputRef.current?.click()}
-                disabled={bannerUploading}
-                className="w-full h-24 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/10 hover:border-white/25 text-white/40 hover:text-white/60 transition-all disabled:opacity-50"
-              >
-                {bannerUploading
-                  ? <Loader2 className="w-5 h-5 animate-spin" />
-                  : <><Upload className="w-5 h-5" /><span className="text-xs">Click to upload banner</span></>
-                }
-              </button>
-            )}
-            {/* Also allow pasting a URL directly */}
-            <input
-              type="url"
+            <label className="block text-sm font-medium text-white/70 mb-2">Event Banner</label>
+            <ImageUpload
+              shape="banner"
               value={bannerImage}
-              onChange={(e) => setBannerImage(e.target.value)}
-              placeholder="Or paste a banner URL…"
-              className="mt-2 w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:border-blue-500/50 transition-colors"
+              onFile={handleBannerUpload}
+              onRemove={() => setBannerImage("")}
+              uploading={bannerUploading}
+              maxSizeMB={5}
+              label="Drop banner image or click to upload"
+              hint="JPG, PNG, WEBP — recommended 1200×630 px"
             />
           </div>
 

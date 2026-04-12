@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Globe, Loader2, Save, Check, User, AtSign, FileText, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { db, auth } from "../lib/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "sonner";
-import Avatar from "./Avatar";
 import ImageUpload from "./ImageUpload";
 import { MAX_AVATAR_SIZE_BYTES } from "../lib/avatars";
 import { uploadImage, avatarPath } from "../lib/storageService";
@@ -32,7 +31,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen && auth.currentUser) {
@@ -185,28 +183,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <div className="space-y-6">
                   {/* Profile Section */}
                   <div className="flex items-center gap-6 mb-8">
-                    <div className="relative">
-                      <Avatar
-                        src={avatarUrl}
-                        displayName={fullName || displayName}
-                        size="xl"
-                        uploading={isUploading}
-                        uploadProgress={uploadProgress}
-                        onEditClick={() => fileInputRef.current?.click()}
-                      />
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                      />
-                    </div>
+                    <ImageUpload
+                      shape="circle"
+                      value={avatarUrl}
+                      onFile={handleImageUpload}
+                      onRemove={() => { setAvatarUrl(""); setAvatar(""); }}
+                      uploading={isUploading}
+                      progress={uploadProgress}
+                      maxSizeMB={2}
+                    />
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-white tracking-tight">{fullName || displayName || "Your Name"}</h3>
                       <p className="text-white/40 text-sm font-mono">@{username || "username"}</p>
-                      <p className="text-[11px] text-white/25 mt-1">Click avatar to change · jpg, png, webp · max 2 MB</p>
+                      <p className="text-[11px] text-white/25 mt-1">Drop or click to change · jpg, png, webp · max 2 MB</p>
                     </div>
                   </div>
 
