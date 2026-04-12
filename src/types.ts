@@ -243,7 +243,19 @@ export type NotificationType =
   | 'event_approved'
   | 'event_rejected'
   | 'event_reminder'
-  | 'bot_command';
+  | 'bot_command'
+  | 'project_created'
+  | 'project_deleted'
+  | 'profile_updated'
+  | 'credits_redeemed'
+  | 'password_changed'
+  | 'template_published'
+  | 'org_role_updated'
+  | 'org_approved'
+  | 'org_rejected'
+  | 'community_moderated'
+  | 'event_created'
+  | 'username_change_requested';
 
 export interface Notification {
   id: string;

@@ -30,6 +30,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
+import { sendNotification } from "../lib/notificationService";
 import { formatRelativeTime } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
 import Navbar from "../components/Navbar";
@@ -259,6 +260,7 @@ function PostItem({ post, currentUserId, isAdmin, onDeleted }: PostItemProps) {
 interface MemberRowProps {
   member: CommunityMember;
   communityId: string;
+  communityName?: string;
   currentUserRole?: CommunityMemberRole | null;
   currentUserId?: string;
   onRemoved: (userId: string) => void;
@@ -267,7 +269,7 @@ interface MemberRowProps {
 
 type CommunityMemberRole = "member" | "moderator" | "admin";
 
-function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemoved, onRoleChanged }: MemberRowProps) {
+function MemberRow({ member, communityId, communityName, currentUserRole, currentUserId, onRemoved, onRoleChanged }: MemberRowProps) {
   const [userData, setUserData] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [removing, setRemoving] = useState(false);
   const [updatingRole, setUpdatingRole] = useState(false);
@@ -300,6 +302,7 @@ function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemo
       await removeMember(communityId, member.userId);
       onRemoved(member.userId);
       toast.success("Member removed");
+      sendNotification({ userId: member.userId, type: "community_moderated", title: "Removed from community", message: `You were removed from ${communityName ?? "the community"}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to remove member");
     } finally {
@@ -548,6 +551,7 @@ export default function CommunityPage() {
     try {
       await joinCommunity(community.id, user.uid);
       toast.success(`Joined ${community.name}!`);
+      sendNotification({ userId: user.uid, type: "community_join", title: "Joined community", message: `You joined ${community.name}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to join");
     } finally {
@@ -569,6 +573,7 @@ export default function CommunityPage() {
     try {
       await leaveCommunity(community.id, user.uid);
       toast.success(`Left ${community.name}`);
+      sendNotification({ userId: user.uid, type: "community_join", title: "Left community", message: `You left ${community.name}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to leave");
     } finally {
@@ -810,6 +815,7 @@ export default function CommunityPage() {
                       key={m.userId}
                       member={m}
                       communityId={community.id}
+                      communityName={community.name}
                       currentUserRole={memberRole}
                       currentUserId={user?.uid}
                       onRemoved={(id) => setMembers((prev) => prev.filter((x) => x.userId !== id))}

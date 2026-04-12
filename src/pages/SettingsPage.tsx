@@ -81,6 +81,7 @@ import CustomSelect from "../components/CustomSelect";
 import TwoFactorSetup from "../components/TwoFactorSetup";
 import { ALL_NAV_OPTIONS, NavOptionId } from "../components/MobileBottomNav";
 import { cn } from "../lib/utils";
+import { sendNotification } from "../lib/notificationService";
 
 type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
 
@@ -412,6 +413,7 @@ function ProfileTab() {
       setRequestedUsername("");
       setRequestReason("");
       toast.success("Username change request submitted!");
+      sendNotification({ userId: user.uid, type: "username_change_requested", title: "Username change requested", message: "Your username change request is under review.", createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to submit request.");
     } finally {
@@ -459,6 +461,7 @@ function ProfileTab() {
         setDoc(doc(db, "user_settings", user.uid), privateData, { merge: true }),
       ]);
       toast.success("Profile updated successfully");
+      sendNotification({ userId: user.uid, type: "profile_updated", title: "Profile updated", message: "Your profile has been updated.", createdBy: "system" }).catch(() => {});
     } catch (err: any) {
       console.error(err);
       toast.error("Failed to save profile. Please try again.");
@@ -726,6 +729,7 @@ function AccountTab() {
       const result = await redeemCode(redeemCodeValue.trim(), user.uid);
       if (result.success) {
         toast.success(`Code redeemed! +${result.value} credits added.`);
+        sendNotification({ userId: user.uid, type: "credits_redeemed", title: "Credits redeemed", message: `"${redeemCodeValue.trim()}" redeemed successfully.`, createdBy: "system" }).catch(() => {});
         setRedeemCodeValue("");
         // Refresh balance + transactions
         const [cr, txs] = await Promise.all([getCredits(user.uid), getCreditTransactions(user.uid, 30)]);
@@ -898,6 +902,7 @@ function SecurityTab() {
       }
       await updatePassword(user, newPassword);
       toast.success("Password updated successfully.");
+      sendNotification({ userId: user.uid, type: "password_changed", title: "Password changed", message: "Your password has been changed.", createdBy: "system" }).catch(() => {});
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");

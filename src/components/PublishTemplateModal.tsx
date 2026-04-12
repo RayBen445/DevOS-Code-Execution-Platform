@@ -7,6 +7,7 @@ import { publishTemplate } from "../lib/templateService";
 import { FileData } from "../types";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
+import { sendNotification } from "../lib/notificationService";
 
 interface PublishTemplateModalProps {
   isOpen: boolean;
@@ -83,6 +84,7 @@ export default function PublishTemplateModal({
       toast.success(
         "Template submitted for review! An admin will approve it shortly."
       );
+      if (auth.currentUser) sendNotification({ userId: auth.currentUser.uid, type: "template_published", title: "Template published", message: "Your template is now in the marketplace.", createdBy: "system" }).catch(() => {});
       onClose();
     } catch (err) {
       toast.error("Failed to publish template. Please try again.");

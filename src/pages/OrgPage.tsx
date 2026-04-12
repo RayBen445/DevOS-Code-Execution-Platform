@@ -33,6 +33,7 @@ import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 import { resolveAvatar } from "../lib/avatars";
 import { toast } from "sonner";
+import { sendNotification } from "../lib/notificationService";
 import { createFeedPost, likePost, unlikePost, deletePost } from "../lib/feedService";
 import { subscribeCommunityFeed } from "../lib/communityService";
 import { FeedPost } from "../types";
@@ -228,6 +229,7 @@ export default function OrgPage() {
       } else {
         await joinOrg(org.id, user.uid, username);
         toast.success("Joined organization");
+        sendNotification({ userId: user.uid, type: "org_join", title: "Joined org", message: `You joined ${org.name}.`, createdBy: "system" }).catch(() => {});
       }
     } catch {
       toast.error("Failed to join organization");
@@ -241,6 +243,7 @@ export default function OrgPage() {
     try {
       await leaveOrg(org.id, user.uid);
       toast.success("Left organization");
+      sendNotification({ userId: user.uid, type: "org_join", title: "Left org", message: `You left ${org.name}.`, createdBy: "system" }).catch(() => {});
       setMyMember(null);
     } catch {
       toast.error("Failed to leave organization");
@@ -252,6 +255,7 @@ export default function OrgPage() {
     try {
       await updateMemberRole(org.id, member.userId, role);
       toast.success(`Updated ${member.username}'s role to ${role}`);
+      sendNotification({ userId: member.userId, type: "org_role_updated", title: "Role updated", message: `Your role in "${org.name}" was changed to ${role}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to update role");
     }
@@ -262,6 +266,7 @@ export default function OrgPage() {
     try {
       await approveJoinRequest(org.id, req.userId, req.username);
       toast.success(`${req.username} approved`);
+      sendNotification({ userId: req.userId, type: "org_approved", title: "Join request approved", message: `Your request to join "${org.name}" was approved.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to approve request");
     }
@@ -272,6 +277,7 @@ export default function OrgPage() {
     try {
       await rejectJoinRequest(org.id, req.userId);
       toast.success(`${req.username} rejected`);
+      sendNotification({ userId: req.userId, type: "org_rejected", title: "Join request rejected", message: `Your request to join "${org.name}" was rejected.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to reject request");
     }

@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { sendNotification } from "../lib/notificationService";
 
 function formatEventDate(ts: any): string {
   if (!ts) return "";
@@ -179,6 +180,7 @@ export default function EventPage() {
       setRsvpDone(true);
       setRegistrationCount((c) => c + 1);
       toast.success("You're registered! 🎉");
+      if (user) sendNotification({ userId: user.uid, type: "event_rsvp", title: "RSVP confirmed", message: `You're registered for "${event.title}".`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Registration failed. Please try again.");
     } finally {

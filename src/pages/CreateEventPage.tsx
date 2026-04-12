@@ -10,6 +10,7 @@ import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
 import { ArrowLeft, Loader2, Calendar, Globe, MapPin, Lock, Info } from "lucide-react";
 import { toast } from "sonner";
+import { sendNotification } from "../lib/notificationService";
 import { getUserSettings } from "../lib/userService";
 import { uploadImage, eventBannerPath } from "../lib/storageService";
 import ImageUpload from "../components/ImageUpload";
@@ -104,6 +105,7 @@ export default function CreateEventPage() {
         isPremium,
       });
       toast.success("Event submitted for review! It will be visible once approved.");
+      sendNotification({ userId: user.uid, type: "event_created", title: "Event submitted", message: "Your event is pending review.", createdBy: "system" }).catch(() => {});
       navigate("/events");
     } catch (err: any) {
       console.error("Event creation failed:", err);
