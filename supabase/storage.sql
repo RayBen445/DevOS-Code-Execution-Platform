@@ -56,10 +56,13 @@ ON CONFLICT (id) DO UPDATE
 
 
 -- =============================================================================
--- SECTION 2 — ENABLE ROW LEVEL SECURITY
+-- SECTION 2 — ROW LEVEL SECURITY
 -- =============================================================================
-
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- NOTE: Supabase enables RLS on storage.objects automatically.
+-- Running ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY here would
+-- fail with error 42501 ("must be owner of table objects") because the table
+-- is owned by the internal supabase_storage_admin role, not the postgres role.
+-- The policies in the sections below are sufficient.
 
 
 -- =============================================================================
