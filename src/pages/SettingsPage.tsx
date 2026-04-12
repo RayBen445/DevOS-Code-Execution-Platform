@@ -439,6 +439,7 @@ function ProfileTab() {
         avatarUrl,
         avatar: avatarUrl,
         updatedAt: serverTimestamp(),
+        ...(birthday ? { birthday } : {}),
         ...(Object.keys(links).length ? { links } : {}),
       };
       const privateData = {

@@ -67,7 +67,9 @@ export const registerUserProfile = async (
   });
 
   await initializeCredits(user.uid);
-  await createPortfolioProject(user.uid, profile.username);
+  await createPortfolioProject(user.uid, profile.username).catch((err) => {
+    console.error("createPortfolioProject failed (non-fatal):", err);
+  });
 
   // Auto-join all official communities and orgs
   await joinOfficialCommunities(user.uid).catch(() => {});

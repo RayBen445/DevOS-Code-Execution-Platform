@@ -4757,11 +4757,11 @@ User request: ${aiTestPrompt.trim()}`;
                     <ConfirmModal
                       open={!!deleteLessonConfirm}
                       title="Delete Lesson"
-                      message="This will permanently delete the lesson. This cannot be undone."
+                      description="This will permanently delete the lesson."
+                      warning="This action cannot be undone."
                       confirmLabel={deletingLesson ? "Deleting…" : "Delete"}
                       onConfirm={handleDeleteLesson}
                       onCancel={() => setDeleteLessonConfirm(null)}
-                      isDangerous
                     />
                   </div>
                 )}
