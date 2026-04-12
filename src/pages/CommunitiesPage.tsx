@@ -183,7 +183,7 @@ function CommunityCard({ community, userId, isMember, onJoin, onLeave, joining }
       <div className="pt-8 px-4 pb-4 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="min-w-0">
-            <Link to={`/c/${community.slug}`} className="text-base font-bold text-white hover:text-blue-400 transition-colors truncate block">
+            <Link to={`/communities/${community.slug}`} className="text-base font-bold text-white hover:text-blue-400 transition-colors truncate block">
               {community.name}
             </Link>
             {community.category && (
@@ -202,7 +202,7 @@ function CommunityCard({ community, userId, isMember, onJoin, onLeave, joining }
           </div>
           <div className="flex items-center gap-2">
             <Link
-              to={`/c/${community.slug}`}
+              to={`/communities/${community.slug}`}
               className="text-xs text-white/40 hover:text-white/70 transition-colors flex items-center gap-1"
             >
               View <ChevronRight className="w-3 h-3" />
@@ -397,7 +397,7 @@ export default function CommunitiesPage() {
           open={showCreate}
           onClose={() => setShowCreate(false)}
           userId={user.uid}
-          onCreated={(slug) => { setShowCreate(false); navigate(`/c/${slug}`); }}
+          onCreated={(slug) => { setShowCreate(false); navigate(`/communities/${slug}`); }}
         />
       )}
     </div>
