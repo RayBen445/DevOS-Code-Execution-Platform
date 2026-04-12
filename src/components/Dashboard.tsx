@@ -18,6 +18,7 @@ import { useSEO } from "../hooks/useSEO";
 import { useNavigate } from "react-router-dom";
 import { ProjectShareCard, useShareAsImage } from "./ShareAsImageCard";
 import { emitBotEventWithToast } from "../lib/botEngine";
+import { sendNotification } from "../lib/notificationService";
 import CreateOrgModal from "./CreateOrgModal";
 import { useActiveContext } from "../hooks/useActiveContext";
 import CustomSelect from "./CustomSelect";
@@ -261,6 +262,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         name: "project.created",
         payload: { projectId: docRef.id, projectName: newProjectName, userId: user.uid },
       }).catch(() => {});
+      sendNotification({ userId: user.uid, type: "project_created", title: "Project created", message: `"${newProjectName}" has been created.`, createdBy: "system" }).catch(() => {});
       onSelectProject(docRef.id);
     } catch (error) {
       console.error("Error creating project:", error);
@@ -456,6 +458,7 @@ p {
 
       await batch.commit();
       toast.success("Project deleted.");
+      sendNotification({ userId: user.uid, type: "project_deleted", title: "Project deleted", message: "Your project has been deleted.", createdBy: "system" }).catch(() => {});
       setDeleteConfirm(null);
     } catch (error) {
       console.error("Error deleting project:", error);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar, Check, BookOpen, Sun, Moon } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar, Check, BookOpen, Sun, Moon, History } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -378,6 +378,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                           <Gift className="w-4 h-4" />
                           Redeem Code
                         </button>
+                        <Link
+                          to="/settings?tab=account"
+                          onClick={() => setIsCreditsPanelOpen(false)}
+                          className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs text-white/40 hover:text-white/70 transition-colors font-medium"
+                        >
+                          <History className="w-3.5 h-3.5" />
+                          View transaction history
+                        </Link>
                       </div>
                     </motion.div>
                   )}

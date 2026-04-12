@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Globe, Loader2, Save, Check, User, AtSign, FileText, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { db, auth } from "../lib/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "sonner";
-import Avatar from "./Avatar";
+import ImageUpload from "./ImageUpload";
 import { MAX_AVATAR_SIZE_BYTES } from "../lib/avatars";
 import { uploadImage, avatarPath } from "../lib/storageService";
 
@@ -31,7 +31,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen && auth.currentUser) {
@@ -106,48 +105,26 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !auth.currentUser) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Only images are allowed (jpg, png, webp).");
-      return;
-    }
-    if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      toast.error(`Image must be smaller than ${MAX_AVATAR_SIZE_BYTES / (1024 * 1024)} MB.`);
-      return;
-    }
-
+  const handleImageUpload = async (file: File) => {
+    if (!auth.currentUser) return;
     setIsUploading(true);
     setUploadProgress(0);
-
     const progressInterval = setInterval(() => {
       setUploadProgress((p) => Math.min(p + PROGRESS_INCREMENT, PROGRESS_MAX));
     }, PROGRESS_INTERVAL_MS);
-
     try {
       const path = avatarPath(auth.currentUser.uid, file);
       const secureUrl = await uploadImage(file, path, {
         onProgress: (pct) => setUploadProgress(pct),
       });
-
       setUploadProgress(100);
-
       setAvatarUrl(secureUrl);
       setAvatar(secureUrl);
-
-      // Persist immediately
-      const updateData = {
-        avatar: secureUrl,
-        avatarUrl: secureUrl,
-        updatedAt: serverTimestamp(),
-      };
+      const updateData = { avatar: secureUrl, avatarUrl: secureUrl, updatedAt: serverTimestamp() };
       await Promise.all([
         updateDoc(doc(db, "users", auth.currentUser.uid), updateData),
         updateDoc(doc(db, "user_settings", auth.currentUser.uid), updateData),
       ]);
-
       toast.success("Profile picture updated!");
     } catch (error: any) {
       console.error("Avatar upload error:", error);
@@ -156,8 +133,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       clearInterval(progressInterval);
       setIsUploading(false);
       setUploadProgress(0);
-      // Reset input so same file can be re-selected
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -208,28 +183,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <div className="space-y-6">
                   {/* Profile Section */}
                   <div className="flex items-center gap-6 mb-8">
-                    <div className="relative">
-                      <Avatar
-                        src={avatarUrl}
-                        displayName={fullName || displayName}
-                        size="xl"
-                        uploading={isUploading}
-                        uploadProgress={uploadProgress}
-                        onEditClick={() => fileInputRef.current?.click()}
-                      />
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                      />
-                    </div>
+                    <ImageUpload
+                      shape="circle"
+                      value={avatarUrl}
+                      onFile={handleImageUpload}
+                      onRemove={() => { setAvatarUrl(""); setAvatar(""); }}
+                      uploading={isUploading}
+                      progress={uploadProgress}
+                      maxSizeMB={2}
+                    />
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-white tracking-tight">{fullName || displayName || "Your Name"}</h3>
                       <p className="text-white/40 text-sm font-mono">@{username || "username"}</p>
-                      <p className="text-[11px] text-white/25 mt-1">Click avatar to change · jpg, png, webp · max 2 MB</p>
+                      <p className="text-[11px] text-white/25 mt-1">Drop or click to change · jpg, png, webp · max 2 MB</p>
                     </div>
                   </div>
 

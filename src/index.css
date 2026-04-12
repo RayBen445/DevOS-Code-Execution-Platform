@@ -262,6 +262,89 @@ body {
   border-color: rgba(0, 0, 0, 0.1);
 }
 
+/* ── Prose / inline text that uses text-gray-* ──────────────────────── */
+[data-theme="light"] .text-gray-100,
+[data-theme="light"] .text-gray-200,
+[data-theme="light"] .text-gray-300 { color: rgba(15,23,42,0.80) !important; }
+[data-theme="light"] .text-gray-400  { color: rgba(15,23,42,0.55) !important; }
+[data-theme="light"] .text-gray-500  { color: rgba(15,23,42,0.50) !important; }
+[data-theme="light"] .text-gray-600  { color: rgba(15,23,42,0.65) !important; }
+
+/* ── Code blocks / mono text ────────────────────────────────────────── */
+[data-theme="light"] .font-mono      { color: #1e3a5f !important; }
+[data-theme="light"] code            { color: #1e3a5f !important; background: rgba(15,23,42,0.06) !important; }
+
+/* ── bg-zinc / bg-neutral / bg-slate dark variants ──────────────────── */
+[data-theme="light"] .bg-zinc-900,
+[data-theme="light"] .bg-zinc-800,
+[data-theme="light"] .bg-neutral-900,
+[data-theme="light"] .bg-neutral-800,
+[data-theme="light"] .bg-slate-900,
+[data-theme="light"] .bg-slate-800   { background-color: #f1f5f9 !important; }
+
+[data-theme="light"] .bg-zinc-700,
+[data-theme="light"] .bg-neutral-700,
+[data-theme="light"] .bg-slate-700   { background-color: #e2e8f0 !important; }
+
+/* ── text-zinc / text-neutral / text-slate dark variants ────────────── */
+[data-theme="light"] .text-zinc-100,
+[data-theme="light"] .text-zinc-200,
+[data-theme="light"] .text-neutral-100,
+[data-theme="light"] .text-neutral-200,
+[data-theme="light"] .text-slate-100,
+[data-theme="light"] .text-slate-200  { color: rgba(15,23,42,0.90) !important; }
+
+[data-theme="light"] .text-zinc-300,
+[data-theme="light"] .text-zinc-400,
+[data-theme="light"] .text-neutral-300,
+[data-theme="light"] .text-neutral-400,
+[data-theme="light"] .text-slate-300,
+[data-theme="light"] .text-slate-400  { color: rgba(15,23,42,0.60) !important; }
+
+/* ── Inputs: ensure readable text inside bg-black/40 inputs ─────────── */
+[data-theme="light"] input:not([type="range"]),
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  border-color: rgba(15,23,42,0.15) !important;
+}
+
+/* ── bg-[#1a1a1a] and similar very-dark one-off values ──────────────── */
+[data-theme="light"] .bg-\[#1a1a1a\],
+[data-theme="light"] .bg-\[#141414\],
+[data-theme="light"] .bg-\[#181818\],
+[data-theme="light"] .bg-\[#1c1c1c\],
+[data-theme="light"] .bg-\[#121212\] { background-color: #f8fafc !important; }
+
+/* ── Modals / dropdowns: dark bg-[#111] surfaces ────────────────────── */
+[data-theme="light"] .bg-\[#0c0c0c\],
+[data-theme="light"] .bg-\[#100f0f\],
+[data-theme="light"] .bg-\[#0e0e0e\] { background-color: #f8fafc !important; }
+
+/* ── Shadow colors in light mode ────────────────────────────────────── */
+[data-theme="light"] .shadow-black\/50,
+[data-theme="light"] .shadow-black\/60 {
+  --tw-shadow-color: rgba(15,23,42,0.15) !important;
+}
+
+/* ── Backdrop in modals ─────────────────────────────────────────────── */
+[data-theme="light"] .bg-black\/70,
+[data-theme="light"] .bg-black\/75,
+[data-theme="light"] .bg-black\/85,
+[data-theme="light"] .bg-black\/90 {
+  background-color: rgba(248,250,252,0.92) !important;
+}
+
+/* ── Ensure white text on coloured buttons stays white ──────────────── */
+[data-theme="light"] .bg-blue-600 .text-white,
+[data-theme="light"] .bg-blue-700 .text-white,
+[data-theme="light"] .bg-indigo-600 .text-white,
+[data-theme="light"] .bg-green-600 .text-white,
+[data-theme="light"] .bg-red-600 .text-white {
+  color: #ffffff !important;
+}
+
 /* ── Gradient text ─────────────────────────────────────────────────────────── */
 .gradient-text {
   background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #34d399 100%);

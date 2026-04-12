@@ -821,5 +821,25 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
+
+    // ── Learn Progress — per-user lesson progress ──────────────────────────────
+    // Each user stores their own lesson completion state.
+    match /learn_progress/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
+    }
+
+    // ── User Notification Settings — per-user email/push opt-ins ──────────────
+    // Only the owning user (or admin) may read or change their preferences.
+    match /user_notification_settings/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
+    }
+
+    // ── Plugin Data — isolated plugin namespaces ───────────────────────────────
+    // All client-side reads/writes are blocked; only Cloud Functions (Admin SDK)
+    // interact with this collection so standard client rules are not needed here.
+    // We still declare the match to make the intent explicit.
+    match /plugin_data/{projectId}/{document=**} {
+      allow read, write: if false;
+    }
   }
 }

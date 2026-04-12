@@ -4340,13 +4340,13 @@ User request: ${aiTestPrompt.trim()}`;
                               <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">End Date *</label>
                               <input type="datetime-local" value={newEvEnd} onChange={(e) => setNewEvEnd(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
                             </div>
-                            {(newEvType === "online" || newEvType === "hybrid") && (
+                            {newEvType === "online" && (
                               <div className="sm:col-span-2">
                                 <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Event Link</label>
                                 <input type="url" value={newEvLink} onChange={(e) => setNewEvLink(e.target.value)} placeholder="https://meet.google.com/..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
                               </div>
                             )}
-                            {(newEvType === "physical" || newEvType === "hybrid") && (
+                            {newEvType === "physical" && (
                               <>
                                 <div>
                                   <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Venue Name</label>
@@ -4755,13 +4755,13 @@ User request: ${aiTestPrompt.trim()}`;
 
                     {/* Delete confirmation */}
                     <ConfirmModal
-                      isOpen={!!deleteLessonConfirm}
+                      open={!!deleteLessonConfirm}
                       title="Delete Lesson"
-                      message="This will permanently delete the lesson. This cannot be undone."
+                      description="This will permanently delete the lesson."
+                      warning="This action cannot be undone."
                       confirmLabel={deletingLesson ? "Deleting…" : "Delete"}
                       onConfirm={handleDeleteLesson}
                       onCancel={() => setDeleteLessonConfirm(null)}
-                      isDangerous
                     />
                   </div>
                 )}

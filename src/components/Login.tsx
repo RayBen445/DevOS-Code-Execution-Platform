@@ -529,13 +529,3 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
   );
 }
 
-import { motion, AnimatePresence } from "framer-motion";
-import { registerUserProfile, checkUsernameAvailable, skipNextInitialize } from "../lib/userService";
-import { getAuthErrorMessage } from "../lib/errorMessages";
-
-interface LoginProps {
-  onClose: () => void;
-  /** Open directly in signup or login mode. Defaults to "login". */
-  initialMode?: "login" | "signup";
-}
-

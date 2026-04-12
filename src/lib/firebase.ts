@@ -16,6 +16,7 @@ import {
   type User,
   type MultiFactorResolver,
 } from "firebase/auth";
+export type { MultiFactorResolver };
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import firebaseConfig from "../../firebase-applet-config.json";

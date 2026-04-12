@@ -30,6 +30,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
+import { sendNotification } from "../lib/notificationService";
 import { formatRelativeTime } from "../lib/utils";
 import { resolveAvatar } from "../lib/avatars";
 import Navbar from "../components/Navbar";
@@ -60,6 +61,8 @@ import {
   deletePost,
 } from "../lib/feedService";
 import { useSEO } from "../hooks/useSEO";
+import ImageUpload from "../components/ImageUpload";
+import { uploadImage, communityAvatarPath, communityBannerPath } from "../lib/storageService";
 import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
 import { useVoiceCall } from "../hooks/useVoiceCall";
 import { getUserSettings } from "../lib/userService";
@@ -257,6 +260,7 @@ function PostItem({ post, currentUserId, isAdmin, onDeleted }: PostItemProps) {
 interface MemberRowProps {
   member: CommunityMember;
   communityId: string;
+  communityName?: string;
   currentUserRole?: CommunityMemberRole | null;
   currentUserId?: string;
   onRemoved: (userId: string) => void;
@@ -265,7 +269,7 @@ interface MemberRowProps {
 
 type CommunityMemberRole = "member" | "moderator" | "admin";
 
-function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemoved, onRoleChanged }: MemberRowProps) {
+function MemberRow({ member, communityId, communityName, currentUserRole, currentUserId, onRemoved, onRoleChanged }: MemberRowProps) {
   const [userData, setUserData] = useState<{ username?: string; displayName?: string; avatarUrl?: string } | null>(null);
   const [removing, setRemoving] = useState(false);
   const [updatingRole, setUpdatingRole] = useState(false);
@@ -298,6 +302,7 @@ function MemberRow({ member, communityId, currentUserRole, currentUserId, onRemo
       await removeMember(communityId, member.userId);
       onRemoved(member.userId);
       toast.success("Member removed");
+      sendNotification({ userId: member.userId, type: "community_moderated", title: "Removed from community", message: `You were removed from ${communityName ?? "the community"}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to remove member");
     } finally {
@@ -402,6 +407,8 @@ export default function CommunityPage() {
   const [settingsBanner, setSettingsBanner] = useState("");
   const [settingsIsPublic, setSettingsIsPublic] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
 
   useSEO({
     title: community ? `${community.name} — DevOS` : "Community — DevOS",
@@ -510,12 +517,41 @@ export default function CommunityPage() {
     }
   };
 
+  const handleAvatarFile = async (file: File) => {
+    if (!community) return;
+    setAvatarUploading(true);
+    try {
+      const url = await uploadImage(file, communityAvatarPath(community.id, file));
+      setSettingsAvatar(url);
+      toast.success("Avatar uploaded!");
+    } catch (err: any) {
+      toast.error("Avatar upload failed: " + (err?.message ?? "Unknown error"));
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleBannerFile = async (file: File) => {
+    if (!community) return;
+    setBannerUploading(true);
+    try {
+      const url = await uploadImage(file, communityBannerPath(community.id, file));
+      setSettingsBanner(url);
+      toast.success("Banner uploaded!");
+    } catch (err: any) {
+      toast.error("Banner upload failed: " + (err?.message ?? "Unknown error"));
+    } finally {
+      setBannerUploading(false);
+    }
+  };
+
   const handleJoin = async () => {
     if (!user || !community) return;
     setJoining(true);
     try {
       await joinCommunity(community.id, user.uid);
       toast.success(`Joined ${community.name}!`);
+      sendNotification({ userId: user.uid, type: "community_join", title: "Joined community", message: `You joined ${community.name}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to join");
     } finally {
@@ -537,6 +573,7 @@ export default function CommunityPage() {
     try {
       await leaveCommunity(community.id, user.uid);
       toast.success(`Left ${community.name}`);
+      sendNotification({ userId: user.uid, type: "community_join", title: "Left community", message: `You left ${community.name}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to leave");
     } finally {
@@ -778,6 +815,7 @@ export default function CommunityPage() {
                       key={m.userId}
                       member={m}
                       communityId={community.id}
+                      communityName={community.name}
                       currentUserRole={memberRole}
                       currentUserId={user?.uid}
                       onRemoved={(id) => setMembers((prev) => prev.filter((x) => x.userId !== id))}
@@ -902,27 +940,34 @@ export default function CommunityPage() {
                   />
                 </div>
 
-                {/* Avatar URL */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Avatar URL</label>
-                  <input
-                    type="url"
-                    value={settingsAvatar}
-                    onChange={(e) => setSettingsAvatar(e.target.value)}
-                    placeholder="https://…"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
-                  />
+                {/* Avatar */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Community Avatar</label>
+                  <div className="flex items-center gap-4">
+                    <ImageUpload
+                      shape="circle"
+                      value={settingsAvatar}
+                      onFile={handleAvatarFile}
+                      onRemove={() => setSettingsAvatar("")}
+                      uploading={avatarUploading}
+                      maxSizeMB={3}
+                    />
+                    <p className="text-xs text-white/30">Drop or click to upload · max 3 MB</p>
+                  </div>
                 </div>
 
-                {/* Banner URL */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Banner URL</label>
-                  <input
-                    type="url"
+                {/* Banner */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/40 uppercase tracking-widest">Community Banner</label>
+                  <ImageUpload
+                    shape="banner"
                     value={settingsBanner}
-                    onChange={(e) => setSettingsBanner(e.target.value)}
-                    placeholder="https://…"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                    onFile={handleBannerFile}
+                    onRemove={() => setSettingsBanner("")}
+                    uploading={bannerUploading}
+                    maxSizeMB={8}
+                    label="Drop banner image or click to upload"
+                    hint="JPG, PNG, WEBP — recommended 1500×500 px"
                   />
                 </div>
 

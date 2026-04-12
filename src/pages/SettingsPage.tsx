@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db, sendVerificationEmail } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -17,6 +17,7 @@ import {
   reauthenticateWithCredential,
 } from "firebase/auth";
 import { uploadImage, avatarPath } from "../lib/storageService";
+import ImageUpload from "../components/ImageUpload";
 import {
   User,
   AtSign,
@@ -31,7 +32,6 @@ import {
   ShieldCheck,
   Loader2,
   Save,
-  Upload,
   Eye,
   EyeOff,
   Check,
@@ -81,6 +81,7 @@ import CustomSelect from "../components/CustomSelect";
 import TwoFactorSetup from "../components/TwoFactorSetup";
 import { ALL_NAV_OPTIONS, NavOptionId } from "../components/MobileBottomNav";
 import { cn } from "../lib/utils";
+import { sendNotification } from "../lib/notificationService";
 
 type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
 
@@ -231,7 +232,9 @@ function SettingsSidebarNav({
 export default function SettingsPage() {
   const [user, authLoading] = useAuthState(auth);
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialTab = (searchParams.get("tab") as Tab) ?? "profile";
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useSEO({ title: "Account Settings — DevOS" });
@@ -339,7 +342,6 @@ function ProfileTab() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
@@ -411,6 +413,7 @@ function ProfileTab() {
       setRequestedUsername("");
       setRequestReason("");
       toast.success("Username change request submitted!");
+      sendNotification({ userId: user.uid, type: "username_change_requested", title: "Username change requested", message: "Your username change request is under review.", createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to submit request.");
     } finally {
@@ -438,6 +441,7 @@ function ProfileTab() {
         avatarUrl,
         avatar: avatarUrl,
         updatedAt: serverTimestamp(),
+        ...(birthday ? { birthday } : {}),
         ...(Object.keys(links).length ? { links } : {}),
       };
       const privateData = {
@@ -457,6 +461,7 @@ function ProfileTab() {
         setDoc(doc(db, "user_settings", user.uid), privateData, { merge: true }),
       ]);
       toast.success("Profile updated successfully");
+      sendNotification({ userId: user.uid, type: "profile_updated", title: "Profile updated", message: "Your profile has been updated.", createdBy: "system" }).catch(() => {});
     } catch (err: any) {
       console.error(err);
       toast.error("Failed to save profile. Please try again.");
@@ -465,12 +470,8 @@ function ProfileTab() {
     }
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5 MB."); return; }
-    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file."); return; }
-
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return;
     setUploading(true);
     setUploadProgress(0);
     try {
@@ -505,27 +506,20 @@ function ProfileTab() {
 
       {/* Avatar */}
       <div className="flex items-center gap-6">
-        <div className="relative group">
-          <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 overflow-hidden relative">
-            <img src={avatarSrc} alt={fullName || "Avatar"} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            {uploading && (
-              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2 p-3">
-                <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-                <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 transition-all" style={{ width: `${uploadProgress}%` }} />
-                </div>
-              </div>
-            )}
-          </div>
-          <label className="absolute -bottom-2 -right-2 p-2 bg-blue-600 hover:bg-blue-700 rounded-xl cursor-pointer transition-all shadow-lg">
-            <Upload className="w-3.5 h-3.5 text-white" />
-            <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} onClick={(e) => { (e.target as HTMLInputElement).value = ""; }} />
-          </label>
-        </div>
+        <ImageUpload
+          shape="square"
+          value={avatarSrc}
+          onFile={handleAvatarUpload}
+          onRemove={() => setAvatarUrl("")}
+          uploading={uploading}
+          progress={uploadProgress}
+          maxSizeMB={5}
+          hint="JPG, PNG, GIF — max 5 MB"
+        />
         <div>
           <p className="text-sm font-bold text-white">{fullName || username || "Your Name"}</p>
           <p className="text-white/40 text-sm font-mono">@{username || "username"}</p>
-          <p className="text-white/30 text-xs mt-1">JPG, PNG or GIF — max 5 MB</p>
+          <p className="text-white/30 text-xs mt-1">Drop or click to change · max 5 MB</p>
         </div>
       </div>
 
@@ -735,6 +729,7 @@ function AccountTab() {
       const result = await redeemCode(redeemCodeValue.trim(), user.uid);
       if (result.success) {
         toast.success(`Code redeemed! +${result.value} credits added.`);
+        sendNotification({ userId: user.uid, type: "credits_redeemed", title: "Credits redeemed", message: `"${redeemCodeValue.trim()}" redeemed successfully.`, createdBy: "system" }).catch(() => {});
         setRedeemCodeValue("");
         // Refresh balance + transactions
         const [cr, txs] = await Promise.all([getCredits(user.uid), getCreditTransactions(user.uid, 30)]);
@@ -907,6 +902,7 @@ function SecurityTab() {
       }
       await updatePassword(user, newPassword);
       toast.success("Password updated successfully.");
+      sendNotification({ userId: user.uid, type: "password_changed", title: "Password changed", message: "Your password has been changed.", createdBy: "system" }).catch(() => {});
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");

@@ -103,3 +103,27 @@ export function eventBannerPath(eventId: string, file: File): string {
   const ext = file.name.split(".").pop() ?? "jpg";
   return `events/${eventId}/banner-${Date.now()}.${ext}`;
 }
+
+/** Generate a unique storage path for a community avatar image. */
+export function communityAvatarPath(communityId: string, file: File): string {
+  const ext = file.name.split(".").pop() ?? "jpg";
+  return `communities/${communityId}/avatar-${Date.now()}.${ext}`;
+}
+
+/** Generate a unique storage path for a community banner image. */
+export function communityBannerPath(communityId: string, file: File): string {
+  const ext = file.name.split(".").pop() ?? "jpg";
+  return `communities/${communityId}/banner-${Date.now()}.${ext}`;
+}
+
+/** Generate a unique storage path for an organisation avatar image. */
+export function orgAvatarPath(orgId: string, file: File): string {
+  const ext = file.name.split(".").pop() ?? "jpg";
+  return `orgs/${orgId}/avatar-${Date.now()}.${ext}`;
+}
+
+/** Generate a unique storage path for a template preview image. */
+export function templatePreviewPath(templateId: string, file: File): string {
+  const ext = file.name.split(".").pop() ?? "jpg";
+  return `templates/${templateId}/preview-${Date.now()}.${ext}`;
+}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, Activity, ArrowLeft } from "lucide-react";
+import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, Activity, ArrowLeft, Calendar, Puzzle } from "lucide-react";
 import { cn } from "../lib/utils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -421,6 +421,153 @@ const sections: DocSection[] = [
           Use the same email address: info@devos.zone.id or use the feedback button in the navbar.
           We respond within 48 hours.
         </FAQItem>
+      </div>
+    ),
+  },
+  {
+    id: "communities",
+    label: "Communities",
+    icon: Users,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Communities</h2>
+        <p className="text-white/60 leading-relaxed">
+          Communities are shared spaces where developers with similar interests collaborate, share projects, and chat in real time.
+        </p>
+        <Section title="Creating a community">
+          Navigate to <strong>/communities</strong> and click <strong>Create Community</strong>. Give it a name, slug, description, and choose public or invite-only visibility.
+        </Section>
+        <Section title="Posts &amp; feed">
+          Every community has its own post feed. Members can post updates, share projects, and react to posts — just like the global feed.
+        </Section>
+        <Section title="Real-time chat">
+          Public and private group chat is built in. Enable or disable it per community in <strong>Settings → Realtime</strong>.
+        </Section>
+        <Section title="Voice calls">
+          Start a voice call from the community page. All online members can join.
+        </Section>
+        <Section title="Roles">
+          Members can be promoted to <strong>Moderator</strong> or <strong>Admin</strong>. Admins control community settings and membership.
+        </Section>
+        <InfoBox>
+          Community avatars and banners can now be uploaded directly — drag and drop or click to browse.
+        </InfoBox>
+      </div>
+    ),
+  },
+  {
+    id: "organizations",
+    label: "Organizations",
+    icon: Building2,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Organizations</h2>
+        <p className="text-white/60 leading-relaxed">
+          Organizations let teams collaborate on projects with fine-grained role-based access control (RBAC).
+        </p>
+        <Section title="Roles">
+          Four roles: <strong>Owner</strong>, <strong>Admin</strong>, <strong>Developer</strong>, <strong>Viewer</strong>. Each role controls which actions a member can perform on shared projects.
+        </Section>
+        <Section title="Shared projects">
+          Any project created inside an org is visible to all members according to their role. Deployments require the <em>deploy_project</em> permission (Developer+).
+        </Section>
+        <Section title="Org chat">
+          Each org has a built-in real-time group chat and optional voice call room.
+        </Section>
+        <Section title="Join policies">
+          Orgs can be <strong>Open</strong> (anyone can join) or <strong>Request-to-join</strong> (owner/admin approves).
+        </Section>
+      </div>
+    ),
+  },
+  {
+    id: "learning",
+    label: "Learning",
+    icon: BookOpen,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Learning Platform</h2>
+        <p className="text-white/60 leading-relaxed">
+          The built-in learning platform lets you study programming concepts without leaving DevOS.
+        </p>
+        <Section title="Topics &amp; lessons">
+          Browse topics at <strong>/learn</strong>. Each topic contains lessons with explanations, code examples, and quizzes.
+        </Section>
+        <Section title="Progress tracking">
+          Your progress is saved automatically per lesson. A progress bar on the topic page shows how far along you are.
+        </Section>
+        <InfoBox>
+          Progress is stored locally per account so it persists across devices.
+        </InfoBox>
+      </div>
+    ),
+  },
+  {
+    id: "events",
+    label: "Events",
+    icon: Calendar,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Events</h2>
+        <p className="text-white/60 leading-relaxed">
+          DevOS hosts developer events — hackathons, workshops, AMAs, and more.
+        </p>
+        <Section title="Submitting an event">
+          Visit <strong>/events/create</strong> to submit an event. Provide the title, description, type (online/in-person), date, and an optional banner image. Events go live after admin approval.
+        </Section>
+        <Section title="Event types">
+          <strong>Online</strong> events include a link (e.g., Google Meet). <strong>In-person</strong> events include a venue name and address.
+        </Section>
+        <Section title="Banner images">
+          Upload a banner directly from the create-event form — drag and drop or click to browse. Recommended size: 1200 × 630 px.
+        </Section>
+      </div>
+    ),
+  },
+  {
+    id: "plugin-marketplace",
+    label: "Plugin Marketplace",
+    icon: Puzzle,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Plugin Marketplace</h2>
+        <p className="text-white/60 leading-relaxed">
+          The Plugin Marketplace is coming soon — a curated registry of first- and third-party plugins that extend your DevOS projects with one click.
+        </p>
+        <Section title="Official plugins">
+          DevOS will ship official plugins for Auth, Database, Storage, and AI — drop them into any project without writing boilerplate.
+        </Section>
+        <Section title="Community plugins">
+          Developers can publish their own plugins. Each plugin is reviewed before listing.
+        </Section>
+        <InfoBox>
+          The Plugin Marketplace is in active development. Sign up to get notified when it launches.
+        </InfoBox>
+      </div>
+    ),
+  },
+  {
+    id: "credits",
+    label: "Credits",
+    icon: Zap,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Credits</h2>
+        <p className="text-white/60 leading-relaxed">
+          Credits power AI-assisted features and deployments on DevOS.
+        </p>
+        <Section title="Daily &amp; monthly credits">
+          Every free account receives a daily credit allowance and a monthly top-up. Credits reset automatically on schedule.
+        </Section>
+        <Section title="Redeeming codes">
+          Use the <strong>Redeem Code</strong> button in the credits panel (top navigation) or in <strong>Settings → Account</strong> to enter a code for bonus credits.
+        </Section>
+        <Section title="Transaction history">
+          View a full log of every credit spend and earn event in <strong>Settings → Account → Transaction History</strong>.
+        </Section>
+        <InfoBox>
+          Admin accounts have unlimited credits — all credit costs are automatically bypassed.
+        </InfoBox>
       </div>
     ),
   },

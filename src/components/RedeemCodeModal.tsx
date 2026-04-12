@@ -5,6 +5,7 @@ import { auth } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { redeemCode } from "../lib/redeemCodeService";
 import { toast } from "sonner";
+import { sendNotification } from "../lib/notificationService";
 
 interface RedeemCodeModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export default function RedeemCodeModal({ isOpen, onClose }: RedeemCodeModalProp
       const result = await redeemCode(normalized, user.uid);
       if (result.success) {
         toast.success(`Code redeemed successfully! +${result.value} credits added.`);
+        sendNotification({ userId: user.uid, type: "credits_redeemed", title: "Credits redeemed", message: `+${result.value} credits added to your account.`, createdBy: "system" }).catch(() => {});
         setCode("");
         onClose();
       } else {

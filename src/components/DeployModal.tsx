@@ -7,6 +7,7 @@ import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { deductCredits, CREDIT_COSTS } from "../lib/creditsService";
 import { emitBotEventWithToast } from "../lib/botEngine";
+import { notifyDeployment } from "../lib/notificationService";
 import { createDeployment } from "../lib/deploymentService";
 import { trackActivity } from "../lib/activityService";
 import { logAudit } from "../lib/auditService";
@@ -174,6 +175,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       setDeployedUrl(url);
       setStep("success");
       toast.success("Your project is live!");
+      notifyDeployment({ uid: auth.currentUser.uid, projectName, success: true, projectId }).catch(() => {});
       // Track deployment activity for the heatmap
       trackActivity(auth.currentUser.uid, "deploy", { projectId });
       // Audit log

@@ -186,6 +186,21 @@ function SectionContent({ id }: { id: string }) {
             "Account creation date and last sign-in timestamp",
           ]} />
 
+          <SubHeading>User-Uploaded Media</SubHeading>
+          <Body>
+            When you upload images through DevOS (profile avatars, community avatars, community banners, event banners, or other media), those files are stored on Supabase Storage. The public URL of uploaded media may be visible to other users as part of your profile or community.
+          </Body>
+
+          <SubHeading>Credit Transactions</SubHeading>
+          <Body>
+            We store a record of all credit earn and spend events (transaction history) associated with your account in order to provide the credits feature and to resolve disputes. This data is not shared with third parties.
+          </Body>
+
+          <SubHeading>Voice Call Data</SubHeading>
+          <Body>
+            When you participate in a voice call within a community or organization, temporary session data (such as call presence) is processed to facilitate the call. Voice calls are not recorded or stored by DevOS.
+          </Body>
+
           <div className="grid sm:grid-cols-2 gap-4 mt-6">
             <DataCard
               icon={Database}
