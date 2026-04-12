@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { Project, UserSettings } from "../types";
 import { Globe, Github, ExternalLink, Zap, AlertCircle, BadgeCheck, ArrowUpRight } from "lucide-react";
 import { resolveAvatar } from "../lib/avatars";
@@ -62,11 +62,24 @@ export default function SubdomainPortfolio({ username }: Props) {
           } as UserSettings);
         }
 
-        // Fetch public projects
-        const projectsRef = collection(db, "projects");
-        const projectsQ = query(projectsRef, where("ownerId", "==", uid), where("isPublic", "==", true), orderBy("updatedAt", "desc"), limit(20));
-        const projectsSnap = await getDocs(projectsQ);
-        setProjects(projectsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Project)));
+        // Fetch public projects (no orderBy to avoid requiring a composite index;
+        // sort client-side instead)
+        try {
+          const projectsRef = collection(db, "projects");
+          const projectsQ = query(projectsRef, where("ownerId", "==", uid), where("isPublic", "==", true), limit(20));
+          const projectsSnap = await getDocs(projectsQ);
+          const projectList = projectsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+          // Sort by updatedAt descending client-side
+          projectList.sort((a, b) => {
+            const aTime = (a.updatedAt as any)?.seconds ?? 0;
+            const bTime = (b.updatedAt as any)?.seconds ?? 0;
+            return bTime - aTime;
+          });
+          setProjects(projectList);
+        } catch (projErr) {
+          // Projects failed to load — log for diagnostics but still render the portfolio
+          console.error("[SubdomainPortfolio] Failed to load projects:", projErr);
+        }
       } catch (e) {
         setError("Failed to load portfolio");
       } finally {

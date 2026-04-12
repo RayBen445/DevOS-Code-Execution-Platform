@@ -31,6 +31,10 @@ function setCachedType(subdomain: string, type: SubdomainType): void {
 export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
   const [resolvedType, setResolvedType] = useState<SubdomainType>("loading");
 
+  // Extract path slug: `professor.devos.name.ng/devos-first-test-script`
+  // → pathSlug = "devos-first-test-script"
+  const pathSlug = window.location.pathname.replace(/^\/+/, "").split(/[/?#]/)[0].trim();
+
   useEffect(() => {
     if (RESERVED.has(subdomain.toLowerCase())) {
       setResolvedType("reserved");
@@ -95,6 +99,11 @@ export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
   }
 
   if (resolvedType === "user") {
+    // If there is a path segment (e.g. /devos-first-test-script), show that
+    // project directly instead of the user's portfolio overview.
+    if (pathSlug) {
+      return <SubdomainProject slug={pathSlug} ownerUsername={subdomain} />;
+    }
     return <SubdomainPortfolio username={subdomain} />;
   }
 
