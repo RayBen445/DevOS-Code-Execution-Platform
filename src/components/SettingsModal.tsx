@@ -6,6 +6,7 @@ import { db, auth } from "../lib/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "sonner";
 import Avatar from "./Avatar";
+import ImageUpload from "./ImageUpload";
 import { MAX_AVATAR_SIZE_BYTES } from "../lib/avatars";
 import { uploadImage, avatarPath } from "../lib/storageService";
 
@@ -106,48 +107,26 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !auth.currentUser) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Only images are allowed (jpg, png, webp).");
-      return;
-    }
-    if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      toast.error(`Image must be smaller than ${MAX_AVATAR_SIZE_BYTES / (1024 * 1024)} MB.`);
-      return;
-    }
-
+  const handleImageUpload = async (file: File) => {
+    if (!auth.currentUser) return;
     setIsUploading(true);
     setUploadProgress(0);
-
     const progressInterval = setInterval(() => {
       setUploadProgress((p) => Math.min(p + PROGRESS_INCREMENT, PROGRESS_MAX));
     }, PROGRESS_INTERVAL_MS);
-
     try {
       const path = avatarPath(auth.currentUser.uid, file);
       const secureUrl = await uploadImage(file, path, {
         onProgress: (pct) => setUploadProgress(pct),
       });
-
       setUploadProgress(100);
-
       setAvatarUrl(secureUrl);
       setAvatar(secureUrl);
-
-      // Persist immediately
-      const updateData = {
-        avatar: secureUrl,
-        avatarUrl: secureUrl,
-        updatedAt: serverTimestamp(),
-      };
+      const updateData = { avatar: secureUrl, avatarUrl: secureUrl, updatedAt: serverTimestamp() };
       await Promise.all([
         updateDoc(doc(db, "users", auth.currentUser.uid), updateData),
         updateDoc(doc(db, "user_settings", auth.currentUser.uid), updateData),
       ]);
-
       toast.success("Profile picture updated!");
     } catch (error: any) {
       console.error("Avatar upload error:", error);
@@ -156,8 +135,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       clearInterval(progressInterval);
       setIsUploading(false);
       setUploadProgress(0);
-      // Reset input so same file can be re-selected
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
