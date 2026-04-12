@@ -474,3 +474,326 @@ The three first-party plugins — **DevOS Auth**, **DevOS Database**, and **DevO
 4. Wiring the installer to the project's `env` field and `index.html`
 
 None of this requires replacing or changing the core DevOS platform data model — it sits alongside it in a dedicated `plugin_data/` namespace.
+
+---
+
+## Additional Plugins (Planned)
+
+Beyond the three core plugins, the following plugins are planned for the DevOS Plugin Marketplace. Each follows the same installation model: one click in the IDE, SDK injected automatically, credits deducted per use.
+
+---
+
+### 4. DevOS Email
+
+**Category:** Communication | **Status:** Planned — Phase 6
+
+Send transactional and marketing emails directly from your project without configuring an SMTP server.
+
+**What it provides:**
+- `devos.email.send({ to, subject, html })` — send a single email
+- `devos.email.sendTemplate(templateKey, vars)` — merge-field templates stored in the plugin panel
+- React Email-style visual template editor in the IDE panel
+- Delivery receipts and open/click tracking
+- Unsubscribe link management (CAN-SPAM / GDPR compliant)
+
+**Credit cost:** 1 credit per 10 emails | **IDE panel:** Template editor, delivery logs, bounce dashboard
+
+---
+
+### 5. DevOS Realtime
+
+**Category:** Data / Sync | **Status:** Planned — Phase 6
+
+Add live real-time data sync to any project — chat, live dashboards, collaborative editing — without running a WebSocket server.
+
+**What it provides:**
+- `devos.realtime.subscribe(channel, callback)` — listen for live updates
+- `devos.realtime.publish(channel, data)` — broadcast data to all subscribers
+- Presence tracking: who is online in a channel
+- Channel history (last N messages)
+- Client SDK for React, Vanilla JS, and Vue
+
+**Credit cost:** 1 credit per 1,000 messages | **IDE panel:** Channel browser, message inspector, subscriber count
+
+---
+
+### 6. DevOS Search
+
+**Category:** Data / Discovery | **Status:** Planned — Phase 7
+
+Full-text search for your project's content — products, posts, documents — with zero ElasticSearch setup.
+
+**What it provides:**
+- `devos.search.index(collection, document)` — index a document
+- `devos.search.query(collection, queryString, options)` — search with facets, filters, ranking
+- Auto-indexing: connect a Firestore collection and DevOS Search mirrors it automatically
+- Fuzzy matching, typo tolerance, synonym support
+- Highlight snippets in results
+
+**Credit cost:** Free indexing; 1 credit per 100 queries | **IDE panel:** Index browser, query tester, synonym manager
+
+---
+
+### 7. DevOS Cron
+
+**Category:** Automation | **Status:** Planned — Phase 6
+
+Schedule recurring jobs that run on a timer and call your project's endpoints or internal functions.
+
+**What it provides:**
+- Visual cron scheduler in the IDE (no cron syntax required)
+- `devos.cron.register(name, schedule, handler)` — programmatic registration
+- Execution history and failure alerts
+- Retry with backoff on failure
+- Full timezone support
+
+**Credit cost:** 1 credit per job execution | **IDE panel:** Job list, schedule editor, execution logs
+
+---
+
+### 8. DevOS Webhooks
+
+**Category:** Integration | **Status:** Planned — Phase 6
+
+Receive incoming webhooks from external services (Stripe, GitHub, Slack, etc.) and route them to your project's handler functions.
+
+**What it provides:**
+- Generates a unique `https://hooks.devos.name.ng/{projectId}/{endpoint}` URL
+- Signature verification for popular providers (Stripe, GitHub, Shopify, Twilio)
+- Payload inspector and replay in the IDE
+- Fan-out: one incoming webhook → multiple handler functions
+- Automatic retries with backoff
+
+**Credit cost:** Free receiving; 1 credit per 100 dispatches | **IDE panel:** Endpoint manager, payload inspector, delivery history
+
+---
+
+### 9. DevOS Analytics
+
+**Category:** Insights | **Status:** Planned — Phase 7
+
+Privacy-first, cookie-free analytics for your deployed project — without sending data to Google.
+
+**What it provides:**
+- Auto-injected `<script>` tag (zero-config)
+- `devos.analytics.track(eventName, properties)` — custom event tracking
+- Dashboard in the IDE: page views, unique visitors, top pages, referrers, countries
+- Funnel analysis and goal conversion tracking
+- CSV data export
+
+**Credit cost:** Free up to 10,000 events/mo; 1 credit per 1,000 above | **IDE panel:** Charts, event explorer, funnel builder
+
+---
+
+### 10. DevOS Payments
+
+**Category:** Commerce | **Status:** Planned — Phase 8
+
+Accept payments in your project via Stripe, with no server-side code required.
+
+**What it provides:**
+- `devos.payments.createCheckout(items)` — creates a Stripe Checkout session URL
+- `devos.payments.onPaymentSuccess(callback)` — real-time success event
+- Subscription management: create, update, cancel plans
+- Webhook auto-verification (Stripe signature checked by the proxy function)
+- Revenue dashboard in the IDE
+
+**Credit cost:** 2 credits per transaction | **IDE panel:** Product/plan editor, transaction log, revenue chart
+
+---
+
+### 11. DevOS AI
+
+**Category:** Intelligence | **Status:** Planned — Phase 7
+
+Add AI-powered features (text generation, image generation, embeddings, classification) to your project with a single SDK call.
+
+**What it provides:**
+- `devos.ai.complete(prompt, options)` — text completion (GPT-4, Claude, Gemini)
+- `devos.ai.embed(text)` — vector embeddings for semantic search
+- `devos.ai.classify(text, labels)` — zero-shot classification
+- `devos.ai.image(prompt, options)` — image generation (DALL-E 3, Stable Diffusion)
+- Model selector in the IDE panel
+
+**Credit cost:** 5 credits per 1k tokens; 10 credits per image | **IDE panel:** Prompt playground, usage dashboard, model selector
+
+---
+
+### 12. DevOS Queue
+
+**Category:** Backend / Async | **Status:** Planned — Phase 7
+
+Durable background job queue for async processing — image resizing, bulk emails, report generation.
+
+**What it provides:**
+- `devos.queue.enqueue(jobType, payload, options)` — add a job
+- `devos.queue.define(jobType, handler)` — register a handler function
+- Job priority, delay, and retry settings
+- Dead-letter queue for failed jobs
+- Job status polling: `devos.queue.status(jobId)`
+
+**Credit cost:** 1 credit per 10 jobs | **IDE panel:** Queue browser, dead-letter inspector, throughput chart
+
+---
+
+### 13. DevOS CMS
+
+**Category:** Content | **Status:** Planned — Phase 8
+
+A headless content management system built into your IDE.
+
+**What it provides:**
+- Visual content model builder (fields, types, validations)
+- `devos.cms.get(contentType, id)` — fetch a single entry
+- `devos.cms.list(contentType, options)` — list with filters, sort, pagination
+- Media library (powered by DevOS Storage)
+- Content scheduling (publish at a future date)
+- Webhooks on content publish/update
+
+**Credit cost:** Free reads; 1 credit per 100 writes | **IDE panel:** Content model editor, content editor, media library
+
+---
+
+### 14. DevOS Push Notifications
+
+**Category:** Communication | **Status:** Planned — Phase 7
+
+Send browser push notifications and FCM mobile notifications to your users.
+
+**What it provides:**
+- `devos.push.subscribe(userId)` — request push permission and store the subscription
+- `devos.push.send(userId, { title, body, url })` — send to a specific user
+- `devos.push.broadcast({ title, body })` — send to all subscribers
+- Topic subscriptions for segmented sends
+
+**Credit cost:** 1 credit per 100 pushes | **IDE panel:** Subscriber list, send composer, delivery report
+
+---
+
+### 15. DevOS Geo
+
+**Category:** Location | **Status:** Planned — Phase 8
+
+Geocoding, reverse geocoding, distance calculation, and geofencing.
+
+**What it provides:**
+- `devos.geo.geocode(address)` — address → lat/lng
+- `devos.geo.reverse(lat, lng)` — lat/lng → formatted address
+- `devos.geo.distance(from, to)` — great-circle distance
+- `devos.geo.withinRadius(center, radiusKm, points)` — geofencing
+- Embeddable OpenStreetMap component (no Google API key needed)
+
+**Credit cost:** 1 credit per 50 geocode requests | **IDE panel:** Map preview, geocode tester
+
+---
+
+### 16. DevOS A/B Testing
+
+**Category:** Optimisation | **Status:** Planned — Phase 8
+
+Run controlled experiments on your project without a third-party service.
+
+**What it provides:**
+- `devos.ab.variant(experimentName, userId)` — returns `"A"` or `"B"` (deterministic per user)
+- `devos.ab.track(experimentName, userId, goal)` — record a conversion
+- Statistical significance calculation
+- Configurable traffic splits
+- Experiment scheduler (start/end dates)
+
+**Credit cost:** Free up to 5 active experiments | **IDE panel:** Experiment manager, results dashboard with significance
+
+---
+
+### 17. DevOS Forms
+
+**Category:** Data Collection | **Status:** Planned — Phase 7
+
+Embed forms and collect submissions without a backend.
+
+**What it provides:**
+- Visual drag-and-drop form builder in the IDE
+- `devos.forms.submit(formId, data)` — programmatic submission
+- Auto-generated embeddable iframe and React component
+- Spam protection (CAPTCHA, honeypot)
+- Email notifications on new submissions
+- CSV export of all submissions
+
+**Credit cost:** Free up to 100 submissions/mo; 1 credit per 10 above | **IDE panel:** Form builder, submission inbox, export
+
+---
+
+### 18. DevOS I18n
+
+**Category:** Localisation | **Status:** Planned — Phase 9
+
+Manage translations for your project from the IDE, with AI-assisted suggestions.
+
+**What it provides:**
+- `devos.i18n.t(key, locale)` — translate a string
+- `devos.i18n.setLocale(locale)` — switch locale at runtime
+- Side-by-side translation editor in the IDE
+- AI-assisted translation for 50+ languages
+- Missing key detection
+
+**Credit cost:** 5 credits per AI-translated string; manual translations free | **IDE panel:** Translation editor, missing keys report
+
+---
+
+### 19. DevOS Feature Flags
+
+**Category:** Release Management | **Status:** Planned — Phase 8
+
+Roll out new features gradually and target specific users without redeploying.
+
+**What it provides:**
+- `devos.flags.isEnabled(flagName, userId?)` — check a flag
+- Percentage rollouts (e.g. enable for 10% of users)
+- User targeting by attribute (e.g. `plan === "pro"`)
+- Kill switch: instantly disable without a redeploy
+- Flag audit log
+
+**Credit cost:** Free | **IDE panel:** Flag manager, targeting rules editor, rollout slider
+
+---
+
+### 20. DevOS Audit Log
+
+**Category:** Compliance | **Status:** Planned — Phase 9
+
+Immutable, tamper-evident audit trail of all actions in your project.
+
+**What it provides:**
+- `devos.audit.log(action, userId, metadata)` — record an event
+- Auto-instrumentation for DevOS Auth actions
+- Immutable write-once storage
+- Searchable log viewer in the IDE
+- CSV/JSON export with date range filters
+
+**Credit cost:** 1 credit per 1,000 entries | **IDE panel:** Log viewer with search, export button
+
+---
+
+## Plugin Comparison Table
+
+| # | Plugin | Category | Phase | Free Tier | Credits |
+|---|--------|----------|-------|-----------|---------|
+| 1 | DevOS Auth | Identity | 4 | 100 sign-ins/mo | 1 per sign-in above |
+| 2 | DevOS Database | Data | 2 | 1,000 reads/day | 1 per write |
+| 3 | DevOS Storage | Files | 3 | 1 GB | 5 per GB/mo |
+| 4 | DevOS Email | Communication | 6 | 100 emails/mo | 1 per 10 emails |
+| 5 | DevOS Realtime | Data/Sync | 6 | 10,000 msgs/mo | 1 per 1,000 msgs |
+| 6 | DevOS Search | Discovery | 7 | 10,000 queries/mo | 1 per 100 queries |
+| 7 | DevOS Cron | Automation | 6 | 10 jobs/mo | 1 per execution |
+| 8 | DevOS Webhooks | Integration | 6 | Unlimited receive | 1 per 100 dispatched |
+| 9 | DevOS Analytics | Insights | 7 | 10,000 events/mo | 1 per 1,000 events |
+| 10 | DevOS Payments | Commerce | 8 | — | 2 per transaction |
+| 11 | DevOS AI | Intelligence | 7 | 100 credits | 5 per 1k tokens |
+| 12 | DevOS Queue | Backend | 7 | 100 jobs/mo | 1 per 10 jobs |
+| 13 | DevOS CMS | Content | 8 | Free reads | 1 per 100 writes |
+| 14 | DevOS Push | Communication | 7 | 1,000 pushes/mo | 1 per 100 pushes |
+| 15 | DevOS Geo | Location | 8 | 100 geocodes/mo | 1 per 50 requests |
+| 16 | DevOS A/B Testing | Optimisation | 8 | 5 experiments | Free |
+| 17 | DevOS Forms | Data Collection | 7 | 100 submissions/mo | 1 per 10 submissions |
+| 18 | DevOS I18n | Localisation | 9 | Manual free | 5 per AI string |
+| 19 | DevOS Feature Flags | Release Mgmt | 8 | Unlimited | Free |
+| 20 | DevOS Audit Log | Compliance | 9 | 10,000 entries/mo | 1 per 1,000 entries |

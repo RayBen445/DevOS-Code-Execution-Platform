@@ -32,6 +32,68 @@ Confirm the installation:
 devos --version
 ```
 
+### What happens when you install
+
+When `npm install -g @devos/cli` completes, the package's `postinstall` script runs automatically:
+
+1. **First-run wizard** — If no credentials file exists at `~/.devos/credentials.json`, the CLI prints a short welcome banner and prompts you to run `devos login`.
+2. **`devos doctor`** — The postinstall script runs a quick environment check and prints a table showing Node version, npm version, internet connectivity, and whether the DevOS API is reachable.
+3. **Shell completion** — The script attempts to install tab-completion for `bash`, `zsh`, and `fish`. You can also trigger this manually:
+   ```bash
+   devos completion install
+   ```
+
+### First-run wizard (manual)
+
+If you skipped the auto-wizard or want to reconfigure, run it at any time:
+
+```bash
+devos setup
+```
+
+This walks you through:
+- Logging in (opens browser or accepts a `--token`)
+- Choosing a default organisation (optional)
+- Setting your preferred editor (`code`, `vim`, `nano`, etc.) for `devos edit <file>`
+- Confirming shell completion is active
+
+### `devos doctor`
+
+Use this any time to verify your environment is healthy:
+
+```bash
+devos doctor
+```
+
+Example output:
+
+```
+✓  Node.js       v20.11.0    (required: ≥18)
+✓  npm           10.2.4      (required: ≥9)
+✓  DevOS CLI     1.4.2
+✓  Auth token    valid (expires in 89 days)
+✓  API           https://api.devos.name.ng — 42 ms
+✓  Shell         zsh — tab completion active
+```
+
+### How `bin` is configured in `package.json`
+
+The CLI package declares its entry point so npm links the `devos` command globally:
+
+```json
+{
+  "name": "@devos/cli",
+  "bin": {
+    "devos": "./bin/devos.js"
+  },
+  "scripts": {
+    "postinstall": "node ./scripts/postinstall.js"
+  }
+}
+```
+
+`bin/devos.js` is the thin entry point that parses arguments and delegates to the command modules. `scripts/postinstall.js` handles the first-run wizard and doctor check.
+
 ---
 
 ## Authentication
