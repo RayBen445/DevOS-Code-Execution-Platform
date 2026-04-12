@@ -465,6 +465,11 @@ export default function CommunityPage() {
     return unsub;
   }, [user]);
 
+  // Voice call — must be called unconditionally before any early returns
+  const roomId = community?.id ? `community-${community.id}` : null;
+  const voiceDisplayName = userSettings?.displayName || userSettings?.username || "User";
+  const { inVoiceCall, callParticipants, muted, joinOrStartCall, endCall: endVoiceCall, toggleMute } = useVoiceCall(roomId, user?.uid, voiceDisplayName);
+
   // Sync settings form when community loads or settings tab is opened
   useEffect(() => {
     if (!community || activeTab !== "settings") return;
@@ -580,11 +585,6 @@ export default function CommunityPage() {
     { id: "members", label: "Members", count: community.memberCount },
     ...(memberRole === "admin" ? [{ id: "settings" as CommunityTab, label: "Settings", icon: <Settings className="w-3.5 h-3.5" /> }] : []),
   ];
-
-  const roomId = community?.id ? `community-${community.id}` : "";
-  const voiceDisplayName = userSettings?.displayName || userSettings?.username || "User";
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { inVoiceCall, callParticipants, muted, joinOrStartCall, endCall: endVoiceCall, toggleMute } = useVoiceCall(roomId || null, user?.uid, voiceDisplayName);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
