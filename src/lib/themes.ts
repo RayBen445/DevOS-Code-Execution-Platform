@@ -111,6 +111,11 @@ export function applyTheme(theme: UITheme): void {
     : theme;
   const def = THEMES.find((t) => t.id === resolvedTheme) ?? THEMES[1];
   const root = document.documentElement;
+
+  // Enable smooth cross-fade for the duration of the switch
+  root.classList.add("theme-transitioning");
   Object.entries(def.vars).forEach(([k, v]) => root.style.setProperty(k, v));
-  root.setAttribute('data-theme', resolvedTheme);
+  root.setAttribute("data-theme", resolvedTheme);
+  // Remove transitioning class after the CSS transition completes (250 ms)
+  setTimeout(() => root.classList.remove("theme-transitioning"), 300);
 }
