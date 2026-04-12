@@ -75,6 +75,7 @@ import { ReferralStats } from "../types";
 import CustomSelect from "../components/CustomSelect";
 import TwoFactorSetup from "../components/TwoFactorSetup";
 import { ALL_NAV_OPTIONS, NavOptionId } from "../components/MobileBottomNav";
+import { cn } from "../lib/utils";
 
 type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
 
