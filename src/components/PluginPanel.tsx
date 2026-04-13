@@ -22,6 +22,9 @@ import {
   Eye,
   EyeOff,
   Info,
+  Settings,
+  ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Project, PluginId, InstalledPlugin } from "../types";
@@ -696,6 +699,7 @@ export default function PluginPanel({ project, projectId, readOnly = false, onFi
   const [expanded, setExpanded] = useState<PluginId | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<"marketplace" | "settings">("marketplace");
 
   const installedPlugins: Record<string, InstalledPlugin> = (project?.plugins as any) ?? {};
 
@@ -861,9 +865,152 @@ export default function PluginPanel({ project, projectId, readOnly = false, onFi
             </span>
           </div>
         )}
+        {/* Tabs */}
+        <div className="mt-3 flex gap-1 p-0.5 bg-white/5 rounded-lg">
+          <button
+            onClick={() => setActiveTab("marketplace")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all",
+              activeTab === "marketplace"
+                ? "bg-blue-600 text-white shadow"
+                : "text-white/40 hover:text-white/70"
+            )}
+          >
+            <Puzzle className="w-3 h-3" />
+            Marketplace
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all",
+              activeTab === "settings"
+                ? "bg-blue-600 text-white shadow"
+                : "text-white/40 hover:text-white/70"
+            )}
+          >
+            <Settings className="w-3 h-3" />
+            Settings
+            {installedCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/10 text-[9px] font-bold">
+                {installedCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
+      {/* Settings tab */}
+      {activeTab === "settings" && (
+        <div className="flex-1 overflow-y-auto p-3">
+          {installedCount === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-12">
+              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center">
+                <Settings className="w-6 h-6 text-white/20" />
+              </div>
+              <p className="text-sm font-semibold text-white/40">No plugins installed</p>
+              <p className="text-[11px] text-white/25 max-w-[200px]">
+                Install plugins from the Marketplace tab to manage them here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-[10px] text-white/30 uppercase tracking-wider font-bold mb-2">Installed Plugins</p>
+              {PLUGINS.filter((p) => !!installedPlugins[p.id]).map((plugin) => {
+                const installed = installedPlugins[plugin.id];
+                const c = col(plugin.color);
+                const Icon = plugin.icon;
+                return (
+                  <div key={plugin.id} className={cn("rounded-xl border p-3 space-y-3", c.border, "bg-[#0D1117]")}>
+                    {/* Plugin header */}
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", c.bg)}>
+                        <Icon className={cn("w-4 h-4", c.text)} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white">{plugin.name}</p>
+                        <p className="text-[10px] text-white/30">{plugin.category}</p>
+                      </div>
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-green-400 px-1.5 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+                        <ShieldCheck className="w-3 h-3" />
+                        Active
+                      </span>
+                    </div>
+
+                    {/* Env vars / keys */}
+                    {installed?.envVars && installed.envVars.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] text-white/30 uppercase tracking-wider font-bold">Environment Keys</p>
+                        {installed.envVars.map((envKey: string) => {
+                          const envValue = (project as any)?.env?.[envKey] || "";
+                          const isHidden = hiddenKeys.has(`settings_${envKey}`);
+                          const displayValue = isHidden ? "•".repeat(Math.min(envValue.length || 20, 20)) : (envValue || "(auto-generated)");
+                          return (
+                            <div key={envKey} className="rounded-lg bg-black/30 border border-white/5 p-2">
+                              <p className="text-[10px] font-mono text-white/50 mb-1">{envKey}</p>
+                              <div className="flex items-center gap-1.5">
+                                <code className="flex-1 text-[10px] font-mono text-green-300/70 truncate">
+                                  {displayValue}
+                                </code>
+                                {envValue && (
+                                  <>
+                                    <button
+                                      onClick={() => toggleKeyVisibility(`settings_${envKey}`)}
+                                      className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors"
+                                    >
+                                      {isHidden ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                                    </button>
+                                    <button
+                                      onClick={() => copyToClipboard(envValue, `settings_${envKey}`)}
+                                      className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors"
+                                    >
+                                      {copiedKey === `settings_${envKey}` ? (
+                                        <Check className="w-3 h-3 text-green-400" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Usage snippet */}
+                    <div>
+                      <p className="text-[10px] text-white/30 uppercase tracking-wider font-bold mb-1.5">Usage Example</p>
+                      <pre className="text-[10px] font-mono text-green-300/60 bg-black/40 border border-white/5 rounded-lg p-2 overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                        {plugin.snippet}
+                      </pre>
+                    </div>
+
+                    {/* Uninstall */}
+                    {!readOnly && (
+                      <div className="pt-1 border-t border-white/5">
+                        <button
+                          onClick={() => {
+                            setActiveTab("marketplace");
+                            setExpanded(plugin.id);
+                          }}
+                          className="flex items-center gap-1.5 text-[11px] text-red-400/60 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Uninstall plugin
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Plugin list */}
+      {activeTab === "marketplace" && (
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {PLUGINS.map((plugin) => {
           const isInstalled = !!installedPlugins[plugin.id];
@@ -1050,11 +1197,12 @@ export default function PluginPanel({ project, projectId, readOnly = false, onFi
           );
         })}
       </div>
+      )}
 
       {/* Footer note */}
       <div className="p-3 border-t border-[#21262D] flex-shrink-0">
         <p className="text-[10px] text-white/20 text-center leading-relaxed">
-          More plugins coming soon · Phase 2+ plugins are in development
+          Plugin Marketplace · {installedCount} active plugin{installedCount !== 1 ? "s" : ""}
         </p>
       </div>
     </div>

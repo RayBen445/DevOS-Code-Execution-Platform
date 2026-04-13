@@ -346,31 +346,40 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
             </div>
             <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex-1">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-widest mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-600/20 border border-green-500/30 text-green-300 text-xs font-bold uppercase tracking-widest mb-4">
                   <Puzzle className="w-3 h-3" />
-                  Coming soon
+                  Live Now
                 </div>
                 <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">
-                  DevOS Plugins
+                  DevOS Plugin Marketplace
                 </h2>
                 <p className="text-white/50 max-w-xl leading-relaxed">
-                  Extend your projects with one-click plugins. Official first-party plugins for Auth, Database, Storage, and AI — plus a growing library of community contributions.
+                  Extend your projects with one-click plugins. Add Auth, Database, Storage, Email, Realtime, and AI to any project — env vars injected automatically.
                 </p>
                 <div className="flex flex-wrap gap-2 mt-5">
-                  {["DevOS Auth", "DevOS DB", "DevOS Storage", "DevOS AI"].map((p) => (
+                  {["DevOS Auth", "DevOS DB", "DevOS Storage", "DevOS Email", "DevOS Realtime", "DevOS AI"].map((p) => (
                     <span key={p} className="px-3 py-1 rounded-full bg-white/8 border border-white/10 text-xs text-white/60 font-medium">
                       {p}
                     </span>
                   ))}
                 </div>
               </div>
-              <a
-                href="/docs#plugin-marketplace"
-                className="shrink-0 flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-600/25"
-              >
-                Get notified
-                <ArrowRight className="w-4 h-4" />
-              </a>
+              <div className="flex flex-col gap-3 shrink-0">
+                <a
+                  href="/templates"
+                  className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-600/25"
+                >
+                  Browse Templates
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+                <a
+                  href="/docs#plugin-marketplace"
+                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/70 font-semibold text-sm transition-all"
+                >
+                  Read the Docs
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+              </div>
             </div>
           </motion.div>
         </section>

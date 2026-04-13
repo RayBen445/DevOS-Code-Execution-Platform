@@ -107,7 +107,7 @@ export default function OrgPage() {
   const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
 
   const copyOrgLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/org/${slug}`).then(() => {
+    navigator.clipboard.writeText(`https://${slug}.devos.name.ng`).then(() => {
       setLinkCopied(true);
       toast.success("Link copied!");
       setTimeout(() => setLinkCopied(false), 2000);
