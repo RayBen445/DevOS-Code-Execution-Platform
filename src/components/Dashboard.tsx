@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Star, Building2, Tag, FolderOpen, Check } from "lucide-react";
+import { Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
-import { cn, formatRelativeTime } from "../lib/utils";
+import { cn, formatRelativeTime, toValidDate } from "../lib/utils";
 import GitHubImportModal from "./GitHubImportModal";
 import PublishTemplateModal from "./PublishTemplateModal";
 import ProjectSettingsModal from "./ProjectSettingsModal";
@@ -48,12 +48,9 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<"my-projects" | "public-projects">("my-projects");
   const [publishTemplateProject, setPublishTemplateProject] = useState<Project | null>(null);
   const [settingsProject, setSettingsProject] = useState<Project | null>(null);
-  const [resettingPortfolio, setResettingPortfolio] = useState(false);
-
   // Confirm modals
   const [deleteConfirm, setDeleteConfirm] = useState<{ projectId: string } | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
-  const [resetPortfolioConfirm, setResetPortfolioConfirm] = useState<Project | null>(null);
   const [showCreateOrg, setShowCreateOrg] = useState(false);
 
   // Project grouping
@@ -118,10 +115,8 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         filtered = projs.filter(p => p.ownerType !== "organization");
       }
 
-      // Sort: Portfolio first, then by updatedAt
+      // Sort by updatedAt descending
       filtered.sort((a, b) => {
-        if (a.systemType === 'portfolio') return -1;
-        if (b.systemType === 'portfolio') return 1;
         const timeA = a.updatedAt?.seconds || 0;
         const timeB = b.updatedAt?.seconds || 0;
         return timeB - timeA;
@@ -201,7 +196,6 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         isTemplate: false,
         forksCount: 0,
         views: 0,
-        ...(selectedTemplateId === "portfolio" ? { isSystem: true, systemType: "portfolio" } : {}),
         deployUrl: `/@${settings?.username || "anonymous"}/${projectSlug}`
       });
 
@@ -508,71 +502,7 @@ p {
     }
   };
 
-  const handleResetPortfolio = async (portfolio: Project) => {
-    if (!user) return;
-    setResetPortfolioConfirm(portfolio);
-  };
-
-  const confirmResetPortfolio = async () => {
-    const portfolio = resetPortfolioConfirm;
-    if (!user || !portfolio) return;
-    setResettingPortfolio(true);
-    try {
-      // Delete existing files in batches of 500
-      const filesSnap = await getDocs(collection(db, "projects", portfolio.id, "files"));
-      const BATCH_SIZE = 500;
-      const docs = filesSnap.docs;
-      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
-        const batch = writeBatch(db);
-        docs.slice(i, i + BATCH_SIZE).forEach((f) => batch.delete(f.ref));
-        await batch.commit();
-      }
-
-      // Restore default portfolio files
-      const username = settings?.username || "user";
-      const defaultFiles = [
-        {
-          name: "portfolio.json",
-          path: "portfolio.json",
-          language: "json",
-          content: JSON.stringify({
-            displayName: settings?.displayName || user.displayName || username,
-            username,
-            bio: settings?.bio || "Full-stack developer. Building cool things with DevOS.",
-            featuredProjects: [],
-            socialLinks: { github: "", twitter: "", linkedin: "" },
-          }, null, 2),
-        },
-        {
-          name: "layout.json",
-          path: "layout.json",
-          language: "json",
-          content: JSON.stringify({ sections: ["hero", "projects", "activity"] }, null, 2),
-        },
-        {
-          name: "theme.json",
-          path: "theme.json",
-          language: "json",
-          content: JSON.stringify({ colorScheme: "dark", accentColor: "#3b82f6" }, null, 2),
-        },
-      ];
-      const filesRef = collection(db, "projects", portfolio.id, "files");
-      await Promise.all(
-        defaultFiles.map((f) =>
-          addDoc(filesRef, { ...f, projectId: portfolio.id, updatedAt: serverTimestamp() })
-        )
-      );
-      await updateDoc(doc(db, "projects", portfolio.id), { updatedAt: serverTimestamp() });
-      toast.success("Portfolio reset to default.");
-      setResetPortfolioConfirm(null);
-    } catch {
-      toast.error("Failed to reset portfolio.");
-    } finally {
-      setResettingPortfolio(false);
-    }
-  };
-
-  const displayName = settings?.displayName || user?.displayName || "Developer";
+    const displayName = settings?.displayName || user?.displayName || "Developer";
   const avatarUrl = resolveAvatar(settings?.avatarUrl || user?.photoURL);
 
   // ── Grouping helpers ────────────────────────────────────────────────────────
@@ -605,30 +535,26 @@ p {
   const allGroupNames = useMemo(() => {
     const names = new Set<string>();
     for (const p of projects) {
-      if (p.group && p.systemType !== "portfolio") names.add(p.group);
+      if (p.group) names.add(p.group);
     }
     return Array.from(names).sort();
   }, [projects]);
 
   // Compute groups for "My Projects" tab:
-  //   - portfolio projects  → own section at top
   //   - user-defined group  → one section per group (sorted alphabetically)
   //   - no group            → "Ungrouped" section at bottom
-  const { portfolioProjects, groupedMap, ungroupedProjects } = useMemo(() => {
-    const portfolio: Project[] = [];
+  const { groupedMap, ungroupedProjects } = useMemo(() => {
     const grouped: Record<string, Project[]> = {};
     const ungrouped: Project[] = [];
     for (const p of projects) {
-      if (p.systemType === "portfolio") {
-        portfolio.push(p);
-      } else if (p.group) {
+      if (p.group) {
         if (!grouped[p.group]) grouped[p.group] = [];
         grouped[p.group].push(p);
       } else {
         ungrouped.push(p);
       }
     }
-    return { portfolioProjects: portfolio, groupedMap: grouped, ungroupedProjects: ungrouped };
+    return { groupedMap: grouped, ungroupedProjects: ungrouped };
   }, [projects]);
 
   // ── Card renderer (used in every group section) ────────────────────────────
@@ -642,20 +568,9 @@ p {
         transition={{ duration: 0.35, delay: animIdx * 0.04, ease: [0.22, 1, 0.36, 1] }}
         className={cn(
           "group rounded-2xl border transition-all relative flex flex-col card-glow",
-          project.systemType === 'portfolio'
-            ? "bg-gradient-to-br from-yellow-500/5 to-yellow-600/5 border-yellow-500/20 hover:border-yellow-500/40"
-            : "glass border-white/[0.07] hover:border-white/15"
+          "glass border-white/[0.07] hover:border-white/15"
         )}
       >
-        {/* Portfolio badge */}
-        {project.systemType === 'portfolio' && (
-          <div className="px-4 pt-3 pb-0">
-            <span className="text-[10px] font-bold text-yellow-400/80 uppercase tracking-widest flex items-center gap-1">
-              <Star className="w-3 h-3" /> Your Public Profile
-            </span>
-          </div>
-        )}
-
         {/* Card body */}
         <div
           className="p-5 flex-1 cursor-pointer"
@@ -664,10 +579,9 @@ p {
           <div className="flex items-start justify-between mb-3">
             <div className={cn(
               "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-              project.systemType === 'portfolio' ? "bg-yellow-600/20 text-yellow-500 group-hover:bg-yellow-600 group-hover:text-white" :
               project.isTemplate ? "bg-purple-600/20 text-purple-500 group-hover:bg-purple-600 group-hover:text-white" : "bg-blue-600/20 text-blue-500 group-hover:bg-blue-600 group-hover:text-white"
             )}>
-              {project.systemType === 'portfolio' ? <UserIcon className="w-5 h-5" /> : <FolderCode className="w-5 h-5" />}
+              {project.isTemplate ? <Upload className="w-5 h-5" /> : <FolderCode className="w-5 h-5" />}
             </div>
             <div className="flex gap-1.5 items-center">
               {project.isPublic ? (
@@ -691,11 +605,20 @@ p {
               </span>
             </div>
           )}
-          <div className="flex items-center gap-3 text-xs text-white/30">
-            <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-white/30">
+            <div className="flex items-center gap-1" title="Last edited">
               <Clock className="w-3.5 h-3.5" />
               <span>{formatRelativeTime(project.updatedAt)}</span>
             </div>
+            {project.createdAt && (
+              <>
+                <div className="w-1 h-1 rounded-full bg-white/10" />
+                <div className="flex items-center gap-1" title="Created">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{toValidDate(project.createdAt)?.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) ?? ''}</span>
+                </div>
+              </>
+            )}
             <div className="w-1 h-1 rounded-full bg-white/10" />
             <div className="flex items-center gap-1">
               <Eye className="w-3.5 h-3.5" />
@@ -706,35 +629,7 @@ p {
 
         {/* Card actions footer */}
         <div className="px-4 pb-4 flex gap-2">
-          {project.systemType === 'portfolio' ? (
-            <>
-              <button
-                onClick={() => onSelectProject(project.id)}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-all text-xs font-bold"
-              >
-                <FolderCode className="w-3.5 h-3.5" />
-                Open
-              </button>
-              {settings?.username && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/@${settings.username}`); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  View Portfolio
-                </button>
-              )}
-              <button
-                onClick={(e) => { e.stopPropagation(); handleResetPortfolio(project); }}
-                disabled={resettingPortfolio}
-                className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-orange-500/10 hover:text-orange-400 transition-all"
-                title="Reset Portfolio"
-              >
-                <RefreshCw className={cn("w-3.5 h-3.5", resettingPortfolio && "animate-spin")} />
-              </button>
-              <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
-            </>
-          ) : project.ownerId === user?.uid ? (
+          {project.ownerId === user?.uid ? (
             <>
               <button
                 onClick={() => onSelectProject(project.id)}
@@ -759,37 +654,34 @@ p {
                   <Upload className="w-3.5 h-3.5" />
                 </button>
               )}
-              {(
-                <button
-                  onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
-                  title="Deploy project (open IDE → Deploy tab)"
-                >
-                  <Rocket className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
+                title="Deploy project (open IDE → Deploy tab)"
+              >
+                <Rocket className="w-3.5 h-3.5" />
+              </button>
               {/* ── Group button + popover ── */}
-              {(
-                <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setGroupPopoverProjectId(isGroupPopoverOpen ? null : project.id);
-                      setNewGroupName("");
-                    }}
-                    className={cn(
-                      "flex items-center justify-center px-3 py-2 rounded-lg transition-all",
-                      project.group
-                        ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
-                        : "bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"
-                    )}
-                    title="Move to group"
-                  >
-                    <Tag className="w-3.5 h-3.5" />
-                  </button>
-                  <AnimatePresence>
-                    {isGroupPopoverOpen && (
-                      <motion.div
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setGroupPopoverProjectId(isGroupPopoverOpen ? null : project.id);
+                    setNewGroupName("");
+                  }}
+                  className={cn(
+                    "flex items-center justify-center px-3 py-2 rounded-lg transition-all",
+                    project.group
+                      ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                      : "bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"
+                  )}
+                  title="Move to group"
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                </button>
+                <AnimatePresence>
+                  {isGroupPopoverOpen && (
+                    <motion.div
                         initial={{ opacity: 0, y: 6, scale: 0.96 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 4, scale: 0.96 }}
@@ -855,7 +747,6 @@ p {
                     )}
                   </AnimatePresence>
                 </div>
-              )}
               <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
               {project.isDeletable !== false && (
                 <button
@@ -1178,7 +1069,7 @@ p {
 
       {/* ─── Continue Working banner ─── */}
       {activeTab === "my-projects" && (() => {
-        const last = projects.find((p) => p.systemType !== "portfolio" && p.ownerId === user?.uid);
+        const last = projects.find((p) => p.ownerId === user?.uid);
         if (!last) return null;
         return (
           <div className="mb-8 rounded-2xl bg-gradient-to-r from-blue-600/10 to-blue-500/5 border border-blue-500/20 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
@@ -1231,40 +1122,6 @@ p {
       {/* ─── My Projects: Grouped Sections ─── */}
       {activeTab === "my-projects" && (
         <div className="space-y-8">
-          {/* Portfolio section — always at top */}
-          {portfolioProjects.length > 0 && (
-            <div>
-              <button
-                onClick={() => toggleGroupCollapse("__portfolio__")}
-                className="w-full flex items-center justify-between mb-4 group"
-              >
-                <div className="flex items-center gap-2">
-                  <Star className="w-4 h-4 text-yellow-400/70" />
-                  <span className="text-sm font-bold text-white/50 uppercase tracking-widest">Portfolio</span>
-                  <span className="px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400/70 text-[10px] font-bold">
-                    {portfolioProjects.length}
-                  </span>
-                </div>
-                <ChevronDown className={cn("w-4 h-4 text-white/20 transition-transform", collapsedGroups.has("__portfolio__") && "-rotate-90")} />
-              </button>
-              <AnimatePresence initial={false}>
-                {!collapsedGroups.has("__portfolio__") && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    className="overflow-hidden"
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {portfolioProjects.map((p, i) => renderCard(p, i))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
           {/* User-defined named groups */}
           {allGroupNames.map((groupName, gi) => {
             const groupProjects = groupedMap[groupName] ?? [];
@@ -1306,8 +1163,8 @@ p {
           {/* Ungrouped projects */}
           {ungroupedProjects.length > 0 && (
             <div>
-              {/* Only show section header when there are also named groups or portfolio */}
-              {(portfolioProjects.length > 0 || allGroupNames.length > 0) && (
+              {/* Only show section header when there are also named groups */}
+              {allGroupNames.length > 0 && (
                 <button
                   onClick={() => toggleGroupCollapse("__ungrouped__")}
                   className="w-full flex items-center justify-between mb-4 group"
@@ -1416,17 +1273,6 @@ p {
         loading={deletingProject}
         onConfirm={confirmDeleteProject}
         onCancel={() => setDeleteConfirm(null)}
-      />
-
-      <ConfirmModal
-        open={!!resetPortfolioConfirm}
-        title="Reset Portfolio"
-        description="This will remove all your custom files and restore the default template. Your profile URL remains unchanged."
-        warning="This action cannot be undone."
-        confirmLabel="Reset Portfolio"
-        loading={resettingPortfolio}
-        onConfirm={confirmResetPortfolio}
-        onCancel={() => setResetPortfolioConfirm(null)}
       />
 
       <CreateOrgModal open={showCreateOrg} onClose={() => setShowCreateOrg(false)} />

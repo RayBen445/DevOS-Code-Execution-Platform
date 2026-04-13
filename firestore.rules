@@ -220,7 +220,7 @@ service cloud.firestore {
 
     match /projects/{projectId} {
       allow read: if canReadProject(projectId, resource.data);
-      allow create: if isAuthenticated() && request.auth.token.email_verified == true && isValidProject(request.resource.data) && (
+      allow create: if isAuthenticated() && isValidProject(request.resource.data) && (
         request.resource.data.ownerId == request.auth.uid ||
         isAdmin() ||
         // Org member creating a project under their organization

@@ -38,7 +38,12 @@ export async function uploadImage(
   opts: UploadOptions = {}
 ): Promise<string> {
   if (isSupabaseReady && supabase) {
-    return uploadToSupabase(file, path);
+    try {
+      return await uploadToSupabase(file, path);
+    } catch (supabaseErr) {
+      // Supabase RLS or network error — fall back to Firebase Storage automatically.
+      console.warn("[storageService] Supabase upload failed, falling back to Firebase Storage:", supabaseErr);
+    }
   }
   return uploadToFirebase(file, path, opts);
 }

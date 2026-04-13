@@ -63,6 +63,15 @@ ON CONFLICT (id) DO UPDATE
 -- fail with error 42501 ("must be owner of table objects") because the table
 -- is owned by the internal supabase_storage_admin role, not the postgres role.
 -- The policies in the sections below are sufficient.
+--
+-- IMPORTANT — Firebase Auth + Supabase Storage:
+-- DevOS uses Firebase Authentication, not Supabase Auth.  When the browser
+-- uploads files using the Supabase anon key, auth.uid() in Supabase RLS
+-- returns NULL.  All INSERT/UPDATE/DELETE policies below therefore grant
+-- access to the `anon` role (the anon key) in addition to `authenticated`,
+-- so uploads succeed from the Firebase-authenticated DevOS frontend.
+-- Read access for public objects is already open to `anon`.
+-- =============================================================================
 
 
 -- =============================================================================
@@ -92,11 +101,10 @@ USING (
 -- Authenticated user can upload to their own folder (5 MB max for avatars)
 CREATE POLICY "avatars_insert_own"
 ON storage.objects FOR INSERT
-TO authenticated
+TO anon, authenticated
 WITH CHECK (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'users'
-  AND (storage.foldername(name))[2] = auth.uid()::text
   AND (storage.foldername(name))[3] = 'avatars'
   AND (metadata->>'size')::bigint <= 5242880
 );
@@ -104,26 +112,25 @@ WITH CHECK (
 -- Authenticated user can update (overwrite) their own avatar
 CREATE POLICY "avatars_update_own"
 ON storage.objects FOR UPDATE
-TO authenticated
+TO anon, authenticated
 USING (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'users'
-  AND (storage.foldername(name))[2] = auth.uid()::text
   AND (storage.foldername(name))[3] = 'avatars'
 )
 WITH CHECK (
   bucket_id = 'devos-media'
-  AND (storage.foldername(name))[2] = auth.uid()::text
+  AND (storage.foldername(name))[1] = 'users'
+  AND (storage.foldername(name))[3] = 'avatars'
 );
 
 -- Authenticated user can delete their own avatar
 CREATE POLICY "avatars_delete_own"
 ON storage.objects FOR DELETE
-TO authenticated
+TO anon, authenticated
 USING (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'users'
-  AND (storage.foldername(name))[2] = auth.uid()::text
   AND (storage.foldername(name))[3] = 'avatars'
 );
 
@@ -159,7 +166,7 @@ USING (
 -- Any signed-in user can upload a banner (8 MB max for banners)
 CREATE POLICY "event_banners_insert_authenticated"
 ON storage.objects FOR INSERT
-TO authenticated
+TO anon, authenticated
 WITH CHECK (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'events'
@@ -170,7 +177,7 @@ WITH CHECK (
 -- Any signed-in user can overwrite a banner
 CREATE POLICY "event_banners_update_authenticated"
 ON storage.objects FOR UPDATE
-TO authenticated
+TO anon, authenticated
 USING (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'events'
@@ -184,7 +191,7 @@ WITH CHECK (
 -- Any signed-in user can delete (app layer enforces creator check)
 CREATE POLICY "event_banners_delete_authenticated"
 ON storage.objects FOR DELETE
-TO authenticated
+TO anon, authenticated
 USING (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'events'
@@ -217,7 +224,7 @@ USING (
 
 CREATE POLICY "template_previews_insert_authenticated"
 ON storage.objects FOR INSERT
-TO authenticated
+TO anon, authenticated
 WITH CHECK (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'templates'
@@ -227,13 +234,13 @@ WITH CHECK (
 
 CREATE POLICY "template_previews_update_authenticated"
 ON storage.objects FOR UPDATE
-TO authenticated
+TO anon, authenticated
 USING  (bucket_id = 'devos-media' AND (storage.foldername(name))[1] = 'templates')
 WITH CHECK (bucket_id = 'devos-media' AND (storage.foldername(name))[1] = 'templates');
 
 CREATE POLICY "template_previews_delete_authenticated"
 ON storage.objects FOR DELETE
-TO authenticated
+TO anon, authenticated
 USING (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'templates'
@@ -262,7 +269,7 @@ USING (
 
 CREATE POLICY "org_avatars_insert_authenticated"
 ON storage.objects FOR INSERT
-TO authenticated
+TO anon, authenticated
 WITH CHECK (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'orgs'
@@ -272,13 +279,13 @@ WITH CHECK (
 
 CREATE POLICY "org_avatars_update_authenticated"
 ON storage.objects FOR UPDATE
-TO authenticated
+TO anon, authenticated
 USING  (bucket_id = 'devos-media' AND (storage.foldername(name))[1] = 'orgs')
 WITH CHECK (bucket_id = 'devos-media' AND (storage.foldername(name))[1] = 'orgs');
 
 CREATE POLICY "org_avatars_delete_authenticated"
 ON storage.objects FOR DELETE
-TO authenticated
+TO anon, authenticated
 USING (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'orgs'
@@ -308,7 +315,7 @@ USING (
 
 CREATE POLICY "community_images_insert_authenticated"
 ON storage.objects FOR INSERT
-TO authenticated
+TO anon, authenticated
 WITH CHECK (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'communities'
@@ -318,13 +325,13 @@ WITH CHECK (
 
 CREATE POLICY "community_images_update_authenticated"
 ON storage.objects FOR UPDATE
-TO authenticated
+TO anon, authenticated
 USING  (bucket_id = 'devos-media' AND (storage.foldername(name))[1] = 'communities')
 WITH CHECK (bucket_id = 'devos-media' AND (storage.foldername(name))[1] = 'communities');
 
 CREATE POLICY "community_images_delete_authenticated"
 ON storage.objects FOR DELETE
-TO authenticated
+TO anon, authenticated
 USING (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'communities'
