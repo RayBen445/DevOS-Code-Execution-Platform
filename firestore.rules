@@ -112,7 +112,7 @@ service cloud.firestore {
 
     function isValidProject(data) {
       let requiredFields = ['name', 'ownerId', 'createdAt', 'updatedAt', 'isPublic', 'isTemplate', 'forksCount', 'collaborators'];
-      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'parentTemplateId', 'forkedFrom', 'forkedFromOwner', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'savedAt', 'env', 'ownerType', 'ownerOrgId', 'activeDeploymentId', 'isOfficial', 'group', 'tags', 'ownerOrgSlug', 'ownerOrgName', 'slug', 'deployed']);
+      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'parentTemplateId', 'forkedFrom', 'forkedFromOwner', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'savedAt', 'env', 'plugins', 'ownerType', 'ownerOrgId', 'activeDeploymentId', 'isOfficial', 'group', 'tags', 'ownerOrgSlug', 'ownerOrgName', 'slug', 'deployed']);
       return data.keys().hasAll(requiredFields) &&
              data.keys().hasOnly(allowedFields) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
@@ -124,6 +124,7 @@ service cloud.firestore {
              (!('entryFile' in data) || (data.entryFile is string && data.entryFile.size() <= 500)) &&
              (!('savedAt' in data) || data.savedAt is timestamp) &&
              (!('env' in data) || data.env is map) &&
+             (!('plugins' in data) || data.plugins is map) &&
              data.isPublic is bool &&
              data.isTemplate is bool &&
              data.forksCount is int &&

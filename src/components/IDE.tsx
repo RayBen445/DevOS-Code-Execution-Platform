@@ -12,6 +12,7 @@ import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
+import PluginPanel from "./PluginPanel";
 import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem, DetectionResult, BuildJob } from "../types";
 import { cn } from "../lib/utils";
 import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
@@ -22,7 +23,7 @@ import { hashFiles, shortHash } from "../lib/buildCacheService";
 import { enqueueJob, subscribeProjectBuildJobs, buildPreviewUrl } from "../lib/buildQueueService";
 import DeploymentDashboard from "./DeploymentDashboard";
 import BuildStatusBadge from "./BuildStatusBadge";
-import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock } from "lucide-react";
+import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock, Puzzle } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { emitBotEvent } from "../lib/botEngine";
@@ -35,7 +36,7 @@ interface IDEProps {
   onBack: () => void;
 }
 
-type PanelType = "explorer" | "git" | "terminal" | "preview" | "settings" | "collaborators" | null;
+type PanelType = "explorer" | "git" | "terminal" | "preview" | "plugins" | "settings" | "collaborators" | null;
 
 interface LogEntry {
   type: "system" | "success" | "error" | "info" | "output" | "warning";
@@ -95,7 +96,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [showErrors, setShowErrors] = useState(false);
 
   // Mobile top-nav state (replaces slide-in drawer)
-  type MobileTabId = "editor" | "files" | "preview" | "git" | "terminal" | "settings" | "collaborators";
+  type MobileTabId = "editor" | "files" | "preview" | "git" | "terminal" | "plugins" | "settings" | "collaborators";
   const [mobileTab, setMobileTab] = useState<MobileTabId>("editor");
   const touchStartX = useRef<number>(0);
 
@@ -488,6 +489,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     ...(isOrgProject ? [{ id: "collaborators" as MobileTabId, icon: Users, label: "Team" }] : []),
     { id: "git" as MobileTabId, icon: GitBranch, label: "Git" },
     { id: "terminal" as MobileTabId, icon: Terminal, label: "Term" },
+    { id: "plugins" as MobileTabId, icon: Puzzle, label: "Plugins" },
     { id: "settings" as MobileTabId, icon: Settings, label: "More" },
   ];
 
@@ -1634,6 +1636,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               { id: "git" as PanelType, icon: GitBranch, label: "Source Control" },
               { id: "terminal" as PanelType, icon: Terminal, label: "Terminal" },
               { id: "preview" as PanelType, icon: Eye, label: "Preview" },
+              { id: "plugins" as PanelType, icon: Puzzle, label: "Plugins" },
               ...(isOrgProject ? [{ id: "collaborators" as PanelType, icon: Users, label: "Collaborators" }] : []),
               { id: "settings" as PanelType, icon: Settings, label: "Settings" },
             ].map(({ id, icon: Icon, label }) => (
@@ -1809,6 +1812,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 </div>
               )}
 
+              {/* Plugins */}
+              {mobileTab === "plugins" && (
+                <div className="h-full overflow-y-auto">
+                  <PluginPanel projectId={projectId} project={project} readOnly={!canDeploy} />
+                </div>
+              )}
+
               {/* Collaborators (org projects only) */}
               {mobileTab === "collaborators" && isOrgProject && (
                 <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} presenceUsers={presenceUsers} activityItems={activityItems} />
@@ -1858,6 +1868,13 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     files={files} 
                     onDelete={onBack}
                   />
+                </div>
+              )}
+
+              {/* Plugin Marketplace Panel */}
+              {project?.systemType !== 'portfolio' && activePanel === "plugins" && !isFocusMode && (
+                <div className="hidden md:flex w-80 border-r border-white/5 flex-col overflow-hidden">
+                  <PluginPanel projectId={projectId} project={project} readOnly={!canDeploy} />
                 </div>
               )}
 

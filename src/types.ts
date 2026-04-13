@@ -46,6 +46,7 @@ export interface Project {
   entryFile?: string;
   savedAt?: any;
   env?: Record<string, string>;
+  plugins?: Record<string, InstalledPlugin>;
   tags?: string[];
   parentTemplateId?: string;
   group?: string;            // user-defined project group name
@@ -850,4 +851,50 @@ export interface UserNotificationSettings {
     bot?: boolean;
     system?: boolean;
   };
+}
+
+// ── Plugin System ────────────────────────────────────────────────────────────
+
+export type PluginId =
+  | "devos-auth"
+  | "devos-database"
+  | "devos-storage"
+  | "devos-email"
+  | "devos-realtime"
+  | "devos-queue"
+  | "devos-webhooks"
+  | "devos-analytics"
+  | "devos-search"
+  | "devos-push"
+  | "devos-flags"
+  | "devos-forms";
+
+export interface InstalledPlugin {
+  pluginId: PluginId;
+  installedAt: any;
+  /** Env vars injected into the project when this plugin was installed */
+  envVars: string[];
+  /** Opaque plugin-scoped key generated at install time */
+  projectKey: string;
+  enabled: boolean;
+}
+
+// ── Branching ────────────────────────────────────────────────────────────────
+
+export interface Branch {
+  id: string;
+  projectId: string;
+  name: string;
+  createdAt: any;
+  createdBy: string;
+  baseBranch: string;
+  /** Snapshot of files at branch-creation time */
+  filesSnapshot: {
+    name: string;
+    path: string;
+    content: string;
+    language: string;
+  }[];
+  merged?: boolean;
+  mergedAt?: any;
 }

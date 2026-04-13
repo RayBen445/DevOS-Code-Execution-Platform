@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { ProjectShareCard, useShareAsImage } from "./ShareAsImageCard";
 import { emitBotEventWithToast } from "../lib/botEngine";
 import { sendNotification } from "../lib/notificationService";
+import { createFeedPost } from "../lib/feedService";
 import CreateOrgModal from "./CreateOrgModal";
 import { useActiveContext } from "../hooks/useActiveContext";
 import CustomSelect from "./CustomSelect";
@@ -257,6 +258,20 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         payload: { projectId: docRef.id, projectName: newProjectName, userId: user.uid },
       }).catch(() => {});
       sendNotification({ userId: user.uid, type: "project_created", title: "Project created", message: `"${newProjectName}" has been created.`, createdBy: "system" }).catch(() => {});
+      // Auto-post to the public feed when project is public
+      if (visibility === "public" && settings?.username) {
+        createFeedPost({
+          userId: user.uid,
+          username: settings.username,
+          displayName: settings.displayName || settings.username,
+          avatarUrl: settings.avatarUrl,
+          content: `🚀 Just created a new project: **${newProjectName}**${newProjectDescription ? ` — ${newProjectDescription}` : ""}`,
+          type: "update",
+          projectId: docRef.id,
+          projectName: newProjectName,
+          isPublic: true,
+        }).catch(() => {});
+      }
       onSelectProject(docRef.id);
     } catch (error) {
       console.error("Error creating project:", error);
