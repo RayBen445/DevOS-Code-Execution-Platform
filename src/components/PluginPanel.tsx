@@ -672,9 +672,10 @@ body {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function generateProjectKey(pluginId: PluginId, projectId: string): string {
-  const base = `${pluginId}_${projectId}`.replace(/-/g, "_");
-  const rand = Math.random().toString(36).slice(2, 10).toUpperCase();
+function generateProjectKey(_pluginId: PluginId, _projectId: string): string {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  const rand = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
   return `pk_${rand}_${Date.now().toString(36).toUpperCase()}`;
 }
 
