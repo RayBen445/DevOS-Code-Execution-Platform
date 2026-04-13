@@ -52,8 +52,8 @@ export async function forkProject(
     thumbnailUrl: (project as any).thumbnailUrl || "",
     entryFile: project.entryFile || "index.html",
     // Plugin config carried over so the fork starts with the same stack
-    installedPlugins: (project as any).installedPlugins || {},
-    envVars: (project as any).envVars || {},
+    plugins: project.plugins || {},
+    env: project.env || {},
     // Defaults
     collaborators: [],
     isPublic: options.isPublic ?? false,
