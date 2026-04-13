@@ -58,6 +58,7 @@ import {
   Minus,
   ArrowUpRight,
   ArrowDownRight,
+  Keyboard,
   History,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -83,7 +84,7 @@ import { ALL_NAV_OPTIONS, NavOptionId } from "../components/MobileBottomNav";
 import { cn } from "../lib/utils";
 import { sendNotification } from "../lib/notificationService";
 
-type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "referrals" | "danger";
+type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "accessibility" | "referrals" | "danger";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "profile", label: "Profile", icon: <User className="w-4 h-4" /> },
@@ -91,6 +92,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "security", label: "Security", icon: <Lock className="w-4 h-4" /> },
   { id: "preferences", label: "Preferences", icon: <Settings className="w-4 h-4" /> },
   { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
+  { id: "accessibility", label: "Accessibility", icon: <Keyboard className="w-4 h-4" /> },
   { id: "referrals", label: "Referrals", icon: <Users className="w-4 h-4" /> },
   { id: "danger", label: "Danger Zone", icon: <ShieldAlert className="w-4 h-4" /> },
 ];
@@ -325,6 +327,7 @@ export default function SettingsPage() {
               {activeTab === "security" && <SecurityTab />}
               {activeTab === "preferences" && <PreferencesTab />}
               {activeTab === "notifications" && <NotificationsTab />}
+              {activeTab === "accessibility" && <AccessibilityTab />}
               {activeTab === "referrals" && user && <ReferralsTab uid={user.uid} />}
               {activeTab === "danger" && <DangerZoneTab />}
             </motion.div>

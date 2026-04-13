@@ -26,6 +26,17 @@ const legacyToCoreEvent: Record<string, string> = {
   project_created: "project.created",
   deploy_triggered: "deploy.triggered",
   post_created: "post.created",
+  user_signup: "user.signup",
+  project_saved: "project.saved",
+  project_deployed: "project.deployed",
+  project_deleted: "project.deleted",
+  commit_created: "commit.created",
+  branch_created: "branch.created",
+  pr_opened: "pr.opened",
+  pr_merged: "pr.merged",
+  plugin_installed: "plugin.installed",
+  plugin_uninstalled: "plugin.uninstalled",
+  template_published: "template.published",
 };
 
 const coreToLegacyEvent: Record<string, string> = {

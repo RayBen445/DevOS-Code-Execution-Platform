@@ -5,6 +5,10 @@
 -- Run this entire file once in your Supabase project:
 --   Dashboard → SQL Editor → New query → paste → Run
 --
+-- The file is fully IDEMPOTENT — safe to re-run at any time.
+-- Every policy is dropped with DROP POLICY IF EXISTS before being (re)created,
+-- so you will never hit "policy already exists" errors.
+--
 -- What this sets up:
 --   1.  The `devos-media` bucket (public CDN for all platform media)
 --   2.  Per-folder Row Level Security (RLS) policies that match the exact path
@@ -56,7 +60,45 @@ ON CONFLICT (id) DO UPDATE
 
 
 -- =============================================================================
--- SECTION 2 — ROW LEVEL SECURITY
+-- SECTION 2 — DROP ALL EXISTING POLICIES (makes this file idempotent)
+-- =============================================================================
+-- PostgreSQL has no CREATE OR REPLACE POLICY syntax, so we drop first.
+-- Using DROP POLICY IF EXISTS means this is safe to run even on a fresh DB.
+-- =============================================================================
+
+-- User avatars
+DROP POLICY IF EXISTS "avatars_read_public"                     ON storage.objects;
+DROP POLICY IF EXISTS "avatars_insert_own"                      ON storage.objects;
+DROP POLICY IF EXISTS "avatars_update_own"                      ON storage.objects;
+DROP POLICY IF EXISTS "avatars_delete_own"                      ON storage.objects;
+
+-- Event banners
+DROP POLICY IF EXISTS "event_banners_read_public"               ON storage.objects;
+DROP POLICY IF EXISTS "event_banners_insert_authenticated"       ON storage.objects;
+DROP POLICY IF EXISTS "event_banners_update_authenticated"       ON storage.objects;
+DROP POLICY IF EXISTS "event_banners_delete_authenticated"       ON storage.objects;
+
+-- Template previews
+DROP POLICY IF EXISTS "template_previews_read_public"           ON storage.objects;
+DROP POLICY IF EXISTS "template_previews_insert_authenticated"  ON storage.objects;
+DROP POLICY IF EXISTS "template_previews_update_authenticated"  ON storage.objects;
+DROP POLICY IF EXISTS "template_previews_delete_authenticated"  ON storage.objects;
+
+-- Org avatars
+DROP POLICY IF EXISTS "org_avatars_read_public"                 ON storage.objects;
+DROP POLICY IF EXISTS "org_avatars_insert_authenticated"        ON storage.objects;
+DROP POLICY IF EXISTS "org_avatars_update_authenticated"        ON storage.objects;
+DROP POLICY IF EXISTS "org_avatars_delete_authenticated"        ON storage.objects;
+
+-- Community images
+DROP POLICY IF EXISTS "community_images_read_public"            ON storage.objects;
+DROP POLICY IF EXISTS "community_images_insert_authenticated"   ON storage.objects;
+DROP POLICY IF EXISTS "community_images_update_authenticated"   ON storage.objects;
+DROP POLICY IF EXISTS "community_images_delete_authenticated"   ON storage.objects;
+
+
+-- =============================================================================
+-- SECTION 3 — ROW LEVEL SECURITY
 -- =============================================================================
 -- NOTE: Supabase enables RLS on storage.objects automatically.
 -- Running ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY here would
@@ -75,17 +117,8 @@ ON CONFLICT (id) DO UPDATE
 
 
 -- =============================================================================
--- SECTION 3 — USER AVATARS
+-- SECTION 4 — USER AVATARS
 -- Path: users/{uid}/avatars/{filename}
---
--- avatarPath() in storageService.ts produces:
---   `users/${uid}/avatars/${Date.now()}-${random}.${ext}`
---
--- Rules:
---   SELECT  — anyone (public CDN)
---   INSERT  — authenticated user, only inside their own users/{uid}/ folder
---   UPDATE  — same user (upsert: true in uploadToSupabase)
---   DELETE  — same user
 -- =============================================================================
 
 -- Public read
@@ -98,7 +131,7 @@ USING (
   AND (storage.foldername(name))[3] = 'avatars'
 );
 
--- Authenticated user can upload to their own folder (5 MB max for avatars)
+-- Upload to own folder (5 MB max)
 CREATE POLICY "avatars_insert_own"
 ON storage.objects FOR INSERT
 TO anon, authenticated
@@ -109,7 +142,7 @@ WITH CHECK (
   AND (metadata->>'size')::bigint <= 5242880
 );
 
--- Authenticated user can update (overwrite) their own avatar
+-- Overwrite own avatar
 CREATE POLICY "avatars_update_own"
 ON storage.objects FOR UPDATE
 TO anon, authenticated
@@ -124,7 +157,7 @@ WITH CHECK (
   AND (storage.foldername(name))[3] = 'avatars'
 );
 
--- Authenticated user can delete their own avatar
+-- Delete own avatar
 CREATE POLICY "avatars_delete_own"
 ON storage.objects FOR DELETE
 TO anon, authenticated
@@ -136,24 +169,10 @@ USING (
 
 
 -- =============================================================================
--- SECTION 4 — EVENT BANNERS
+-- SECTION 5 — EVENT BANNERS
 -- Path: events/{eventId}/banner-{timestamp}.{ext}
---
--- eventBannerPath() in storageService.ts produces:
---   `events/${eventId}/banner-${Date.now()}.${ext}`
---
--- Rules:
---   SELECT  — anyone
---   INSERT  — any authenticated user (event creator uploads from CreateEventPage)
---   UPDATE  — any authenticated user (event creator may re-upload before publish)
---   DELETE  — any authenticated user
---
--- Note: tighter creator-only enforcement requires joining with Firestore data,
--- which Supabase Storage RLS cannot do directly. The app layer in
--- CreateEventPage.tsx already guards the upload behind an auth check.
 -- =============================================================================
 
--- Public read
 CREATE POLICY "event_banners_read_public"
 ON storage.objects FOR SELECT
 TO anon, authenticated
@@ -163,7 +182,6 @@ USING (
   AND name LIKE 'events/%/banner-%'
 );
 
--- Any signed-in user can upload a banner (8 MB max for banners)
 CREATE POLICY "event_banners_insert_authenticated"
 ON storage.objects FOR INSERT
 TO anon, authenticated
@@ -174,7 +192,6 @@ WITH CHECK (
   AND (metadata->>'size')::bigint <= 8388608
 );
 
--- Any signed-in user can overwrite a banner
 CREATE POLICY "event_banners_update_authenticated"
 ON storage.objects FOR UPDATE
 TO anon, authenticated
@@ -188,7 +205,6 @@ WITH CHECK (
   AND name LIKE 'events/%/banner-%'
 );
 
--- Any signed-in user can delete (app layer enforces creator check)
 CREATE POLICY "event_banners_delete_authenticated"
 ON storage.objects FOR DELETE
 TO anon, authenticated
@@ -200,18 +216,8 @@ USING (
 
 
 -- =============================================================================
--- SECTION 5 — TEMPLATE PREVIEW IMAGES
+-- SECTION 6 — TEMPLATE PREVIEW IMAGES
 -- Path: templates/{templateId}/preview.{ext}
---
--- The Template type has `previewImageUrl?: string` (types.ts:162).
--- No storageService.ts helper exists yet — add
--- `templatePreviewPath(templateId, file)` when building the upload UI.
---
--- Rules:
---   SELECT  — anyone (templates are public)
---   INSERT  — any authenticated user (app layer verifies they own the template)
---   UPDATE  — same
---   DELETE  — same
 -- =============================================================================
 
 CREATE POLICY "template_previews_read_public"
@@ -228,8 +234,8 @@ TO anon, authenticated
 WITH CHECK (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'templates'
-  AND (storage.foldername(name))[3] IS NULL    -- templates/{id}/filename only, not deeper
-  AND (metadata->>'size')::bigint <= 5242880   -- 5 MB max
+  AND (storage.foldername(name))[3] IS NULL
+  AND (metadata->>'size')::bigint <= 5242880
 );
 
 CREATE POLICY "template_previews_update_authenticated"
@@ -248,15 +254,8 @@ USING (
 
 
 -- =============================================================================
--- SECTION 6 — ORGANISATION AVATARS
+-- SECTION 7 — ORGANISATION AVATARS
 -- Path: orgs/{orgId}/avatar.{ext}
---
--- The Organization type has `avatar?: string` (types.ts:375).
---
--- Rules:
---   SELECT  — anyone
---   INSERT/UPDATE — authenticated user (app layer checks org owner/admin role)
---   DELETE  — authenticated user
 -- =============================================================================
 
 CREATE POLICY "org_avatars_read_public"
@@ -273,8 +272,8 @@ TO anon, authenticated
 WITH CHECK (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'orgs'
-  AND (storage.foldername(name))[3] IS NULL    -- orgs/{id}/file only, no deeper nesting
-  AND (metadata->>'size')::bigint <= 3145728   -- 3 MB max for org avatars
+  AND (storage.foldername(name))[3] IS NULL
+  AND (metadata->>'size')::bigint <= 3145728
 );
 
 CREATE POLICY "org_avatars_update_authenticated"
@@ -293,16 +292,9 @@ USING (
 
 
 -- =============================================================================
--- SECTION 7 — COMMUNITY AVATARS & BANNERS
+-- SECTION 8 — COMMUNITY AVATARS & BANNERS
 -- Path: communities/{communityId}/avatar.{ext}
 --       communities/{communityId}/banner.{ext}
---
--- The Community type has `avatar?: string` and `banner?: string` (types.ts:427-428).
---
--- Rules:
---   SELECT  — anyone
---   INSERT/UPDATE — authenticated user (app layer checks community admin role)
---   DELETE  — authenticated user
 -- =============================================================================
 
 CREATE POLICY "community_images_read_public"
@@ -319,8 +311,8 @@ TO anon, authenticated
 WITH CHECK (
   bucket_id = 'devos-media'
   AND (storage.foldername(name))[1] = 'communities'
-  AND (storage.foldername(name))[3] IS NULL    -- communities/{id}/file only
-  AND (metadata->>'size')::bigint <= 8388608   -- 8 MB max (banners can be larger)
+  AND (storage.foldername(name))[3] IS NULL
+  AND (metadata->>'size')::bigint <= 8388608
 );
 
 CREATE POLICY "community_images_update_authenticated"
@@ -339,38 +331,20 @@ USING (
 
 
 -- =============================================================================
--- SECTION 8 — PLUGIN MARKETPLACE UPLOADS  (future)
+-- SECTION 9 — PLUGIN MARKETPLACE UPLOADS  (server-side only)
 -- Path: plugin_uploads/{projectId}/{userDefinedPath}
---
--- These are files uploaded by end-users of developer apps via the
--- DevOS Storage plugin (see devos-plugin-marketplace.md, Section 3).
--- All access goes through a Cloud Function proxy that uses the service-role
--- key — the browser SDK never touches this path directly.
--- RLS denies direct client access; the proxy bypasses RLS via the Admin SDK.
+-- No direct browser policies — Cloud Function proxy uses service-role key.
 -- =============================================================================
 
--- No direct browser SELECT — proxy issues signed URLs instead.
--- Achieved by NOT creating a SELECT policy for plugin_uploads, so RLS
--- defaults to DENY for any request whose path starts with plugin_uploads/.
-
--- No INSERT/UPDATE/DELETE policies for plugin_uploads/ either.
--- The Cloud Function proxy holds the service-role key and bypasses RLS.
-
--- Placeholder comment so the intent is clear in a policy audit:
 -- "plugin_uploads/* — server-side only via service-role key in Cloud Functions"
+-- No policies created here intentionally (RLS defaults to DENY for this path).
 
 
 -- =============================================================================
--- SECTION 9 — HELPER VIEWS
+-- SECTION 10 — HELPER VIEWS
 -- =============================================================================
 
--- ── 9a. Per-user storage usage ───────────────────────────────────────────────
--- Shows how much space each auth.uid() is consuming, broken down by folder.
--- Useful in AdminDashboard.tsx and a future "Storage quota" settings panel.
---
--- Usage:
---   SELECT * FROM devos_storage_stats ORDER BY total_bytes DESC;
-
+-- ── 10a. Per-user storage usage ──────────────────────────────────────────────
 CREATE OR REPLACE VIEW devos_storage_stats AS
 SELECT
   owner                                                     AS user_id,
@@ -386,16 +360,7 @@ WHERE bucket_id = 'devos-media'
 GROUP BY owner, (storage.foldername(name))[1];
 
 
--- ── 9b. Full audit log view ───────────────────────────────────────────────────
--- Every object with resolved path segments for admin review.
--- Useful for flagging large files, unexpected paths, or abuse.
---
--- Usage:
---   SELECT * FROM devos_storage_audit
---   WHERE folder_root = 'users'
---   ORDER BY size_bytes DESC
---   LIMIT 50;
-
+-- ── 10b. Full audit log view ─────────────────────────────────────────────────
 CREATE OR REPLACE VIEW devos_storage_audit AS
 SELECT
   id,
@@ -415,15 +380,7 @@ WHERE bucket_id = 'devos-media'
 ORDER BY created_at DESC;
 
 
--- ── 9c. Orphan detection view ─────────────────────────────────────────────────
--- Files in users/ whose owner no longer exists in auth.users (deleted accounts).
--- Run periodically to reclaim space.
---
--- Usage:
---   SELECT * FROM devos_orphaned_avatars;
---   -- then clean up:
---   DELETE FROM storage.objects WHERE id IN (SELECT id FROM devos_orphaned_avatars);
-
+-- ── 10c. Orphan detection view ────────────────────────────────────────────────
 CREATE OR REPLACE VIEW devos_orphaned_avatars AS
 SELECT
   o.id,
@@ -439,14 +396,10 @@ WHERE o.bucket_id = 'devos-media'
 
 
 -- =============================================================================
--- SECTION 10 — HELPER FUNCTION: per-user storage bytes
+-- SECTION 11 — HELPER FUNCTIONS
 -- =============================================================================
--- Returns the total bytes stored for a given user_id.
--- Use this in the app to power a "storage used / limit" progress bar.
---
--- Usage:
---   SELECT devos_storage_used_bytes('some-auth-uid');
 
+-- Per-user storage bytes
 CREATE OR REPLACE FUNCTION devos_storage_used_bytes(p_user_id TEXT)
 RETURNS BIGINT
 LANGUAGE SQL
@@ -458,18 +411,7 @@ AS $$
     AND owner = p_user_id::uuid;
 $$;
 
-
--- =============================================================================
--- SECTION 11 — CLEANUP FUNCTION (service-role / admin use only)
--- =============================================================================
--- Deletes ALL storage objects for a given user (e.g. on account deletion).
--- Call this from a Cloud Function with the service-role key — never from
--- the browser client.
---
--- Usage:
---   SELECT devos_delete_user_storage('uid-of-deleted-user');
---   -- returns the number of rows deleted
-
+-- Delete all storage for a user (admin/server-side only)
 CREATE OR REPLACE FUNCTION devos_delete_user_storage(p_user_id TEXT)
 RETURNS INTEGER
 LANGUAGE plpgsql
