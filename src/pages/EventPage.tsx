@@ -163,11 +163,16 @@ export default function EventPage() {
     }
     setRsvpLoading(true);
     try {
-      const alreadyRegistered = await isEmailRegistered(event.id, rsvpEmail.trim().toLowerCase());
-      if (alreadyRegistered) {
-        toast.error("This email is already registered for this event");
-        setRsvpLoading(false);
-        return;
+      // isEmailRegistered requires an authenticated read — skip the pre-check
+      // for guest users (Firestore rules block unauthenticated list queries).
+      // Authenticated users still get the duplicate guard.
+      if (user) {
+        const alreadyRegistered = await isEmailRegistered(event.id, rsvpEmail.trim().toLowerCase());
+        if (alreadyRegistered) {
+          toast.error("This email is already registered for this event");
+          setRsvpLoading(false);
+          return;
+        }
       }
       await registerForEvent({
         eventId: event.id,
@@ -329,17 +334,6 @@ export default function EventPage() {
                 <p className="text-white/40 text-sm text-center py-4">
                   This event is pending approval and not yet open for registration.
                 </p>
-              ) : isPremiumLocked ? (
-                <div className="text-center">
-                  <Lock className="w-7 h-7 text-yellow-400 mx-auto mb-3" />
-                  <p className="text-white/50 text-sm mb-4">Sign in to RSVP for premium events.</p>
-                  <Link
-                    to="/?login=1"
-                    className="block w-full text-center px-4 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-bold text-sm transition-all"
-                  >
-                    Sign in
-                  </Link>
-                </div>
               ) : rsvpDone ? (
                 <div className="text-center py-4">
                   <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-3" />

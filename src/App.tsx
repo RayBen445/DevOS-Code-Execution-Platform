@@ -150,14 +150,14 @@ export default function App() {
   const hostParts = hostname.split(".");
   if (hostname.endsWith(".devos.name.ng")) {
     if (hostParts.length === 5) {
-      // previewId.username.devos.name.ng
-      const [previewId, username] = hostParts;
-      return <SubdomainPreview username={username} previewId={previewId} />;
+      // projectSlug.username.devos.name.ng  — show that user's project
+      const [projectSlug, username] = hostParts;
+      return <SubdomainPreview username={username} previewId={projectSlug} />;
     }
     if (hostParts.length === 4) {
-      // username.devos.name.ng
-      const [username] = hostParts;
-      return <SubdomainRouter subdomain={username} />;
+      // username.devos.name.ng — portfolio, org, or standalone project
+      const [subdomain] = hostParts;
+      return <SubdomainRouter subdomain={subdomain} />;
     }
   }
 

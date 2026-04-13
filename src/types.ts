@@ -50,6 +50,10 @@ export interface Project {
   tags?: string[];
   parentTemplateId?: string;
   group?: string;            // user-defined project group name
+  language?: string;         // primary language, e.g. "HTML", "JavaScript"
+  framework?: string;        // framework name, e.g. "React"
+  thumbnailUrl?: string;     // project thumbnail / preview image
+  forkedFromTitle?: string;  // display title of the source project
   /** ID of the currently active deployment (used for instant rollback) */
   activeDeploymentId?: string | null;
 }
@@ -119,6 +123,7 @@ export interface UserSettings {
     github?: string;
     twitter?: string;
     website?: string;
+    linkedin?: string;
   };
   preferences?: {
     fontSize?: number;
