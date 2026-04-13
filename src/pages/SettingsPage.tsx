@@ -1531,6 +1531,112 @@ function SaveButton({ loading, onClick }: { loading: boolean; onClick: () => voi
   );
 }
 
+function AccessibilityTab() {
+  const SHORTCUT_SECTIONS = [
+    {
+      title: "IDE",
+      shortcuts: [
+        { mac: "⌘S", win: "Ctrl+S", desc: "Save current file" },
+        { mac: "⌘⇧P", win: "Ctrl+Shift+P", desc: "Command palette" },
+        { mac: "⌘`", win: "Ctrl+`", desc: "Toggle terminal" },
+        { mac: "⌘B", win: "Ctrl+B", desc: "Toggle sidebar" },
+        { mac: "⌘⇧E", win: "Ctrl+Shift+E", desc: "Open file explorer" },
+        { mac: "⌘⇧G", win: "Ctrl+Shift+G", desc: "Open source control (Git)" },
+        { mac: "F5", win: "F5", desc: "Run project" },
+        { mac: "⌘⇧F", win: "Ctrl+Shift+F", desc: "Deploy project" },
+        { mac: "Escape", win: "Escape", desc: "Exit focus mode / close modal" },
+      ],
+    },
+    {
+      title: "Editor",
+      shortcuts: [
+        { mac: "⌘Z", win: "Ctrl+Z", desc: "Undo" },
+        { mac: "⌘⇧Z", win: "Ctrl+Shift+Z", desc: "Redo" },
+        { mac: "⌘/", win: "Ctrl+/", desc: "Toggle line comment" },
+        { mac: "⌘D", win: "Ctrl+D", desc: "Select next occurrence" },
+        { mac: "⌘F", win: "Ctrl+F", desc: "Find in file" },
+        { mac: "⌘H", win: "Ctrl+H", desc: "Find and replace" },
+        { mac: "⌥↑/↓", win: "Alt+↑/↓", desc: "Move line up/down" },
+        { mac: "Tab", win: "Tab", desc: "Indent" },
+        { mac: "⇧Tab", win: "Shift+Tab", desc: "Dedent" },
+        { mac: "⌘A", win: "Ctrl+A", desc: "Select all" },
+        { mac: "⌘C / X / V", win: "Ctrl+C / X / V", desc: "Copy / Cut / Paste" },
+      ],
+    },
+    {
+      title: "Navigation",
+      shortcuts: [
+        { mac: "⌘P", win: "Ctrl+P", desc: "Quick open file" },
+        { mac: "⌘W", win: "Ctrl+W", desc: "Close current tab" },
+        { mac: "⌘Tab", win: "Ctrl+Tab", desc: "Switch between open tabs" },
+        { mac: "⌘1–9", win: "Ctrl+1–9", desc: "Jump to tab N" },
+        { mac: "⌥←/→", win: "Alt+←/→", desc: "Navigate back/forward in history" },
+      ],
+    },
+    {
+      title: "Git",
+      shortcuts: [
+        { mac: "⌘↵", win: "Ctrl+Enter", desc: "Commit (in commit message box)" },
+      ],
+    },
+    {
+      title: "General",
+      shortcuts: [
+        { mac: "⌘K", win: "Ctrl+K", desc: "Open search" },
+        { mac: "?", win: "?", desc: "Show keyboard shortcuts (this page)" },
+        { mac: "⌘,", win: "Ctrl+,", desc: "Open settings" },
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-xl font-bold text-white mb-1">Keyboard Shortcuts</h2>
+        <p className="text-white/40 text-sm">
+          Reference for all keyboard shortcuts. Customisation is not yet available — that feature is coming soon.
+        </p>
+      </div>
+
+      {SHORTCUT_SECTIONS.map((section) => (
+        <div key={section.title} className="space-y-2">
+          <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest px-1">{section.title}</h3>
+          <div className="rounded-2xl border border-white/10 overflow-hidden">
+            {section.shortcuts.map((s, i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-4 px-5 py-3 ${i !== 0 ? "border-t border-white/5" : ""} bg-[#0a0a0a] hover:bg-white/[0.02] transition-colors`}
+              >
+                <div className="flex items-center gap-1.5 min-w-[160px]">
+                  <kbd className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-white/80 text-xs font-mono">
+                    {s.mac}
+                  </kbd>
+                  {s.mac !== s.win && (
+                    <>
+                      <span className="text-white/20 text-xs">/</span>
+                      <kbd className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-white/60 text-xs font-mono">
+                        {s.win}
+                      </kbd>
+                    </>
+                  )}
+                </div>
+                <span className="text-white/60 text-sm">{s.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div className="flex gap-3 px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl">
+        <Keyboard className="w-4 h-4 text-white/30 flex-shrink-0 mt-0.5" />
+        <p className="text-white/40 text-sm leading-relaxed">
+          Keyboard shortcut customisation is not yet available. It's on the roadmap and will be added in a future update.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function LoadingPanel() {
   return (
     <div className="flex items-center justify-center py-20">

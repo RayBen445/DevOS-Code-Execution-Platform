@@ -571,6 +571,100 @@ const sections: DocSection[] = [
       </div>
     ),
   },
+  {
+    id: "plugin-marketplace-guide",
+    label: "Plugin Marketplace",
+    icon: Puzzle,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Plugin Marketplace</h2>
+        <p className="text-white/60 leading-relaxed">
+          Install backend plugins (Auth, Database, Storage, Email, and more) directly from the IDE. Environment variables are automatically injected into your project.
+        </p>
+        <Section title="Installing a plugin">
+          Open the <strong>Plugin Marketplace</strong> panel in the IDE sidebar. Browse available plugins and click <strong>Install</strong>. The plugin is activated and its environment variables are immediately available in your project runtime.
+        </Section>
+        <Section title="Available plugins">
+          DevOS ships official plugins for Auth (sign-up/sign-in), Database (Firestore-backed), Storage (file &amp; image uploads), Email (transactional), Realtime (WebSocket pub/sub), and more.
+        </Section>
+        <InfoBox>
+          All plugin APIs are served from <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">api.devos.name.ng</code> — no additional domain or DNS setup required.
+        </InfoBox>
+      </div>
+    ),
+  },
+  {
+    id: "branching-prs",
+    label: "Branching & Pull Requests",
+    icon: GitBranch,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Branching &amp; Pull Requests</h2>
+        <p className="text-white/60 leading-relaxed">
+          Create branches from the Git panel, switch between them, open PRs with source→target branch, and merge with one click.
+        </p>
+        <Section title="Creating a branch">
+          In the <strong>Git</strong> sidebar panel, click <strong>New Branch</strong>, enter a name, and confirm. The IDE switches to the new branch immediately.
+        </Section>
+        <Section title="Opening a pull request">
+          From the Git panel select <strong>Open PR</strong>, choose source and target branches, add a title and description, then submit. The PR appears in the project's PR list.
+        </Section>
+        <Section title="Merging">
+          Open the PR and click <strong>Merge</strong>. Changes are merged into the target branch and the PR is marked as closed. No Git CLI required.
+        </Section>
+      </div>
+    ),
+  },
+  {
+    id: "keyboard-shortcuts",
+    label: "Keyboard Shortcuts",
+    icon: BookOpen,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Keyboard Shortcuts</h2>
+        <p className="text-white/60 leading-relaxed">
+          Find the full shortcut reference in <strong>Settings → Accessibility</strong>.
+        </p>
+        <Section title="Opening the reference">
+          Navigate to <strong>Settings</strong> (⌘, / Ctrl+,) and select the <strong>Accessibility</strong> tab to see every shortcut grouped by category: IDE, Editor, Navigation, Git, and General.
+        </Section>
+        <Section title="Common shortcuts">
+          Save file: <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">⌘S / Ctrl+S</code> · Command palette: <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">⌘⇧P / Ctrl+Shift+P</code> · Toggle terminal: <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">⌘` / Ctrl+`</code>.
+        </Section>
+        <InfoBox>
+          Keyboard shortcut customisation is on the roadmap and will be available in a future update.
+        </InfoBox>
+      </div>
+    ),
+  },
+  {
+    id: "bot-system",
+    label: "Bot System",
+    icon: Zap,
+    content: (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Bot System</h2>
+        <p className="text-white/60 leading-relaxed">
+          DevOS runs 12 built-in automation bots: Deploy, Credit, Feed, Notification, Welcome, Activity, Milestone, Moderation, Plugin, Search Index, Project Health, and Debug.
+        </p>
+        <Section title="Deploy Bot">
+          Triggers on every deployment, updates deployment history, posts a feed event, and awards deployment credits.
+        </Section>
+        <Section title="Welcome Bot">
+          Fires on new sign-up — grants the onboarding credit bonus, sends a welcome notification, and creates the first feed post.
+        </Section>
+        <Section title="Milestone Bot">
+          Watches for achievement events (first deploy, 10 projects, etc.) and awards badges displayed on the user profile.
+        </Section>
+        <Section title="Moderation Bot">
+          Automatically filters spam and inappropriate content in posts, comments, and project descriptions.
+        </Section>
+        <InfoBox>
+          Bots run server-side via Cloud Functions and are not configurable by end users. Admin accounts can inspect bot activity logs in the Admin Dashboard.
+        </InfoBox>
+      </div>
+    ),
+  },
 ];
 
 function Step({

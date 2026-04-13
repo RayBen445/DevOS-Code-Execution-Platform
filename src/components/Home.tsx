@@ -26,8 +26,8 @@ const stagger = {
 };
 
 const STATS = [
-  { value: "10,000+", label: "Projects deployed" },
-  { value: "5,000+", label: "Developers" },
+  { value: "25,000+", label: "Projects deployed" },
+  { value: "8,000+", label: "Developers" },
   { value: "50+", label: "Templates" },
   { value: "99.9%", label: "Uptime" },
 ];
@@ -86,6 +86,24 @@ const FEATURES = [
     color: "from-orange-500/10 to-orange-600/5",
     accent: "text-orange-400",
     ring: "bg-orange-600/15",
+  },
+  {
+    icon: Puzzle,
+    emoji: "🔌",
+    title: "Plugin Marketplace",
+    desc: "Add auth, database, storage, email, and more to any project in one click. Env vars injected automatically.",
+    color: "from-orange-500/10 to-orange-600/5",
+    accent: "text-orange-400",
+    ring: "bg-orange-600/15",
+  },
+  {
+    icon: GitBranch,
+    emoji: "🌿",
+    title: "Branching & PRs",
+    desc: "Create branches, open pull requests, and merge changes — all inside the IDE, no Git CLI needed.",
+    color: "from-teal-500/10 to-teal-600/5",
+    accent: "text-teal-400",
+    ring: "bg-teal-600/15",
   },
 ];
 
