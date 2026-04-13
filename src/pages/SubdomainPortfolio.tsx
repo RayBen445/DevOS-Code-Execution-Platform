@@ -43,17 +43,30 @@ export default function SubdomainPortfolio({ username }: Props) {
         setUid(uid);
         const userData = userSnap.docs[0].data();
 
-        // Fetch settings doc keyed by uid (user_settings/{uid})
-        const settingsSnap = await getDoc(doc(db, "user_settings", uid));
-        if (settingsSnap.exists()) {
-          const s = settingsSnap.data();
-          setUserSettings({
-            ...s,
-            // Normalise avatar: prefer avatarUrl, fall back to avatar or users doc
-            avatarUrl: s.avatarUrl || s.avatar || userData.avatarUrl || undefined,
-          } as UserSettings);
-        } else {
-          // Fall back to users doc fields
+        // Fetch settings doc keyed by uid (user_settings/{uid}).
+        // This may fail with permission-denied for unauthenticated visitors since
+        // the Firestore rule restricts user_settings reads to owners/admins only.
+        // Fall back gracefully to the public users doc in that case.
+        try {
+          const settingsSnap = await getDoc(doc(db, "user_settings", uid));
+          if (settingsSnap.exists()) {
+            const s = settingsSnap.data();
+            setUserSettings({
+              ...s,
+              // Normalise avatar: prefer avatarUrl, fall back to avatar or users doc
+              avatarUrl: s.avatarUrl || s.avatar || userData.avatarUrl || undefined,
+            } as UserSettings);
+          } else {
+            // Fall back to users doc fields
+            setUserSettings({
+              username: userData.username,
+              displayName: userData.displayName || userData.username,
+              avatarUrl: userData.avatarUrl || undefined,
+              bio: userData.bio,
+            } as UserSettings);
+          }
+        } catch (_settingsErr) {
+          // Permission denied or network error — use public users doc only
           setUserSettings({
             username: userData.username,
             displayName: userData.displayName || userData.username,
