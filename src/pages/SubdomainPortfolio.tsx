@@ -12,6 +12,7 @@ import { cn } from "../lib/utils";
 import ActivityGraph from "../components/ActivityGraph";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { buildDevosUrl, buildPortfolioUrl, buildProjectUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
 
 interface Props {
   username: string;
@@ -25,11 +26,11 @@ export default function SubdomainPortfolio({ username }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const portfolioUrl = `https://${username}.devos.name.ng`;
+  const portfolioUrl = buildPortfolioUrl(username);
 
   useSEO({
-    title: userSettings ? `${userSettings.displayName || username} — DevOS` : `${username} — DevOS`,
-    description: userSettings?.bio || `${username}'s portfolio on DevOS`,
+    title: userSettings ? `${userSettings.displayName || username} — ${PRODUCT_BRAND_NAME}` : `${username} — ${PRODUCT_BRAND_NAME}`,
+    description: userSettings?.bio || `${username}'s portfolio on ${PRODUCT_BRAND_NAME}`,
     ogImage: userSettings?.avatarUrl,
     ogUrl: portfolioUrl,
   });
@@ -134,7 +135,7 @@ export default function SubdomainPortfolio({ username }: Props) {
         </div>
         <h1 className="text-3xl font-bold text-white">{error || "Portfolio not found"}</h1>
         <p className="text-white/40 max-w-sm">The portfolio you're looking for doesn't exist or has been moved.</p>
-        <a href="https://devos.name.ng" className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all">
+        <a href={buildDevosUrl()} className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all">
           Go to DevOS
         </a>
       </div>
@@ -255,8 +256,8 @@ export default function SubdomainPortfolio({ username }: Props) {
           <div className="grid sm:grid-cols-2 gap-4">
             {projects.map((project, i) => {
               const projectUrl = project.projectSlug || project.slug
-                ? `https://${project.projectSlug || project.slug}.${username}.devos.name.ng`
-                : `https://devos.name.ng/project/${project.id}`;
+                ? buildProjectUrl(username, project.projectSlug || project.slug || "")
+                : buildDevosUrl(`project/${project.id}`);
               return (
                 <motion.a
                   key={project.id}
@@ -322,13 +323,12 @@ export default function SubdomainPortfolio({ username }: Props) {
 
       {/* Footer */}
       <footer className="border-t border-white/5 py-8 text-center">
-        <a href="https://devos.name.ng" className="inline-flex items-center gap-2 text-white/20 text-xs hover:text-white/50 transition-colors">
+        <a href={buildDevosUrl()} className="inline-flex items-center gap-2 text-white/20 text-xs hover:text-white/50 transition-colors">
           <Zap className="w-3.5 h-3.5" />
-          Powered by DevOS
+          Powered by {PRODUCT_BRAND_NAME}
         </a>
       </footer>
     </div>
   );
 }
-
 

@@ -210,7 +210,7 @@ export interface UserProfile {
   displayName: string;
   avatarUrl: string;
   bio: string;
-  /** Automatically assigned on signup: <username>.devos.name.ng */
+  /** Automatically assigned on signup: <username>.kontyra.name.ng */
   subdomain?: string;
   birthday?: string;        // ISO date string YYYY-MM-DD
   role?: 'user' | 'admin' | 'company';

@@ -13,6 +13,7 @@ import { Project, FileData } from "../types";
 import { Zap, AlertCircle } from "lucide-react";
 import { useSEO } from "../hooks/useSEO";
 import * as Babel from "@babel/standalone";
+import { buildDevosUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
 
 interface Props {
   username: string;
@@ -20,7 +21,7 @@ interface Props {
 }
 
 /**
- * Renders a project preview for `previewId.username.devos.name.ng`.
+ * Renders a project preview for `previewId.username.kontyra.name.ng`.
  *
  * Lookup order:
  *   1. ownerUsername == username && projectSlug == previewId (public projects)
@@ -34,9 +35,9 @@ export default function SubdomainPreview({ username, previewId }: Props) {
 
   useSEO({
     title: project
-      ? `${project.title || project.name} — ${username} on DevOS`
-      : `Preview — ${username} on DevOS`,
-    description: project?.description || `Project preview on DevOS`,
+      ? `${project.title || project.name} — ${username} on ${PRODUCT_BRAND_NAME}`
+      : `Preview — ${username} on ${PRODUCT_BRAND_NAME}`,
+    description: project?.description || `Project preview on ${PRODUCT_BRAND_NAME}`,
   });
 
   useEffect(() => {
@@ -135,7 +136,7 @@ export default function SubdomainPreview({ username, previewId }: Props) {
         <p className="text-xl font-bold">Preview not found</p>
         <p className="text-white/50 text-sm">{error}</p>
         <a
-          href="https://devos.name.ng"
+          href={buildDevosUrl()}
           className="mt-4 text-blue-400 hover:underline text-sm"
         >
           Go to DevOS

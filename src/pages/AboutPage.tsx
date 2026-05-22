@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
+import { PRODUCT_BRAND_NAME } from "../lib/brand";
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
@@ -57,8 +58,8 @@ const TEAM = [
 
 export default function AboutPage() {
   useSEO({
-    title: "About — DevOS",
-    description: "Learn about DevOS — the cloud IDE built for builders who want to ship faster.",
+    title: `About — ${PRODUCT_BRAND_NAME}`,
+    description: `Learn about ${PRODUCT_BRAND_NAME} — the cloud IDE built for builders who want to ship faster.`,
   });
 
   return (
@@ -90,7 +91,7 @@ export default function AboutPage() {
               </span>
             </h1>
             <p className="text-lg text-white/50 max-w-2xl mx-auto leading-relaxed">
-              DevOS started as a frustration — too much time wasted on environment setup, config files, and deployment complexity.
+              {PRODUCT_BRAND_NAME} started as a frustration — too much time wasted on environment setup, config files, and deployment complexity.
               We built a cloud IDE that removes all of that, so developers can focus on what they love: writing code and shipping products.
             </p>
           </motion.div>

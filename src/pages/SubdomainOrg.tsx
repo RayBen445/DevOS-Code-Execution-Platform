@@ -11,6 +11,7 @@ import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { buildDevosUrl, buildOrgUrl, buildPortfolioUrl, buildProjectUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
 
 interface Props {
   slug: string;
@@ -24,11 +25,11 @@ export default function SubdomainOrg({ slug }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const orgUrl = `https://${slug}.devos.name.ng`;
+  const orgUrl = buildOrgUrl(slug);
 
   useSEO({
-    title: org ? `${org.name} — DevOS Org` : `${slug} — DevOS`,
-    description: org?.description || `${slug}'s organization on DevOS`,
+    title: org ? `${org.name} — ${PRODUCT_BRAND_NAME}` : `${slug} — ${PRODUCT_BRAND_NAME}`,
+    description: org?.description || `${slug}'s organization on ${PRODUCT_BRAND_NAME}`,
     ogUrl: orgUrl,
   });
 
@@ -50,13 +51,22 @@ export default function SubdomainOrg({ slug }: Props) {
 
         // Load public org projects
         try {
-          const projQ = query(
+          let projQ = query(
             collection(db, "projects"),
-            where("orgId", "==", orgData.id),
+            where("ownerOrgId", "==", orgData.id),
             where("isPublic", "==", true),
             limit(18)
           );
-          const projSnap = await getDocs(projQ);
+          let projSnap = await getDocs(projQ);
+          if (projSnap.empty) {
+            projQ = query(
+              collection(db, "projects"),
+              where("orgId", "==", orgData.id),
+              where("isPublic", "==", true),
+              limit(18)
+            );
+            projSnap = await getDocs(projQ);
+          }
           const list = projSnap.docs.map(d => ({ id: d.id, ...d.data() } as Project));
           list.sort((a, b) => {
             const aT = (a.updatedAt as any)?.seconds ?? 0;
@@ -105,7 +115,7 @@ export default function SubdomainOrg({ slug }: Props) {
         <h1 className="text-3xl font-bold text-white">{error || "Organization not found"}</h1>
         <p className="text-white/40 max-w-sm">This organization doesn't exist or may have been removed.</p>
         <a
-          href="https://devos.zone.id"
+          href={buildDevosUrl()}
           className="mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all"
         >
           Go to DevOS
@@ -157,7 +167,7 @@ export default function SubdomainOrg({ slug }: Props) {
                 {org.isPublic ? "Public" : "Private"}
               </span>
             </div>
-            <p className="text-white/40 text-sm font-mono mb-2">{slug}.devos.name.ng</p>
+            <p className="text-white/40 text-sm font-mono mb-2">{orgUrl.replace(/^https?:\/\//, "")}</p>
             {org.description && (
               <p className="text-white/60 text-sm leading-relaxed max-w-lg">{org.description}</p>
             )}
@@ -177,7 +187,7 @@ export default function SubdomainOrg({ slug }: Props) {
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Share2 className="w-4 h-4" />}
             </button>
             <a
-              href={`https://devos.zone.id/org/${slug}`}
+              href={buildDevosUrl(`org/${slug}`)}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-lg shadow-blue-600/20"
             >
               View on DevOS
@@ -200,7 +210,7 @@ export default function SubdomainOrg({ slug }: Props) {
               {members.slice(0, 12).map((member, i) => (
                 <motion.a
                   key={member.id}
-                  href={`https://${member.username}.devos.name.ng`}
+                  href={buildPortfolioUrl(member.username)}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
@@ -243,9 +253,9 @@ export default function SubdomainOrg({ slug }: Props) {
               {projects.map((project, i) => {
                 const ownerUsername = project.ownerUsername || "";
                 const projectUrl =
-                  project.projectSlug || project.slug
-                    ? `https://${project.projectSlug || project.slug}.${ownerUsername}.devos.name.ng`
-                    : `https://devos.zone.id/project/${project.id}`;
+                  (project.projectSlug || project.slug) && ownerUsername
+                    ? buildProjectUrl(ownerUsername, project.projectSlug || project.slug || "")
+                    : buildDevosUrl(`project/${project.id}`);
                 return (
                   <motion.a
                     key={project.id}
@@ -287,9 +297,9 @@ export default function SubdomainOrg({ slug }: Props) {
 
       {/* Footer */}
       <footer className="border-t border-white/5 py-8 text-center">
-        <a href="https://devos.zone.id" className="inline-flex items-center gap-2 text-white/20 text-xs hover:text-white/50 transition-colors">
+        <a href={buildDevosUrl()} className="inline-flex items-center gap-2 text-white/20 text-xs hover:text-white/50 transition-colors">
           <Zap className="w-3.5 h-3.5" />
-          Powered by DevOS
+          Powered by {PRODUCT_BRAND_NAME}
         </a>
       </footer>
     </div>
