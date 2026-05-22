@@ -167,7 +167,7 @@ export default function SubdomainOrg({ slug }: Props) {
                 {org.isPublic ? "Public" : "Private"}
               </span>
             </div>
-            <p className="text-white/40 text-sm font-mono mb-2">{orgUrl}</p>
+            <p className="text-white/40 text-sm font-mono mb-2">{orgUrl.replace(/^https?:\/\//, "")}</p>
             {org.description && (
               <p className="text-white/60 text-sm leading-relaxed max-w-lg">{org.description}</p>
             )}
