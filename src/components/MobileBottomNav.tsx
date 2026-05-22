@@ -51,7 +51,7 @@ export default function MobileBottomNav() {
   const tabs = navButtons.map((id) => {
     const opt = ALL_NAV_OPTIONS.find((o) => o.id === id)!;
     const href = opt.href === "__profile__"
-      ? (username ? `/u/${username}` : "/settings")
+      ? (username ? `/@${username}` : "/settings")
       : opt.href;
     return { href, icon: opt.icon, label: opt.label };
   });

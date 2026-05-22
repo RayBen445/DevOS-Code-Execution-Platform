@@ -124,7 +124,7 @@ function SectionContent({ id }: { id: string }) {
           <SectionHeading icon={FileText} title="Agreement to Terms" id="agreement" />
           <Body>
             These Terms of Service ("Terms") constitute a legally binding agreement between you ("User", "you") and DevOS
-            ("DevOS", "we", "us", "our") — a product of Cool Shot Systems · Tech Visionaries Network — governing your
+            ("DevOS", "we", "us", "our") — a product of Kontyra and Tech Visionary Network — governing your
             access to and use of the DevOS cloud development platform, including the IDE, deployment infrastructure,
             social feed, and all related services available at{" "}
             <span className="text-violet-400 font-mono text-xs">devos.zone.id</span> (collectively, the "Service").
@@ -483,7 +483,7 @@ function SectionContent({ id }: { id: string }) {
           <div className="mt-4 glass border border-white/[0.06] rounded-2xl p-5">
             <p className="text-xs font-bold uppercase tracking-widest text-white/25 mb-2">Registered entity</p>
             <p className="text-sm text-white/50 leading-relaxed">
-              DevOS · Cool Shot Systems · Tech Visionaries Network
+              DevOS · Kontyra and Tech Visionary Network
             </p>
           </div>
         </div>
@@ -591,7 +591,7 @@ export default function TermsPage() {
             </motion.div>
           ))}
           <div className="text-center py-6 border-t border-white/[0.05]">
-            <p className="text-xs text-white/20">© {new Date().getFullYear()} DevOS · Cool Shot Systems · Tech Visionaries Network</p>
+            <p className="text-xs text-white/20">© {new Date().getFullYear()} DevOS · Kontyra and Tech Visionary Network</p>
             <p className="text-xs text-white/15 mt-1">Last Updated: {LAST_UPDATED}</p>
             <div className="flex items-center justify-center gap-4 mt-4">
               <Link to="/privacy" className="text-xs text-white/30 hover:text-white/60 transition-colors">Privacy Policy</Link>

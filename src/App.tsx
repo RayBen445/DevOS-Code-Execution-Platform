@@ -100,15 +100,17 @@ function RouteTracker({ user }: { user: any }) {
   return null;
 }
 
-/** /u/:username renders the portfolio inline (no subdomain redirect). */
+/** /u/:username redirects to canonical /@:username routes. */
 function LegacyPortfolioRedirect() {
   const { username, projectSlug } = useParams<{ username: string; projectSlug?: string }>();
+  const location = useLocation();
+  if (!username) return <NotFoundPage />;
   if (projectSlug) {
-    // /u/:username/:projectSlug → /@:username/:projectSlug (ProjectPreview)
-    return <Navigate to={`/@${username}/${projectSlug}`} replace />;
+    // /u/:username/:projectSlug → /@:username/:projectSlug
+    return <Navigate to={`/@${username}/${projectSlug}${location.search}`} replace />;
   }
-  // /u/:username → render Portfolio inline
-  return <Portfolio />;
+  // /u/:username → /@:username (then subdomain redirect)
+  return <Navigate to={`/@${username}${location.search}`} replace />;
 }
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
@@ -447,12 +449,12 @@ export default function App() {
             <Route path="/not-found" element={<NotFoundPage />} />
             <Route path="/@:username" element={withPageMaintenance("/u", <AtUsernameRoute />)} />
             <Route path="/@:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
-            <Route path="/u/:username" element={<LegacyPortfolioRedirect />} />
-            <Route path="/u/:username/:projectSlug" element={<LegacyPortfolioRedirect />} />
+            <Route path="/u/:username" element={withPageMaintenance("/u", <LegacyPortfolioRedirect />)} />
+            <Route path="/u/:username/:projectSlug" element={withPageMaintenance("/u", <LegacyPortfolioRedirect />)} />
             {/* /projects — full dashboard & project management */}
             <Route
               path="/projects"
-              element={user ? DashboardView : (
+              element={user ? withPageMaintenance("/projects", DashboardView) : (
                 <>
                   <Home setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
                   <AnimatePresence>

@@ -639,7 +639,7 @@ function SectionContent({ id }: { id: string }) {
           <div className="mt-6 glass border border-white/[0.07] rounded-2xl p-5">
             <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Registered entity</p>
             <p className="text-sm text-white/60 leading-relaxed">
-              DevOS · Cool Shot Systems · Tech Visionaries Network<br />
+              DevOS · Kontyra and Tech Visionary Network<br />
               <a href="mailto:info@devos.zone.id" className="text-blue-400 hover:text-blue-300 transition-colors">
                 info@devos.zone.id
               </a>
@@ -800,7 +800,7 @@ export default function PrivacyPage() {
           {/* Footer note */}
           <div className="text-center py-6 border-t border-white/[0.05]">
             <p className="text-xs text-white/20">
-              © {new Date().getFullYear()} DevOS · Cool Shot Systems · Tech Visionaries Network
+              © {new Date().getFullYear()} DevOS · Kontyra and Tech Visionary Network
             </p>
             <p className="text-xs text-white/15 mt-1">
               Last Updated: {LAST_UPDATED}

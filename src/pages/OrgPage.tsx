@@ -416,7 +416,7 @@ export default function OrgPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8 pb-24 md:pb-8">
+      <main className="flex-1 w-full px-4 md:px-8 py-8 pb-24 md:pb-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
           <div className="w-16 h-16 rounded-xl bg-[#1a1a2e] border border-gray-800 flex items-center justify-center overflow-hidden flex-shrink-0">

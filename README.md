@@ -151,4 +151,4 @@ See **[TESTING.md](./TESTING.md)** for instructions on setting up a test account
 
 ## 📄 License
 
-© Cool Shot Systems / Tech Visionaries Network. All rights reserved.
+© Kontyra and Tech Visionary Network. All rights reserved.

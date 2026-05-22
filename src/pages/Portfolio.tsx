@@ -268,7 +268,7 @@ export default function Portfolio() {
       </div>
 
       {/* Header / Profile Section */}
-      <header className="relative max-w-5xl mx-auto pt-32 pb-20 px-6">
+      <header className="relative w-full pt-32 pb-20 px-6 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -422,7 +422,7 @@ export default function Portfolio() {
       </header>
 
       {/* Tabs + main content */}
-      <main className="relative max-w-5xl mx-auto px-6 pb-32">
+      <main className="relative w-full px-6 md:px-8 pb-32">
         {/* Tab nav */}
         <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl mb-10 w-fit">
           {(["projects", "posts", "about"] as PortfolioTab[]).map((tab) => (
@@ -734,13 +734,13 @@ export default function Portfolio() {
 
       {/* Activity Graph */}
       {uid && (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-10">
+        <div className="w-full px-4 sm:px-6 md:px-8 pb-10">
           <ActivityGraph userId={uid} />
         </div>
       )}
 
       {/* Footer */}
-      <footer className="relative max-w-5xl mx-auto px-6 py-20 border-t border-white/5 text-center">
+      <footer className="relative w-full px-6 md:px-8 py-20 border-t border-white/5 text-center">
         <div className="flex flex-col items-center gap-6">
           <Link to="/" className="group inline-flex flex-col items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-blue-600 group-hover:border-blue-500 transition-all duration-500">
