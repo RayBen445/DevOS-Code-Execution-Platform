@@ -205,7 +205,7 @@ export default function ProjectView() {
               <div className="absolute top-0 left-1/4 w-[600px] h-[300px] bg-blue-600/8 blur-[100px] rounded-full" />
               <div className="absolute top-0 right-1/4 w-[400px] h-[200px] bg-purple-600/8 blur-[100px] rounded-full" />
             </div>
-            <div className="relative max-w-4xl mx-auto px-6 py-16 md:py-24">
+            <div className="relative w-full px-6 md:px-8 py-16 md:py-24">
               <button
                 onClick={() => navigate(-1)}
                 className="flex items-center gap-2 text-sm text-white/40 hover:text-white transition-colors mb-8"
@@ -315,7 +315,7 @@ export default function ProjectView() {
           </div>
 
           {/* Preview section */}
-          <div className="max-w-4xl mx-auto px-6 py-10">
+          <div className="w-full px-6 md:px-8 py-10">
             {files.length > 0 && (
               <div className="mb-10">
                 <button
@@ -401,7 +401,7 @@ export default function ProjectView() {
         </Link>
       </div>
 
-      <main className="flex-1 pb-16 md:pb-0 max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12">
+      <main className="flex-1 pb-16 md:pb-0 w-full px-4 md:px-8 py-8 md:py-12">
         {/* Back */}
         <button
           onClick={() => navigate(-1)}

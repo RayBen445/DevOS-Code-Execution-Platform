@@ -449,12 +449,12 @@ export default function App() {
             <Route path="/not-found" element={<NotFoundPage />} />
             <Route path="/@:username" element={withPageMaintenance("/u", <AtUsernameRoute />)} />
             <Route path="/@:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
-            <Route path="/u/:username" element={<LegacyPortfolioRedirect />} />
-            <Route path="/u/:username/:projectSlug" element={<LegacyPortfolioRedirect />} />
+            <Route path="/u/:username" element={withPageMaintenance("/u", <LegacyPortfolioRedirect />)} />
+            <Route path="/u/:username/:projectSlug" element={withPageMaintenance("/u", <LegacyPortfolioRedirect />)} />
             {/* /projects — full dashboard & project management */}
             <Route
               path="/projects"
-              element={user ? DashboardView : (
+              element={user ? withPageMaintenance("/projects", DashboardView) : (
                 <>
                   <Home setShowLogin={setShowLogin} setShowSignup={setShowSignup} />
                   <AnimatePresence>

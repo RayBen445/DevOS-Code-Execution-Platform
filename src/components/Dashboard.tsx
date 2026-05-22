@@ -808,7 +808,7 @@ p {
 
   useSEO({ title: isOrgWorkspace && context?.type === "org" ? `${context.name} — DevOS` : "Dashboard — DevOS" });
   return (
-    <div className="max-w-6xl mx-auto p-8">
+    <div className="w-full px-4 md:px-8 py-8">
       {/* Workspace Banner */}
       {isOrgWorkspace && context?.type === "org" && (
         <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
