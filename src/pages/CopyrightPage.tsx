@@ -246,8 +246,8 @@ function SectionContent({ id }: { id: string }) {
           <SectionHeading icon={FileSearch} title="DevOS Intellectual Property" id="devos-ip" />
           <Body>
             All elements of the DevOS platform — including source code, design, logos, trademarks, and
-            documentation — are the intellectual property of DevOS / Kontyra and Tech Visionary
-            Network, protected by copyright and other applicable laws.
+            documentation — are the intellectual property of DevOS / Kontyra and Tech Visionary Network,
+            protected by copyright and other applicable laws.
           </Body>
           <Sub>What you may do</Sub>
           <BulletList items={[
