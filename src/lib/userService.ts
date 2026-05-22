@@ -259,6 +259,7 @@ export const createPortfolioProject = async (uid: string, username: string): Pro
     description: "Your professional developer portfolio, managed by DevOS by KONTYRA.",
     ownerId: uid,
     ownerUsername: username,
+    // Portfolio projects are always owned by an individual user account.
     ownerType: "user",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

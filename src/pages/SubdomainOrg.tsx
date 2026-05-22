@@ -51,22 +51,22 @@ export default function SubdomainOrg({ slug }: Props) {
 
         // Load public org projects
         try {
-          let projQ = query(
-            collection(db, "projects"),
-            where("ownerOrgId", "==", orgData.id),
-            where("isPublic", "==", true),
-            limit(18)
-          );
-          let projSnap = await getDocs(projQ);
-          if (projSnap.empty) {
-            projQ = query(
-              collection(db, "projects"),
+          const projectsRef = collection(db, "projects");
+          const [ownerOrgProjectsSnap, legacyOrgProjectsSnap] = await Promise.all([
+            getDocs(query(
+              projectsRef,
+              where("ownerOrgId", "==", orgData.id),
+              where("isPublic", "==", true),
+              limit(18)
+            )),
+            getDocs(query(
+              projectsRef,
               where("orgId", "==", orgData.id),
               where("isPublic", "==", true),
               limit(18)
-            );
-            projSnap = await getDocs(projQ);
-          }
+            )),
+          ]);
+          const projSnap = ownerOrgProjectsSnap.empty ? legacyOrgProjectsSnap : ownerOrgProjectsSnap;
           const list = projSnap.docs.map(d => ({ id: d.id, ...d.data() } as Project));
           list.sort((a, b) => {
             const aT = (a.updatedAt as any)?.seconds ?? 0;
@@ -167,7 +167,7 @@ export default function SubdomainOrg({ slug }: Props) {
                 {org.isPublic ? "Public" : "Private"}
               </span>
             </div>
-            <p className="text-white/40 text-sm font-mono mb-2">{orgUrl.replace(/^https?:\/\//, "")}</p>
+            <p className="text-white/40 text-sm font-mono mb-2">{orgUrl}</p>
             {org.description && (
               <p className="text-white/60 text-sm leading-relaxed max-w-lg">{org.description}</p>
             )}
