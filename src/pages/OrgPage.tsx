@@ -31,6 +31,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
+import { buildOrgUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
 import { resolveAvatar } from "../lib/avatars";
 import { toast } from "sonner";
 import { sendNotification } from "../lib/notificationService";
@@ -107,7 +108,7 @@ export default function OrgPage() {
   const [siteConfig, setSiteConfig] = useState(SITE_CONFIG_DEFAULTS);
 
   const copyOrgLink = () => {
-    navigator.clipboard.writeText(`https://${slug}.devos.name.ng`).then(() => {
+    navigator.clipboard.writeText(buildOrgUrl(slug ?? "")).then(() => {
       setLinkCopied(true);
       toast.success("Link copied!");
       setTimeout(() => setLinkCopied(false), 2000);
@@ -117,8 +118,8 @@ export default function OrgPage() {
   };
 
   useSEO({
-    title: org ? `${org.name} — DevOS` : "Organization — DevOS",
-    description: org?.description ?? "DevOS organization page",
+    title: org ? `${org.name} — ${PRODUCT_BRAND_NAME}` : `Organization — ${PRODUCT_BRAND_NAME}`,
+    description: org?.description ?? `${PRODUCT_BRAND_NAME} organization page`,
   });
 
   // Load org by slug

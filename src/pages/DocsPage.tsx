@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
+import { buildPortfolioUrl, buildProjectUrl, DEVOS_PRODUCT_HOST } from "../lib/brand";
 
 interface DocSection {
   id: string;
@@ -100,7 +101,7 @@ const sections: DocSection[] = [
         <Section title="How it works">
           Clicking <strong>Deploy</strong> (or running <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">deploy</code> in the terminal)
           publishes your project and generates a URL in the format{" "}
-          <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">devos.zone.id/@&lt;username&gt;/&lt;project-slug&gt;</code>.
+          <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">{buildProjectUrl("&lt;username&gt;", "&lt;project-slug&gt;").replace("https://", "")}</code>.
         </Section>
         <Section title="Live preview">
           The right panel shows a live preview that re-renders on every save. Use this to iterate
@@ -134,7 +135,7 @@ const sections: DocSection[] = [
         <p className="text-white/60 leading-relaxed">
           Every DevOS account comes with a personal portfolio page at{" "}
           <code className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-sm">
-            devos.zone.id/@&lt;username&gt;
+            {buildPortfolioUrl("&lt;username&gt;").replace("https://", "")}
           </code>
           .
         </p>
@@ -395,7 +396,7 @@ const sections: DocSection[] = [
           JavaScript and TypeScript files can be executed server-side via the terminal.
         </FAQItem>
         <FAQItem question="Can I use my own domain?">
-          Custom domains are on the roadmap. Currently all projects are served under devos.zone.id.
+          Custom domains are on the roadmap. Currently all DevOS projects are served under the KONTYRA wildcard domain.
         </FAQItem>
         <FAQItem question="Is my code private by default?">
           New projects are private by default. You must explicitly set a project to Public to make
@@ -588,7 +589,7 @@ const sections: DocSection[] = [
           DevOS ships official plugins for Auth (sign-up/sign-in), Database (Firestore-backed), Storage (file &amp; image uploads), Email (transactional), Realtime (WebSocket pub/sub), and more.
         </Section>
         <InfoBox>
-          All plugin APIs are served from <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">api.devos.name.ng</code> — no additional domain or DNS setup required.
+          DevOS is now served from <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">{DEVOS_PRODUCT_HOST}</code> with user and project hosts under the KONTYRA wildcard domain.
         </InfoBox>
       </div>
     ),

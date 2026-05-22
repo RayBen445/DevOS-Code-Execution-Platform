@@ -39,7 +39,6 @@ import BotsPage from "./pages/BotsPage";
 import Portfolio from "./pages/Portfolio";
 import NotFoundPage from "./pages/NotFoundPage";
 import SubdomainRouter from "./components/SubdomainRouter";
-import SubdomainPreview from "./pages/SubdomainPreview";
 import CommunitiesPage from "./pages/CommunitiesPage";
 import CommunityPage from "./pages/CommunityPage";
 import LearnPage from "./pages/LearnPage";
@@ -60,6 +59,7 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "./lib/firebase";
 import { signOut } from "firebase/auth";
 import { initializeDefaultBots, emitBotEventWithToast } from "./lib/botEngine";
+import { buildPortfolioUrl, getLegacyRedirectUrl, parseDevosHost } from "./lib/brand";
 
 import { Toaster } from "sonner";
 
@@ -115,7 +115,7 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
 
 /**
  * Handles /@:username routes.
- * Validates the username, then redirects the browser to https://<username>.devos.name.ng
+ * Validates the username, then redirects the browser to https://<username>.kontyra.name.ng
  * so that subdomain-based portfolio rendering takes over.
  * An invalid username shows a 404.
  */
@@ -127,9 +127,9 @@ function AtUsernameRoute() {
     return <NotFoundPage />;
   }
 
-  // Always redirect /@username → https://username.devos.name.ng
-  // (SubdomainRouter on *.devos.name.ng will render the portfolio)
-  window.location.replace(`https://${encodeURIComponent(username)}.devos.name.ng`);
+  // Always redirect /@username → https://username.kontyra.name.ng
+  // (SubdomainRouter on *.kontyra.name.ng will render the portfolio)
+  window.location.replace(buildPortfolioUrl(username));
   return null;
 }
 
@@ -140,25 +140,22 @@ function CommunitySlugRedirect({ chat = false }: { chat?: boolean }) {
 }
 
 export default function App() {
-  // Subdomain routing: *.devos.name.ng → render the appropriate component
+  // Subdomain routing: *.kontyra.name.ng → render the appropriate component
   // without full app chrome and without changing the browser URL.
   //
-  //   username.devos.name.ng          (4 parts) → SubdomainRouter (portfolio / project)
-  //   previewId.username.devos.name.ng (5 parts) → SubdomainPreview (project preview)
-  //
-  const hostname = window.location.hostname;
-  const hostParts = hostname.split(".");
-  if (hostname.endsWith(".devos.name.ng")) {
-    if (hostParts.length === 5) {
-      // projectSlug.username.devos.name.ng  — show that user's project
-      const [projectSlug, username] = hostParts;
-      return <SubdomainPreview username={username} previewId={projectSlug} />;
-    }
-    if (hostParts.length === 4) {
-      // username.devos.name.ng — portfolio, org, or standalone project
-      const [subdomain] = hostParts;
-      return <SubdomainRouter subdomain={subdomain} />;
-    }
+  //   username.kontyra.name.ng          → portfolio
+  //   project.username.kontyra.name.ng  → deployed project
+  const hostTarget = parseDevosHost(window.location.hostname);
+  if (hostTarget.kind === "portfolio") {
+    return <SubdomainRouter username={hostTarget.username} />;
+  }
+  if (hostTarget.kind === "project") {
+    return (
+      <SubdomainRouter
+        username={hostTarget.username}
+        projectSlug={hostTarget.projectSlug}
+      />
+    );
   }
 
   const [user, loading] = useAuthState(auth);
@@ -258,16 +255,13 @@ export default function App() {
 
   // Handle subdomain redirects for backward compatibility
   useEffect(() => {
-    const hostname = window.location.hostname;
-    if (hostname.includes("devos.zone.id")) {
-      const parts = hostname.split(".");
-      if (parts.length === 5) {
-        const [projectSlug, username] = parts;
-        window.location.href = `${window.location.origin}/@${username}/${projectSlug}`;
-      } else if (parts.length === 4) {
-        const [username] = parts;
-        window.location.href = `${window.location.origin}/@${username}`;
-      }
+    const redirectUrl = getLegacyRedirectUrl(
+      window.location.hostname,
+      window.location.pathname,
+      window.location.search
+    );
+    if (redirectUrl && redirectUrl !== window.location.href) {
+      window.location.replace(redirectUrl);
     }
   }, []);
 

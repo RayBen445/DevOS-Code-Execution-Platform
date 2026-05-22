@@ -24,6 +24,7 @@ import {
 } from "../lib/sessionManager";
 import { useActiveContext } from "../hooks/useActiveContext";
 import { useUITheme } from "../hooks/useUITheme";
+import { PRODUCT_NAV_LABEL } from "../lib/brand";
 
 interface NavbarProps {
   onSignIn?: () => void;
@@ -147,7 +148,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/25 transition-transform group-hover:scale-105">
             <Code2 className="w-5 h-5 text-white" />
           </div>
-          <span className="font-black text-lg tracking-tight text-white">DevOS</span>
+          <span className="font-black text-lg tracking-tight text-white">{PRODUCT_NAV_LABEL}</span>
         </Link>
         {user && (
           <div className="hidden md:flex items-center gap-1">

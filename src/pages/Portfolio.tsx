@@ -17,6 +17,7 @@ import FollowButton from "../components/FollowButton";
 import ActivityGraph from "../components/ActivityGraph";
 import { getFollowerCount, getFollowingCount } from "../lib/followService";
 import { subscribeFeed } from "../lib/feedService";
+import { buildPortfolioUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
 
 type PortfolioTab = "projects" | "posts" | "about";
 
@@ -180,8 +181,8 @@ export default function Portfolio() {
   const isOwner = !!(currentUser && uid && currentUser.uid === uid);
 
   useSEO({
-    title: `@${username ?? ""} — DevOS Portfolio`,
-    description: `Explore projects built by @${username ?? ""} on DevOS`,
+    title: `@${username ?? ""} — ${PRODUCT_BRAND_NAME}`,
+    description: `Explore projects built by @${username ?? ""} on ${PRODUCT_BRAND_NAME}`,
     ogImage: portfolioAvatarUrl,
     ogUrl: typeof window !== "undefined" ? window.location.href : undefined,
   });
@@ -410,7 +411,7 @@ export default function Portfolio() {
             )}
 
             <button
-              onClick={() => handleCopyLink(`https://${username}.devos.name.ng`, "profile")}
+              onClick={() => handleCopyLink(buildPortfolioUrl(username ?? ""), "profile")}
               title="Copy portfolio URL"
               className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90"
             >

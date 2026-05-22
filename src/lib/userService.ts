@@ -19,6 +19,7 @@ import { DEFAULT_USER_AVATAR } from "./avatars";
 import { getOrCreateReferralCode, processReferral } from "./referralService";
 import { joinOfficialCommunities } from "./communityService";
 import { joinOfficialOrgs } from "./orgService";
+import { buildPortfolioUrl, RESERVED_SUBDOMAINS } from "./brand";
 
 const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "oladoyeheritage445@gmail.com";
 
@@ -51,9 +52,9 @@ export const registerUserProfile = async (
     displayName: profile.fullName || profile.username,
     fullName: profile.fullName,
     avatarUrl: avatar,
-    bio: "Building the future on DevOS.",
+    bio: "Building the future with DevOS by KONTYRA.",
     role: isAdmin ? "admin" : "user",
-    subdomain: `${profile.username.toLowerCase()}.devos.name.ng`,
+    subdomain: buildPortfolioUrl(profile.username).replace(/^https?:\/\//, ""),
     updatedAt: serverTimestamp(),
   });
 
@@ -62,7 +63,7 @@ export const registerUserProfile = async (
     displayName: profile.fullName || profile.username,
     fullName: profile.fullName,
     avatarUrl: avatar,
-    bio: "Building the future on DevOS.",
+    bio: "Building the future with DevOS by KONTYRA.",
     updatedAt: serverTimestamp(),
   });
 
@@ -120,9 +121,9 @@ export const initializeUser = async (user: any) => {
       username,
       displayName: user.displayName || username,
       avatarUrl: avatar,
-      bio: "Building the future on DevOS.",
+      bio: "Building the future with DevOS by KONTYRA.",
       role: isAdmin ? "admin" : "user",
-      subdomain: `${username.toLowerCase()}.devos.name.ng`,
+      subdomain: buildPortfolioUrl(username).replace(/^https?:\/\//, ""),
       updatedAt: serverTimestamp(),
     });
 
@@ -131,7 +132,7 @@ export const initializeUser = async (user: any) => {
       username,
       displayName: user.displayName || username,
       avatarUrl: avatar,
-      bio: "Building the future on DevOS.",
+      bio: "Building the future with DevOS by KONTYRA.",
       updatedAt: serverTimestamp(),
     });
 
@@ -215,6 +216,8 @@ export const initializeUser = async (user: any) => {
 export const checkUsernameAvailable = async (username: string): Promise<boolean> => {
   const lower = username.toLowerCase();
 
+  if (RESERVED_SUBDOMAINS.has(lower)) return false;
+
   // Check the reserved list first. Silently skip if the collection is
   // unreachable (e.g. rules not yet deployed in this environment).
   try {
@@ -253,9 +256,11 @@ export const createPortfolioProject = async (uid: string, username: string): Pro
 
   const projectData = {
     name: "My Portfolio",
-    description: "Your professional developer portfolio, managed by DevOS.",
+    description: "Your professional developer portfolio, managed by DevOS by KONTYRA.",
     ownerId: uid,
     ownerUsername: username,
+    // Portfolio projects are always owned by an individual user account.
+    ownerType: "user",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     collaborators: [],

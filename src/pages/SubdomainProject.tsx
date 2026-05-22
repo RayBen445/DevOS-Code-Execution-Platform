@@ -4,10 +4,11 @@ import { collection, query, where, getDocs, limit, doc, getDoc } from "firebase/
 import { Project } from "../types";
 import { Zap, AlertCircle } from "lucide-react";
 import { useSEO } from "../hooks/useSEO";
+import { buildDevosUrl, buildPortfolioUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
 
 interface Props {
   slug: string;
-  /** When rendered via a user subdomain (e.g. professor.devos.name.ng/slug),
+  /** When rendered via a user subdomain (e.g. project.professor.kontyra.name.ng),
    *  this is the owner's username so we can show a back link to their portfolio. */
   ownerUsername?: string;
 }
@@ -19,8 +20,8 @@ export default function SubdomainProject({ slug, ownerUsername }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useSEO({
-    title: project ? `${project.title || project.name} — DevOS` : `${slug} — DevOS`,
-    description: project?.description || `A project deployed on DevOS`,
+    title: project ? `${project.title || project.name} — ${PRODUCT_BRAND_NAME}` : `${slug} — ${PRODUCT_BRAND_NAME}`,
+    description: project?.description || `A project deployed on ${PRODUCT_BRAND_NAME}`,
   });
 
   useEffect(() => {
@@ -111,9 +112,9 @@ export default function SubdomainProject({ slug, ownerUsername }: Props) {
         <AlertCircle className="w-10 h-10 text-red-400" />
         <p className="text-lg">{error || "Project not found"}</p>
         {ownerUsername && (
-          <a href="/" aria-label={`Return to ${ownerUsername}'s portfolio`} className="text-blue-400 hover:underline text-sm">← Back to {ownerUsername}'s portfolio</a>
+          <a href={buildPortfolioUrl(ownerUsername)} aria-label={`Return to ${ownerUsername}'s portfolio`} className="text-blue-400 hover:underline text-sm">← Back to {ownerUsername}'s portfolio</a>
         )}
-        <a href="https://devos.name.ng" className="text-blue-400 hover:underline text-sm">Go to DevOS</a>
+        <a href={buildDevosUrl()} className="text-blue-400 hover:underline text-sm">Go to DevOS</a>
       </div>
     );
   }
@@ -149,18 +150,18 @@ export default function SubdomainProject({ slug, ownerUsername }: Props) {
       <h1 className="text-3xl font-bold">{project.title || project.name}</h1>
       {project.description && <p className="text-white/60 max-w-md text-center">{project.description}</p>}
       <a
-        href={`https://devos.name.ng/project/${project.id}`}
+        href={buildDevosUrl(`project/${project.id}`)}
         className="mt-4 px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors"
       >
         Open in DevOS IDE
       </a>
       {ownerUsername && (
-        <a href="/" aria-label={`Return to ${ownerUsername}'s portfolio`} className="text-white/40 text-sm hover:text-white/70 transition-colors mt-2">
+        <a href={buildPortfolioUrl(ownerUsername)} aria-label={`Return to ${ownerUsername}'s portfolio`} className="text-white/40 text-sm hover:text-white/70 transition-colors mt-2">
           ← Back to {ownerUsername}'s portfolio
         </a>
       )}
-      <a href="https://devos.name.ng" className="text-white/20 text-xs hover:text-white/40 transition-colors mt-8">
-        Powered by DevOS
+      <a href={buildDevosUrl()} className="text-white/20 text-xs hover:text-white/40 transition-colors mt-8">
+        Powered by {PRODUCT_BRAND_NAME}
       </a>
     </div>
   );

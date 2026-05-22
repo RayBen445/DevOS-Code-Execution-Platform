@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { DEVOS_CANONICAL_ORIGIN, PRODUCT_BRAND_NAME, PRODUCT_DESCRIPTION } from "../lib/brand";
 
 interface SEOOptions {
   title: string;
@@ -9,7 +10,7 @@ interface SEOOptions {
 }
 
 const DEFAULT_DESCRIPTION =
-  "Cloud-based development platform for building, deploying, and showcasing projects instantly.";
+  PRODUCT_DESCRIPTION;
 const DEFAULT_OG_IMAGE =
   "https://image2url.com/r2/default/images/1775049565777-edb4a68b-6591-4227-80b7-53b5e322c58b.png";
 
@@ -46,11 +47,12 @@ export function useSEO({
     setMeta("theme-color", "#0a0a0a");
 
     // OG tags
+    setMeta("og:site_name", PRODUCT_BRAND_NAME, true);
     setMeta("og:title", title, true);
     setMeta("og:description", description, true);
     setMeta("og:image", ogImage, true);
     setMeta("og:type", "website", true);
-    if (ogUrl) setMeta("og:url", ogUrl, true);
+    setMeta("og:url", ogUrl || DEVOS_CANONICAL_ORIGIN, true);
 
     // Twitter tags
     setMeta("twitter:card", twitterCard);
@@ -59,7 +61,7 @@ export function useSEO({
     setMeta("twitter:image", ogImage);
 
     return () => {
-      document.title = "DevOS — Code in the Cloud";
+      document.title = `${PRODUCT_BRAND_NAME} — Cloud Developer Platform`;
     };
   }, [title, description, ogImage, ogUrl, twitterCard]);
 }
