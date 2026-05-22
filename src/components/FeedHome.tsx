@@ -58,6 +58,7 @@ import Footer from "./Footer";
 import MobileBottomNav from "./MobileBottomNav";
 import Avatar from "./Avatar";
 import ConfirmModal from "./ConfirmModal";
+import { MarkdownContent } from "./MarkdownContent";
 import { useSEO } from "../hooks/useSEO";
 import { emitBotEventWithToast } from "../lib/botEngine";
 import { toast } from "sonner";
@@ -1173,7 +1174,9 @@ function FeedItem({
 
       {/* Content (only show if not a silent repost) */}
       {post.content && (
-        <p className="text-sm text-white/70 leading-relaxed mb-3">{post.content}</p>
+        <div className="mb-3">
+          <MarkdownContent text={post.content} className="text-sm" />
+        </div>
       )}
 
       {/* Embedded original post (for reposts) */}
@@ -1258,17 +1261,6 @@ function FeedItem({
           <Repeat2 className="w-4 h-4" />
           {(post.repostCount ?? 0) > 0 && <span>{post.repostCount}</span>}
         </button>
-
-        {/* Comment toggle */}
-        <button
-          onClick={() => setShowComments((v) => !v)}
-          className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-white/40 hover:text-white/70 hover:bg-white/5 transition-all"
-          aria-label="View comments"
-        >
-          <MessageCircle className="w-3.5 h-3.5" />
-          {(post.commentsCount ?? 0) > 0 && <span>{post.commentsCount}</span>}
-        </button>
-
 
         {/* Share as Image */}
         <button
@@ -1391,7 +1383,9 @@ function FeedItem({
               {/* Original post preview */}
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 mb-4">
                 <p className="text-xs font-semibold text-white/50 mb-1">@{post.username}</p>
-                <p className="text-xs text-white/60 leading-relaxed line-clamp-3">{post.content}</p>
+                <div className="text-xs leading-relaxed line-clamp-3">
+                  <MarkdownContent text={post.content} className="text-xs" />
+                </div>
               </div>
 
               <div className="flex gap-2">
