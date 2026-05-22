@@ -410,7 +410,8 @@ export default function Portfolio() {
             )}
 
             <button
-              onClick={() => handleCopyLink(window.location.href, "profile")}
+              onClick={() => handleCopyLink(`https://${username}.devos.name.ng`, "profile")}
+              title="Copy portfolio URL"
               className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90"
             >
               <Share2 className="w-4 h-4" />

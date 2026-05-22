@@ -3,11 +3,12 @@ import { db } from "../lib/firebase";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import SubdomainPortfolio from "../pages/SubdomainPortfolio";
 import SubdomainProject from "../pages/SubdomainProject";
+import SubdomainOrg from "../pages/SubdomainOrg";
 import { Zap, AlertCircle } from "lucide-react";
 
 const RESERVED = new Set(["www", "admin", "api", "devos", "app", "mail", "ftp", "localhost"]);
 
-type SubdomainType = "loading" | "user" | "project" | "reserved" | "not-found";
+type SubdomainType = "loading" | "user" | "project" | "org" | "reserved" | "not-found";
 
 // ── In-memory cache for subdomain resolution (TTL: 5 minutes) ────────────────
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -50,7 +51,7 @@ export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
 
     const resolve = async () => {
       try {
-        // Check if it's a user username
+        // 1. Check if it's a user username
         const usersRef = collection(db, "users");
         const userQ = query(usersRef, where("username", "==", subdomain), limit(1));
         const userSnap = await getDocs(userQ);
@@ -60,7 +61,17 @@ export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
           return;
         }
 
-        // Check if it's a project slug
+        // 2. Check if it's an organisation slug
+        const orgsRef = collection(db, "organizations");
+        const orgQ = query(orgsRef, where("slug", "==", subdomain), limit(1));
+        const orgSnap = await getDocs(orgQ);
+        if (!orgSnap.empty) {
+          setCachedType(subdomain, "org");
+          setResolvedType("org");
+          return;
+        }
+
+        // 3. Check if it's a project slug
         const projectsRef = collection(db, "projects");
         const projQ = query(projectsRef, where("slug", "==", subdomain), limit(1));
         const projSnap = await getDocs(projQ);
@@ -107,6 +118,10 @@ export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
     return <SubdomainPortfolio username={subdomain} />;
   }
 
+  if (resolvedType === "org") {
+    return <SubdomainOrg slug={subdomain} />;
+  }
+
   if (resolvedType === "project") {
     return <SubdomainProject slug={subdomain} />;
   }
@@ -130,3 +145,4 @@ export default function SubdomainRouter({ subdomain }: { subdomain: string }) {
     </div>
   );
 }
+

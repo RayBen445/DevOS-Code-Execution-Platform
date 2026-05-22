@@ -63,7 +63,21 @@ async function uploadToSupabase(file: File | Blob, path: string): Promise<string
   if (error) throw new Error(`Supabase upload failed: ${error.message}`);
 
   const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  const publicUrl = data.publicUrl;
+
+  // Verify the URL is actually reachable (catches private-bucket misconfigurations
+  // that return a URL without error but produce a 4xx when fetched).
+  try {
+    const probe = await fetch(publicUrl, { method: "HEAD", cache: "no-store" });
+    if (!probe.ok) {
+      throw new Error(`Supabase returned an inaccessible URL (HTTP ${probe.status})`);
+    }
+  } catch (probeErr: any) {
+    // If the probe itself throws (e.g. CORS / network), surface a clear message.
+    throw new Error(`Supabase storage URL is not publicly accessible: ${probeErr?.message ?? probeErr}`);
+  }
+
+  return publicUrl;
 }
 
 // ── Firebase Storage ──────────────────────────────────────────────────────────

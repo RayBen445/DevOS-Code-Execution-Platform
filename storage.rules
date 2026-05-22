@@ -18,5 +18,45 @@ service firebase.storage {
                    && request.resource.size <= 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }
+
+    // Event banners: authenticated users can upload; public read
+    match /events/{eventId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource.size <= 8 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Community images: authenticated users can upload; public read
+    match /communities/{communityId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource.size <= 8 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Organisation images: authenticated users can upload; public read
+    match /orgs/{orgId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource.size <= 8 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Template preview images: authenticated users can upload; public read
+    match /templates/{templateId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource.size <= 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Project file images (uploaded via IDE/Sidebar): authenticated users can upload; public read
+    match /projects/{projectId}/files/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource.size <= 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
   }
 }
