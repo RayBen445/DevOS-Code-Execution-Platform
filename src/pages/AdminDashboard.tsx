@@ -4809,7 +4809,7 @@ User request: ${aiTestPrompt.trim()}`;
                               type="text"
                               value={siteConfig.footerCredit}
                               onChange={(e) => setSiteConfig((s) => ({ ...s, footerCredit: e.target.value }))}
-                              placeholder="Built by Cool Shot Systems · TVN"
+                              placeholder="Built by Kontyra and Tech Visionary Network"
                               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                             />
                           </div>

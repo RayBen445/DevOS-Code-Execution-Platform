@@ -342,7 +342,7 @@ export const SITE_CONFIG_DEFAULTS: SiteConfig = {
   githubUrl: "https://github.com/devos",
   twitterUrl: "https://twitter.com/devos",
   websiteUrl: "https://devos.app",
-  footerCredit: "Built by Cool Shot Systems · TVN",
+  footerCredit: "Built by Kontyra and Tech Visionary Network",
   allowVoiceCalls: true,
 };
 

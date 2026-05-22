@@ -1255,10 +1255,8 @@ p {
         <div className="flex items-center gap-2 text-white/20 text-sm font-medium">
           Built with <span className="text-white/40 font-bold tracking-tight">DevOS</span>
         </div>
-        <div className="flex items-center gap-4 text-[10px] text-white/10 font-bold uppercase tracking-[0.2em]">
-          <span>Cool Shot Systems</span>
-          <div className="w-1 h-1 rounded-full bg-white/5" />
-          <span>Tech Visionaries Network</span>
+        <div className="flex items-center gap-2 text-[10px] text-white/10 font-bold uppercase tracking-[0.2em]">
+          <span>Kontyra and Tech Visionary Network</span>
         </div>
       </div>
 

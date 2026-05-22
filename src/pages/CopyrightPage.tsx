@@ -246,7 +246,7 @@ function SectionContent({ id }: { id: string }) {
           <SectionHeading icon={FileSearch} title="DevOS Intellectual Property" id="devos-ip" />
           <Body>
             All elements of the DevOS platform — including source code, design, logos, trademarks, and
-            documentation — are the intellectual property of DevOS / Cool Shot Systems · Tech Visionaries
+            documentation — are the intellectual property of DevOS / Kontyra and Tech Visionary
             Network, protected by copyright and other applicable laws.
           </Body>
           <Sub>What you may do</Sub>
@@ -397,7 +397,7 @@ export default function CopyrightPage() {
             </motion.div>
           ))}
           <div className="text-center py-6 border-t border-white/[0.05]">
-            <p className="text-xs text-white/20">© {new Date().getFullYear()} DevOS · Cool Shot Systems · Tech Visionaries Network</p>
+            <p className="text-xs text-white/20">© {new Date().getFullYear()} DevOS · Kontyra and Tech Visionary Network</p>
             <div className="flex items-center justify-center gap-4 mt-3">
               <Link to="/privacy" className="text-xs text-white/30 hover:text-white/60 transition-colors">Privacy</Link>
               <span className="text-white/10">·</span>
