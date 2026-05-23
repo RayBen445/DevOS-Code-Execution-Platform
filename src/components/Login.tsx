@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
+  auth,
   signInWithGoogle,
   signInWithGithub,
   signUpWithEmail,
@@ -14,7 +15,8 @@ import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign, Eye, EyeOff, CheckCi
 import { motion, AnimatePresence } from "framer-motion";
 import { registerUserProfile, checkUsernameAvailable, skipNextInitialize } from "../lib/userService";
 import { getAuthErrorMessage } from "../lib/errorMessages";
-import { signInUsingPasskey } from "../lib/passkeyService";
+import { registerCurrentDevicePasskey, signInUsingPasskey } from "../lib/passkeyService";
+import { verifyRecoveryCode } from "../lib/mfaRecoveryService";
 
 interface LoginProps {
   onClose: () => void;
@@ -38,6 +40,8 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
   const [forgotEmail, setForgotEmail] = useState("");
   const [passkeyEmail, setPasskeyEmail] = useState("");
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState("");
 
   // Live username availability
   type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "error";
@@ -154,6 +158,8 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
           const resolver = getMfaResolver(authErr);
           if (resolver) {
             setMfaResolver(resolver);
+            setUseRecoveryCode(false);
+            setRecoveryCode("");
             setStep("mfa");
             setLoading(false);
             return;
@@ -174,14 +180,33 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
 
   const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mfaResolver) return;
+    if (!mfaResolver && !useRecoveryCode) return;
     setLoading(true);
     setError("");
     try {
-      await resolveTotpSignIn(mfaResolver, otpCode.trim());
+      if (useRecoveryCode) {
+        const normalizedEmail = email.trim().toLowerCase();
+        if (!normalizedEmail) throw new Error("Please return and enter your email first.");
+        if (!recoveryCode.trim()) throw new Error("Enter a recovery code.");
+        const result = await verifyRecoveryCode(normalizedEmail, recoveryCode.trim());
+        try {
+          await signInWithEmail(normalizedEmail, password);
+          onClose();
+          return;
+        } catch {
+          setStep("email");
+          setUseRecoveryCode(false);
+          setRecoveryCode("");
+          setOtpCode("");
+          setError(result.message || "Recovery code accepted. Please sign in again.");
+          return;
+        }
+      }
+
+      await resolveTotpSignIn(mfaResolver!, otpCode.trim());
       onClose();
     } catch (err: any) {
-      setError("Invalid code. Please try again.");
+      setError(err?.message || "Invalid code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -213,6 +238,24 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
       onClose();
     } catch (err: any) {
       setError(err?.message || "Passkey sign-in failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePostSignupPasskey = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      setError("Session expired. Please sign in and add passkey from Settings.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await registerCurrentDevicePasskey(user);
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Could not register passkey right now.");
     } finally {
       setLoading(false);
     }
@@ -277,13 +320,34 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
           {/* ── Verify-sent / password-reset-sent confirmation ── */}
           {step === "verify-sent" && (
             <motion.div key="verify-sent" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all active:scale-[0.98]"
-              >
-                Got it, close
-              </button>
+              {isSignUp ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handlePostSignupPasskey}
+                    disabled={loading}
+                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Fingerprint className="w-5 h-5" />}
+                    Add passkey now (recommended)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-3 bg-white/5 text-white/70 rounded-2xl font-semibold hover:bg-white/10 transition-all"
+                  >
+                    Skip for now
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all active:scale-[0.98]"
+                >
+                  Got it, close
+                </button>
+              )}
             </motion.div>
           )}
 
@@ -297,19 +361,32 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={6}
-                  required
-                  placeholder="6-digit code"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  required={!useRecoveryCode}
+                  placeholder={useRecoveryCode ? "Recovery code" : "6-digit code"}
+                  value={useRecoveryCode ? recoveryCode : otpCode}
+                  onChange={(e) => {
+                    if (useRecoveryCode) {
+                      setRecoveryCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 12));
+                    } else {
+                      setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                    }
+                  }}
                   className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white text-center tracking-widest text-xl font-mono focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
               {error && <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3">{error}</p>}
-              <button type="submit" disabled={loading || otpCode.length !== 6} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50">
+              <button type="submit" disabled={loading || (useRecoveryCode ? recoveryCode.replace(/-/g, "").length < 10 : otpCode.length !== 6)} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50">
                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-                Verify & Sign In
+                {useRecoveryCode ? "Use Recovery Code" : "Verify & Sign In"}
               </button>
-              <button type="button" onClick={() => { setStep("email"); setError(""); setOtpCode(""); }} className="w-full text-sm text-white/40 hover:text-white transition-colors flex items-center justify-center gap-1">
+              <button
+                type="button"
+                onClick={() => { setUseRecoveryCode((v) => !v); setError(""); setOtpCode(""); setRecoveryCode(""); }}
+                className="w-full text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                {useRecoveryCode ? "Use authenticator code instead" : "Use a recovery code instead"}
+              </button>
+              <button type="button" onClick={() => { setStep("email"); setError(""); setOtpCode(""); setRecoveryCode(""); setUseRecoveryCode(false); }} className="w-full text-sm text-white/40 hover:text-white transition-colors flex items-center justify-center gap-1">
                 <ArrowLeft className="w-3 h-3" /> Back
               </button>
             </motion.form>
