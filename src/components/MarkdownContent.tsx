@@ -11,7 +11,7 @@ export function MarkdownContent({ text, className }: MarkdownContentProps) {
   const tokens = parseMarkdown(text);
 
   return (
-    <div className={cn("space-y-2 text-white/80 leading-relaxed", className)}>
+    <div className={cn("space-y-2 text-white/80 leading-relaxed break-words [overflow-wrap:anywhere]", className)}>
       {tokens.map((token, idx) => (
         <MarkdownToken key={idx} token={token} />
       ))}
@@ -70,7 +70,7 @@ function MarkdownToken({ token }: { token: TextToken }) {
 
     case "code":
       return (
-        <code className="bg-white/10 px-2 py-1 rounded text-blue-300 font-mono text-sm border border-white/5">
+        <code className="bg-white/10 px-2 py-1 rounded text-blue-300 font-mono text-sm border border-white/5 break-words [overflow-wrap:anywhere]">
           {token.content}
         </code>
       );
@@ -88,7 +88,7 @@ function MarkdownToken({ token }: { token: TextToken }) {
       );
 
     case "text":
-      return <span>{token.content}</span>;
+      return <span className="break-words [overflow-wrap:anywhere]">{token.content}</span>;
 
     default:
       return <span>{token.content}</span>;

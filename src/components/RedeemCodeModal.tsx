@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { X, Gift, Loader2 } from "lucide-react";
 import { auth } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -57,7 +58,7 @@ export default function RedeemCodeModal({ isOpen, onClose }: RedeemCodeModalProp
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto" onClick={onClose}>
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -119,7 +120,8 @@ export default function RedeemCodeModal({ isOpen, onClose }: RedeemCodeModalProp
               </div>
             </form>
           </motion.div>
-        </div>
+        </div>,
+        document.body
       )}
     </AnimatePresence>
   );

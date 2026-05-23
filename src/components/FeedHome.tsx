@@ -1080,6 +1080,8 @@ function FeedItem({
           "rounded-2xl border p-6 transition-all hover:shadow-lg",
           post.communityId
             ? "border-purple-500/30 hover:border-purple-400/50 bg-gradient-to-br from-purple-600/10 to-purple-500/5 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20"
+            : post.isOfficial
+              ? "border-blue-500/30 hover:border-blue-400/50 bg-gradient-to-br from-blue-600/12 via-white/6 to-blue-500/8 shadow-xl shadow-blue-500/15 hover:shadow-blue-500/25"
             : "border-white/15 hover:border-white/25 bg-gradient-to-br from-white/8 to-white/3 shadow-xl shadow-black/40"
         )}
       >
@@ -1100,6 +1102,12 @@ function FeedItem({
               "Community Post"
             )}
           </span>
+        </div>
+      )}
+      {post.isOfficial && (
+        <div className="inline-flex items-center gap-1.5 text-[11px] text-blue-300 bg-blue-500/10 border border-blue-500/25 rounded-full px-2.5 py-1 mb-3 font-semibold">
+          <BadgeCheck className="w-3.5 h-3.5" />
+          DevOS Official
         </div>
       )}
       {/* Repost header */}
@@ -1308,7 +1316,7 @@ function FeedItem({
                         <span className="text-xs font-semibold text-white/80">{c.displayName || c.username}</span>
                         <span className="text-[10px] text-white/25">{formatRelativeTime(c.createdAt)}</span>
                       </div>
-                      <p className="text-xs text-white/60 leading-relaxed">{c.content}</p>
+                      <p className="text-xs text-white/60 leading-relaxed break-words [overflow-wrap:anywhere]">{c.content}</p>
                     </div>
                     {userId === c.userId && (
                       <button
