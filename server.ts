@@ -129,6 +129,13 @@ const PASSKEY_AUTH_WINDOW_MS = 60_000;
 
 const PASSKEY_CHALLENGE_TTL_MS = 5 * 60_000;
 const PASSKEY_RP_NAME = process.env.PASSKEY_RP_NAME || "DevOS";
+const passkeyRouteRateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many passkey requests. Please try again shortly." },
+});
 
 const getRequestOrigin = (req: Request): string => {
   const configured = process.env.PASSKEY_ORIGIN;
@@ -242,7 +249,7 @@ app.get("/api/health", (_req, res) => {
 // ---------------------------------------------------------------------------
 // Passkey (WebAuthn) routes
 // ---------------------------------------------------------------------------
-app.post("/api/passkey/register/options", async (req, res) => {
+app.post("/api/passkey/register/options", passkeyRouteRateLimiter, async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -305,7 +312,7 @@ app.post("/api/passkey/register/options", async (req, res) => {
   }
 });
 
-app.post("/api/passkey/register/verify", async (req, res) => {
+app.post("/api/passkey/register/verify", passkeyRouteRateLimiter, async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -382,7 +389,7 @@ app.post("/api/passkey/register/verify", async (req, res) => {
   }
 });
 
-app.get("/api/passkey/list", async (req, res) => {
+app.get("/api/passkey/list", passkeyRouteRateLimiter, async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -412,7 +419,7 @@ app.get("/api/passkey/list", async (req, res) => {
   }
 });
 
-app.delete("/api/passkey/:credentialId", async (req, res) => {
+app.delete("/api/passkey/:credentialId", passkeyRouteRateLimiter, async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -442,7 +449,7 @@ app.delete("/api/passkey/:credentialId", async (req, res) => {
   }
 });
 
-app.post("/api/passkey/auth/options", async (req, res) => {
+app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) => {
   const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() || req.ip || "unknown";
   const now = Date.now();
   const entry = passkeyAuthRateLimit.get(ip);
@@ -496,7 +503,7 @@ app.post("/api/passkey/auth/options", async (req, res) => {
   }
 });
 
-app.post("/api/passkey/auth/verify", async (req, res) => {
+app.post("/api/passkey/auth/verify", passkeyRouteRateLimiter, async (req, res) => {
   const { challengeId, response } = req.body as {
     challengeId?: string;
     response?: any;

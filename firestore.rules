@@ -787,11 +787,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ── Passkeys ──────────────────────────────────────────────────────────────
-    // Each user stores WebAuthn credential records under their own sub-tree.
-    // Only the owning user may read, add, or remove their credentials.
+    // ── Passkeys (legacy + current server-managed storage) ───────────────────
+    // Legacy client-managed path retained for backwards compatibility.
     match /passkeys/{userId}/credentials/{credentialId} {
       allow read, write: if isOwner(userId);
+    }
+
+    // Current passkey implementation is API/server-managed (Admin SDK), so
+    // direct client reads/writes are denied for both credential and challenge
+    // collections to keep challenge material and counters protected.
+    match /passkey_credentials/{credentialId} {
+      allow read, write: if false;
+    }
+    match /passkey_challenges/{challengeId} {
+      allow read, write: if false;
     }
 
     // ── Email Jobs ────────────────────────────────────────────────────────────
