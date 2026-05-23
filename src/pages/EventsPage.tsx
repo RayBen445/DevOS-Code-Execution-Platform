@@ -128,7 +128,7 @@ export default function EventsPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
 
-      <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-10 pb-24 md:pb-10">
+      <div className="flex-1 max-w-7xl mx-auto w-full px-4 py-10 pb-24 md:pb-10">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>

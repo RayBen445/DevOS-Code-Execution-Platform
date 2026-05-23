@@ -72,7 +72,7 @@ export default function BotsPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-10 pb-24 md:pb-10 space-y-8">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-10 pb-24 md:pb-10 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>

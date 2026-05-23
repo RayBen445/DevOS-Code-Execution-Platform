@@ -52,7 +52,7 @@ export default function ExplorePage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
 
-      <div className="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-8 pb-24 md:pb-12">
+      <div className="flex-1 max-w-7xl mx-auto w-full px-4 md:px-6 py-8 pb-24 md:pb-12">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1.5">
