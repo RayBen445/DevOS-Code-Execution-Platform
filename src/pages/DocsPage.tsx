@@ -21,11 +21,9 @@ const sections: DocSection[] = [
     label: "Getting Started",
     icon: Rocket,
     content: (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Getting Started</h2>
-        <p className="text-white/60 leading-relaxed">
-          Welcome to DevOS — your cloud-based development environment. Get up and running in minutes.
-        </p>
+      <div className="space-y-8">
+        <h2 className="text-4xl font-bold text-white mb-3">{sections.find(s => s.id === activeSection)?.label}</h2>
+        <p className="text-lg text-white/50 mb-8 max-w-3xl">Documentation and guides for building on DevOS</p>
         <Step number={1} title="Create an account">
           Sign up with your email or Google account. Once logged in, you'll land on your personal dashboard.
         </Step>
@@ -678,13 +676,13 @@ function Step({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex gap-4">
-      <div className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
+    <div className="flex gap-6 pb-8 last:pb-0">
+      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600/40 to-blue-500/20 text-blue-300 flex items-center justify-center text-lg font-bold flex-shrink-0 ring-2 ring-blue-500/30 shadow-lg shadow-blue-500/10">
         {number}
       </div>
-      <div>
-        <p className="font-bold text-white mb-1">{title}</p>
-        <p className="text-white/50 text-sm leading-relaxed">{children}</p>
+      <div className="flex-1 pt-1">
+        <p className="text-lg font-bold text-white/95 mb-2">{title}</p>
+        <p className="text-white/65 text-base leading-relaxed">{children}</p>
       </div>
     </div>
   );
@@ -692,18 +690,18 @@ function Step({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
-      <h3 className="font-bold text-white mb-2">{title}</h3>
-      <p className="text-white/50 text-sm leading-relaxed">{children}</p>
+    <div className="pb-8 border-b border-white/8 last:border-0 last:pb-0">
+      <h4 className="font-bold text-white/95 mb-3 text-lg tracking-tight">{title}</h4>
+      <p className="text-white/65 text-base leading-relaxed">{children}</p>
     </div>
   );
 }
 
 function InfoBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex gap-3 px-5 py-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-      <Zap className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-      <p className="text-blue-300 text-sm leading-relaxed">{children}</p>
+    <div className="flex gap-4 px-6 py-5 bg-gradient-to-br from-blue-600/20 to-blue-500/10 border-2 border-blue-500/40 rounded-xl hover:border-blue-500/60 transition-all shadow-lg shadow-blue-500/15">
+      <Zap className="w-6 h-6 text-blue-300 flex-shrink-0 mt-0.5" />
+      <p className="text-blue-100/90 text-base leading-relaxed font-medium">{children}</p>
     </div>
   );
 }
@@ -740,8 +738,8 @@ export default function DocsPage() {
           Back
         </button>
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col gap-1 w-52 flex-shrink-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3 px-3">
+        <aside className="hidden md:flex flex-col gap-2 w-64 flex-shrink-0 sticky top-24 h-fit">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-4 px-4">
             Documentation
           </p>
           {sections.map((section) => {
@@ -752,22 +750,25 @@ export default function DocsPage() {
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
                 className={cn(
-                  "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left",
+                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 relative text-left",
                   isActive
-                    ? "bg-blue-600/20 text-blue-300"
-                    : "text-white/40 hover:text-white hover:bg-white/5"
+                    ? "bg-blue-600/25 text-blue-300 shadow-lg shadow-blue-500/15 border border-blue-500/40"
+                    : "text-white/60 hover:text-white/85 hover:bg-white/8 border border-transparent"
                 )}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {section.label}
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-blue-500 rounded-r" />
+                )}
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="flex-1">{section.label}</span>
               </button>
             );
           })}
         </aside>
 
         {/* Mobile: horizontal scrollable chip nav */}
-        <div className="md:hidden w-full flex flex-col">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4">
+        <div className="md:hidden w-full flex flex-col gap-6">
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4">
             {sections.map((section) => {
               const Icon = section.icon;
               const isActive = section.id === activeSection;
@@ -776,13 +777,13 @@ export default function DocsPage() {
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
                   className={cn(
-                    "flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold transition-all flex-shrink-0 border",
+                    "flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all flex-shrink-0 border duration-200",
                     isActive
-                      ? "bg-blue-600/20 border-blue-500/50 text-blue-300"
-                      : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/20"
+                      ? "bg-blue-600/30 border-blue-500/60 text-blue-300 shadow-lg shadow-blue-500/20"
+                      : "bg-white/6 border-white/12 text-white/60 hover:text-white/80 hover:border-white/25"
                   )}
                 >
-                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  <Icon className="w-4 h-4 flex-shrink-0" />
                   {section.label}
                 </button>
               );
@@ -795,7 +796,7 @@ export default function DocsPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="bg-[#111] border border-white/5 rounded-2xl p-6"
+            className="bg-gradient-to-br from-[#111] to-[#0a0a0a] border border-white/10 rounded-2xl p-8 space-y-8 shadow-xl"
           >
             {current.content}
           </motion.div>
@@ -808,7 +809,7 @@ export default function DocsPage() {
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.25 }}
-            className="bg-[#111] border border-white/5 rounded-2xl p-8"
+            className="bg-gradient-to-br from-[#111] to-[#0a0a0a] border border-white/10 rounded-2xl p-10 space-y-8 shadow-2xl shadow-black/50"
           >
             {current.content}
           </motion.div>
