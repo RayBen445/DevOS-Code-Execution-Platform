@@ -38,7 +38,7 @@ export default function LearnPage() {
       {/* Hero */}
       <div className="relative overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-purple-600/5 to-transparent pointer-events-none" />
-        <div className="relative max-w-5xl mx-auto px-6 py-16 md:py-24">
+        <div className="relative max-w-7xl mx-auto px-6 py-16 md:py-24">
           <motion.div {...fadeUp} className="flex items-center gap-3 mb-5">
             <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
               <BookOpen className="w-6 h-6 text-blue-400" />
@@ -93,7 +93,7 @@ export default function LearnPage() {
       </div>
 
       {/* Topics grid */}
-      <div className="flex-1 max-w-5xl mx-auto w-full px-6 py-12">
+      <div className="flex-1 max-w-7xl mx-auto w-full px-6 py-12">
         <div className="grid md:grid-cols-3 gap-6">
           {TOPICS.map((topic, i) => {
             const topicCompleted = topic.lessons.filter((l) =>

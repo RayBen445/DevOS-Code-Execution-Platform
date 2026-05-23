@@ -8,7 +8,8 @@ import {
   isTotpEnabled,
 } from "../lib/firebase";
 import { toast } from "sonner";
-import { ShieldCheck, ShieldOff, Loader2, Copy, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, ShieldOff, Loader2, Copy, CheckCircle2, Download, KeySquare } from "lucide-react";
+import { generateRecoveryCodes, getRecoveryCodesMeta } from "../lib/mfaRecoveryService";
 
 interface TwoFactorSetupProps {
   onClose?: () => void;
@@ -17,16 +18,23 @@ interface TwoFactorSetupProps {
 export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
   const [user] = useAuthState(auth);
   const [enabled, setEnabled] = useState(false);
-  const [step, setStep] = useState<"idle" | "qr" | "verify">("idle");
+  const [step, setStep] = useState<"idle" | "qr" | "verify" | "recovery">("idle");
   const [secret, setSecret] = useState<any>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [secretKey, setSecretKey] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [recoveryCopied, setRecoveryCopied] = useState(false);
+  const [recoveryMeta, setRecoveryMeta] = useState<{ exists: boolean; total: number; remaining: number } | null>(null);
 
   useEffect(() => {
-    if (user) setEnabled(isTotpEnabled(user));
+    if (!user) return;
+    setEnabled(isTotpEnabled(user));
+    getRecoveryCodesMeta(user)
+      .then((meta) => setRecoveryMeta(meta))
+      .catch(() => setRecoveryMeta(null));
   }, [user]);
 
   const handleStartEnroll = async () => {
@@ -53,13 +61,20 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
     setLoading(true);
     try {
       await finishTotpEnrollment(user, secret, otp);
+      const codes = await generateRecoveryCodes(user);
       setEnabled(true);
-      setStep("idle");
+      setStep("recovery");
+      setRecoveryCodes(codes);
+      setRecoveryMeta({
+        exists: true,
+        total: codes.length,
+        remaining: codes.length,
+      });
       setOtp("");
       setSecret(null);
       setQrUrl(null);
       setSecretKey(null);
-      toast.success("Two-factor authentication enabled.");
+      toast.success("Two-factor authentication enabled. Save your recovery codes.");
     } catch (err: any) {
       toast.error(err?.message ?? "Invalid OTP. Please try again.");
     } finally {
@@ -74,6 +89,7 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
     try {
       await disableTotp(user);
       setEnabled(false);
+      setRecoveryCodes([]);
       toast.success("Two-factor authentication disabled.");
     } catch (err: any) {
       toast.error(err?.message ?? "Failed to disable 2FA.");
@@ -88,6 +104,55 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const handleCopyRecoveryCodes = () => {
+    if (!recoveryCodes.length) return;
+    navigator.clipboard.writeText(recoveryCodes.join("\n")).then(() => {
+      setRecoveryCopied(true);
+      setTimeout(() => setRecoveryCopied(false), 2000);
+    });
+  };
+
+  const handleDownloadRecoveryCodes = () => {
+    if (!recoveryCodes.length) return;
+    const blob = new Blob(
+      [
+        "DevOS Recovery Codes\n\n",
+        "Each code can be used once if you lose access to your authenticator app.\n",
+        "Store these in a safe place.\n\n",
+        recoveryCodes.join("\n"),
+        "\n",
+      ],
+      { type: "text/plain;charset=utf-8" }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "devos-recovery-codes.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRegenerateRecoveryCodes = async () => {
+    if (!user) return;
+    if (!window.confirm("Regenerate recovery codes? Existing unused codes will stop working.")) return;
+    setLoading(true);
+    try {
+      const codes = await generateRecoveryCodes(user);
+      setRecoveryCodes(codes);
+      setStep("recovery");
+      setRecoveryMeta({
+        exists: true,
+        total: codes.length,
+        remaining: codes.length,
+      });
+      toast.success("Recovery codes regenerated.");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to regenerate recovery codes.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -118,14 +183,24 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
       {step === "idle" && (
         <>
           {enabled ? (
-            <button
-              onClick={handleDisable}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-sm font-semibold transition-all disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldOff className="w-4 h-4" />}
-              Disable 2FA
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleRegenerateRecoveryCodes}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 text-blue-300 text-sm font-semibold transition-all disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeySquare className="w-4 h-4" />}
+                Regenerate recovery codes
+              </button>
+              <button
+                onClick={handleDisable}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-sm font-semibold transition-all disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldOff className="w-4 h-4" />}
+                Disable 2FA
+              </button>
+            </div>
           ) : (
             <button
               onClick={handleStartEnroll}
@@ -135,6 +210,11 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
               Enable 2FA
             </button>
+          )}
+          {enabled && recoveryMeta?.exists && (
+            <p className="text-xs text-white/45">
+              Recovery codes remaining: <span className="text-white/70 font-semibold">{recoveryMeta.remaining}</span> / {recoveryMeta.total}
+            </p>
           )}
         </>
       )}
@@ -205,6 +285,43 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
               Verify & Enable
             </button>
           </div>
+        </div>
+      )}
+
+      {step === "recovery" && (
+        <div className="space-y-4">
+          <div className="rounded-xl bg-yellow-500/10 border border-yellow-400/30 p-3">
+            <p className="text-xs text-yellow-200/90 font-semibold">
+              Save these recovery codes now. They are shown only once and each code works a single time.
+            </p>
+          </div>
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
+            {recoveryCodes.map((code) => (
+              <code key={code} className="block text-xs text-white/85 font-mono">{code}</code>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCopyRecoveryCodes}
+              className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-sm font-semibold transition-all flex items-center justify-center gap-2"
+            >
+              {recoveryCopied ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+              {recoveryCopied ? "Copied" : "Copy codes"}
+            </button>
+            <button
+              onClick={handleDownloadRecoveryCodes}
+              className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-sm font-semibold transition-all flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Download
+            </button>
+          </div>
+          <button
+            onClick={() => { setStep("idle"); setRecoveryCodes([]); }}
+            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all"
+          >
+            I saved my recovery codes
+          </button>
         </div>
       )}
     </div>

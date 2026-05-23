@@ -80,6 +80,7 @@ import UIThemeSwitcher from "../components/UIThemeSwitcher";
 import { ReferralStats } from "../types";
 import CustomSelect from "../components/CustomSelect";
 import TwoFactorSetup from "../components/TwoFactorSetup";
+import PasskeySetup from "../components/PasskeySetup";
 import { ALL_NAV_OPTIONS, NavOptionId } from "../components/MobileBottomNav";
 import { cn } from "../lib/utils";
 import { sendNotification } from "../lib/notificationService";
@@ -756,7 +757,7 @@ function AccountTab() {
 
       <div className="space-y-4">
         <ReadOnlyField label="Email Address" value={user?.email || "—"} />
-        <ReadOnlyField label="Account ID" value={user?.uid || "—"} mono />
+        <ReadOnlyField label="Account ID" value={user?.uid || "—"} mono copyValue={user?.uid} />
         <div className="p-5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1">Plan</p>
@@ -975,6 +976,12 @@ function SecurityTab() {
       <div className="space-y-3">
         <h2 className="text-base font-bold text-white">Two-Factor Authentication</h2>
         <TwoFactorSetup />
+      </div>
+
+      {/* Passkey Authentication */}
+      <div className="space-y-3">
+        <h2 className="text-base font-bold text-white">Passkey Authentication</h2>
+        <PasskeySetup />
       </div>
     </div>
   );
@@ -1477,11 +1484,36 @@ function Field({ label, icon, hint, children }: { label: string; icon?: React.Re
   );
 }
 
-function ReadOnlyField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function ReadOnlyField({ label, value, mono = false, copyValue }: { label: string; value: string; mono?: boolean; copyValue?: string }) {
+  const handleCopy = async () => {
+    if (!copyValue) return;
+    try {
+      await navigator.clipboard.writeText(copyValue);
+      toast.success(`${label} copied to clipboard.`);
+    } catch {
+      toast.error(`Failed to copy ${label.toLowerCase()}.`);
+    }
+  };
+
   return (
     <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
       <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1.5">{label}</p>
-      <p className={`text-white text-sm ${mono ? "font-mono" : ""}`}>{value}</p>
+      {copyValue ? (
+        <button
+          type="button"
+          onClick={handleCopy}
+          className={cn(
+            "w-full flex items-center gap-2 text-left text-white text-sm hover:text-blue-300 transition-colors",
+            mono && "font-mono"
+          )}
+          title={`Copy ${label}`}
+        >
+          <span className="truncate">{value}</span>
+          <Copy className="w-3.5 h-3.5 text-white/40 shrink-0" />
+        </button>
+      ) : (
+        <p className={`text-white text-sm ${mono ? "font-mono" : ""}`}>{value}</p>
+      )}
     </div>
   );
 }

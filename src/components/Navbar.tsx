@@ -24,7 +24,7 @@ import {
 } from "../lib/sessionManager";
 import { useActiveContext } from "../hooks/useActiveContext";
 import { useUITheme } from "../hooks/useUITheme";
-import { PRODUCT_NAV_LABEL } from "../lib/brand";
+import { PRODUCT_NAV_LABEL, buildPortfolioUrl } from "../lib/brand";
 
 interface NavbarProps {
   onSignIn?: () => void;
@@ -503,14 +503,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     })}
                     <div className="border-t border-white/5 my-1" />
                     {username && (
-                      <Link
-                        to={`/@${username}`}
+                      <a
+                        href={buildPortfolioUrl(username)}
                         onClick={() => setIsProfileOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                       >
                         <UserIcon className="w-4 h-4" />
                         View Profile
-                      </Link>
+                      </a>
                     )}
                     <Link
                       to="/settings"
@@ -855,14 +855,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 <div className="border-t border-white/5 my-2" />
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Account</p>
                 {username && (
-                  <Link
-                    to={`/@${username}`}
+                  <a
+                    href={buildPortfolioUrl(username)}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm"
                   >
                     <UserIcon className="w-4 h-4" />
                     View Profile
-                  </Link>
+                  </a>
                 )}
                 <Link
                   to="/settings"

@@ -1,4 +1,5 @@
 import express from "express";
+import type { Request } from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import jwt from "jsonwebtoken";
@@ -8,6 +9,12 @@ import fs from "fs";
 import os from "os";
 import { Resend } from "resend";
 import rateLimit from "express-rate-limit";
+import {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} from "@simplewebauthn/server";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -116,6 +123,68 @@ const BUILD_JOB_RATE_WINDOW_MS = 60_000;
 const validateProjectRateLimit = new Map<string, { count: number; resetAt: number }>();
 const VALIDATE_RATE_MAX = 20;
 const VALIDATE_RATE_WINDOW_MS = 60_000;
+const PASSKEY_CHALLENGE_TTL_MS = 5 * 60_000;
+const PASSKEY_RP_NAME = process.env.PASSKEY_RP_NAME || "DevOS";
+const passkeyRouteRateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many passkey requests. Please try again shortly." },
+});
+const recoveryCodeRouteRateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many recovery-code attempts. Please try again shortly." },
+});
+
+const getRequestOrigin = (req: Request): string => {
+  const configured = process.env.PASSKEY_ORIGIN;
+  if (configured) return configured;
+  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+  const host = req.headers.host || "";
+  return `${proto}://${host}`;
+};
+
+const getPasskeyRpId = (req: Request): string => {
+  const configured = process.env.PASSKEY_RP_ID;
+  if (configured) return configured;
+  try {
+    return new URL(getRequestOrigin(req)).hostname;
+  } catch {
+    return "localhost";
+  }
+};
+
+const normalizeEmail = (value: unknown): string =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const RECOVERY_CODE_COUNT = 10;
+const RECOVERY_CODE_LEN = 10;
+const recoveryCodePepper = process.env.MFA_RECOVERY_CODE_PEPPER || process.env.JWT_SECRET || "devos-recovery-fallback-pepper";
+const recoveryCharset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+const generateRecoveryCode = (): string => {
+  const bytes = crypto.randomBytes(RECOVERY_CODE_LEN);
+  let out = "";
+  for (let i = 0; i < RECOVERY_CODE_LEN; i++) {
+    out += recoveryCharset[bytes[i] % recoveryCharset.length];
+    if (i === 4) out += "-";
+  }
+  return out;
+};
+
+const normalizeRecoveryCode = (value: unknown): string =>
+  String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+
+const hashRecoveryCode = (uid: string, code: string): string =>
+  crypto.createHash("sha256").update(`${uid}:${normalizeRecoveryCode(code)}:${recoveryCodePepper}`).digest("hex");
 
 // Allowed output directories — used to prevent path traversal via user-supplied outputDir
 const ALLOWED_OUTPUT_DIRS = new Set(["dist", "build", ".next", "out", "public"]);
@@ -201,6 +270,450 @@ const walkFiles = (dir: string): string[] => {
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+// ---------------------------------------------------------------------------
+// Passkey (WebAuthn) routes
+// ---------------------------------------------------------------------------
+app.post("/api/passkey/register/options", passkeyRouteRateLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const userId = decoded.uid;
+  const email = normalizeEmail(decoded.email);
+  if (!email) return res.status(400).json({ error: "Email is required for passkey registration." });
+
+  try {
+    const rpID = getPasskeyRpId(req);
+    const expectedOrigin = getRequestOrigin(req);
+    const userName = decoded.name || email.split("@")[0] || "DevOS User";
+    const webauthnUserId = Uint8Array.from(Buffer.from(userId, "utf8"));
+
+    const existing = await db.collection("passkey_credentials").where("uid", "==", userId).get();
+    const excludeCredentials = existing.docs.map((d) => ({
+      id: d.id,
+      type: "public-key" as const,
+      transports: Array.isArray(d.get("transports")) ? d.get("transports") : undefined,
+    }));
+
+    const options = await generateRegistrationOptions({
+      rpName: PASSKEY_RP_NAME,
+      rpID,
+      userID: webauthnUserId,
+      userName: email,
+      userDisplayName: userName,
+      timeout: 60_000,
+      attestationType: "none",
+      authenticatorSelection: {
+        residentKey: "preferred",
+        userVerification: "preferred",
+      },
+      excludeCredentials,
+    });
+
+    const challengeRef = await db.collection("passkey_challenges").add({
+      type: "register",
+      uid: userId,
+      challenge: options.challenge,
+      expectedOrigin,
+      expectedRPID: rpID,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: Date.now() + PASSKEY_CHALLENGE_TTL_MS,
+    });
+
+    return res.json({ options, challengeId: challengeRef.id });
+  } catch (error: any) {
+    console.error("[passkey][register/options] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to start passkey registration." });
+  }
+});
+
+app.post("/api/passkey/register/verify", passkeyRouteRateLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const { challengeId, response, deviceName } = req.body as {
+    challengeId?: string;
+    response?: any;
+    deviceName?: string;
+  };
+
+  if (!challengeId || !response) {
+    return res.status(400).json({ error: "Missing challengeId or credential response." });
+  }
+
+  try {
+    const challengeRef = db.collection("passkey_challenges").doc(challengeId);
+    const challengeSnap = await challengeRef.get();
+    if (!challengeSnap.exists) {
+      return res.status(400).json({ error: "Passkey challenge not found." });
+    }
+    const challengeData = challengeSnap.data() as any;
+    if (challengeData.type !== "register" || challengeData.uid !== decoded.uid) {
+      return res.status(403).json({ error: "Invalid passkey challenge." });
+    }
+    if (!challengeData.expiresAt || Date.now() > Number(challengeData.expiresAt)) {
+      await challengeRef.delete().catch(() => {});
+      return res.status(400).json({ error: "Passkey challenge expired." });
+    }
+
+    const verification = await verifyRegistrationResponse({
+      response,
+      expectedChallenge: challengeData.challenge,
+      expectedOrigin: challengeData.expectedOrigin,
+      expectedRPID: challengeData.expectedRPID,
+      requireUserVerification: true,
+    });
+
+    if (!verification.verified || !verification.registrationInfo) {
+      return res.status(400).json({ error: "Passkey registration verification failed." });
+    }
+
+    const credential = verification.registrationInfo.credential;
+    const credentialId = credential.id;
+    const publicKey = Buffer.from(credential.publicKey).toString("base64url");
+    const transports = credential.transports || [];
+
+    await db.collection("passkey_credentials").doc(credentialId).set({
+      uid: decoded.uid,
+      email: normalizeEmail(decoded.email),
+      credentialId,
+      publicKey,
+      counter: credential.counter || 0,
+      transports,
+      deviceName: String(deviceName || "This device").slice(0, 80),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastUsedAt: null,
+    }, { merge: true });
+
+    await challengeRef.delete().catch(() => {});
+    return res.json({ success: true, credentialId });
+  } catch (error: any) {
+    console.error("[passkey][register/verify] error", error);
+    return res.status(400).json({ error: error?.message || "Failed to verify passkey registration." });
+  }
+});
+
+app.get("/api/passkey/list", passkeyRouteRateLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  try {
+    const snap = await db.collection("passkey_credentials").where("uid", "==", decoded.uid).get();
+    const credentials = snap.docs.map((d) => ({
+      credentialId: d.id,
+      deviceName: d.get("deviceName") || "Passkey device",
+      createdAt: d.get("createdAt") || null,
+      updatedAt: d.get("updatedAt") || null,
+      lastUsedAt: d.get("lastUsedAt") || null,
+    }));
+    return res.json({ credentials });
+  } catch (error: any) {
+    console.error("[passkey][list] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to list passkeys." });
+  }
+});
+
+app.delete("/api/passkey/:credentialId", passkeyRouteRateLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const credentialId = String(req.params.credentialId || "").trim();
+  if (!credentialId) return res.status(400).json({ error: "Missing credential id." });
+
+  try {
+    const ref = db.collection("passkey_credentials").doc(credentialId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ error: "Passkey not found." });
+    if (snap.get("uid") !== decoded.uid) return res.status(403).json({ error: "Forbidden." });
+    await ref.delete();
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[passkey][delete] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to delete passkey." });
+  }
+});
+
+app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) => {
+  const email = normalizeEmail((req.body as any)?.email);
+  if (!email) return res.status(400).json({ error: "Email is required." });
+
+  try {
+    const credsSnap = await db.collection("passkey_credentials").where("email", "==", email).limit(25).get();
+    if (credsSnap.empty) {
+      return res.status(404).json({ error: "No passkey found for this account." });
+    }
+
+    const rpID = getPasskeyRpId(req);
+    const expectedOrigin = getRequestOrigin(req);
+    const allowCredentials = credsSnap.docs.map((d) => ({
+      id: d.id,
+      type: "public-key" as const,
+      transports: Array.isArray(d.get("transports")) ? d.get("transports") : undefined,
+    }));
+
+    const options = await generateAuthenticationOptions({
+      rpID,
+      timeout: 60_000,
+      userVerification: "preferred",
+      allowCredentials,
+    });
+
+    const challengeRef = await db.collection("passkey_challenges").add({
+      type: "auth",
+      email,
+      challenge: options.challenge,
+      expectedOrigin,
+      expectedRPID: rpID,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: Date.now() + PASSKEY_CHALLENGE_TTL_MS,
+    });
+
+    return res.json({ options, challengeId: challengeRef.id });
+  } catch (error: any) {
+    console.error("[passkey][auth/options] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to start passkey sign-in." });
+  }
+});
+
+app.post("/api/passkey/auth/verify", passkeyRouteRateLimiter, async (req, res) => {
+  const { challengeId, response } = req.body as {
+    challengeId?: string;
+    response?: any;
+  };
+  if (!challengeId || !response) {
+    return res.status(400).json({ error: "Missing challengeId or passkey response." });
+  }
+
+  try {
+    const challengeRef = db.collection("passkey_challenges").doc(challengeId);
+    const challengeSnap = await challengeRef.get();
+    if (!challengeSnap.exists) return res.status(400).json({ error: "Passkey challenge not found." });
+
+    const challengeData = challengeSnap.data() as any;
+    if (challengeData.type !== "auth") return res.status(400).json({ error: "Invalid passkey challenge type." });
+    if (!challengeData.expiresAt || Date.now() > Number(challengeData.expiresAt)) {
+      await challengeRef.delete().catch(() => {});
+      return res.status(400).json({ error: "Passkey challenge expired." });
+    }
+
+    const credentialId = String(response.id || "");
+    if (!credentialId) return res.status(400).json({ error: "Missing credential id." });
+    const credRef = db.collection("passkey_credentials").doc(credentialId);
+    const credSnap = await credRef.get();
+    if (!credSnap.exists) return res.status(400).json({ error: "Passkey credential not found." });
+
+    const credData = credSnap.data() as any;
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge: challengeData.challenge,
+      expectedOrigin: challengeData.expectedOrigin,
+      expectedRPID: challengeData.expectedRPID,
+      requireUserVerification: true,
+      credential: {
+        id: credentialId,
+        publicKey: Buffer.from(String(credData.publicKey || ""), "base64url"),
+        counter: Number(credData.counter || 0),
+        transports: Array.isArray(credData.transports) ? credData.transports : undefined,
+      },
+    });
+
+    if (!verification.verified) {
+      return res.status(401).json({ error: "Passkey verification failed." });
+    }
+
+    await credRef.set({
+      counter: verification.authenticationInfo.newCounter,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    const customToken = await admin.auth().createCustomToken(String(credData.uid || ""));
+    await challengeRef.delete().catch(() => {});
+    return res.json({ success: true, customToken });
+  } catch (error: any) {
+    console.error("[passkey][auth/verify] error", error);
+    return res.status(401).json({ error: error?.message || "Failed to verify passkey sign-in." });
+  }
+});
+
+app.post("/api/mfa/recovery-codes/generate", passkeyRouteRateLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const uid = decoded.uid;
+  const email = normalizeEmail(decoded.email);
+  if (!email) return res.status(400).json({ error: "Email is required." });
+
+  try {
+    const plainCodes = Array.from({ length: RECOVERY_CODE_COUNT }, () => generateRecoveryCode());
+    const hashedCodes = plainCodes.map((code) => ({
+      hash: hashRecoveryCode(uid, code),
+      usedAt: null,
+      createdAt: Date.now(),
+    }));
+
+    await db.collection("mfa_recovery_codes").doc(uid).set({
+      uid,
+      email,
+      codes: hashedCodes,
+      generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return res.json({
+      success: true,
+      codes: plainCodes,
+      total: plainCodes.length,
+      remaining: plainCodes.length,
+    });
+  } catch (error: any) {
+    console.error("[mfa][recovery/generate] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to generate recovery codes." });
+  }
+});
+
+app.get("/api/mfa/recovery-codes/meta", passkeyRouteRateLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  try {
+    const snap = await db.collection("mfa_recovery_codes").doc(decoded.uid).get();
+    if (!snap.exists) {
+      return res.json({ exists: false, total: 0, remaining: 0, updatedAt: null });
+    }
+    const data = snap.data() as any;
+    const codes = Array.isArray(data.codes) ? data.codes : [];
+    const remaining = codes.filter((c: any) => !c?.usedAt).length;
+    return res.json({
+      exists: true,
+      total: codes.length,
+      remaining,
+      updatedAt: data.updatedAt || null,
+    });
+  } catch (error: any) {
+    console.error("[mfa][recovery/meta] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to load recovery code status." });
+  }
+});
+
+app.post("/api/mfa/recovery-codes/verify", recoveryCodeRouteRateLimiter, async (req, res) => {
+  const email = normalizeEmail((req.body as any)?.email);
+  const recoveryCodeRaw = String((req.body as any)?.recoveryCode || "");
+  if (!email || !recoveryCodeRaw) {
+    return res.status(400).json({ error: "Email and recovery code are required." });
+  }
+
+  try {
+    const snap = await db.collection("mfa_recovery_codes").where("email", "==", email).limit(1).get();
+    if (snap.empty) {
+      return res.status(401).json({ error: "Invalid recovery code." });
+    }
+
+    const docRef = snap.docs[0].ref;
+    const data = snap.docs[0].data() as any;
+    const uid = String(data.uid || "");
+    const codes = Array.isArray(data.codes) ? data.codes : [];
+    if (!uid || codes.length === 0) {
+      return res.status(401).json({ error: "Invalid recovery code." });
+    }
+
+    const hashed = hashRecoveryCode(uid, recoveryCodeRaw);
+    const idx = codes.findIndex((c: any) => c?.hash === hashed && !c?.usedAt);
+    if (idx < 0) {
+      return res.status(401).json({ error: "Invalid recovery code." });
+    }
+
+    const updatedCodes = [...codes];
+    updatedCodes[idx] = {
+      ...updatedCodes[idx],
+      usedAt: Date.now(),
+    };
+    await docRef.set({
+      codes: updatedCodes,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    // Recovery-code fallback: consume code, then disable TOTP so user can
+    // complete password sign-in again without authenticator access.
+    const userRecord = await admin.auth().getUser(uid);
+    const existingFactors = userRecord.multiFactor?.enrolledFactors || [];
+    const remainingFactors = existingFactors.filter((f) => f.factorId !== "totp");
+    await admin.auth().updateUser(uid, {
+      multiFactor: { enrolledFactors: remainingFactors },
+    });
+
+    const remaining = updatedCodes.filter((c: any) => !c?.usedAt).length;
+    return res.json({
+      success: true,
+      remaining,
+      message: "Recovery code accepted. Two-factor was disabled for account recovery. Please sign in again.",
+    });
+  } catch (error: any) {
+    console.error("[mfa][recovery/verify] error", error);
+    return res.status(401).json({ error: error?.message || "Recovery code verification failed." });
+  }
 });
 
 app.post("/api/run-project", async (req, res) => {

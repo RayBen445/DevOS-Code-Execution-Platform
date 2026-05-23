@@ -49,7 +49,7 @@ export default function OrgsPage() {
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-600/10 rounded-full blur-[100px]" />
         </div>
-        <div className="relative max-w-5xl mx-auto">
+        <div className="relative max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
             <div>
               <div className="flex items-center gap-2 mb-3">
