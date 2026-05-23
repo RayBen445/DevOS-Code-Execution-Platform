@@ -123,15 +123,11 @@ const BUILD_JOB_RATE_WINDOW_MS = 60_000;
 const validateProjectRateLimit = new Map<string, { count: number; resetAt: number }>();
 const VALIDATE_RATE_MAX = 20;
 const VALIDATE_RATE_WINDOW_MS = 60_000;
-const passkeyAuthRateLimit = new Map<string, { count: number; resetAt: number }>();
-const PASSKEY_AUTH_RATE_MAX = 20;
-const PASSKEY_AUTH_WINDOW_MS = 60_000;
-
 const PASSKEY_CHALLENGE_TTL_MS = 5 * 60_000;
 const PASSKEY_RP_NAME = process.env.PASSKEY_RP_NAME || "DevOS";
 const passkeyRouteRateLimiter = rateLimit({
   windowMs: 60_000,
-  max: 30,
+  max: 12,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many passkey requests. Please try again shortly." },
@@ -450,18 +446,6 @@ app.delete("/api/passkey/:credentialId", passkeyRouteRateLimiter, async (req, re
 });
 
 app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) => {
-  const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() || req.ip || "unknown";
-  const now = Date.now();
-  const entry = passkeyAuthRateLimit.get(ip);
-  if (entry && now < entry.resetAt) {
-    if (entry.count >= PASSKEY_AUTH_RATE_MAX) {
-      return res.status(429).json({ error: "Too many passkey requests. Try again shortly." });
-    }
-    entry.count++;
-  } else {
-    passkeyAuthRateLimit.set(ip, { count: 1, resetAt: now + PASSKEY_AUTH_WINDOW_MS });
-  }
-
   const email = normalizeEmail((req.body as any)?.email);
   if (!email) return res.status(400).json({ error: "Email is required." });
 
