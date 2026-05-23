@@ -418,12 +418,12 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col w-full max-w-full min-w-0 overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1 pb-16 md:pb-0 w-full">
-        <div className="h-full">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 h-full">
+      <main className="flex-1 pb-16 md:pb-0 w-full max-w-full min-w-0 overflow-x-hidden">
+        <div className="h-full w-full max-w-full min-w-0">
+          <div className="max-w-7xl mx-auto px-3 md:px-6 py-6 md:py-10 h-full w-full max-w-full min-w-0">
           {/* Page heading */}
           <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
@@ -483,9 +483,9 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-3 gap-6 w-full max-w-full min-w-0">
             {/* Feed (main column) */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="lg:col-span-2 space-y-4 w-full max-w-full min-w-0">
               <div className="flex items-center justify-between px-1">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
                   Community Feed
@@ -550,7 +550,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
             </div>
 
             {/* My Projects sidebar */}
-            <div className="space-y-4">
+            <div className="space-y-4 w-full max-w-full min-w-0">
               <div className="flex items-center justify-between px-1">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
                   My Projects
@@ -588,7 +588,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
             </div>
 
             {activePolls.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-3 w-full max-w-full min-w-0">
                 <div className="flex items-center justify-between px-1">
                   <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
                     Community Polls
@@ -1077,7 +1077,7 @@ function FeedItem({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.045, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         className={cn(
-          "rounded-2xl border p-6 transition-all hover:shadow-lg",
+          "rounded-2xl border p-6 transition-all hover:shadow-lg w-full max-w-full min-w-0 overflow-hidden",
           post.communityId
             ? "border-purple-500/30 hover:border-purple-400/50 bg-gradient-to-br from-purple-600/10 to-purple-500/5 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20"
             : post.isOfficial
@@ -1119,7 +1119,7 @@ function FeedItem({
       )}
 
       {/* Author row */}
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="flex items-start justify-between gap-3 mb-3 min-w-0 max-w-full">
         <div className="flex items-center gap-3 min-w-0">
           {avatarUrl ? (
             <img
@@ -1238,7 +1238,7 @@ function FeedItem({
       )}
 
       {/* Engagement bar */}
-      <div className="flex items-center gap-1 mt-4 pt-4 border-t border-white/8">
+      <div className="flex items-center gap-1 mt-4 pt-4 border-t border-white/8 flex-wrap min-w-0 max-w-full">
         {/* Like */}
         <button
           onClick={() => onLike(post)}

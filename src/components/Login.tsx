@@ -10,10 +10,11 @@ import {
   resolveTotpSignIn,
   type MultiFactorResolver,
 } from "../lib/firebase";
-import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign, Eye, EyeOff, CheckCircle2, XCircle, ShieldCheck, KeyRound, ArrowLeft } from "lucide-react";
+import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign, Eye, EyeOff, CheckCircle2, XCircle, ShieldCheck, KeyRound, ArrowLeft, Fingerprint } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { registerUserProfile, checkUsernameAvailable, skipNextInitialize } from "../lib/userService";
 import { getAuthErrorMessage } from "../lib/errorMessages";
+import { signInUsingPasskey } from "../lib/passkeyService";
 
 interface LoginProps {
   onClose: () => void;
@@ -21,7 +22,7 @@ interface LoginProps {
   initialMode?: "login" | "signup";
 }
 
-type AuthStep = "social" | "email" | "forgot" | "mfa" | "verify-sent";
+type AuthStep = "social" | "email" | "forgot" | "mfa" | "verify-sent" | "passkey";
 
 export default function Login({ onClose, initialMode = "login" }: LoginProps) {
   const [step, setStep] = useState<AuthStep>("social");
@@ -36,6 +37,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
   const [otpCode, setOtpCode] = useState("");
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [passkeyEmail, setPasskeyEmail] = useState("");
 
   // Live username availability
   type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "error";
@@ -200,6 +202,22 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
     }
   };
 
+  const handlePasskeySignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const normalized = passkeyEmail.trim().toLowerCase();
+    if (!normalized) return;
+    setLoading(true);
+    setError("");
+    try {
+      await signInUsingPasskey(normalized);
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Passkey sign-in failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const switchMode = () => {
     setIsSignUp(v => !v);
     setError("");
@@ -208,11 +226,12 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
     setStep("social");
   };
 
-  const heading = isSignUp ? "Create your account" : step === "mfa" ? "Two-factor auth" : step === "forgot" ? "Reset password" : step === "verify-sent" ? "Check your email" : "Welcome back";
+  const heading = isSignUp ? "Create your account" : step === "mfa" ? "Two-factor auth" : step === "forgot" ? "Reset password" : step === "passkey" ? "Sign in with passkey" : step === "verify-sent" ? "Check your email" : "Welcome back";
   const subheading = isSignUp && step !== "verify-sent"
     ? "Join DevOS — the professional cloud IDE."
     : step === "mfa" ? "Enter the 6-digit code from your authenticator app."
     : step === "forgot" ? "We'll send a reset link to your email."
+    : step === "passkey" ? "Use fingerprint, face unlock, or device PIN."
     : step === "verify-sent" && isSignUp ? "We've sent a verification link. Check your inbox to activate your account."
     : step === "verify-sent" ? "Password reset email sent. Check your inbox."
     : "Sign in to continue building on DevOS.";
@@ -321,6 +340,31 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
             </motion.form>
           )}
 
+          {/* ── Passkey sign-in step ── */}
+          {step === "passkey" && (
+            <motion.form key="passkey" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} onSubmit={handlePasskeySignIn} className="space-y-4">
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
+                <input
+                  type="email"
+                  required
+                  placeholder="Email used for your passkey"
+                  value={passkeyEmail}
+                  onChange={(e) => setPasskeyEmail(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              {error && <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3">{error}</p>}
+              <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Fingerprint className="w-5 h-5" />}
+                Continue with Passkey
+              </button>
+              <button type="button" onClick={() => { setStep("social"); setError(""); }} className="w-full text-sm text-white/40 hover:text-white transition-colors flex items-center justify-center gap-1">
+                <ArrowLeft className="w-3 h-3" /> Back
+              </button>
+            </motion.form>
+          )}
+
           {/* ── Social chooser ── */}
           {step === "social" && (
             <motion.div
@@ -337,6 +381,15 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                 <Mail className="w-5 h-5" />
                 Continue with Email
               </button>
+              {!isSignUp && (
+                <button
+                  onClick={() => { setPasskeyEmail(email); setStep("passkey"); setError(""); }}
+                  className="w-full py-4 bg-blue-600/15 text-blue-300 border border-blue-500/30 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-600/25 transition-all active:scale-[0.98]"
+                >
+                  <Fingerprint className="w-5 h-5" />
+                  Continue with Passkey
+                </button>
+              )}
 
               <div className="text-center pt-2">
                 <button
@@ -528,4 +581,3 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
     </div>
   );
 }
-

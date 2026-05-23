@@ -80,6 +80,7 @@ import UIThemeSwitcher from "../components/UIThemeSwitcher";
 import { ReferralStats } from "../types";
 import CustomSelect from "../components/CustomSelect";
 import TwoFactorSetup from "../components/TwoFactorSetup";
+import PasskeySetup from "../components/PasskeySetup";
 import { ALL_NAV_OPTIONS, NavOptionId } from "../components/MobileBottomNav";
 import { cn } from "../lib/utils";
 import { sendNotification } from "../lib/notificationService";
@@ -975,6 +976,12 @@ function SecurityTab() {
       <div className="space-y-3">
         <h2 className="text-base font-bold text-white">Two-Factor Authentication</h2>
         <TwoFactorSetup />
+      </div>
+
+      {/* Passkey Authentication */}
+      <div className="space-y-3">
+        <h2 className="text-base font-bold text-white">Passkey Authentication</h2>
+        <PasskeySetup />
       </div>
     </div>
   );

@@ -458,7 +458,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
               transition={{ duration: 0.6 }}
               className="relative rounded-3xl overflow-hidden border border-white/15 p-12 md:p-20 bg-gradient-to-br from-blue-600/15 via-indigo-600/10 to-transparent hover:border-white/25 transition-all group"
             >
-              <div className="pointer-events-none absolute inset-0">
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-600/15 blur-[120px]" />
               </div>
               <div className="relative text-center">

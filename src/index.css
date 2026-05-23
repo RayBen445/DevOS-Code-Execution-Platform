@@ -11,6 +11,13 @@ html,
 body {
   height: 100%;
   margin: 0;
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 #root {
@@ -467,4 +474,3 @@ button:active:not(:disabled) {
 a, button {
   transition: color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
 }
-
