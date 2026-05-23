@@ -22,7 +22,7 @@ const sections: DocSection[] = [
     icon: Rocket,
     content: (
       <div className="space-y-8">
-        <h2 className="text-4xl font-bold text-white mb-3">{sections.find(s => s.id === activeSection)?.label}</h2>
+        <h2 className="text-4xl font-bold text-white mb-3">Getting Started</h2>
         <p className="text-lg text-white/50 mb-8 max-w-3xl">Documentation and guides for building on DevOS</p>
         <Step number={1} title="Create an account">
           Sign up with your email or Google account. Once logged in, you'll land on your personal dashboard.
