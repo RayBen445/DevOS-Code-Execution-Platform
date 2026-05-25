@@ -76,10 +76,13 @@ export default function SubdomainProject({ slug, ownerUsername }: Props) {
           }
           if (!oSnap.empty) {
             const data = oSnap.docs[0].data() as Project;
-            if (data.ownerType !== "organization" && !data.ownerOrgId) {
-              await loadProjectContent({ id: oSnap.docs[0].id, ...data } as Project);
+            if (data.ownerType === "organization" || data.ownerOrgId) {
+              setError("Project not found");
+              setLoading(false);
               return;
             }
+            await loadProjectContent({ id: oSnap.docs[0].id, ...data } as Project);
+            return;
           }
 
           setError("Project not found");

@@ -75,7 +75,7 @@ export type DevosHostTarget =
   | { kind: "unknown" };
 
 export function parseDevosHost(hostname: string): DevosHostTarget {
-  const normalizedHost = normalizeLabel(hostname);
+  const normalizedHost = hostname.toLowerCase();
   if (isLocalDevelopmentHost(normalizedHost) || normalizedHost === DEVOS_PRODUCT_HOST) {
     return { kind: "app" };
   }
@@ -94,7 +94,7 @@ export function parseDevosHost(hostname: string): DevosHostTarget {
     return { kind: "unknown" };
   }
 
-  const subdomains = subdomainPart.split(".").filter(Boolean);
+  const subdomains = subdomainPart.split(".").filter(Boolean).map(normalizeLabel);
   if (subdomains.length === 3 && subdomains[2] === "org") {
     const [projectSlug, orgSlug] = subdomains;
     if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(orgSlug)) {

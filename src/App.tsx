@@ -164,7 +164,10 @@ export default function App() {
   //
   //   username.devos.kontyra.name.ng          → portfolio
   //   project.username.devos.kontyra.name.ng  → deployed project
-  const hostTarget = parseDevosHost(window.location.hostname);
+  const currentHostname = window.location.hostname.toLowerCase();
+  const hostTarget = parseDevosHost(currentHostname);
+  const isCompanyHost =
+    currentHostname === COMPANY_DOMAIN || currentHostname.endsWith(`.${COMPANY_DOMAIN}`);
   if (hostTarget.kind === "reserved") {
     return <SubdomainReserved />;
   }
@@ -185,7 +188,7 @@ export default function App() {
   if (hostTarget.kind === "org-project") {
     return <SubdomainOrgProject orgSlug={hostTarget.orgSlug} projectSlug={hostTarget.projectSlug} />;
   }
-  if (hostTarget.kind === "unknown" && window.location.hostname.endsWith(`.${COMPANY_DOMAIN}`)) {
+  if (hostTarget.kind === "unknown" && isCompanyHost) {
     return <SubdomainNotFound />;
   }
 
