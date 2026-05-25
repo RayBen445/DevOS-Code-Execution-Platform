@@ -217,21 +217,27 @@ export async function repostPost(params: {
   // Prevent chain reposts — always reference the root post
   const rootPostId = params.originalPost.originalPostId ?? params.originalPost.id;
 
-  // Snapshot of the original for embedded display
   const originalSnapshot: Omit<FeedPost, "originalPost"> = {
     id: params.originalPost.id,
     userId: params.originalPost.userId,
     username: params.originalPost.username,
-    displayName: params.originalPost.displayName,
-    avatarUrl: params.originalPost.avatarUrl,
+    displayName: params.originalPost.displayName ?? "",
+    avatarUrl: params.originalPost.avatarUrl ?? "",
     content: params.originalPost.content,
     type: params.originalPost.type,
-    projectId: params.originalPost.projectId,
-    projectName: params.originalPost.projectName,
     createdAt: params.originalPost.createdAt?.toDate?.()?.toISOString?.() ?? params.originalPost.createdAt,
-    likes: params.originalPost.likes,
-    isPublic: params.originalPost.isPublic,
-    isOfficial: params.originalPost.isOfficial,
+    likes: params.originalPost.likes ?? 0,
+    likedBy: params.originalPost.likedBy ?? [],
+    commentsCount: params.originalPost.commentsCount ?? 0,
+    repostCount: params.originalPost.repostCount ?? 0,
+    viewsCount: params.originalPost.viewsCount ?? 0,
+    isPublic: params.originalPost.isPublic ?? true,
+    ...(params.originalPost.projectId ? { projectId: params.originalPost.projectId } : {}),
+    ...(params.originalPost.projectName ? { projectName: params.originalPost.projectName } : {}),
+    ...(params.originalPost.communityId ? { communityId: params.originalPost.communityId } : {}),
+    ...(params.originalPost.communityName ? { communityName: params.originalPost.communityName } : {}),
+    ...(params.originalPost.communitySlug ? { communitySlug: params.originalPost.communitySlug } : {}),
+    ...(params.originalPost.isOfficial ? { isOfficial: true } : {}),
   };
 
   const docRef = await addDoc(collection(db, "feed"), {
@@ -253,7 +259,7 @@ export async function repostPost(params: {
   });
 
   // Increment repost count on the original post
-  await updateDoc(doc(db, "feed", params.originalPost.id), { repostCount: increment(1) });
+  await updateDoc(doc(db, "feed", rootPostId), { repostCount: increment(1) });
 
   return docRef.id;
 }

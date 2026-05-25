@@ -9,7 +9,8 @@ import fs from "fs";
 import os from "os";
 import { Resend } from "resend";
 import rateLimit from "express-rate-limit";
-import { authenticator } from "otplib";
+import { generateSecret, generateURI, verify, NobleCryptoPlugin, ScureBase32Plugin } from "otplib";
+import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -203,10 +204,10 @@ const normalizeRecoveryCode = (value: unknown): string =>
 const hashRecoveryCode = (uid: string, code: string): string =>
   crypto.createHash("sha256").update(`${uid}:${normalizeRecoveryCode(code)}:${recoveryCodePepper}`).digest("hex");
 
-authenticator.options = {
-  step: 30,
-  window: 1,
-};
+const otpCrypto = new NobleCryptoPlugin();
+const otpBase32 = new ScureBase32Plugin();
+const TOTP_PERIOD = 30;
+const TOTP_EPOCH_TOLERANCE = 30;
 
 const totpEncryptionKey = () => {
   const raw = process.env.MFA_TOTP_SECRET_KEY || process.env.JWT_SECRET || "devos-mfa-fallback";
