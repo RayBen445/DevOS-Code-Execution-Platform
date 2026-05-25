@@ -10,15 +10,19 @@ export const PRODUCT_DESCRIPTION =
 export const DEVOS_PRODUCT_HOST = `devos.${COMPANY_DOMAIN}`;
 export const DEVOS_CANONICAL_ORIGIN = `https://${DEVOS_PRODUCT_HOST}`;
 
-export const RESERVED_SUBDOMAINS = new Set([
+export const RESERVED = [
   "www",
-  "api",
-  "admin",
   "docs",
   "status",
+  "api",
+  "auth",
+  "admin",
   "devos",
-  "trust",
-]);
+  "kontyra",
+  "org",
+];
+
+export const RESERVED_SUBDOMAINS = new Set(RESERVED);
 
 const LEGACY_ROOT_HOSTS = new Set(["devos.zone.id", "devos.name.ng", "devos.app"]);
 
@@ -36,15 +40,19 @@ export function buildDevosUrl(path = "") {
 }
 
 export function buildPortfolioUrl(username: string) {
-  return `https://${normalizeLabel(username)}.${COMPANY_DOMAIN}`;
+  return `https://${normalizeLabel(username)}.${DEVOS_PRODUCT_HOST}`;
 }
 
 export function buildProjectUrl(username: string, projectSlug: string) {
-  return `https://${normalizeLabel(projectSlug)}.${normalizeLabel(username)}.${COMPANY_DOMAIN}`;
+  return `https://${normalizeLabel(projectSlug)}.${normalizeLabel(username)}.${DEVOS_PRODUCT_HOST}`;
 }
 
 export function buildOrgUrl(slug: string) {
-  return buildDevosUrl(`org/${slug}`);
+  return `https://${normalizeLabel(slug)}.org.${DEVOS_PRODUCT_HOST}`;
+}
+
+export function buildOrgProjectUrl(orgSlug: string, projectSlug: string) {
+  return `https://${normalizeLabel(projectSlug)}.${normalizeLabel(orgSlug)}.org.${DEVOS_PRODUCT_HOST}`;
 }
 
 export function isLocalDevelopmentHost(hostname: string) {
@@ -57,37 +65,69 @@ export function isLocalDevelopmentHost(hostname: string) {
 }
 
 export type DevosHostTarget =
-  | { kind: "product" }
+  | { kind: "root" }
+  | { kind: "app" }
   | { kind: "portfolio"; username: string }
   | { kind: "project"; username: string; projectSlug: string }
-  | { kind: "other" };
+  | { kind: "organization"; orgSlug: string }
+  | { kind: "org-project"; orgSlug: string; projectSlug: string }
+  | { kind: "reserved" }
+  | { kind: "unknown" };
 
 export function parseDevosHost(hostname: string): DevosHostTarget {
-  if (isLocalDevelopmentHost(hostname) || hostname === DEVOS_PRODUCT_HOST) {
-    return { kind: "product" };
+  const normalizedHost = normalizeLabel(hostname);
+  if (isLocalDevelopmentHost(normalizedHost) || normalizedHost === DEVOS_PRODUCT_HOST) {
+    return { kind: "app" };
   }
 
-  if (hostname === COMPANY_DOMAIN) {
-    return { kind: "other" };
+  if (normalizedHost === COMPANY_DOMAIN) {
+    return { kind: "root" };
   }
 
-  const suffix = `.${COMPANY_DOMAIN}`;
-  if (!hostname.endsWith(suffix)) {
-    return { kind: "other" };
+  const suffix = `.devos.${COMPANY_DOMAIN}`;
+  if (!normalizedHost.endsWith(suffix)) {
+    return { kind: "unknown" };
   }
 
-  const subdomains = hostname.slice(0, -suffix.length).split(".").filter(Boolean);
-  if (subdomains.length === 1) {
-    const [username] = subdomains;
-    return username === "devos" ? { kind: "product" } : { kind: "portfolio", username };
+  const subdomainPart = normalizedHost.slice(0, -suffix.length);
+  if (!subdomainPart) {
+    return { kind: "unknown" };
+  }
+
+  const subdomains = subdomainPart.split(".").filter(Boolean);
+  if (subdomains.length === 3 && subdomains[2] === "org") {
+    const [projectSlug, orgSlug] = subdomains;
+    if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(orgSlug)) {
+      return { kind: "reserved" };
+    }
+    return { kind: "org-project", projectSlug, orgSlug };
+  }
+
+  if (subdomains.length === 2 && subdomains[1] === "org") {
+    const [orgSlug] = subdomains;
+    if (RESERVED_SUBDOMAINS.has(orgSlug)) {
+      return { kind: "reserved" };
+    }
+    return { kind: "organization", orgSlug };
   }
 
   if (subdomains.length === 2) {
     const [projectSlug, username] = subdomains;
+    if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(username)) {
+      return { kind: "reserved" };
+    }
     return { kind: "project", projectSlug, username };
   }
 
-  return { kind: "other" };
+  if (subdomains.length === 1) {
+    const [username] = subdomains;
+    if (RESERVED_SUBDOMAINS.has(username)) {
+      return { kind: "reserved" };
+    }
+    return { kind: "portfolio", username };
+  }
+
+  return { kind: "unknown" };
 }
 
 export function isLegacyDevosHost(hostname: string) {

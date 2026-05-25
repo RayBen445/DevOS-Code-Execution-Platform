@@ -39,6 +39,10 @@ import BotsPage from "./pages/BotsPage";
 import Portfolio from "./pages/Portfolio";
 import NotFoundPage from "./pages/NotFoundPage";
 import SubdomainRouter from "./components/SubdomainRouter";
+import SubdomainNotFound from "./components/SubdomainNotFound";
+import SubdomainReserved from "./components/SubdomainReserved";
+import SubdomainOrg from "./pages/SubdomainOrg";
+import SubdomainOrgProject from "./pages/SubdomainOrgProject";
 import CommunitiesPage from "./pages/CommunitiesPage";
 import CommunityPage from "./pages/CommunityPage";
 import LearnPage from "./pages/LearnPage";
@@ -59,7 +63,7 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "./lib/firebase";
 import { signOut } from "firebase/auth";
 import { initializeDefaultBots, emitBotEventWithToast } from "./lib/botEngine";
-import { buildPortfolioUrl, getLegacyRedirectUrl, parseDevosHost } from "./lib/brand";
+import { buildPortfolioUrl, buildProjectUrl, COMPANY_DOMAIN, getLegacyRedirectUrl, parseDevosHost } from "./lib/brand";
 
 import { Toaster } from "sonner";
 
@@ -114,10 +118,11 @@ function LegacyPortfolioRedirect() {
 }
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
+const PROJECT_SLUG_REGEX = /^[a-zA-Z0-9_-]+$/;
 
 /**
  * Handles /@:username routes.
- * Validates the username, then redirects the browser to https://<username>.kontyra.name.ng
+ * Validates the username, then redirects the browser to https://<username>.devos.kontyra.name.ng
  * so that subdomain-based portfolio rendering takes over.
  * An invalid username shows a 404.
  */
@@ -129,9 +134,21 @@ function AtUsernameRoute() {
     return <NotFoundPage />;
   }
 
-  // Always redirect /@username → https://username.kontyra.name.ng
-  // (SubdomainRouter on *.kontyra.name.ng will render the portfolio)
+  // Always redirect /@username → https://username.devos.kontyra.name.ng
+  // (SubdomainRouter on *.devos.kontyra.name.ng will render the portfolio)
   window.location.replace(buildPortfolioUrl(username));
+  return null;
+}
+
+/** Legacy project URL redirect: /projects/:username/:projectSlug → project subdomain */
+function LegacyProjectRedirect() {
+  const { username, projectSlug } = useParams<{ username: string; projectSlug: string }>();
+  const location = useLocation();
+  if (!username || !projectSlug) return <NotFoundPage />;
+  if (!USERNAME_REGEX.test(username) || !PROJECT_SLUG_REGEX.test(projectSlug)) {
+    return <NotFoundPage />;
+  }
+  window.location.replace(`${buildProjectUrl(username, projectSlug)}${location.search}`);
   return null;
 }
 
@@ -142,12 +159,15 @@ function CommunitySlugRedirect({ chat = false }: { chat?: boolean }) {
 }
 
 export default function App() {
-  // Subdomain routing: *.kontyra.name.ng → render the appropriate component
+  // Subdomain routing: *.devos.kontyra.name.ng → render the appropriate component
   // without full app chrome and without changing the browser URL.
   //
-  //   username.kontyra.name.ng          → portfolio
-  //   project.username.kontyra.name.ng  → deployed project
+  //   username.devos.kontyra.name.ng          → portfolio
+  //   project.username.devos.kontyra.name.ng  → deployed project
   const hostTarget = parseDevosHost(window.location.hostname);
+  if (hostTarget.kind === "reserved") {
+    return <SubdomainReserved />;
+  }
   if (hostTarget.kind === "portfolio") {
     return <SubdomainRouter username={hostTarget.username} />;
   }
@@ -158,6 +178,15 @@ export default function App() {
         projectSlug={hostTarget.projectSlug}
       />
     );
+  }
+  if (hostTarget.kind === "organization") {
+    return <SubdomainOrg slug={hostTarget.orgSlug} />;
+  }
+  if (hostTarget.kind === "org-project") {
+    return <SubdomainOrgProject orgSlug={hostTarget.orgSlug} projectSlug={hostTarget.projectSlug} />;
+  }
+  if (hostTarget.kind === "unknown" && window.location.hostname.endsWith(`.${COMPANY_DOMAIN}`)) {
+    return <SubdomainNotFound />;
   }
 
   const [user, loading] = useAuthState(auth);
@@ -449,6 +478,7 @@ export default function App() {
             <Route path="/not-found" element={<NotFoundPage />} />
             <Route path="/@:username" element={withPageMaintenance("/u", <AtUsernameRoute />)} />
             <Route path="/@:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
+            <Route path="/projects/:username/:projectSlug" element={withPageMaintenance("/projects", <LegacyProjectRedirect />)} />
             <Route path="/u/:username" element={withPageMaintenance("/u", <LegacyPortfolioRedirect />)} />
             <Route path="/u/:username/:projectSlug" element={withPageMaintenance("/u", <LegacyPortfolioRedirect />)} />
             {/* /projects — full dashboard & project management */}

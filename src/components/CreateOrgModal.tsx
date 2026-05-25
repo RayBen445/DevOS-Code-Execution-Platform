@@ -6,6 +6,7 @@ import { auth } from "../lib/firebase";
 import { createOrg } from "../lib/orgService";
 import { getUserSettings } from "../lib/userService";
 import { cn } from "../lib/utils";
+import { DEVOS_PRODUCT_HOST } from "../lib/brand";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -134,7 +135,7 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
                     URL Slug
                   </label>
                   <div className="flex items-center rounded-xl border border-white/10 bg-white/5 overflow-hidden focus-within:border-blue-500 transition-all">
-                    <span className="px-3 text-white/30 text-sm select-none">devos.app/org/</span>
+                    <span className="px-3 text-white/30 text-sm select-none">https://</span>
                     <input
                       type="text"
                       placeholder="acme-corp"
@@ -145,6 +146,9 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
                       maxLength={40}
                       disabled={creating}
                     />
+                    <span className="px-3 text-white/30 text-sm select-none">
+                      {`.org.${DEVOS_PRODUCT_HOST}`}
+                    </span>
                   </div>
                   <p className="text-xs text-white/25">Lowercase letters, numbers, and hyphens only.</p>
                 </div>

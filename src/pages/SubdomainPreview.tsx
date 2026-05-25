@@ -21,7 +21,7 @@ interface Props {
 }
 
 /**
- * Renders a project preview for `previewId.username.kontyra.name.ng`.
+ * Renders a project preview for `previewId.username.devos.kontyra.name.ng`.
  *
  * Lookup order:
  *   1. ownerUsername == username && projectSlug == previewId (public projects)

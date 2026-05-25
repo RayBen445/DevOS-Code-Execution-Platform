@@ -210,7 +210,7 @@ export interface UserProfile {
   displayName: string;
   avatarUrl: string;
   bio: string;
-  /** Automatically assigned on signup: <username>.kontyra.name.ng */
+  /** Automatically assigned on signup: <username>.devos.kontyra.name.ng */
   subdomain?: string;
   birthday?: string;        // ISO date string YYYY-MM-DD
   role?: 'user' | 'admin' | 'company';
@@ -514,7 +514,7 @@ export interface Deployment {
   projectId: string;
   userId: string;
   username: string;
-  /** Public URL of the deployed project, e.g. https://username.devos.name.ng */
+  /** Public URL of the deployed project, e.g. https://project.username.devos.kontyra.name.ng */
   url: string;
   /** Per-commit preview URL, e.g. /@username/slug-a1b2c3 */
   previewUrl?: string | null;

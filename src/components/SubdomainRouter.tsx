@@ -3,8 +3,10 @@ import { db } from "../lib/firebase";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import SubdomainPortfolio from "../pages/SubdomainPortfolio";
 import SubdomainProject from "../pages/SubdomainProject";
-import { Zap, AlertCircle } from "lucide-react";
-import { RESERVED_SUBDOMAINS, buildDevosUrl } from "../lib/brand";
+import { Zap } from "lucide-react";
+import { RESERVED_SUBDOMAINS } from "../lib/brand";
+import SubdomainReserved from "./SubdomainReserved";
+import SubdomainNotFound from "./SubdomainNotFound";
 
 type SubdomainType = "loading" | "user" | "reserved" | "not-found";
 
@@ -35,7 +37,7 @@ interface Props {
 export default function SubdomainRouter({ username, projectSlug }: Props) {
   const [resolvedType, setResolvedType] = useState<SubdomainType>("loading");
 
-  // Extract path slug: `professor.kontyra.name.ng/devos-first-test-script`
+  // Extract path slug: `professor.devos.kontyra.name.ng/devos-first-test-script`
   // → pathSlug = "devos-first-test-script"
   const pathSlug = window.location.pathname.replace(/^\/+/, "").split(/[/?#]/)[0].trim();
   const effectiveProjectSlug = projectSlug || pathSlug;
@@ -94,21 +96,8 @@ export default function SubdomainRouter({ username, projectSlug }: Props) {
   }
 
   if (resolvedType === "reserved") {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center gap-3">
-        <AlertCircle className="w-10 h-10 text-yellow-400" />
-        <p className="text-lg">This subdomain is reserved.</p>
-        <a href={buildDevosUrl()} className="text-blue-400 hover:underline text-sm">Go to DevOS</a>
-      </div>
-    );
+    return <SubdomainReserved />;
   }
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center gap-3">
-      <AlertCircle className="w-10 h-10 text-red-400" />
-      <p className="text-2xl font-bold">404</p>
-      <p className="text-white/60">Subdomain not found: <span className="text-white">{username}</span></p>
-      <a href={buildDevosUrl()} className="text-blue-400 hover:underline text-sm mt-2">Go to DevOS</a>
-    </div>
-  );
+  return <SubdomainNotFound label={username} />;
 }
