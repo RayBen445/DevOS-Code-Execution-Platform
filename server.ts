@@ -9,6 +9,7 @@ import fs from "fs";
 import os from "os";
 import { Resend } from "resend";
 import rateLimit from "express-rate-limit";
+import { authenticator } from "otplib";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -24,11 +25,13 @@ const __dirname = path.dirname(__filename);
 // invocation (Vercel) reuses the same initialised instance.
 // ---------------------------------------------------------------------------
 let firebaseProjectId: string | undefined = process.env.FIREBASE_PROJECT_ID;
+let firebaseApiKey: string | undefined = process.env.FIREBASE_API_KEY;
 const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
-if (!firebaseProjectId) {
+if (!firebaseProjectId || !firebaseApiKey) {
   try {
     const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
-    firebaseProjectId = firebaseConfig.projectId;
+    firebaseProjectId = firebaseProjectId || firebaseConfig.projectId;
+    firebaseApiKey = firebaseApiKey || firebaseConfig.apiKey;
   } catch {
     // Config file absent in production; FIREBASE_PROJECT_ID must be set
   }
@@ -124,6 +127,7 @@ const validateProjectRateLimit = new Map<string, { count: number; resetAt: numbe
 const VALIDATE_RATE_MAX = 20;
 const VALIDATE_RATE_WINDOW_MS = 60_000;
 const PASSKEY_CHALLENGE_TTL_MS = 5 * 60_000;
+const MFA_CHALLENGE_TTL_MS = 5 * 60_000;
 const PASSKEY_RP_NAME = process.env.PASSKEY_RP_NAME || "DevOS";
 const passkeyRouteRateLimiter = rateLimit({
   windowMs: 60_000,
@@ -163,6 +167,19 @@ const normalizeEmail = (value: unknown): string =>
     .trim()
     .toLowerCase();
 
+const resolveIdentifier = async (value: unknown): Promise<{ email: string; uid?: string }> => {
+  const raw = String(value || "").trim();
+  if (!raw) return { email: "" };
+  const normalized = normalizeEmail(raw);
+  if (normalized.includes("@")) return { email: normalized };
+  const username = normalized;
+  const snap = await db.collection("users").where("username", "==", username).limit(1).get();
+  if (snap.empty) return { email: "" };
+  const doc = snap.docs[0];
+  const email = normalizeEmail(doc.get("email"));
+  return { email, uid: doc.id };
+};
+
 const RECOVERY_CODE_COUNT = 10;
 const RECOVERY_CODE_LEN = 10;
 const recoveryCodePepper = process.env.MFA_RECOVERY_CODE_PEPPER || process.env.JWT_SECRET || "devos-recovery-fallback-pepper";
@@ -185,6 +202,102 @@ const normalizeRecoveryCode = (value: unknown): string =>
 
 const hashRecoveryCode = (uid: string, code: string): string =>
   crypto.createHash("sha256").update(`${uid}:${normalizeRecoveryCode(code)}:${recoveryCodePepper}`).digest("hex");
+
+authenticator.options = {
+  step: 30,
+  window: 1,
+};
+
+const totpEncryptionKey = () => {
+  const raw = process.env.MFA_TOTP_SECRET_KEY || process.env.JWT_SECRET || "devos-mfa-fallback";
+  return crypto.createHash("sha256").update(raw).digest();
+};
+
+const encryptTotpSecret = (secret: string): string => {
+  const iv = crypto.randomBytes(12);
+  const key = totpEncryptionKey();
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const ciphertext = Buffer.concat([cipher.update(secret, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [
+    iv.toString("base64"),
+    tag.toString("base64"),
+    ciphertext.toString("base64"),
+  ].join(".");
+};
+
+const decryptTotpSecret = (payload: string): string => {
+  const [ivB64, tagB64, dataB64] = String(payload || "").split(".");
+  if (!ivB64 || !tagB64 || !dataB64) {
+    throw new Error("Invalid TOTP secret payload.");
+  }
+  const iv = Buffer.from(ivB64, "base64");
+  const tag = Buffer.from(tagB64, "base64");
+  const data = Buffer.from(dataB64, "base64");
+  const key = totpEncryptionKey();
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(tag);
+  const plaintext = Buffer.concat([decipher.update(data), decipher.final()]);
+  return plaintext.toString("utf8");
+};
+
+const createMfaChallenge = async (uid: string, email: string) => {
+  const challengeRef = await db.collection("mfa_challenges").add({
+    uid,
+    email,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt: Date.now() + MFA_CHALLENGE_TTL_MS,
+  });
+  return challengeRef.id;
+};
+
+const consumeRecoveryCode = async (uid: string, recoveryCode: string) => {
+  const snap = await db.collection("mfa_recovery_codes").doc(uid).get();
+  if (!snap.exists) {
+    throw new Error("Invalid recovery code.");
+  }
+  const data = snap.data() as any;
+  const codes = Array.isArray(data.codes) ? data.codes : [];
+  if (!codes.length) throw new Error("Invalid recovery code.");
+  const hashed = hashRecoveryCode(uid, recoveryCode);
+  const idx = codes.findIndex((c: any) => c?.hash === hashed && !c?.usedAt);
+  if (idx < 0) throw new Error("Invalid recovery code.");
+  const updatedCodes = [...codes];
+  updatedCodes[idx] = { ...updatedCodes[idx], usedAt: Date.now() };
+  await snap.ref.set({
+    codes: updatedCodes,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  const remaining = updatedCodes.filter((c: any) => !c?.usedAt).length;
+  return { remaining };
+};
+
+const signInWithPassword = async (email: string, password: string) => {
+  if (!firebaseApiKey) {
+    throw new Error("Firebase API key is not configured.");
+  }
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        returnSecureToken: true,
+      }),
+    }
+  );
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = data?.error?.message || "Invalid credentials.";
+    throw new Error(message);
+  }
+  return {
+    uid: String(data.localId || ""),
+    email: normalizeEmail(data.email || email),
+  };
+};
 
 // Allowed output directories — used to prevent path traversal via user-supplied outputDir
 const ALLOWED_OUTPUT_DIRS = new Set(["dist", "build", ".next", "out", "public"]);
@@ -299,7 +412,7 @@ app.post("/api/passkey/register/options", passkeyRouteRateLimiter, async (req, r
     const userName = decoded.name || email.split("@")[0] || "DevOS User";
     const webauthnUserId = Uint8Array.from(Buffer.from(userId, "utf8"));
 
-    const existing = await db.collection("passkey_credentials").where("uid", "==", userId).get();
+    const existing = await db.collection("users").doc(userId).collection("passkeys").get();
     const excludeCredentials = existing.docs.map((d) => ({
       id: d.id,
       type: "public-key" as const,
@@ -393,13 +506,17 @@ app.post("/api/passkey/register/verify", passkeyRouteRateLimiter, async (req, re
     const credentialId = credential.id;
     const publicKey = Buffer.from(credential.publicKey).toString("base64url");
     const transports = credential.transports || [];
+    const deviceType = verification.registrationInfo.credentialDeviceType;
+    const backedUp = verification.registrationInfo.credentialBackedUp;
 
-    await db.collection("passkey_credentials").doc(credentialId).set({
+    await db.collection("users").doc(decoded.uid).collection("passkeys").doc(credentialId).set({
       uid: decoded.uid,
       email: normalizeEmail(decoded.email),
-      credentialId,
+      credentialID: credentialId,
       publicKey,
       counter: credential.counter || 0,
+      deviceType,
+      backedUp,
       transports,
       deviceName: String(deviceName || "This device").slice(0, 80),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -430,10 +547,13 @@ app.get("/api/passkey/list", passkeyRouteRateLimiter, async (req, res) => {
   }
 
   try {
-    const snap = await db.collection("passkey_credentials").where("uid", "==", decoded.uid).get();
+    const snap = await db.collection("users").doc(decoded.uid).collection("passkeys").get();
     const credentials = snap.docs.map((d) => ({
       credentialId: d.id,
       deviceName: d.get("deviceName") || "Passkey device",
+      deviceType: d.get("deviceType") || null,
+      backedUp: d.get("backedUp") ?? null,
+      transports: d.get("transports") || [],
       createdAt: d.get("createdAt") || null,
       updatedAt: d.get("updatedAt") || null,
       lastUsedAt: d.get("lastUsedAt") || null,
@@ -463,10 +583,9 @@ app.delete("/api/passkey/:credentialId", passkeyRouteRateLimiter, async (req, re
   if (!credentialId) return res.status(400).json({ error: "Missing credential id." });
 
   try {
-    const ref = db.collection("passkey_credentials").doc(credentialId);
+    const ref = db.collection("users").doc(decoded.uid).collection("passkeys").doc(credentialId);
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ error: "Passkey not found." });
-    if (snap.get("uid") !== decoded.uid) return res.status(403).json({ error: "Forbidden." });
     await ref.delete();
     return res.json({ success: true });
   } catch (error: any) {
@@ -475,23 +594,61 @@ app.delete("/api/passkey/:credentialId", passkeyRouteRateLimiter, async (req, re
   }
 });
 
-app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) => {
-  const email = normalizeEmail((req.body as any)?.email);
-  if (!email) return res.status(400).json({ error: "Email is required." });
+app.patch("/api/passkey/:credentialId", passkeyRouteRateLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const credentialId = String(req.params.credentialId || "").trim();
+  const deviceName = String((req.body as any)?.deviceName || "").trim();
+  if (!credentialId || !deviceName) {
+    return res.status(400).json({ error: "Missing credential id or device name." });
+  }
 
   try {
-    const credsSnap = await db.collection("passkey_credentials").where("email", "==", email).limit(25).get();
-    if (credsSnap.empty) {
-      return res.status(404).json({ error: "No passkey found for this account." });
-    }
+    const ref = db.collection("users").doc(decoded.uid).collection("passkeys").doc(credentialId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ error: "Passkey not found." });
+    await ref.set({
+      deviceName: deviceName.slice(0, 80),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[passkey][update] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to update passkey." });
+  }
+});
 
+app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) => {
+  const identifier = (req.body as any)?.identifier ?? (req.body as any)?.email;
+
+  try {
+    const { email } = await resolveIdentifier(identifier);
     const rpID = getPasskeyRpId(req);
     const expectedOrigin = getRequestOrigin(req);
-    const allowCredentials = credsSnap.docs.map((d) => ({
-      id: d.id,
-      type: "public-key" as const,
-      transports: Array.isArray(d.get("transports")) ? d.get("transports") : undefined,
-    }));
+    let allowCredentials: { id: string; type: "public-key"; transports?: string[] }[] | undefined;
+
+    if (email) {
+      const credsSnap = await db.collectionGroup("passkeys").where("email", "==", email).limit(25).get();
+      if (credsSnap.empty) {
+        return res.status(404).json({ error: "No passkey found for this account." });
+      }
+      allowCredentials = credsSnap.docs.map((d) => ({
+        id: d.id,
+        type: "public-key" as const,
+        transports: Array.isArray(d.get("transports")) ? d.get("transports") : undefined,
+      }));
+    }
 
     const options = await generateAuthenticationOptions({
       rpID,
@@ -502,7 +659,7 @@ app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) 
 
     const challengeRef = await db.collection("passkey_challenges").add({
       type: "auth",
-      email,
+      email: email || null,
       challenge: options.challenge,
       expectedOrigin,
       expectedRPID: rpID,
@@ -540,11 +697,20 @@ app.post("/api/passkey/auth/verify", passkeyRouteRateLimiter, async (req, res) =
 
     const credentialId = String(response.id || "");
     if (!credentialId) return res.status(400).json({ error: "Missing credential id." });
-    const credRef = db.collection("passkey_credentials").doc(credentialId);
-    const credSnap = await credRef.get();
-    if (!credSnap.exists) return res.status(400).json({ error: "Passkey credential not found." });
+    const credSnap = await db
+      .collectionGroup("passkeys")
+      .where(admin.firestore.FieldPath.documentId(), "==", credentialId)
+      .limit(1)
+      .get();
+    if (credSnap.empty) return res.status(400).json({ error: "Passkey credential not found." });
 
-    const credData = credSnap.data() as any;
+    const credDoc = credSnap.docs[0];
+    const credData = credDoc.data() as any;
+    const credentialEmail = normalizeEmail(credData.email);
+    if (challengeData.email && normalizeEmail(challengeData.email) !== credentialEmail) {
+      return res.status(403).json({ error: "Passkey does not match this account." });
+    }
+
     const verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge: challengeData.challenge,
@@ -563,18 +729,224 @@ app.post("/api/passkey/auth/verify", passkeyRouteRateLimiter, async (req, res) =
       return res.status(401).json({ error: "Passkey verification failed." });
     }
 
-    await credRef.set({
+    await credDoc.ref.set({
       counter: verification.authenticationInfo.newCounter,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastUsedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    const customToken = await admin.auth().createCustomToken(String(credData.uid || ""));
     await challengeRef.delete().catch(() => {});
+    const uid = String(credData.uid || "");
+    if (!uid) return res.status(400).json({ error: "Invalid passkey account." });
+
+    const userSettingsSnap = await db.collection("user_settings").doc(uid).get();
+    const twoFactorEnabled = !!userSettingsSnap.get("twoFactorEnabled");
+    if (twoFactorEnabled) {
+      const challengeId = await createMfaChallenge(uid, credentialEmail);
+      return res.json({ mfaRequired: true, challengeId });
+    }
+
+    const customToken = await admin.auth().createCustomToken(uid);
     return res.json({ success: true, customToken });
   } catch (error: any) {
     console.error("[passkey][auth/verify] error", error);
     return res.status(401).json({ error: error?.message || "Failed to verify passkey sign-in." });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Password + 2FA authentication routes
+// ---------------------------------------------------------------------------
+app.post("/api/auth/password/login", passkeyRouteRateLimiter, async (req, res) => {
+  const identifier = (req.body as any)?.identifier ?? (req.body as any)?.email ?? (req.body as any)?.username;
+  const password = String((req.body as any)?.password || "");
+  if (!identifier || !password) {
+    return res.status(400).json({ error: "Identifier and password are required." });
+  }
+
+  try {
+    const resolved = await resolveIdentifier(identifier);
+    const email = resolved.email;
+    if (!email) return res.status(404).json({ error: "Account not found." });
+
+    const { uid } = await signInWithPassword(email, password);
+    if (!uid) return res.status(401).json({ error: "Invalid credentials." });
+
+    const settingsSnap = await db.collection("user_settings").doc(uid).get();
+    const twoFactorEnabled = !!settingsSnap.get("twoFactorEnabled");
+    if (twoFactorEnabled) {
+      const challengeId = await createMfaChallenge(uid, email);
+      return res.json({ mfaRequired: true, challengeId });
+    }
+
+    const customToken = await admin.auth().createCustomToken(uid);
+    return res.json({ success: true, customToken });
+  } catch (error: any) {
+    const message = error?.message || "Invalid credentials.";
+    return res.status(401).json({ error: message });
+  }
+});
+
+app.post("/api/auth/2fa/setup", passkeyRouteRateLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const email = normalizeEmail(decoded.email);
+  if (!email) return res.status(400).json({ error: "Email is required for 2FA setup." });
+
+  try {
+    const settingsRef = db.collection("user_settings").doc(decoded.uid);
+    const settingsSnap = await settingsRef.get();
+    if (settingsSnap.get("twoFactorEnabled")) {
+      return res.status(400).json({ error: "Two-factor authentication is already enabled." });
+    }
+
+    const secret = authenticator.generateSecret();
+    const otpauthUrl = authenticator.keyuri(email, PASSKEY_RP_NAME, secret);
+    await settingsRef.set({
+      twoFactorPendingSecret: encryptTotpSecret(secret),
+      twoFactorPendingAt: admin.firestore.FieldValue.serverTimestamp(),
+      twoFactorEnabled: false,
+    }, { merge: true });
+
+    return res.json({ secret, otpauthUrl });
+  } catch (error: any) {
+    console.error("[2fa][setup] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to start 2FA setup." });
+  }
+});
+
+app.post("/api/auth/2fa/verify", passkeyRouteRateLimiter, async (req, res) => {
+  const { challengeId, otp, recoveryCode } = req.body as {
+    challengeId?: string;
+    otp?: string;
+    recoveryCode?: string;
+  };
+
+  if (challengeId) {
+    try {
+      const challengeRef = db.collection("mfa_challenges").doc(challengeId);
+      const challengeSnap = await challengeRef.get();
+      if (!challengeSnap.exists) return res.status(400).json({ error: "MFA challenge not found." });
+      const data = challengeSnap.data() as any;
+      if (!data.expiresAt || Date.now() > Number(data.expiresAt)) {
+        await challengeRef.delete().catch(() => {});
+        return res.status(400).json({ error: "MFA challenge expired." });
+      }
+
+      const uid = String(data.uid || "");
+      if (!uid) return res.status(400).json({ error: "Invalid MFA challenge." });
+
+      if (recoveryCode) {
+        await consumeRecoveryCode(uid, recoveryCode);
+      } else {
+        const otpValue = String(otp || "");
+        if (!otpValue) return res.status(400).json({ error: "OTP code is required." });
+        const settingsSnap = await db.collection("user_settings").doc(uid).get();
+        const encrypted = settingsSnap.get("twoFactorSecret");
+        if (!encrypted) return res.status(400).json({ error: "Two-factor authentication is not configured." });
+        const secret = decryptTotpSecret(encrypted);
+        if (!authenticator.check(otpValue, secret)) {
+          return res.status(401).json({ error: "Invalid authentication code." });
+        }
+      }
+
+      await challengeRef.delete().catch(() => {});
+      const customToken = await admin.auth().createCustomToken(uid);
+      return res.json({ success: true, customToken });
+    } catch (error: any) {
+      console.error("[2fa][verify] error", error);
+      return res.status(401).json({ error: error?.message || "Two-factor verification failed." });
+    }
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  const otpValue = String(otp || "");
+  if (!otpValue) return res.status(400).json({ error: "OTP code is required." });
+
+  try {
+    const settingsRef = db.collection("user_settings").doc(decoded.uid);
+    const settingsSnap = await settingsRef.get();
+    const pendingSecret = settingsSnap.get("twoFactorPendingSecret");
+    if (!pendingSecret) {
+      return res.status(400).json({ error: "Two-factor setup not started." });
+    }
+    const secret = decryptTotpSecret(pendingSecret);
+    if (!authenticator.check(otpValue, secret)) {
+      return res.status(401).json({ error: "Invalid authentication code." });
+    }
+
+    await settingsRef.set({
+      twoFactorEnabled: true,
+      twoFactorSecret: pendingSecret,
+      twoFactorPendingSecret: admin.firestore.FieldValue.delete(),
+      twoFactorPendingAt: admin.firestore.FieldValue.delete(),
+      twoFactorVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    await db.collection("users").doc(decoded.uid).set({
+      twoFactorEnabled: true,
+    }, { merge: true });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[2fa][verify] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to verify 2FA." });
+  }
+});
+
+app.post("/api/auth/2fa/disable", passkeyRouteRateLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  const idToken = authHeader.split("Bearer ")[1];
+
+  let decoded: admin.auth.DecodedIdToken;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  try {
+    await db.collection("user_settings").doc(decoded.uid).set({
+      twoFactorEnabled: false,
+      twoFactorSecret: admin.firestore.FieldValue.delete(),
+      twoFactorPendingSecret: admin.firestore.FieldValue.delete(),
+      twoFactorPendingAt: admin.firestore.FieldValue.delete(),
+    }, { merge: true });
+
+    await db.collection("users").doc(decoded.uid).set({
+      twoFactorEnabled: false,
+    }, { merge: true });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[2fa][disable] error", error);
+    return res.status(500).json({ error: error?.message || "Failed to disable 2FA." });
   }
 });
 
@@ -671,44 +1043,16 @@ app.post("/api/mfa/recovery-codes/verify", recoveryCodeRouteRateLimiter, async (
       return res.status(401).json({ error: "Invalid recovery code." });
     }
 
-    const docRef = snap.docs[0].ref;
-    const data = snap.docs[0].data() as any;
-    const uid = String(data.uid || "");
-    const codes = Array.isArray(data.codes) ? data.codes : [];
-    if (!uid || codes.length === 0) {
+    const uid = String(snap.docs[0].get("uid") || "");
+    if (!uid) {
       return res.status(401).json({ error: "Invalid recovery code." });
     }
 
-    const hashed = hashRecoveryCode(uid, recoveryCodeRaw);
-    const idx = codes.findIndex((c: any) => c?.hash === hashed && !c?.usedAt);
-    if (idx < 0) {
-      return res.status(401).json({ error: "Invalid recovery code." });
-    }
-
-    const updatedCodes = [...codes];
-    updatedCodes[idx] = {
-      ...updatedCodes[idx],
-      usedAt: Date.now(),
-    };
-    await docRef.set({
-      codes: updatedCodes,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    // Recovery-code fallback: consume code, then disable TOTP so user can
-    // complete password sign-in again without authenticator access.
-    const userRecord = await admin.auth().getUser(uid);
-    const existingFactors = userRecord.multiFactor?.enrolledFactors || [];
-    const remainingFactors = existingFactors.filter((f) => f.factorId !== "totp");
-    await admin.auth().updateUser(uid, {
-      multiFactor: { enrolledFactors: remainingFactors },
-    });
-
-    const remaining = updatedCodes.filter((c: any) => !c?.usedAt).length;
+    const { remaining } = await consumeRecoveryCode(uid, recoveryCodeRaw);
     return res.json({
       success: true,
       remaining,
-      message: "Recovery code accepted. Two-factor was disabled for account recovery. Please sign in again.",
+      message: "Recovery code accepted.",
     });
   } catch (error: any) {
     console.error("[mfa][recovery/verify] error", error);
