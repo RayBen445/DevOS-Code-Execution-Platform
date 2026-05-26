@@ -62,7 +62,8 @@ export function getAuthErrorMessage(error: unknown): string {
       }
       if (
         normalized.includes("firebase api key is not configured") ||
-        normalized.includes("sign-in service is not configured")
+        normalized.includes("sign-in service is not configured") ||
+        normalized.includes("authentication service is not configured")
       ) {
         return "Sign-in is temporarily unavailable due to server configuration. Please contact support.";
       }

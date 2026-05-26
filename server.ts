@@ -38,15 +38,24 @@ if (!firebaseProjectId || !firebaseApiKey) {
   }
 }
 
+const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+const allowApplicationDefaultCredential =
+  process.env.FIREBASE_USE_APPLICATION_DEFAULT === "true" ||
+  !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
 let adminCredential: admin.credential.Credential;
-if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+if (serviceAccountJson) {
   try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    const serviceAccount = JSON.parse(serviceAccountJson);
     adminCredential = admin.credential.cert(serviceAccount);
   } catch {
     console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON; falling back to applicationDefault");
     adminCredential = admin.credential.applicationDefault();
   }
+} else if (process.env.VERCEL && !allowApplicationDefaultCredential) {
+  throw new Error(
+    "FIREBASE_SERVICE_ACCOUNT_JSON is required in Vercel unless FIREBASE_USE_APPLICATION_DEFAULT=true is explicitly set."
+  );
 } else {
   adminCredential = admin.credential.applicationDefault();
 }
@@ -178,6 +187,17 @@ const normalizeEmail = (value: unknown): string =>
   String(value || "")
     .trim()
     .toLowerCase();
+
+const isAuthServiceConfigError = (error: unknown): boolean => {
+  const message = String((error as { message?: string })?.message || "").toLowerCase();
+  return (
+    message.includes("not configured") ||
+    message.includes("default credentials") ||
+    message.includes("applicationdefault") ||
+    message.includes("service account") ||
+    message.includes("credential implementation provided to initializeapp")
+  );
+};
 
 const resolveIdentifier = async (value: unknown): Promise<{ email: string; uid?: string }> => {
   const raw = String(value || "").trim();
@@ -796,8 +816,8 @@ app.post("/api/auth/password/login", passkeyRouteRateLimiter, async (req, res) =
     return res.json({ success: true, customToken });
   } catch (error: any) {
     const message = error?.message || "Invalid credentials.";
-    if (String(message).toLowerCase().includes("not configured")) {
-      return res.status(500).json({ error: "Sign-in service is not configured." });
+    if (isAuthServiceConfigError(error)) {
+      return res.status(500).json({ error: "Authentication service is not configured." });
     }
     return res.status(401).json({ error: message });
   }
