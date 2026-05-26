@@ -226,6 +226,17 @@ const isAuthServiceConfigError = (error: unknown): boolean => {
   );
 };
 
+const isAuthTokenMintError = (error: unknown): boolean => {
+  const message = String((error as { message?: string })?.message || "").toLowerCase();
+  return (
+    message.includes("createcustomtoken") ||
+    message.includes("failed to determine service account") ||
+    message.includes("iam.serviceaccounts.signblob") ||
+    message.includes("permission iam.serviceaccounts.signblob") ||
+    message.includes("error fetching access token")
+  );
+};
+
 const resolveIdentifier = async (value: unknown): Promise<{ email: string; uid?: string }> => {
   const raw = String(value || "").trim();
   if (!raw) return { email: "" };
@@ -843,7 +854,7 @@ app.post("/api/auth/password/login", passkeyRouteRateLimiter, async (req, res) =
     return res.json({ success: true, customToken });
   } catch (error: any) {
     const message = error?.message || "Invalid credentials.";
-    if (isAuthServiceConfigError(error)) {
+    if (isAuthServiceConfigError(error) || isAuthTokenMintError(error)) {
       return res.status(500).json({ error: "Authentication service is not configured." });
     }
     return res.status(401).json({ error: message });
