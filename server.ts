@@ -42,6 +42,7 @@ const serviceAccountJson =
   process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim() ||
   process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
 const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
+const serviceAccountFilePath = process.env.FIREBASE_SERVICE_ACCOUNT_FILE?.trim();
 const serviceAccountPrivateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n").trim();
 const serviceAccountClientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
 const serviceAccountProjectId = process.env.FIREBASE_PROJECT_ID?.trim();
@@ -70,6 +71,27 @@ if (!explicitCredentialConfigured && serviceAccountBase64) {
     explicitCredentialConfigured = true;
   } catch (error) {
     console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_BASE64; falling back to other credential sources", error);
+  }
+}
+
+if (!explicitCredentialConfigured) {
+  const fileCandidates = [
+    serviceAccountFilePath,
+    path.join(process.cwd(), "firebase-service-account.json"),
+    path.join(process.cwd(), "serviceAccountKey.json"),
+  ].filter((value): value is string => Boolean(value && value.trim()));
+
+  for (const candidate of fileCandidates) {
+    try {
+      if (!fs.existsSync(candidate)) continue;
+      const raw = fs.readFileSync(candidate, "utf-8");
+      const parsed = JSON.parse(raw);
+      adminCredential = admin.credential.cert(parsed);
+      explicitCredentialConfigured = true;
+      break;
+    } catch (error) {
+      console.error(`Failed to parse Firebase service account file at ${candidate}; trying next source`, error);
+    }
   }
 }
 
