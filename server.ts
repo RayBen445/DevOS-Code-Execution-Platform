@@ -785,6 +785,9 @@ app.post("/api/auth/password/login", passkeyRouteRateLimiter, async (req, res) =
     return res.json({ success: true, customToken });
   } catch (error: any) {
     const message = error?.message || "Invalid credentials.";
+    if (String(message).toLowerCase().includes("not configured")) {
+      return res.status(500).json({ error: "Sign-in service is not configured." });
+    }
     return res.status(401).json({ error: message });
   }
 });

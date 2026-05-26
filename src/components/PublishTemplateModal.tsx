@@ -47,7 +47,7 @@ export default function PublishTemplateModal({
           const userSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
           const admin = userSnap.exists() && userSnap.data()?.role === "admin";
           setIsAdmin(admin);
-          setPublishAsOfficial(admin);
+          setPublishAsOfficial(false);
         }
       } catch {
         setFiles([]);

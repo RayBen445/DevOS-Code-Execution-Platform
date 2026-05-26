@@ -150,7 +150,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         name === "index.html" ||
         name === "app.tsx" ||
         name === "app.jsx" ||
-        path.endsWith("/readme.md")
+        path.endsWith("readme.md")
       );
     });
     const fallback = [...files].sort((a, b) => a.name.localeCompare(b.name))[0];

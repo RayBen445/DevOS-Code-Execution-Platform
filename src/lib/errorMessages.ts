@@ -5,6 +5,8 @@ export function getAuthErrorMessage(error: unknown): string {
   if (!error || typeof error !== "object") return "Something went wrong. Please try again.";
   const code = (error as { code?: string }).code ?? "";
   const message = (error as { message?: string }).message ?? "";
+  const normalized = message.toLowerCase();
+  const upper = message.toUpperCase();
 
   switch (code) {
     // Sign-in errors
@@ -42,7 +44,26 @@ export function getAuthErrorMessage(error: unknown): string {
       return "Please sign out and sign in again to continue.";
 
     default:
-      if (message.includes("network") || message.includes("fetch")) {
+      // Backend/password-login errors (Firebase Identity Toolkit + server messages)
+      if (
+        upper.includes("INVALID_LOGIN_CREDENTIALS") ||
+        upper.includes("EMAIL_NOT_FOUND") ||
+        upper.includes("INVALID_PASSWORD") ||
+        normalized.includes("invalid credentials") ||
+        normalized.includes("account not found")
+      ) {
+        return "Invalid email/username or password.";
+      }
+      if (upper.includes("USER_DISABLED")) {
+        return "This account has been disabled. Contact support.";
+      }
+      if (upper.includes("TOO_MANY_ATTEMPTS_TRY_LATER")) {
+        return "Too many attempts. Please wait a moment and try again.";
+      }
+      if (normalized.includes("firebase api key is not configured")) {
+        return "Sign-in is temporarily unavailable due to server configuration. Please contact support.";
+      }
+      if (normalized.includes("network") || normalized.includes("fetch")) {
         return "Connection lost. Check your internet and try again.";
       }
       return "Something went wrong. Please try again.";

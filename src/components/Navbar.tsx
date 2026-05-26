@@ -180,7 +180,12 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               <Users className="w-4 h-4" />
               Dev Teams
             </Link>
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-sm font-medium cursor-not-allowed">
+            <span
+              role="link"
+              aria-disabled="true"
+              aria-label="Marketplace is coming soon"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-sm font-medium cursor-not-allowed"
+            >
               <Layout className="w-4 h-4" />
               Marketplace · Coming Soon
             </span>
