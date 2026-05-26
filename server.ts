@@ -65,7 +65,7 @@ const db = admin.firestore();
 // Express app – module-level so Vercel can import and invoke it directly.
 // ---------------------------------------------------------------------------
 const app = express();
-const trustProxySetting = process.env.EXPRESS_TRUST_PROXY;
+const trustProxySetting = process.env.EXPRESS_TRUST_PROXY?.trim();
 if (trustProxySetting === "true") {
   app.set("trust proxy", true);
 } else if (trustProxySetting === "false") {
