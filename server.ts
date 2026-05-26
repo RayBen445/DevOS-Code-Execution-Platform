@@ -52,11 +52,12 @@ if (serviceAccountJson) {
     console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON; falling back to applicationDefault");
     adminCredential = admin.credential.applicationDefault();
   }
-} else if (process.env.VERCEL && !allowApplicationDefaultCredential) {
-  throw new Error(
-    "Firebase credentials not configured for Vercel deployment. Set FIREBASE_SERVICE_ACCOUNT_JSON, or set FIREBASE_USE_APPLICATION_DEFAULT=true / GOOGLE_APPLICATION_CREDENTIALS."
-  );
 } else {
+  if (process.env.VERCEL && !allowApplicationDefaultCredential) {
+    console.warn(
+      "FIREBASE_SERVICE_ACCOUNT_JSON is not set in Vercel; attempting Firebase application default credentials. Set FIREBASE_USE_APPLICATION_DEFAULT=true to acknowledge this explicitly."
+    );
+  }
   adminCredential = admin.credential.applicationDefault();
 }
 
