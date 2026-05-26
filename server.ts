@@ -249,13 +249,20 @@ const isAuthServiceConfigError = (error: unknown): boolean => {
 };
 
 const isAuthTokenMintError = (error: unknown): boolean => {
-  const message = String((error as { message?: string })?.message || "").toLowerCase();
+  const err = error as { message?: string; code?: string; errorInfo?: { code?: string; message?: string } };
+  const message = String(err?.message || err?.errorInfo?.message || "").toLowerCase();
+  const code = String(err?.code || err?.errorInfo?.code || "").toLowerCase();
   return (
+    code.includes("auth/invalid-credential") ||
+    code.includes("app/invalid-credential") ||
+    code.includes("auth/insufficient-permission") ||
     message.includes("createcustomtoken") ||
     message.includes("failed to determine service account") ||
     message.includes("iam.serviceaccounts.signblob") ||
     message.includes("permission iam.serviceaccounts.signblob") ||
-    message.includes("error fetching access token")
+    message.includes("error fetching access token") ||
+    message.includes("insufficient permission") ||
+    message.includes("invalid credential")
   );
 };
 
