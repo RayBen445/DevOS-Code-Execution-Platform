@@ -637,7 +637,7 @@ app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) 
     const { email } = await resolveIdentifier(identifier);
     const rpID = getPasskeyRpId(req);
     const expectedOrigin = getRequestOrigin(req);
-    let allowCredentials: { id: string; type: "public-key"; transports?: string[] }[] | undefined;
+    let allowCredentials: { id: string; transports?: AuthenticatorTransportFuture[] }[] | undefined;
 
     if (email) {
       const credsSnap = await db.collectionGroup("passkeys").where("email", "==", email).limit(25).get();
@@ -646,8 +646,9 @@ app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) 
       }
       allowCredentials = credsSnap.docs.map((d) => ({
         id: d.id,
-        type: "public-key" as const,
-        transports: Array.isArray(d.get("transports")) ? d.get("transports") : undefined,
+        transports: Array.isArray(d.get("transports"))
+          ? d.get("transports").filter((t: unknown): t is AuthenticatorTransportFuture => typeof t === "string")
+          : undefined,
       }));
     }
 
@@ -812,8 +813,13 @@ app.post("/api/auth/2fa/setup", passkeyRouteRateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Two-factor authentication is already enabled." });
     }
 
-    const secret = authenticator.generateSecret();
-    const otpauthUrl = authenticator.keyuri(email, PASSKEY_RP_NAME, secret);
+    const secret = generateSecret({ crypto: otpCrypto, base32: otpBase32 });
+    const otpauthUrl = generateURI({
+      issuer: PASSKEY_RP_NAME,
+      label: email,
+      secret,
+      period: TOTP_PERIOD,
+    });
     await settingsRef.set({
       twoFactorPendingSecret: encryptTotpSecret(secret),
       twoFactorPendingAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -857,7 +863,15 @@ app.post("/api/auth/2fa/verify", passkeyRouteRateLimiter, async (req, res) => {
         const encrypted = settingsSnap.get("twoFactorSecret");
         if (!encrypted) return res.status(400).json({ error: "Two-factor authentication is not configured." });
         const secret = decryptTotpSecret(encrypted);
-        if (!authenticator.check(otpValue, secret)) {
+        const verification = await verify({
+          token: otpValue,
+          secret,
+          crypto: otpCrypto,
+          base32: otpBase32,
+          period: TOTP_PERIOD,
+          epochTolerance: TOTP_EPOCH_TOLERANCE,
+        });
+        if (!verification.valid) {
           return res.status(401).json({ error: "Invalid authentication code." });
         }
       }
@@ -895,7 +909,15 @@ app.post("/api/auth/2fa/verify", passkeyRouteRateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Two-factor setup not started." });
     }
     const secret = decryptTotpSecret(pendingSecret);
-    if (!authenticator.check(otpValue, secret)) {
+    const verification = await verify({
+      token: otpValue,
+      secret,
+      crypto: otpCrypto,
+      base32: otpBase32,
+      period: TOTP_PERIOD,
+      epochTolerance: TOTP_EPOCH_TOLERANCE,
+    });
+    if (!verification.valid) {
       return res.status(401).json({ error: "Invalid authentication code." });
     }
 
