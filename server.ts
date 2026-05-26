@@ -38,15 +38,24 @@ if (!firebaseProjectId || !firebaseApiKey) {
   }
 }
 
+const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+const allowApplicationDefaultCredential =
+  process.env.FIREBASE_USE_APPLICATION_DEFAULT === "true" ||
+  !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
 let adminCredential: admin.credential.Credential;
-if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+if (serviceAccountJson) {
   try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    const serviceAccount = JSON.parse(serviceAccountJson);
     adminCredential = admin.credential.cert(serviceAccount);
   } catch {
     console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON; falling back to applicationDefault");
     adminCredential = admin.credential.applicationDefault();
   }
+} else if (process.env.VERCEL && !allowApplicationDefaultCredential) {
+  throw new Error(
+    "Firebase credentials not configured for Vercel deployment. Set FIREBASE_SERVICE_ACCOUNT_JSON, or set FIREBASE_USE_APPLICATION_DEFAULT=true / GOOGLE_APPLICATION_CREDENTIALS."
+  );
 } else {
   adminCredential = admin.credential.applicationDefault();
 }
@@ -65,6 +74,17 @@ const db = admin.firestore();
 // Express app – module-level so Vercel can import and invoke it directly.
 // ---------------------------------------------------------------------------
 const app = express();
+const trustProxySetting = process.env.EXPRESS_TRUST_PROXY?.trim();
+const trustProxyHopCount = trustProxySetting ? Number(trustProxySetting) : Number.NaN;
+if (trustProxySetting === "true") {
+  app.set("trust proxy", true);
+} else if (trustProxySetting === "false") {
+  app.set("trust proxy", false);
+} else if (Number.isInteger(trustProxyHopCount) && trustProxyHopCount >= 1) {
+  app.set("trust proxy", trustProxyHopCount);
+} else {
+  app.set("trust proxy", 1);
+}
 app.use(express.json());
 
 // ---------------------------------------------------------------------------
@@ -167,6 +187,18 @@ const normalizeEmail = (value: unknown): string =>
   String(value || "")
     .trim()
     .toLowerCase();
+
+const isAuthServiceConfigError = (error: unknown): boolean => {
+  const message = String((error as { message?: string })?.message || "").toLowerCase();
+  return (
+    message.includes("firebase api key is not configured") ||
+    message.includes("authentication service is not configured") ||
+    message.includes("could not load the default credentials") ||
+    message.includes("applicationdefault") ||
+    message.includes("firebase_service_account_json") ||
+    message.includes("credential implementation provided to initializeapp")
+  );
+};
 
 const resolveIdentifier = async (value: unknown): Promise<{ email: string; uid?: string }> => {
   const raw = String(value || "").trim();
@@ -785,8 +817,8 @@ app.post("/api/auth/password/login", passkeyRouteRateLimiter, async (req, res) =
     return res.json({ success: true, customToken });
   } catch (error: any) {
     const message = error?.message || "Invalid credentials.";
-    if (String(message).toLowerCase().includes("not configured")) {
-      return res.status(500).json({ error: "Sign-in service is not configured." });
+    if (isAuthServiceConfigError(error)) {
+      return res.status(500).json({ error: "Authentication service is not configured." });
     }
     return res.status(401).json({ error: message });
   }
