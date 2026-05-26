@@ -38,7 +38,9 @@ if (!firebaseProjectId || !firebaseApiKey) {
   }
 }
 
-const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+const serviceAccountJson =
+  process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim() ||
+  process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
 const allowApplicationDefaultCredential =
   process.env.FIREBASE_USE_APPLICATION_DEFAULT === "true" ||
   !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -48,8 +50,11 @@ if (serviceAccountJson) {
   try {
     const serviceAccount = JSON.parse(serviceAccountJson);
     adminCredential = admin.credential.cert(serviceAccount);
-  } catch {
-    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON; falling back to applicationDefault");
+  } catch (error) {
+    console.error(
+      "Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON/FIREBASE_SERVICE_ACCOUNT; falling back to applicationDefault",
+      error
+    );
     adminCredential = admin.credential.applicationDefault();
   }
 } else {
