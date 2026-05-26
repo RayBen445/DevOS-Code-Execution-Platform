@@ -237,6 +237,17 @@ const isAuthTokenMintError = (error: unknown): boolean => {
   );
 };
 
+const isFirestoreNotFoundError = (error: unknown): boolean => {
+  const code = Number((error as { code?: unknown })?.code);
+  const message = String((error as { message?: string })?.message || "").toLowerCase();
+  return (
+    code === 5 ||
+    message.includes("5 not_found") ||
+    message.includes("not_found") ||
+    message.includes("firestore") && message.includes("not found")
+  );
+};
+
 const resolveIdentifier = async (value: unknown): Promise<{ email: string; uid?: string }> => {
   const raw = String(value || "").trim();
   if (!raw) return { email: "" };
@@ -741,6 +752,12 @@ app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) 
     return res.json({ options, challengeId: challengeRef.id });
   } catch (error: any) {
     console.error("[passkey][auth/options] error", error);
+    if (isFirestoreNotFoundError(error)) {
+      return res.status(500).json({
+        error:
+          "Firestore is not available for this project. Verify FIREBASE_PROJECT_ID and ensure Firestore is created in that Firebase project.",
+      });
+    }
     return res.status(500).json({ error: error?.message || "Failed to start passkey sign-in." });
   }
 });
