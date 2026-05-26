@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
-import {
-  auth,
-  startTotpEnrollment,
-  finishTotpEnrollment,
-  disableTotp,
-  isTotpEnabled,
-} from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { ShieldCheck, ShieldOff, Loader2, Copy, CheckCircle2, Download, KeySquare } from "lucide-react";
 import { generateRecoveryCodes, getRecoveryCodesMeta } from "../lib/mfaRecoveryService";
+import { startTwoFactorSetup, verifyTwoFactorSetup, disableTwoFactor } from "../lib/twoFactorService";
+import QRCode from "qrcode";
 
 interface TwoFactorSetupProps {
   onClose?: () => void;
@@ -31,7 +28,13 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
 
   useEffect(() => {
     if (!user) return;
-    setEnabled(isTotpEnabled(user));
+    getDoc(doc(db, "user_settings", user.uid))
+      .then((snap) => {
+        if (snap.exists()) {
+          setEnabled(!!snap.data()?.twoFactorEnabled);
+        }
+      })
+      .catch(() => {});
     getRecoveryCodesMeta(user)
       .then((meta) => setRecoveryMeta(meta))
       .catch(() => setRecoveryMeta(null));
@@ -41,13 +44,11 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
     if (!user) return;
     setLoading(true);
     try {
-      const totpSecret = await startTotpEnrollment(user);
-      setSecret(totpSecret);
-      const otpauthUri = totpSecret.generateQrCodeUrl(user.email!, "DevOS");
-      setSecretKey(totpSecret.secretKey);
-      setQrUrl(
-        `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUri)}`
-      );
+      const payload = await startTwoFactorSetup(user);
+      setSecret(payload);
+      setSecretKey(payload.secret);
+      const qr = await QRCode.toDataURL(payload.otpauthUrl, { margin: 1, width: 220 });
+      setQrUrl(qr);
       setStep("qr");
     } catch (err: any) {
       toast.error(err?.message ?? "Failed to start 2FA enrollment.");
@@ -60,7 +61,7 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
     if (!user || !secret) return;
     setLoading(true);
     try {
-      await finishTotpEnrollment(user, secret, otp);
+      await verifyTwoFactorSetup(user, otp);
       const codes = await generateRecoveryCodes(user);
       setEnabled(true);
       setStep("recovery");
@@ -87,7 +88,7 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
     if (!window.confirm("Disable two-factor authentication? Your account will be less secure.")) return;
     setLoading(true);
     try {
-      await disableTotp(user);
+      await disableTwoFactor(user);
       setEnabled(false);
       setRecoveryCodes([]);
       toast.success("Two-factor authentication disabled.");

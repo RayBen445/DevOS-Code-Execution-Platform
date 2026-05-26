@@ -84,6 +84,7 @@ import PasskeySetup from "../components/PasskeySetup";
 import { ALL_NAV_OPTIONS, NavOptionId } from "../components/MobileBottomNav";
 import { cn } from "../lib/utils";
 import { sendNotification } from "../lib/notificationService";
+import { getSavedAccounts, logoutAccount, type SavedAccount } from "../lib/sessionManager";
 
 type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "accessibility" | "referrals" | "danger";
 
@@ -888,8 +889,13 @@ function SecurityTab() {
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [sessions, setSessions] = useState<SavedAccount[]>([]);
 
   const isEmailProvider = user?.providerData?.some((p) => p.providerId === "password");
+
+  useEffect(() => {
+    setSessions(getSavedAccounts());
+  }, [user]);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -982,6 +988,45 @@ function SecurityTab() {
       <div className="space-y-3">
         <h2 className="text-base font-bold text-white">Passkey Authentication</h2>
         <PasskeySetup />
+      </div>
+
+      {/* Active Sessions */}
+      <div className="space-y-3">
+        <h2 className="text-base font-bold text-white">Active Sessions</h2>
+        {sessions.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/40">
+            No active sessions found.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {sessions.map((session) => {
+              const isCurrent = session.uid === user?.uid;
+              return (
+                <div key={session.uid} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-white font-semibold truncate">
+                      {session.displayName || session.username}
+                      {isCurrent && (
+                        <span className="ml-2 text-[10px] uppercase tracking-widest text-green-400">Current</span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-white/40 font-mono truncate">{session.email}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await logoutAccount(session.uid);
+                      setSessions(getSavedAccounts());
+                    }}
+                    className="px-3 py-1.5 rounded-xl border border-white/10 text-xs text-white/60 hover:text-white hover:border-white/20 transition-all"
+                  >
+                    {isCurrent ? "Sign out" : "Remove"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

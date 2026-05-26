@@ -12,11 +12,21 @@ async function authedFetch(input: string, user: User, init: RequestInit = {}) {
   });
 }
 
+async function parseJson(res: Response) {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: text };
+  }
+}
+
 export async function generateRecoveryCodes(user: User): Promise<string[]> {
   const res = await authedFetch("/api/mfa/recovery-codes/generate", user, {
     method: "POST",
   });
-  const data = await res.json();
+  const data = await parseJson(res);
   if (!res.ok) throw new Error(data.error || "Failed to generate recovery codes.");
   return Array.isArray(data.codes) ? data.codes : [];
 }
@@ -25,7 +35,7 @@ export async function getRecoveryCodesMeta(user: User): Promise<{ exists: boolea
   const res = await authedFetch("/api/mfa/recovery-codes/meta", user, {
     method: "GET",
   });
-  const data = await res.json();
+  const data = await parseJson(res);
   if (!res.ok) throw new Error(data.error || "Failed to load recovery-code status.");
   return {
     exists: !!data.exists,
@@ -44,7 +54,7 @@ export async function verifyRecoveryCode(email: string, recoveryCode: string): P
       recoveryCode,
     }),
   });
-  const data = await res.json();
+  const data = await parseJson(res);
   if (!res.ok) throw new Error(data.error || "Invalid recovery code.");
   return {
     message: data.message,

@@ -188,6 +188,64 @@ root.render(<App />);`,
     ]
   },
   {
+    id: "saas-dashboard-pro",
+    name: "SaaS Dashboard Pro",
+    description: "A high-quality SaaS dashboard starter with KPI cards, activity feed, and responsive navigation.",
+    icon: "LayoutDashboard",
+    files: [
+      {
+        name: "index.html",
+        path: "index.html",
+        language: "html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SaaS Dashboard Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div class="min-h-screen grid lg:grid-cols-[260px_1fr]">
+    <aside class="border-r border-white/10 p-5 space-y-4">
+      <h1 class="text-xl font-bold text-blue-400">DevOS Analytics</h1>
+      <nav class="space-y-2 text-sm">
+        <a class="block px-3 py-2 rounded-lg bg-blue-600/20 text-blue-300">Overview</a>
+        <a class="block px-3 py-2 rounded-lg hover:bg-white/5 text-slate-300">Customers</a>
+        <a class="block px-3 py-2 rounded-lg hover:bg-white/5 text-slate-300">Revenue</a>
+        <a class="block px-3 py-2 rounded-lg hover:bg-white/5 text-slate-300">Deployments</a>
+      </nav>
+    </aside>
+    <main class="p-6 lg:p-8 space-y-6">
+      <header class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-400 text-sm">Welcome back</p>
+          <h2 class="text-2xl font-bold">Your growth dashboard</h2>
+        </div>
+        <button class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold">Create report</button>
+      </header>
+      <section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <article class="p-4 rounded-2xl border border-white/10 bg-white/5"><p class="text-xs text-slate-400">MRR</p><p class="text-2xl font-bold mt-1">$42,890</p></article>
+        <article class="p-4 rounded-2xl border border-white/10 bg-white/5"><p class="text-xs text-slate-400">New Users</p><p class="text-2xl font-bold mt-1">1,284</p></article>
+        <article class="p-4 rounded-2xl border border-white/10 bg-white/5"><p class="text-xs text-slate-400">Churn</p><p class="text-2xl font-bold mt-1">1.9%</p></article>
+        <article class="p-4 rounded-2xl border border-white/10 bg-white/5"><p class="text-xs text-slate-400">Deploy Success</p><p class="text-2xl font-bold mt-1">99.8%</p></article>
+      </section>
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h3 class="font-semibold mb-3">Recent activity</h3>
+        <ul class="space-y-2 text-sm text-slate-300">
+          <li>✅ Production deployment completed · 2m ago</li>
+          <li>🧾 New yearly subscription · 14m ago</li>
+          <li>🔁 Incident auto-resolved · 1h ago</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>`,
+      },
+    ],
+  },
+  {
     id: "devos-academy",
     name: "DevOS Academy — School Platform",
     description: "A full school/messaging platform: sign-up, login, file uploads, live chat, AI tutoring, email notifications, and analytics — all plugins active.",

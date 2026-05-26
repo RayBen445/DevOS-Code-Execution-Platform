@@ -11,7 +11,7 @@ import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { buildDevosUrl, buildOrgUrl, buildPortfolioUrl, buildProjectUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
+import { buildDevosUrl, buildOrgProjectUrl, buildOrgUrl, buildPortfolioUrl, buildProjectUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
 
 interface Props {
   slug: string;
@@ -31,6 +31,7 @@ export default function SubdomainOrg({ slug }: Props) {
     title: org ? `${org.name} — ${PRODUCT_BRAND_NAME}` : `${slug} — ${PRODUCT_BRAND_NAME}`,
     description: org?.description || `${slug}'s organization on ${PRODUCT_BRAND_NAME}`,
     ogUrl: orgUrl,
+    ogImage: org?.avatar,
   });
 
   useEffect(() => {
@@ -251,11 +252,15 @@ export default function SubdomainOrg({ slug }: Props) {
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">
               {projects.map((project, i) => {
+                const projectSlug = project.projectSlug || project.slug || "";
                 const ownerUsername = project.ownerUsername || "";
+                const isOrgProject = project.ownerType === "organization" || !!project.ownerOrgId;
                 const projectUrl =
-                  (project.projectSlug || project.slug) && ownerUsername
-                    ? buildProjectUrl(ownerUsername, project.projectSlug || project.slug || "")
-                    : buildDevosUrl(`project/${project.id}`);
+                  projectSlug && isOrgProject
+                    ? buildOrgProjectUrl(slug, projectSlug)
+                    : projectSlug && ownerUsername
+                      ? buildProjectUrl(ownerUsername, projectSlug)
+                      : buildDevosUrl(`project/${project.id}`);
                 return (
                   <motion.a
                     key={project.id}

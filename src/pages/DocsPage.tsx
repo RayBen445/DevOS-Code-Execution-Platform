@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, Activity, ArrowLeft, Calendar, Puzzle } from "lucide-react";
+import { BookOpen, Rocket, FolderCode, Globe, Layout, Zap, Users, HelpCircle, ChevronRight, GitBranch, MessageSquare, Building2, Activity, ArrowLeft, Calendar, Puzzle, Search } from "lucide-react";
 import { cn } from "../lib/utils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
-import { buildPortfolioUrl, buildProjectUrl, DEVOS_PRODUCT_HOST } from "../lib/brand";
+import { buildOrgUrl, buildPortfolioUrl, buildProjectUrl, DEVOS_PRODUCT_HOST } from "../lib/brand";
 
 interface DocSection {
   id: string;
@@ -232,7 +232,7 @@ const sections: DocSection[] = [
           Organizations let teams collaborate under a shared identity. Every org has a public page
           at{" "}
           <code className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-sm">
-            devos.zone.id/org/&lt;slug&gt;
+            {buildOrgUrl("&lt;org-slug&gt;").replace("https://", "")}
           </code>
           .
         </p>
@@ -732,14 +732,73 @@ export default function DocsPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <Navbar />
 
+      <section className="w-full max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12">
+        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#14181f] via-[#0f141b] to-[#0a0a0a] p-8 md:p-10 shadow-2xl shadow-black/40">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-blue-600/10 blur-[120px]" />
+            <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-purple-600/10 blur-[120px]" />
+          </div>
+          <div className="relative flex flex-col gap-6">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-[0.4em] text-blue-300/70 font-semibold">Docs</p>
+                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">DevOS Documentation</h1>
+                <p className="text-white/55 max-w-2xl">
+                  Everything you need to build, deploy, and share on DevOS — quick guides, deep dives, and workflows.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 min-w-[220px]">
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                  <p className="text-xs uppercase tracking-widest text-white/40">Sections</p>
+                  <p className="text-2xl font-bold text-white">{sections.length}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                  <p className="text-xs uppercase tracking-widest text-white/40">Host</p>
+                  <p className="text-sm font-semibold text-white/80">{DEVOS_PRODUCT_HOST}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 flex items-center gap-3">
+                <Search className="w-4 h-4 text-white/40" />
+                <input
+                  type="text"
+                  placeholder="Search docs (coming soon)"
+                  className="bg-transparent text-sm text-white/70 placeholder:text-white/30 focus:outline-none w-full"
+                  disabled
+                />
+              </div>
+              <div className="flex gap-2">
+                {sections.slice(0, 3).map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 text-xs font-semibold text-white/70 hover:text-white hover:border-white/20 transition-all"
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {section.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12 gap-8 relative">
-        <button onClick={() => window.history.back()} className="absolute -top-2 left-4 md:left-6 inline-flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors">
+        <button
+          onClick={() => window.history.back()}
+          className="absolute -top-2 left-4 md:left-6 inline-flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors"
+        >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back
         </button>
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col gap-2 w-64 flex-shrink-0 sticky top-24 h-fit">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-4 px-4">
+        <aside className="hidden md:flex flex-col gap-2 w-64 flex-shrink-0 sticky top-24 h-fit bg-[#0f1117] border border-white/10 rounded-2xl p-3 shadow-lg shadow-black/30">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-2 px-2">
             Documentation
           </p>
           {sections.map((section) => {
@@ -750,14 +809,14 @@ export default function DocsPage() {
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 relative text-left",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 relative text-left",
                   isActive
-                    ? "bg-blue-600/25 text-blue-300 shadow-lg shadow-blue-500/15 border border-blue-500/40"
+                    ? "bg-blue-600/20 text-blue-200 shadow-lg shadow-blue-500/15 border border-blue-500/40"
                     : "text-white/60 hover:text-white/85 hover:bg-white/8 border border-transparent"
                 )}
               >
                 {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-blue-500 rounded-r" />
+                  <div className="absolute left-0 top-1 bottom-1 w-1 bg-gradient-to-b from-blue-400 to-blue-500 rounded-r" />
                 )}
                 <Icon className="w-5 h-5 flex-shrink-0" />
                 <span className="flex-1">{section.label}</span>
@@ -796,7 +855,7 @@ export default function DocsPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="bg-gradient-to-br from-[#111] to-[#0a0a0a] border border-white/10 rounded-2xl p-8 space-y-8 shadow-xl"
+            className="bg-gradient-to-br from-[#10131a] to-[#0a0a0a] border border-white/10 rounded-2xl p-8 space-y-8 shadow-xl"
           >
             {current.content}
           </motion.div>
@@ -809,7 +868,7 @@ export default function DocsPage() {
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.25 }}
-            className="bg-gradient-to-br from-[#111] to-[#0a0a0a] border border-white/10 rounded-2xl p-10 space-y-8 shadow-2xl shadow-black/50"
+            className="bg-gradient-to-br from-[#10131a] to-[#0a0a0a] border border-white/10 rounded-2xl p-10 space-y-8 shadow-2xl shadow-black/50"
           >
             {current.content}
           </motion.div>

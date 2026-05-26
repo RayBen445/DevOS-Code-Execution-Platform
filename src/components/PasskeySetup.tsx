@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "../lib/firebase";
-import { Loader2, Shield, Fingerprint, Trash2, Plus, Smartphone } from "lucide-react";
+import { Loader2, Shield, Fingerprint, Trash2, Plus, Smartphone, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
   listPasskeyDevices,
   registerCurrentDevicePasskey,
   removePasskeyDevice,
+  updatePasskeyDevice,
   type PasskeyDevice,
 } from "../lib/passkeyService";
 
@@ -16,6 +17,8 @@ export default function PasskeySetup() {
   const [saving, setSaving] = useState(false);
   const [devices, setDevices] = useState<PasskeyDevice[]>([]);
   const [deviceName, setDeviceName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   const load = async () => {
     if (!user) return;
@@ -60,6 +63,27 @@ export default function PasskeySetup() {
       await load();
     } catch (err: any) {
       toast.error(err?.message || "Failed to remove passkey.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = async (credentialId: string) => {
+    if (!user) return;
+    const trimmed = editingName.trim();
+    if (!trimmed) {
+      toast.error("Device name cannot be empty.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updatePasskeyDevice(user, credentialId, trimmed);
+      toast.success("Passkey name updated.");
+      setEditingId(null);
+      setEditingName("");
+      await load();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update passkey.");
     } finally {
       setSaving(false);
     }
@@ -110,26 +134,78 @@ export default function PasskeySetup() {
         </div>
       ) : (
         <div className="space-y-2">
-          {devices.map((d) => (
-            <div key={d.credentialId} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
-              <div className="min-w-0">
-                <p className="text-sm text-white flex items-center gap-2">
-                  <Smartphone className="w-3.5 h-3.5 text-blue-300" />
-                  <span className="truncate">{d.deviceName || "Passkey device"}</span>
-                </p>
-                <p className="text-[11px] text-white/35 font-mono truncate">{d.credentialId}</p>
+          {devices.map((d) => {
+            const isEditing = editingId === d.credentialId;
+            const deviceLabel = d.deviceName || "Passkey device";
+            return (
+              <div key={d.credentialId} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50"
+                        maxLength={80}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(d.credentialId)}
+                        disabled={saving}
+                        className="p-2 rounded-lg bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 transition-colors disabled:opacity-50"
+                        title="Save name"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-white flex items-center gap-2">
+                        <Smartphone className="w-3.5 h-3.5 text-blue-300" />
+                        <span className="truncate">{deviceLabel}</span>
+                        {d.deviceType && (
+                          <span className="text-[10px] uppercase tracking-widest text-white/40">
+                            {d.deviceType}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[11px] text-white/35 font-mono truncate">{d.credentialId}</p>
+                      {d.backedUp !== null && d.backedUp !== undefined && (
+                        <p className="text-[10px] text-white/30">
+                          {d.backedUp ? "Synced passkey" : "Local passkey"}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {!isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(d.credentialId);
+                        setEditingName(deviceLabel);
+                      }}
+                      disabled={saving}
+                      className="p-2 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors disabled:opacity-50"
+                      title="Rename passkey"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(d.credentialId)}
+                    disabled={saving}
+                    className="p-2 rounded-lg hover:bg-red-500/10 text-red-400/70 hover:text-red-400 transition-colors disabled:opacity-50"
+                    title="Remove passkey"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => handleRemove(d.credentialId)}
-                disabled={saving}
-                className="p-2 rounded-lg hover:bg-red-500/10 text-red-400/70 hover:text-red-400 transition-colors disabled:opacity-50"
-                title="Remove passkey"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

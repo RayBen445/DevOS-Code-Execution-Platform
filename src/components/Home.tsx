@@ -72,8 +72,8 @@ const FEATURES = [
   {
     icon: Globe,
     emoji: "🏘️",
-    title: "Communities",
-    desc: "Find your tribe — join developer communities, post updates, and chat in real time.",
+    title: "Dev Teams",
+    desc: "Build with focused developer teams, post updates, and collaborate in real time.",
     color: "from-pink-500/10 to-pink-600/5",
     accent: "text-pink-400",
     ring: "bg-pink-600/15",
@@ -90,8 +90,8 @@ const FEATURES = [
   {
     icon: Puzzle,
     emoji: "🔌",
-    title: "Plugin Marketplace",
-    desc: "Add auth, database, storage, email, and more to any project in one click. Env vars injected automatically.",
+    title: "Marketplace (Coming Soon)",
+    desc: "Plugin marketplace improvements are in progress and will roll out soon.",
     color: "from-orange-500/10 to-orange-600/5",
     accent: "text-orange-400",
     ring: "bg-orange-600/15",
@@ -290,6 +290,29 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
           </div>
         </section>
 
+        {/* ── Onboarding flow ──────────────────────────────────────────── */}
+        <section className="w-full">
+          <div className="max-w-7xl mx-auto px-5 md:px-8 py-12 md:py-16">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+              <p className="text-blue-400/80 text-xs font-bold uppercase tracking-widest mb-3">Onboarding</p>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-white">Start in under 2 minutes</h2>
+              <div className="mt-6 grid md:grid-cols-3 gap-4">
+                {[
+                  { step: "1", title: "Create account", desc: "Sign up and set your username to activate your workspace." },
+                  { step: "2", title: "Create from template", desc: "Pick a starter template and open a file instantly in the editor." },
+                  { step: "3", title: "Deploy & share", desc: "Deploy in one click and share your live URL with your team." },
+                ].map((item) => (
+                  <div key={item.step} className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                    <div className="w-7 h-7 rounded-lg bg-blue-600/25 text-blue-300 text-sm font-bold flex items-center justify-center">{item.step}</div>
+                    <p className="mt-3 font-semibold text-white">{item.title}</p>
+                    <p className="text-sm text-white/45 mt-1">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── Stats bar ────────────────────────────────────────────────── */}
         <section className="w-full border-y border-white/8 bg-gradient-to-r from-blue-600/5 via-white/[0.02] to-violet-600/5">
           <div className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-20 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
@@ -366,13 +389,13 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                 <div className="flex-1">
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-600/25 border border-green-500/40 text-green-300 text-xs font-bold uppercase tracking-widest mb-6">
                     <Puzzle className="w-3.5 h-3.5" />
-                    Live Now
+                    Coming Soon
                   </div>
                   <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-5">
-                    DevOS Plugin Marketplace
+                    DevOS Marketplace
                   </h2>
                   <p className="text-white/55 max-w-2xl leading-relaxed text-lg mb-6">
-                    Extend your projects with one-click plugins. Add Auth, Database, Storage, Email, Realtime, and AI to any project — environment variables injected automatically.
+                    We are upgrading the plugin marketplace experience. New one-click integrations are coming soon.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {["DevOS Auth", "DevOS DB", "DevOS Storage", "DevOS Email", "DevOS Realtime", "DevOS AI"].map((p) => (

@@ -4,19 +4,17 @@ import {
   signInWithGoogle,
   signInWithGithub,
   signUpWithEmail,
-  signInWithEmail,
   sendVerificationEmail,
   sendPasswordReset,
-  getMfaResolver,
-  resolveTotpSignIn,
-  type MultiFactorResolver,
 } from "../lib/firebase";
 import { Zap, Github, Mail, Lock, Loader2, X, User, AtSign, Eye, EyeOff, CheckCircle2, XCircle, ShieldCheck, KeyRound, ArrowLeft, Fingerprint } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { registerUserProfile, checkUsernameAvailable, skipNextInitialize } from "../lib/userService";
 import { getAuthErrorMessage } from "../lib/errorMessages";
 import { registerCurrentDevicePasskey, signInUsingPasskey } from "../lib/passkeyService";
-import { verifyRecoveryCode } from "../lib/mfaRecoveryService";
+import { signInWithCustomToken } from "firebase/auth";
+import { browserSupportsWebAuthn, browserSupportsWebAuthnAutofill } from "@simplewebauthn/browser";
+import { verifyTwoFactorChallenge } from "../lib/twoFactorService";
 
 interface LoginProps {
   onClose: () => void;
@@ -37,11 +35,14 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [otpCode, setOtpCode] = useState("");
-  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
   const [forgotEmail, setForgotEmail] = useState("");
-  const [passkeyEmail, setPasskeyEmail] = useState("");
+  const [passkeyIdentifier, setPasskeyIdentifier] = useState("");
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState("");
+  const [supportsPasskeys, setSupportsPasskeys] = useState(false);
+  const [supportsConditional, setSupportsConditional] = useState(false);
+  const passkeyInputRef = useRef<HTMLInputElement>(null);
 
   // Live username availability
   type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "error";
@@ -62,6 +63,13 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
       setTimeout(() => firstFieldRef.current?.focus(), 50);
     }
   }, [step]);
+
+  useEffect(() => {
+    setSupportsPasskeys(browserSupportsWebAuthn());
+    browserSupportsWebAuthnAutofill()
+      .then((supported) => setSupportsConditional(supported))
+      .catch(() => setSupportsConditional(false));
+  }, []);
 
   // Debounced username availability check
   useEffect(() => {
@@ -152,18 +160,24 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
         return;
       } else {
         try {
-          await signInWithEmail(email, password);
-        } catch (authErr: any) {
-          // Check if this is an MFA challenge
-          const resolver = getMfaResolver(authErr);
-          if (resolver) {
-            setMfaResolver(resolver);
+          const res = await fetch("/api/auth/password/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ identifier: email, password }),
+          });
+          const text = await res.text();
+          const data = text ? (() => { try { return JSON.parse(text); } catch { return { error: text }; } })() : {};
+          if (!res.ok) throw new Error(data.error || "Sign-in failed.");
+          if (data.mfaRequired && data.challengeId) {
+            setMfaChallengeId(data.challengeId);
             setUseRecoveryCode(false);
             setRecoveryCode("");
             setStep("mfa");
             setLoading(false);
             return;
           }
+          await signInWithCustomToken(auth, data.customToken);
+        } catch (authErr: any) {
           setError(getAuthErrorMessage(authErr));
           setLoading(false);
           return;
@@ -180,30 +194,25 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
 
   const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mfaResolver && !useRecoveryCode) return;
+    if (!mfaChallengeId) {
+      setError("Your session expired. Please sign in again.");
+      setStep("email");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
       if (useRecoveryCode) {
-        const normalizedEmail = email.trim().toLowerCase();
-        if (!normalizedEmail) throw new Error("Please return and enter your email first.");
         if (!recoveryCode.trim()) throw new Error("Enter a recovery code.");
-        const result = await verifyRecoveryCode(normalizedEmail, recoveryCode.trim());
-        try {
-          await signInWithEmail(normalizedEmail, password);
-          onClose();
-          return;
-        } catch {
-          setStep("email");
-          setUseRecoveryCode(false);
-          setRecoveryCode("");
-          setOtpCode("");
-          setError(result.message || "Recovery code accepted. Please sign in again.");
-          return;
-        }
+        await verifyTwoFactorChallenge({
+          challengeId: mfaChallengeId,
+          recoveryCode: recoveryCode.trim(),
+        });
+        onClose();
+        return;
       }
 
-      await resolveTotpSignIn(mfaResolver!, otpCode.trim());
+      await verifyTwoFactorChallenge({ challengeId: mfaChallengeId, otp: otpCode.trim() });
       onClose();
     } catch (err: any) {
       setError(err?.message || "Invalid code. Please try again.");
@@ -229,12 +238,41 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
 
   const handlePasskeySignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    const normalized = passkeyEmail.trim().toLowerCase();
+    const normalized = passkeyIdentifier.trim().toLowerCase();
     if (!normalized) return;
     setLoading(true);
     setError("");
     try {
-      await signInUsingPasskey(normalized);
+      const result = await signInUsingPasskey(normalized);
+      if (result.status === "mfa") {
+        setMfaChallengeId(result.challengeId);
+        setUseRecoveryCode(false);
+        setRecoveryCode("");
+        setStep("mfa");
+        setLoading(false);
+        return;
+      }
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Passkey sign-in failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConditionalPasskey = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await signInUsingPasskey(undefined, true);
+      if (result.status === "mfa") {
+        setMfaChallengeId(result.challengeId);
+        setUseRecoveryCode(false);
+        setRecoveryCode("");
+        setStep("mfa");
+        setLoading(false);
+        return;
+      }
       onClose();
     } catch (err: any) {
       setError(err?.message || "Passkey sign-in failed.");
@@ -420,21 +458,41 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
           {/* ── Passkey sign-in step ── */}
           {step === "passkey" && (
             <motion.form key="passkey" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} onSubmit={handlePasskeySignIn} className="space-y-4">
+              {supportsConditional && (
+                <button
+                  type="button"
+                  onClick={handleConditionalPasskey}
+                  disabled={loading}
+                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Fingerprint className="w-5 h-5" />}
+                  Sign in with Passkey
+                </button>
+              )}
+              {supportsConditional && (
+                <input
+                  ref={passkeyInputRef}
+                  type="text"
+                  autoComplete="webauthn"
+                  className="sr-only"
+                  aria-hidden="true"
+                  tabIndex={-1}
+                />
+              )}
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
                 <input
-                  type="email"
-                  required
-                  placeholder="Email used for your passkey"
-                  value={passkeyEmail}
-                  onChange={(e) => setPasskeyEmail(e.target.value)}
+                  type="text"
+                  placeholder="Email or username (optional)"
+                  value={passkeyIdentifier}
+                  onChange={(e) => setPasskeyIdentifier(e.target.value)}
                   className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
               {error && <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3">{error}</p>}
-              <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50">
+              <button type="submit" disabled={loading || !passkeyIdentifier.trim()} className="w-full py-4 bg-blue-600/15 text-blue-300 border border-blue-500/30 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-600/25 transition-all active:scale-[0.98] disabled:opacity-50">
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Fingerprint className="w-5 h-5" />}
-                Continue with Passkey
+                Continue with Passkey (email/username)
               </button>
               <button type="button" onClick={() => { setStep("social"); setError(""); }} className="w-full text-sm text-white/40 hover:text-white transition-colors flex items-center justify-center gap-1">
                 <ArrowLeft className="w-3 h-3" /> Back
@@ -458,9 +516,9 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                 <Mail className="w-5 h-5" />
                 Continue with Email
               </button>
-              {!isSignUp && (
+              {!isSignUp && supportsPasskeys && (
                 <button
-                  onClick={() => { setPasskeyEmail(email); setStep("passkey"); setError(""); }}
+                  onClick={() => { setPasskeyIdentifier(email); setStep("passkey"); setError(""); }}
                   className="w-full py-4 bg-blue-600/15 text-blue-300 border border-blue-500/30 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-600/25 transition-all active:scale-[0.98]"
                 >
                   <Fingerprint className="w-5 h-5" />
@@ -578,9 +636,9 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
                   <input
                     ref={isSignUp ? undefined : firstFieldRef}
-                    type="email"
+                    type={isSignUp ? "email" : "text"}
                     required
-                    placeholder="Email address"
+                    placeholder={isSignUp ? "Email address" : "Email or username"}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"

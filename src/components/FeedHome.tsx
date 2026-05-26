@@ -250,7 +250,9 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     try {
       setFeed((prev) =>
         prev.map((p) =>
-          p.id === originalPost.id ? { ...p, repostCount: (p.repostCount ?? 0) + 1 } : p
+          p.id === originalPost.id || p.id === (originalPost.originalPostId ?? originalPost.id)
+            ? { ...p, repostCount: (p.repostCount ?? 0) + 1 }
+            : p
         )
       );
       await repostPost({
@@ -271,7 +273,9 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     } catch (err: any) {
       setFeed((prev) =>
         prev.map((p) =>
-          p.id === originalPost.id ? { ...p, repostCount: Math.max(0, (p.repostCount ?? 1) - 1) } : p
+          p.id === originalPost.id || p.id === (originalPost.originalPostId ?? originalPost.id)
+            ? { ...p, repostCount: Math.max(0, (p.repostCount ?? 1) - 1) }
+            : p
         )
       );
       toast.error(
