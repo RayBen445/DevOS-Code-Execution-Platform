@@ -11,7 +11,7 @@ export const ALL_NAV_OPTIONS = [
   { id: "projects",    label: "Projects",    icon: FolderCode, href: "/projects" },
   { id: "explore",     label: "Explore",     icon: Compass,   href: "/explore" },
   { id: "feed",        label: "Feed",        icon: Newspaper, href: "/feed" },
-  { id: "communities", label: "Communities", icon: Users,     href: "/communities" },
+  { id: "communities", label: "Dev Teams", icon: Users,     href: "/communities" },
   { id: "templates",   label: "Templates",   icon: Layout,    href: "/templates" },
   { id: "events",      label: "Events",      icon: Calendar,  href: "/events" },
   { id: "learn",       label: "Learn",       icon: BookOpen,  href: "/learn" },

@@ -299,6 +299,40 @@ export default function App() {
     }
   }, []);
 
+  // Global accessibility shortcuts (Ctrl + letter)
+  useEffect(() => {
+    const isTypingTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+      if (isTypingTarget(event.target)) return;
+
+      const key = event.key.toLowerCase();
+      const routeByKey: Record<string, string> = {
+        k: "/search",
+        p: "/projects",
+        e: "/explore",
+        d: "/communities",
+        t: "/templates",
+        l: "/learn",
+        "/": "/settings?tab=accessibility",
+      };
+      const route = routeByKey[key];
+      if (!route) return;
+      event.preventDefault();
+      if (window.location.pathname !== route) {
+        window.location.assign(route);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   if (loading || maintenance === null) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#0a0a0a]">

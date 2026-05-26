@@ -581,7 +581,7 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
 
   return (
     <>
-    <div className="w-64 border-r border-white/5 bg-[#111] flex flex-col">
+    <div className="w-64 border-r border-white/10 bg-[#111]/80 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)] flex flex-col">
       <div className="p-4 flex items-center justify-between border-b border-white/5">
         <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Explorer</span>
         {!readOnly && (

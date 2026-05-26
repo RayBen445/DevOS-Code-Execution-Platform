@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, Tag, Loader2 } from "lucide-react";
 import { auth, db } from "../lib/firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
-import { publishTemplate } from "../lib/templateService";
+import { publishTemplate, createOfficialTemplate } from "../lib/templateService";
 import { FileData } from "../types";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -28,17 +28,27 @@ export default function PublishTemplateModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileData[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [publishAsOfficial, setPublishAsOfficial] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !projectId) return;
     setName(projectName);
     setDescription("");
     setTags("");
+    setIsAdmin(false);
+    setPublishAsOfficial(false);
     const loadFiles = async () => {
       setLoadingFiles(true);
       try {
         const snap = await getDocs(collection(db, "projects", projectId, "files"));
         setFiles(snap.docs.map(d => ({ id: d.id, ...d.data() } as FileData)));
+        if (auth.currentUser) {
+          const userSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
+          const admin = userSnap.exists() && userSnap.data()?.role === "admin";
+          setIsAdmin(admin);
+          setPublishAsOfficial(admin);
+        }
       } catch {
         setFiles([]);
       } finally {
@@ -68,22 +78,34 @@ export default function PublishTemplateModal({
         language: f.language,
       }));
 
-      await publishTemplate({
-        name: name.trim(),
-        description: description.trim(),
-        authorId: auth.currentUser.uid,
-        authorName: userData?.displayName || auth.currentUser.displayName || "Unknown",
-        authorUsername: userData?.username || "",
-        files: templateFiles,
-        tags: tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
-      });
+      const normalizedTags = tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
 
-      toast.success(
-        "Template submitted for review! An admin will approve it shortly."
-      );
+      if (isAdmin && publishAsOfficial) {
+        await createOfficialTemplate({
+          name: name.trim(),
+          description: description.trim(),
+          files: templateFiles,
+          tags: normalizedTags,
+        });
+        toast.success("Official template published successfully.");
+      } else {
+        await publishTemplate({
+          name: name.trim(),
+          description: description.trim(),
+          authorId: auth.currentUser.uid,
+          authorName: userData?.displayName || auth.currentUser.displayName || "Unknown",
+          authorUsername: userData?.username || "",
+          files: templateFiles,
+          tags: normalizedTags,
+        });
+
+        toast.success(
+          "Template submitted for review! An admin will approve it shortly."
+        );
+      }
       if (auth.currentUser) sendNotification({ userId: auth.currentUser.uid, type: "template_published", title: "Template published", message: "Your template is now in the marketplace.", createdBy: "system" }).catch(() => {});
       onClose();
     } catch (err) {
@@ -145,6 +167,21 @@ export default function PublishTemplateModal({
                     required
                   />
                 </div>
+
+                {isAdmin && (
+                  <label className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-blue-500/25 bg-blue-500/10">
+                    <div>
+                      <p className="text-sm font-semibold text-blue-300">Admin publish mode</p>
+                      <p className="text-xs text-blue-200/70">Publish instantly as an official verified template.</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={publishAsOfficial}
+                      onChange={(e) => setPublishAsOfficial(e.target.checked)}
+                      className="w-4 h-4 accent-blue-500"
+                    />
+                  </label>
+                )}
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-white/40 uppercase tracking-widest">

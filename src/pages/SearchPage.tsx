@@ -29,11 +29,11 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
-import { UserProfile, Project, Template } from "../types";
+import { UserProfile, Project, Template, Organization, Deployment } from "../types";
 import { getApprovedTemplates } from "../lib/templateService";
 import { cn } from "../lib/utils";
 
-type FilterType = "all" | "developers" | "projects" | "templates";
+type FilterType = "all" | "developers" | "projects" | "templates" | "orgs" | "docs" | "commands" | "deployments";
 type SortType = "recent" | "trending";
 
 const FILTERS: { id: FilterType; label: string; icon: React.ReactNode }[] = [
@@ -41,11 +41,42 @@ const FILTERS: { id: FilterType; label: string; icon: React.ReactNode }[] = [
   { id: "developers", label: "Developers", icon: <User className="w-3.5 h-3.5" /> },
   { id: "projects", label: "Projects", icon: <FolderCode className="w-3.5 h-3.5" /> },
   { id: "templates", label: "Templates", icon: <Layout className="w-3.5 h-3.5" /> },
+  { id: "orgs", label: "Orgs", icon: <Globe className="w-3.5 h-3.5" /> },
+  { id: "docs", label: "Docs", icon: <Layout className="w-3.5 h-3.5" /> },
+  { id: "commands", label: "Commands", icon: <Search className="w-3.5 h-3.5" /> },
+  { id: "deployments", label: "Deployments", icon: <Eye className="w-3.5 h-3.5" /> },
 ];
 
 const SORTS: { id: SortType; label: string; icon: React.ReactNode }[] = [
   { id: "recent", label: "Recent", icon: <Clock className="w-3 h-3" /> },
   { id: "trending", label: "Trending", icon: <Flame className="w-3 h-3" /> },
+];
+
+interface DocResult {
+  title: string;
+  path: string;
+  keywords: string[];
+}
+
+interface CommandResult {
+  command: string;
+  description: string;
+}
+
+const DOC_RESULTS: DocResult[] = [
+  { title: "Documentation", path: "/docs", keywords: ["docs", "documentation", "guides", "help"] },
+  { title: "Template Marketplace Docs", path: "/docs#plugin-marketplace", keywords: ["templates", "plugins", "marketplace"] },
+  { title: "Terms", path: "/terms", keywords: ["legal", "terms", "policy"] },
+  { title: "Privacy", path: "/privacy", keywords: ["privacy", "data"] },
+  { title: "Acceptable Use", path: "/acceptable-use", keywords: ["rules", "policy", "abuse"] },
+];
+
+const COMMAND_RESULTS: CommandResult[] = [
+  { command: "help", description: "Show available terminal commands." },
+  { command: "save", description: "Persist project files to storage." },
+  { command: "run", description: "Execute the active file/project command." },
+  { command: "deploy", description: "Deploy project to a public URL." },
+  { command: "preview", description: "Open live preview panel." },
 ];
 
 /* ─── helpers ─── */
@@ -67,6 +98,10 @@ export default function SearchPage() {
   const [userResults, setUserResults] = useState<UserProfile[]>([]);
   const [projectResults, setProjectResults] = useState<Project[]>([]);
   const [templateResults, setTemplateResults] = useState<Template[]>([]);
+  const [orgResults, setOrgResults] = useState<Organization[]>([]);
+  const [docResults, setDocResults] = useState<DocResult[]>([]);
+  const [commandResults, setCommandResults] = useState<CommandResult[]>([]);
+  const [deploymentResults, setDeploymentResults] = useState<Deployment[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -195,6 +230,66 @@ export default function SearchPage() {
         );
       }
 
+      if (filter === "all" || filter === "orgs") {
+        tasks.push(
+          (async () => {
+            const orgsRef = collection(db, "organizations");
+            const [bySlug, byName] = await Promise.all([
+              getDocs(query(orgsRef, where("isPublic", "==", true), ...rangeQuery("slug", lo), limit(20))),
+              getDocs(query(orgsRef, where("isPublic", "==", true), ...rangeQuery("name", term), limit(20))),
+            ]);
+            const seen = new Set<string>();
+            const merged: Organization[] = [];
+            [...bySlug.docs, ...byName.docs].forEach((d) => {
+              if (seen.has(d.id)) return;
+              seen.add(d.id);
+              merged.push({ id: d.id, ...d.data() } as Organization);
+            });
+            setOrgResults(merged);
+          })()
+        );
+      }
+
+      if (filter === "all" || filter === "docs") {
+        tasks.push(
+          (async () => {
+            const matched = DOC_RESULTS.filter((d) => {
+              const haystack = `${d.title} ${d.keywords.join(" ")}`.toLowerCase();
+              return haystack.includes(lo);
+            });
+            setDocResults(matched);
+          })()
+        );
+      }
+
+      if (filter === "all" || filter === "commands") {
+        tasks.push(
+          (async () => {
+            const matched = COMMAND_RESULTS.filter((c) => {
+              const haystack = `${c.command} ${c.description}`.toLowerCase();
+              return haystack.includes(lo);
+            });
+            setCommandResults(matched);
+          })()
+        );
+      }
+
+      if (filter === "all" || filter === "deployments") {
+        tasks.push(
+          (async () => {
+            const deploymentsRef = collection(db, "deployments");
+            const snap = await getDocs(query(deploymentsRef, orderBy("createdAt", "desc"), limit(40)));
+            const matched = snap.docs
+              .map((d) => ({ id: d.id, ...d.data() } as Deployment))
+              .filter((dep) => {
+                const haystack = `${dep.url || ""} ${dep.username || ""} ${dep.projectId || ""}`.toLowerCase();
+                return haystack.includes(lo);
+              });
+            setDeploymentResults(matched.slice(0, 15));
+          })()
+        );
+      }
+
       if (filter === "all" || filter === "projects") {
         tasks.push(
           (async () => {
@@ -248,6 +343,10 @@ export default function SearchPage() {
       if (filter !== "all" && filter !== "developers") setUserResults([]);
       if (filter !== "all" && filter !== "projects") setProjectResults([]);
       if (filter !== "all" && filter !== "templates") setTemplateResults([]);
+      if (filter !== "all" && filter !== "orgs") setOrgResults([]);
+      if (filter !== "all" && filter !== "docs") setDocResults([]);
+      if (filter !== "all" && filter !== "commands") setCommandResults([]);
+      if (filter !== "all" && filter !== "deployments") setDeploymentResults([]);
 
       await Promise.all(tasks);
     } catch {
@@ -259,7 +358,13 @@ export default function SearchPage() {
   };
 
   const totalResults =
-    userResults.length + projectResults.length + templateResults.length;
+    userResults.length +
+    projectResults.length +
+    templateResults.length +
+    orgResults.length +
+    docResults.length +
+    commandResults.length +
+    deploymentResults.length;
 
   const hasTerm = !!searchTerm.trim();
 
@@ -277,7 +382,7 @@ export default function SearchPage() {
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-white leading-tight">Search DevOS</h1>
-              <p className="text-white/40 text-xs mt-0.5">Find developers, projects, and templates</p>
+              <p className="text-white/40 text-xs mt-0.5">Find users, projects, docs, orgs, commands, and deployments</p>
             </div>
           </div>
         </div>
@@ -416,6 +521,34 @@ export default function SearchPage() {
                 <ResultSection title="Templates" count={templateResults.length}>
                   {templateResults.map((t) => (
                     <TemplateResultCard key={t.id} template={t} />
+                  ))}
+                </ResultSection>
+              )}
+              {orgResults.length > 0 && (
+                <ResultSection title="Organizations" count={orgResults.length}>
+                  {orgResults.map((org) => (
+                    <OrgResultCard key={org.id} org={org} />
+                  ))}
+                </ResultSection>
+              )}
+              {docResults.length > 0 && (
+                <ResultSection title="Docs" count={docResults.length}>
+                  {docResults.map((doc) => (
+                    <DocResultCard key={doc.path} doc={doc} />
+                  ))}
+                </ResultSection>
+              )}
+              {commandResults.length > 0 && (
+                <ResultSection title="Commands" count={commandResults.length}>
+                  {commandResults.map((command) => (
+                    <CommandResultCard key={command.command} command={command} />
+                  ))}
+                </ResultSection>
+              )}
+              {deploymentResults.length > 0 && (
+                <ResultSection title="Deployments" count={deploymentResults.length}>
+                  {deploymentResults.map((deployment) => (
+                    <DeploymentResultCard key={deployment.id} deployment={deployment} />
                   ))}
                 </ResultSection>
               )}
@@ -610,3 +743,81 @@ function TemplateResultCard({ template }: { template: Template }) {
   );
 }
 
+function OrgResultCard({ org }: { org: Organization }) {
+  return (
+    <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+      <Link
+        to={`/org/${org.slug}`}
+        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
+      >
+        <div className="w-10 h-10 rounded-xl bg-cyan-600/15 flex items-center justify-center flex-shrink-0">
+          <Globe className="w-4.5 h-4.5 text-cyan-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-white text-sm truncate group-hover:text-cyan-300 transition-colors">
+            {org.name}
+          </p>
+          <p className="text-white/40 text-xs font-mono truncate">/{org.slug}</p>
+          {org.description && <p className="text-white/25 text-xs mt-0.5 truncate">{org.description}</p>}
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
+function DocResultCard({ doc }: { doc: DocResult }) {
+  return (
+    <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+      <Link
+        to={doc.path}
+        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
+      >
+        <div className="w-10 h-10 rounded-xl bg-blue-600/15 flex items-center justify-center flex-shrink-0">
+          <Layout className="w-4.5 h-4.5 text-blue-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-white text-sm truncate group-hover:text-blue-300 transition-colors">{doc.title}</p>
+          <p className="text-white/35 text-xs truncate">{doc.path}</p>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
+function CommandResultCard({ command }: { command: CommandResult }) {
+  return (
+    <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+      <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06]">
+        <kbd className="px-2 py-1 rounded-lg bg-white/10 border border-white/10 text-[11px] font-mono text-white/80">
+          {command.command}
+        </kbd>
+        <p className="text-white/55 text-xs">{command.description}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+function DeploymentResultCard({ deployment }: { deployment: Deployment }) {
+  return (
+    <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+      <a
+        href={deployment.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group"
+      >
+        <div className="w-10 h-10 rounded-xl bg-green-600/15 flex items-center justify-center flex-shrink-0">
+          <Eye className="w-4.5 h-4.5 text-green-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-white text-sm truncate group-hover:text-green-300 transition-colors">
+            {deployment.url}
+          </p>
+          <p className="text-white/35 text-xs truncate">
+            @{deployment.username} · {deployment.status}
+          </p>
+        </div>
+      </a>
+    </motion.div>
+  );
+}

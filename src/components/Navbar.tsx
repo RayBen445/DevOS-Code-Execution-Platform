@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, logout, db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar, Check, BookOpen, Sun, Moon, History } from "lucide-react";
+import { LogIn, LogOut, Code2, User as UserIcon, Settings, Zap, Layout, ShieldCheck, ChevronDown, Gift, Compass, Search, Menu, X, Home, FolderCode, TrendingUp, Users, MessageSquarePlus, UserPlus, RefreshCw, Building2, Plus, Bot, Calendar, Check, BookOpen, Sun, Moon, History, Accessibility } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "../lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -142,7 +142,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const monthlyPct = credits ? Math.round((credits.monthly / MONTHLY_CREDITS_AMOUNT) * 100) : 0;
 
   return (
-    <nav className="h-14 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
+    <nav className="h-14 border-b border-white/15 bg-[#0a0a0a]/70 supports-[backdrop-filter]:bg-[#0a0a0a]/55 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.35)] flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
       <div className="flex items-center gap-4">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/25 transition-transform group-hover:scale-105">
@@ -178,8 +178,12 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
             >
               <Users className="w-4 h-4" />
-              Communities
+              Dev Teams
             </Link>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-sm font-medium cursor-not-allowed">
+              <Layout className="w-4 h-4" />
+              Marketplace · Coming Soon
+            </span>
             <Link
               to="/projects"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
@@ -401,6 +405,13 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               title="Search developers"
             >
               <Search className="w-5 h-5" />
+            </Link>
+            <Link
+              to="/settings?tab=accessibility"
+              className="hidden md:flex p-2 rounded-lg hover:bg-white/5 text-white/60 hover:text-white transition-colors"
+              title="Accessibility & shortcuts"
+            >
+              <Accessibility className="w-5 h-5" />
             </Link>
             {/* Theme quick-toggle */}
             <button
@@ -766,8 +777,12 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
                 >
                   <Users className="w-4 h-4" />
-                  Communities
+                  Dev Teams
                 </Link>
+                <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5 text-white/45 text-sm font-medium">
+                  <Layout className="w-4 h-4" />
+                  Marketplace · Coming Soon
+                </div>
                 <Link
                   to="/projects"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -799,6 +814,14 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 >
                   <BookOpen className="w-4 h-4" />
                   Learn
+                </Link>
+                <Link
+                  to="/settings?tab=accessibility"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                >
+                  <Accessibility className="w-4 h-4" />
+                  Accessibility
                 </Link>
                 {isAdmin && (
                   <Link
