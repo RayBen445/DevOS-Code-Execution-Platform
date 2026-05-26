@@ -54,7 +54,7 @@ if (serviceAccountJson) {
   }
 } else if (process.env.VERCEL && !allowApplicationDefaultCredential) {
   throw new Error(
-    "FIREBASE_SERVICE_ACCOUNT_JSON is required in Vercel unless FIREBASE_USE_APPLICATION_DEFAULT=true is explicitly set."
+    'FIREBASE_SERVICE_ACCOUNT_JSON is required in Vercel unless FIREBASE_USE_APPLICATION_DEFAULT="true" (or GOOGLE_APPLICATION_CREDENTIALS) is set.'
   );
 } else {
   adminCredential = admin.credential.applicationDefault();
