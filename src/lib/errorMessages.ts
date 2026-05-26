@@ -60,7 +60,10 @@ export function getAuthErrorMessage(error: unknown): string {
       if (upper.includes("TOO_MANY_ATTEMPTS_TRY_LATER")) {
         return "Too many attempts. Please wait a moment and try again.";
       }
-      if (normalized.includes("firebase api key is not configured")) {
+      if (
+        normalized.includes("firebase api key is not configured") ||
+        normalized.includes("sign-in service is not configured")
+      ) {
         return "Sign-in is temporarily unavailable due to server configuration. Please contact support.";
       }
       if (normalized.includes("network") || normalized.includes("fetch")) {
