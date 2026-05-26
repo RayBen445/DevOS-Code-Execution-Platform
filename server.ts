@@ -66,12 +66,13 @@ const db = admin.firestore();
 // ---------------------------------------------------------------------------
 const app = express();
 const trustProxySetting = process.env.EXPRESS_TRUST_PROXY?.trim();
+const trustProxyHopCount = trustProxySetting ? Number(trustProxySetting) : Number.NaN;
 if (trustProxySetting === "true") {
   app.set("trust proxy", true);
 } else if (trustProxySetting === "false") {
   app.set("trust proxy", false);
-} else if (trustProxySetting && !Number.isNaN(Number(trustProxySetting))) {
-  app.set("trust proxy", Number(trustProxySetting));
+} else if (Number.isInteger(trustProxyHopCount) && trustProxyHopCount >= 1) {
+  app.set("trust proxy", trustProxyHopCount);
 } else {
   app.set("trust proxy", 1);
 }
