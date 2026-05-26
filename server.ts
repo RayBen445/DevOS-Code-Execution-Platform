@@ -41,19 +41,48 @@ if (!firebaseProjectId || !firebaseApiKey) {
 const serviceAccountJson =
   process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim() ||
   process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
+const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
+const serviceAccountPrivateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n").trim();
+const serviceAccountClientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+const serviceAccountProjectId = process.env.FIREBASE_PROJECT_ID?.trim();
+
 let adminCredential: admin.credential.Credential;
+let explicitCredentialConfigured = false;
+
 if (serviceAccountJson) {
   try {
     const serviceAccount = JSON.parse(serviceAccountJson);
     adminCredential = admin.credential.cert(serviceAccount);
+    explicitCredentialConfigured = true;
   } catch (error) {
     console.error(
-      "Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON/FIREBASE_SERVICE_ACCOUNT; falling back to applicationDefault",
+      "Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON/FIREBASE_SERVICE_ACCOUNT; falling back to other credential sources",
       error
     );
-    adminCredential = admin.credential.applicationDefault();
   }
-} else {
+}
+
+if (!explicitCredentialConfigured && serviceAccountBase64) {
+  try {
+    const decoded = Buffer.from(serviceAccountBase64, "base64").toString("utf-8");
+    const serviceAccount = JSON.parse(decoded);
+    adminCredential = admin.credential.cert(serviceAccount);
+    explicitCredentialConfigured = true;
+  } catch (error) {
+    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_BASE64; falling back to other credential sources", error);
+  }
+}
+
+if (!explicitCredentialConfigured && serviceAccountClientEmail && serviceAccountPrivateKey && serviceAccountProjectId) {
+  adminCredential = admin.credential.cert({
+    projectId: serviceAccountProjectId,
+    clientEmail: serviceAccountClientEmail,
+    privateKey: serviceAccountPrivateKey,
+  });
+  explicitCredentialConfigured = true;
+}
+
+if (!explicitCredentialConfigured) {
   adminCredential = admin.credential.applicationDefault();
 }
 
