@@ -41,10 +41,6 @@ if (!firebaseProjectId || !firebaseApiKey) {
 const serviceAccountJson =
   process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim() ||
   process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
-const allowApplicationDefaultCredential =
-  process.env.FIREBASE_USE_APPLICATION_DEFAULT === "true" ||
-  !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
-
 let adminCredential: admin.credential.Credential;
 if (serviceAccountJson) {
   try {
@@ -58,11 +54,6 @@ if (serviceAccountJson) {
     adminCredential = admin.credential.applicationDefault();
   }
 } else {
-  if (process.env.VERCEL && !allowApplicationDefaultCredential) {
-    console.warn(
-      "FIREBASE_SERVICE_ACCOUNT_JSON is not set in Vercel; attempting Firebase application default credentials. Set FIREBASE_USE_APPLICATION_DEFAULT=true to acknowledge this explicitly."
-    );
-  }
   adminCredential = admin.credential.applicationDefault();
 }
 
