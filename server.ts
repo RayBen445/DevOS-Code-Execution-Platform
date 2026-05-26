@@ -54,7 +54,7 @@ if (serviceAccountJson) {
   }
 } else if (process.env.VERCEL && !allowApplicationDefaultCredential) {
   throw new Error(
-    "Firebase credentials not configured for Vercel deployment. Set FIREBASE_SERVICE_ACCOUNT_JSON or enable application default credentials."
+    "Firebase credentials not configured for Vercel deployment. Set FIREBASE_SERVICE_ACCOUNT_JSON, or set FIREBASE_USE_APPLICATION_DEFAULT=true / GOOGLE_APPLICATION_CREDENTIALS."
   );
 } else {
   adminCredential = admin.credential.applicationDefault();
@@ -191,7 +191,8 @@ const normalizeEmail = (value: unknown): string =>
 const isAuthServiceConfigError = (error: unknown): boolean => {
   const message = String((error as { message?: string })?.message || "").toLowerCase();
   return (
-    message.includes("not configured") ||
+    message.includes("firebase api key is not configured") ||
+    message.includes("authentication service is not configured") ||
     message.includes("could not load the default credentials") ||
     message.includes("applicationdefault") ||
     message.includes("firebase_service_account_json") ||
