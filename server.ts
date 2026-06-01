@@ -38,25 +38,73 @@ if (!firebaseProjectId || !firebaseApiKey) {
   }
 }
 
-const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
-const allowApplicationDefaultCredential =
-  process.env.FIREBASE_USE_APPLICATION_DEFAULT === "true" ||
-  !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+const serviceAccountJson =
+  process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim() ||
+  process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
+const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
+const serviceAccountFilePath = process.env.FIREBASE_SERVICE_ACCOUNT_FILE?.trim();
+const serviceAccountPrivateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n").trim();
+const serviceAccountClientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+const serviceAccountProjectId = process.env.FIREBASE_PROJECT_ID?.trim();
 
 let adminCredential: admin.credential.Credential;
+let explicitCredentialConfigured = false;
+
 if (serviceAccountJson) {
   try {
     const serviceAccount = JSON.parse(serviceAccountJson);
     adminCredential = admin.credential.cert(serviceAccount);
-  } catch {
-    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON; falling back to applicationDefault");
-    adminCredential = admin.credential.applicationDefault();
+    explicitCredentialConfigured = true;
+  } catch (error) {
+    console.error(
+      "Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON/FIREBASE_SERVICE_ACCOUNT; falling back to other credential sources",
+      error
+    );
   }
-} else if (process.env.VERCEL && !allowApplicationDefaultCredential) {
-  throw new Error(
-    "Firebase credentials not configured for Vercel deployment. Set FIREBASE_SERVICE_ACCOUNT_JSON, or set FIREBASE_USE_APPLICATION_DEFAULT=true / GOOGLE_APPLICATION_CREDENTIALS."
-  );
-} else {
+}
+
+if (!explicitCredentialConfigured && serviceAccountBase64) {
+  try {
+    const decoded = Buffer.from(serviceAccountBase64, "base64").toString("utf-8");
+    const serviceAccount = JSON.parse(decoded);
+    adminCredential = admin.credential.cert(serviceAccount);
+    explicitCredentialConfigured = true;
+  } catch (error) {
+    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_BASE64; falling back to other credential sources", error);
+  }
+}
+
+if (!explicitCredentialConfigured) {
+  const fileCandidates = [
+    serviceAccountFilePath,
+    path.join(process.cwd(), "firebase-service-account.json"),
+    path.join(process.cwd(), "serviceAccountKey.json"),
+  ].filter((value): value is string => Boolean(value && value.trim()));
+
+  for (const candidate of fileCandidates) {
+    try {
+      if (!fs.existsSync(candidate)) continue;
+      const raw = fs.readFileSync(candidate, "utf-8");
+      const parsed = JSON.parse(raw);
+      adminCredential = admin.credential.cert(parsed);
+      explicitCredentialConfigured = true;
+      break;
+    } catch (error) {
+      console.error(`Failed to parse Firebase service account file at ${candidate}; trying next source`, error);
+    }
+  }
+}
+
+if (!explicitCredentialConfigured && serviceAccountClientEmail && serviceAccountPrivateKey && serviceAccountProjectId) {
+  adminCredential = admin.credential.cert({
+    projectId: serviceAccountProjectId,
+    clientEmail: serviceAccountClientEmail,
+    privateKey: serviceAccountPrivateKey,
+  });
+  explicitCredentialConfigured = true;
+}
+
+if (!explicitCredentialConfigured) {
   adminCredential = admin.credential.applicationDefault();
 }
 
@@ -197,6 +245,35 @@ const isAuthServiceConfigError = (error: unknown): boolean => {
     message.includes("applicationdefault") ||
     message.includes("firebase_service_account_json") ||
     message.includes("credential implementation provided to initializeapp")
+  );
+};
+
+const isAuthTokenMintError = (error: unknown): boolean => {
+  const err = error as { message?: string; code?: string; errorInfo?: { code?: string; message?: string } };
+  const message = String(err?.message || err?.errorInfo?.message || "").toLowerCase();
+  const code = String(err?.code || err?.errorInfo?.code || "").toLowerCase();
+  return (
+    code.includes("auth/invalid-credential") ||
+    code.includes("app/invalid-credential") ||
+    code.includes("auth/insufficient-permission") ||
+    message.includes("createcustomtoken") ||
+    message.includes("failed to determine service account") ||
+    message.includes("iam.serviceaccounts.signblob") ||
+    message.includes("permission iam.serviceaccounts.signblob") ||
+    message.includes("error fetching access token") ||
+    message.includes("insufficient permission") ||
+    message.includes("invalid credential")
+  );
+};
+
+const isFirestoreNotFoundError = (error: unknown): boolean => {
+  const code = Number((error as { code?: unknown })?.code);
+  const message = String((error as { message?: string })?.message || "").toLowerCase();
+  return (
+    code === 5 ||
+    message.includes("5 not_found") ||
+    message.includes("not_found") ||
+    message.includes("firestore") && message.includes("not found")
   );
 };
 
@@ -704,6 +781,12 @@ app.post("/api/passkey/auth/options", passkeyRouteRateLimiter, async (req, res) 
     return res.json({ options, challengeId: challengeRef.id });
   } catch (error: any) {
     console.error("[passkey][auth/options] error", error);
+    if (isFirestoreNotFoundError(error)) {
+      return res.status(500).json({
+        error:
+          "Firestore is not available for this project. Verify FIREBASE_PROJECT_ID and ensure Firestore is created in that Firebase project.",
+      });
+    }
     return res.status(500).json({ error: error?.message || "Failed to start passkey sign-in." });
   }
 });
@@ -817,8 +900,8 @@ app.post("/api/auth/password/login", passkeyRouteRateLimiter, async (req, res) =
     return res.json({ success: true, customToken });
   } catch (error: any) {
     const message = error?.message || "Invalid credentials.";
-    if (isAuthServiceConfigError(error)) {
-      return res.status(500).json({ error: "Authentication service is not configured." });
+    if (isAuthServiceConfigError(error) || isAuthTokenMintError(error)) {
+      return res.status(500).json({ error: "Authentication service is not configured.", code: "AUTH_SERVICE_NOT_CONFIGURED" });
     }
     return res.status(401).json({ error: message });
   }

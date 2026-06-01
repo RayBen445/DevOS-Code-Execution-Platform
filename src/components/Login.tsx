@@ -4,6 +4,7 @@ import {
   signInWithGoogle,
   signInWithGithub,
   signUpWithEmail,
+  signInWithEmail,
   sendVerificationEmail,
   sendPasswordReset,
 } from "../lib/firebase";
@@ -160,14 +161,27 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
         return;
       } else {
         try {
+          const identifier = email.trim();
+          const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+          let usedEmailPasswordFallback = false;
           const res = await fetch("/api/auth/password/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ identifier: email, password }),
+            body: JSON.stringify({ identifier, password }),
           });
           const text = await res.text();
           const data = text ? (() => { try { return JSON.parse(text); } catch { return { error: text }; } })() : {};
-          if (!res.ok) throw new Error(data.error || "Sign-in failed.");
+          if (!res.ok) {
+            if (
+              data.code === "AUTH_SERVICE_NOT_CONFIGURED" &&
+              looksLikeEmail
+            ) {
+              await signInWithEmail(identifier, password);
+              usedEmailPasswordFallback = true;
+            } else {
+              throw new Error(data.error || "Sign-in failed.");
+            }
+          }
           if (data.mfaRequired && data.challengeId) {
             setMfaChallengeId(data.challengeId);
             setUseRecoveryCode(false);
@@ -176,7 +190,11 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
             setLoading(false);
             return;
           }
-          await signInWithCustomToken(auth, data.customToken);
+          if (data.customToken) {
+            await signInWithCustomToken(auth, data.customToken);
+          } else if (!usedEmailPasswordFallback) {
+            throw new Error("Authentication succeeded but no credentials were provided.");
+          }
         } catch (authErr: any) {
           setError(getAuthErrorMessage(authErr));
           setLoading(false);
