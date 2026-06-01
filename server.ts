@@ -901,7 +901,7 @@ app.post("/api/auth/password/login", passkeyRouteRateLimiter, async (req, res) =
   } catch (error: any) {
     const message = error?.message || "Invalid credentials.";
     if (isAuthServiceConfigError(error) || isAuthTokenMintError(error)) {
-      return res.status(500).json({ error: "Authentication service is not configured." });
+      return res.status(500).json({ error: "Authentication service is not configured.", code: "AUTH_SERVICE_NOT_CONFIGURED" });
     }
     return res.status(401).json({ error: message });
   }
