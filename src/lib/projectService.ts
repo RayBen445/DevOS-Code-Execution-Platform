@@ -1,4 +1,4 @@
-import { generateAppId } from '../utils';
+import { generateAppId } from './utils';
 import {
   collection,
   addDoc,
