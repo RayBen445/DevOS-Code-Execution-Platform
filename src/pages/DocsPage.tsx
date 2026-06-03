@@ -704,17 +704,34 @@ export default function DocsPage() {
   });
 
   const [activeSection, setActiveSection] = useState("getting-started");
-  const current = sections.find((s) => s.id === activeSection) ?? sections[0];
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSections = sections.filter((s) =>
+    s.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const current = filteredSections.find((s) => s.id === activeSection) ?? 
+                  (filteredSections.length > 0 ? filteredSections[0] : sections[0]);
 
   return (
     <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12">
-        <div className="relative overflow-hidden rounded-3xl border border-border-base bg-gradient-to-br from-[#14181f] via-[#0f141b] to-[#0a0a0a] p-8 md:p-10 shadow-2xl shadow-black/40">
+        <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-[#10131a] via-[#0a0c10] to-[#050505] p-8 md:p-12 shadow-2xl shadow-black/60 group">
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-blue-600/10 blur-[120px]" />
-            <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-purple-600/10 blur-[120px]" />
+            <motion.div 
+              animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.3, 0.2] }} 
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} 
+              className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-blue-600/20 blur-[120px]" 
+            />
+            <motion.div 
+              animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }} 
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }} 
+              className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-purple-600/20 blur-[120px]" 
+            />
+            <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02] mix-blend-overlay" />
           </div>
           <div className="relative flex flex-col gap-6">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -741,9 +758,10 @@ export default function DocsPage() {
                 <Search className="w-4 h-4 text-white/40" />
                 <input
                   type="text"
-                  placeholder="Search docs (coming soon)"
+                  placeholder="Search docs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="bg-transparent text-sm text-white/70 placeholder:text-white/30 focus:outline-none w-full"
-                  disabled
                 />
               </div>
               <div className="flex gap-2">
@@ -779,18 +797,18 @@ export default function DocsPage() {
           <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-2 px-2">
             Documentation
           </p>
-          {sections.map((section) => {
+          {filteredSections.map((section) => {
             const Icon = section.icon;
-            const isActive = section.id === activeSection;
+            const isActive = section.id === current.id;
             return (
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 relative text-left",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 relative text-left overflow-hidden group",
                   isActive
-                    ? "bg-blue-600/20 text-blue-200 shadow-lg shadow-blue-500/15 border border-blue-500/40"
-                    : "text-white/60 hover:text-white/85 hover:bg-white/8 border border-transparent"
+                    ? "bg-gradient-to-r from-blue-600/20 to-purple-600/5 text-blue-200 shadow-lg shadow-blue-500/10 border border-blue-500/30"
+                    : "text-white/60 hover:text-white/90 hover:bg-white/5 border border-transparent"
                 )}
               >
                 {isActive && (
@@ -806,18 +824,18 @@ export default function DocsPage() {
         {/* Mobile: horizontal scrollable chip nav */}
         <div className="md:hidden w-full flex flex-col gap-6">
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4">
-            {sections.map((section) => {
+            {filteredSections.map((section) => {
               const Icon = section.icon;
-              const isActive = section.id === activeSection;
+              const isActive = section.id === current.id;
               return (
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all flex-shrink-0 border duration-200",
+                    "flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all flex-shrink-0 border duration-200 shadow-sm",
                     isActive
-                      ? "bg-blue-600/30 border-blue-500/60 text-blue-300 shadow-lg shadow-blue-500/20"
-                      : "bg-white/6 border-white/12 text-white/60 hover:text-white/80 hover:border-white/25"
+                      ? "bg-gradient-to-r from-blue-600/20 to-purple-600/10 border-blue-500/50 text-blue-200 shadow-blue-500/15"
+                      : "bg-white/5 border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10"
                   )}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />

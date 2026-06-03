@@ -174,15 +174,6 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
             <div className="grid lg:grid-cols-2 gap-14 lg:gap-24 items-center">
               {/* Left — copy */}
               <motion.div variants={stagger} initial="hidden" animate="show">
-                <motion.a
-                  variants={fadeUp}
-                  href="/docs#plugin-marketplace"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600/15 border border-blue-500/30 text-blue-300 text-xs font-bold tracking-wide mb-8 hover:bg-blue-600/25 hover:border-blue-500/50 transition-all group"
-                >
-                  <Puzzle className="w-3.5 h-3.5" />
-                  Now with Plugin Marketplace
-                  <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </motion.a>
 
                 <motion.h1
                   variants={fadeUp}
