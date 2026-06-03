@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import jwt from "jsonwebtoken";
 import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
@@ -27,12 +28,14 @@ const __dirname = path.dirname(__filename);
 // ---------------------------------------------------------------------------
 let firebaseProjectId: string | undefined = process.env.FIREBASE_PROJECT_ID;
 let firebaseApiKey: string | undefined = process.env.FIREBASE_API_KEY;
+let firebaseDatabaseId: string | undefined = process.env.FIREBASE_DATABASE_ID;
 const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
-if (!firebaseProjectId || !firebaseApiKey) {
+if (!firebaseProjectId || !firebaseApiKey || !firebaseDatabaseId) {
   try {
     const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
     firebaseProjectId = firebaseProjectId || firebaseConfig.projectId;
     firebaseApiKey = firebaseApiKey || firebaseConfig.apiKey;
+    firebaseDatabaseId = firebaseDatabaseId || firebaseConfig.firestoreDatabaseId;
   } catch {
     // Config file absent in production; FIREBASE_PROJECT_ID must be set
   }
@@ -68,7 +71,9 @@ if (!admin.apps.length) {
   });
 }
 
-const db = admin.firestore();
+const db = firebaseDatabaseId
+  ? getFirestore(admin.app(), firebaseDatabaseId)
+  : getFirestore(admin.app());
 
 // ---------------------------------------------------------------------------
 // Express app – module-level so Vercel can import and invoke it directly.
