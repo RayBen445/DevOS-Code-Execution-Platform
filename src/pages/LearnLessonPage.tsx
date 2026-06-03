@@ -181,7 +181,7 @@ export default function LearnLessonPage() {
   const lessonIndex = topic.lessons.findIndex((l) => l.id === lessonId);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-8">
@@ -270,9 +270,9 @@ export default function LearnLessonPage() {
               className="space-y-4"
             >
               {/* Code editor area */}
-              <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#0d0d0d]">
+              <div className="rounded-2xl border border-border-base overflow-hidden bg-card">
                 {/* Toolbar */}
-                <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8 bg-white/[0.02]">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border-base bg-white/[0.02]">
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1.5">
                       <span className="w-3 h-3 rounded-full bg-red-500/50" />
@@ -336,7 +336,7 @@ export default function LearnLessonPage() {
                     {isRunning ? "Running…" : isHTML ? "Preview" : "Run Code"}
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/40 rounded-xl text-sm font-medium">
+                  <div className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-border-base text-white/40 rounded-xl text-sm font-medium">
                     <Lock className="w-4 h-4" />
                     Sign in to run code
                   </div>
@@ -353,8 +353,8 @@ export default function LearnLessonPage() {
 
               {/* HTML Preview */}
               {isHTML && hasRun && (
-                <div className="rounded-2xl border border-white/10 overflow-hidden">
-                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/8 bg-white/[0.02]">
+                <div className="rounded-2xl border border-border-base overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-base bg-white/[0.02]">
                     <Eye className="w-3.5 h-3.5 text-white/40" />
                     <span className="text-xs text-white/40">Live Preview</span>
                   </div>
@@ -370,8 +370,8 @@ export default function LearnLessonPage() {
 
               {/* Terminal output */}
               {!isHTML && hasRun && (
-                <div ref={outputRef} className="rounded-2xl border border-white/10 overflow-hidden">
-                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/8 bg-white/[0.02]">
+                <div ref={outputRef} className="rounded-2xl border border-border-base overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-base bg-white/[0.02]">
                     <Terminal className="w-3.5 h-3.5 text-green-400" />
                     <span className="text-xs text-white/40">Output</span>
                   </div>
@@ -400,8 +400,8 @@ export default function LearnLessonPage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="rounded-2xl border border-white/10 overflow-hidden">
-                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/8 bg-white/[0.02]">
+              <div className="rounded-2xl border border-border-base overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border-base bg-white/[0.02]">
                   <Lightbulb className="w-4 h-4 text-yellow-400" />
                   <span className="text-sm font-bold text-white/70">Code Breakdown</span>
                   <span className="ml-auto text-xs text-white/25">
@@ -448,7 +448,7 @@ export default function LearnLessonPage() {
         </AnimatePresence>
 
         {/* Navigation footer */}
-        <div className="mt-8 pt-6 border-t border-white/8 flex items-center justify-between gap-4 flex-wrap">
+        <div className="mt-8 pt-6 border-t border-border-base flex items-center justify-between gap-4 flex-wrap">
           {/* Prev */}
           {prev ? (
             <Link
@@ -468,7 +468,7 @@ export default function LearnLessonPage() {
             className={cn(
               "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all",
               done
-                ? "bg-white/5 hover:bg-white/10 text-white/60 border border-white/10"
+                ? "bg-white/5 hover:bg-white/10 text-white/60 border border-border-base"
                 : "bg-blue-600 hover:bg-blue-500 text-white"
             )}
           >

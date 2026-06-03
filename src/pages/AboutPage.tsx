@@ -63,7 +63,7 @@ export default function AboutPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       {/* Hero */}
@@ -166,7 +166,7 @@ export default function AboutPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="p-6 rounded-2xl bg-[#0f0f0f] border border-white/[0.06] flex gap-5"
+                className="p-6 rounded-2xl bg-base border border-white/[0.06] flex gap-5"
               >
                 <div className={`w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center border ${bg}`}>
                   <Icon className={`w-5 h-5 ${color}`} />
@@ -195,7 +195,7 @@ export default function AboutPage() {
                 {...fadeUp}
                 className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] w-52"
               >
-                <img src={avatar} alt={name} className="w-16 h-16 rounded-full object-cover border-2 border-white/10" referrerPolicy="no-referrer" />
+                <img src={avatar} alt={name} className="w-16 h-16 rounded-full object-cover border-2 border-border-base" referrerPolicy="no-referrer" />
                 <div className="text-center">
                   <p className="font-bold text-white text-sm">@{name}</p>
                   <p className="text-xs text-white/40 mt-0.5">{role}</p>
@@ -228,7 +228,7 @@ export default function AboutPage() {
               </Link>
               <Link
                 to="/contact"
-                className="px-8 py-3 bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 text-white rounded-xl font-bold transition-all"
+                className="px-8 py-3 bg-white/5 border border-border-base hover:border-border-base hover:bg-white/10 text-white rounded-xl font-bold transition-all"
               >
                 Contact Us
               </Link>

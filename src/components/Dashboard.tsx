@@ -583,7 +583,7 @@ p {
         transition={{ duration: 0.35, delay: animIdx * 0.04, ease: [0.22, 1, 0.36, 1] }}
         className={cn(
           "group rounded-2xl border transition-all relative flex flex-col card-glow",
-          "glass border-white/[0.07] hover:border-white/15"
+          "glass border-white/[0.07] hover:border-border-base"
         )}
       >
         {/* Card body */}
@@ -701,10 +701,10 @@ p {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 4, scale: 0.96 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute bottom-full right-0 mb-2 w-52 bg-[#111] border border-white/10 rounded-xl shadow-2xl z-30 overflow-hidden"
+                        className="absolute bottom-full right-0 mb-2 w-52 bg-card border border-border-base rounded-xl shadow-2xl z-30 overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="px-3 py-2 border-b border-white/5">
+                        <div className="px-3 py-2 border-b border-border-base">
                           <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Move to Group</p>
                         </div>
                         <div className="py-1 max-h-48 overflow-y-auto">
@@ -734,7 +734,7 @@ p {
                           )}
                         </div>
                         {/* New group input */}
-                        <div className="px-3 py-2 border-t border-white/5">
+                        <div className="px-3 py-2 border-t border-border-base">
                           <div className="flex gap-1.5">
                             <input
                               autoFocus
@@ -747,7 +747,7 @@ p {
                                   handleMoveToGroup(project.id, newGroupName.trim());
                                 }
                               }}
-                              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                              className="flex-1 bg-white/5 border border-border-base rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
                             />
                             <button
                               onClick={() => { if (newGroupName.trim()) handleMoveToGroup(project.id, newGroupName.trim()); }}
@@ -845,7 +845,7 @@ p {
           </button>
           <button
             onClick={() => setShowCreateOrg(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
+            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-border-base text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
           >
             <Building2 className="w-4 h-4 text-blue-400" />
             New Organization
@@ -853,14 +853,14 @@ p {
           {/* Secondary */}
           <button
             onClick={() => setIsQuickStarting(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
+            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-border-base text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
           >
             <Rocket className="w-4 h-4 text-blue-400" />
             Quick Start
           </button>
           <button
             onClick={() => navigate("/templates")}
-            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
+            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-border-base text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
           >
             <Layout className="w-4 h-4 text-purple-400" />
             Marketplace
@@ -885,9 +885,9 @@ p {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-[#0f0f0f] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+              className="w-full max-w-2xl bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl"
             >
-              <div className="p-8 border-b border-white/5 flex items-center justify-between">
+              <div className="p-8 border-b border-border-base flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
                     <Rocket className="w-6 h-6 text-blue-500" />
@@ -907,7 +907,7 @@ p {
                   { icon: Share2, title: "4. Share your project", desc: "Show off your work to the world with one click." }
                 ].map((step, i) => (
                   <div key={i} className="flex gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-border-base flex items-center justify-center flex-shrink-0">
                       <step.icon className="w-6 h-6 text-white/60" />
                     </div>
                     <div>
@@ -942,9 +942,9 @@ p {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-2xl bg-[#0f0f0f] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+              className="w-full max-w-2xl bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl"
             >
-              <div className="p-8 border-b border-white/5 flex items-center justify-between">
+              <div className="p-8 border-b border-border-base flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-white tracking-tight">Create New Project</h2>
                 <button onClick={() => setIsCreating(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
                   <X className="w-6 h-6 text-white/40" />
@@ -963,7 +963,7 @@ p {
                       onChange={(e) => { setNewProjectName(e.target.value); setProjectNameTaken(false); }}
                       className={cn(
                         "w-full bg-white/5 border rounded-xl px-4 py-3 text-white focus:outline-none transition-all",
-                        projectNameTaken ? "border-red-500/60 focus:border-red-500" : "border-white/10 focus:border-blue-500"
+                        projectNameTaken ? "border-red-500/60 focus:border-red-500" : "border-border-base focus:border-blue-500"
                       )}
                       required
                     />
@@ -983,7 +983,7 @@ p {
                       placeholder="What are you building?"
                       value={newProjectDescription}
                       onChange={(e) => setNewProjectDescription(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all h-24 resize-none"
+                      className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all h-24 resize-none"
                     />
                   </div>
 
@@ -993,7 +993,7 @@ p {
                       onClick={() => setVisibility("public")}
                       className={cn(
                         "p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2",
-                        visibility === "public" ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-white/5 hover:border-white/10"
+                        visibility === "public" ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-border-base hover:border-border-base"
                       )}
                     >
                       <Eye className={cn("w-6 h-6", visibility === "public" ? "text-blue-500" : "text-white/20")} />
@@ -1004,7 +1004,7 @@ p {
                       onClick={() => setVisibility("private")}
                       className={cn(
                         "p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2",
-                        visibility === "private" ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-white/5 hover:border-white/10"
+                        visibility === "private" ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-border-base hover:border-border-base"
                       )}
                     >
                       <EyeOff className={cn("w-6 h-6", visibility === "private" ? "text-blue-500" : "text-white/20")} />
@@ -1024,7 +1024,7 @@ p {
                             onClick={() => setSelectedTemplateId(t.id)}
                             className={cn(
                               "p-4 rounded-2xl border-2 transition-all flex flex-col items-start gap-2 text-left",
-                              selectedTemplateId === t.id ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-white/5 hover:border-white/10"
+                              selectedTemplateId === t.id ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-border-base hover:border-border-base"
                             )}
                           >
                             <div className={cn(
@@ -1059,7 +1059,7 @@ p {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-4 pt-8 border-t border-white/5">
+                <div className="flex justify-end gap-4 pt-8 border-t border-border-base">
                   <button
                     type="button"
                     onClick={() => setIsCreating(false)}
@@ -1107,7 +1107,7 @@ p {
         );
       })()}
 
-      <div className="flex gap-8 mb-8 border-b border-white/5">
+      <div className="flex gap-8 mb-8 border-b border-border-base">
         <button
           onClick={() => setActiveTab("my-projects")}
           className={cn(
@@ -1214,7 +1214,7 @@ p {
 
           {/* Empty state */}
           {projects.length === 0 && !isCreating && (
-            <div className="py-20 text-center rounded-3xl border-2 border-dashed border-white/5">
+            <div className="py-20 text-center rounded-3xl border-2 border-dashed border-border-base">
               <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-4" />
               <p className="text-white/40 font-medium mb-6">No projects yet. Create your first one to get started!</p>
               <div className="flex items-center justify-center gap-4 flex-wrap">
@@ -1227,7 +1227,7 @@ p {
                 </button>
                 <button
                   onClick={() => navigate("/templates")}
-                  className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
+                  className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-border-base text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
                 >
                   <Layout className="w-4 h-4 text-purple-400" />
                   Use Template
@@ -1243,7 +1243,7 @@ p {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {publicProjects.map((project, idx) => renderCard(project, idx))}
           {publicProjects.length === 0 && !isCreating && (
-            <div className="col-span-full py-20 text-center rounded-3xl border-2 border-dashed border-white/5">
+            <div className="col-span-full py-20 text-center rounded-3xl border-2 border-dashed border-border-base">
               <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-4" />
               <p className="text-white/40 font-medium mb-6">No public projects found.</p>
             </div>
@@ -1251,7 +1251,7 @@ p {
         </div>
       )}
 
-      <div className="mt-24 pt-12 border-t border-white/5 flex flex-col items-center gap-4">
+      <div className="mt-24 pt-12 border-t border-border-base flex flex-col items-center gap-4">
         <div className="flex items-center gap-2 text-white/20 text-sm font-medium">
           Built with <span className="text-white/40 font-bold tracking-tight">DevOS</span>
         </div>
@@ -1331,7 +1331,7 @@ function ProjectShareButton({
         title="Share as Image"
       >
         {capturing ? (
-          <span className="w-3.5 h-3.5 border-[1.5px] border-white/20 border-t-blue-400 rounded-full animate-spin" />
+          <span className="w-3.5 h-3.5 border-[1.5px] border-border-base border-t-blue-400 rounded-full animate-spin" />
         ) : (
           <ImageDown className="w-3.5 h-3.5" />
         )}

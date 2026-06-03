@@ -24,7 +24,7 @@ export default function PageLayout({
   navbarProps,
 }: PageLayoutProps) {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar {...navbarProps} />
       <main className={cn("flex-1 pb-16 md:pb-0", className)}>{children}</main>
       {showFooter && <Footer />}

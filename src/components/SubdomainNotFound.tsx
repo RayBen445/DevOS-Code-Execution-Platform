@@ -7,7 +7,7 @@ interface Props {
 
 export default function SubdomainNotFound({ label }: Props) {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center gap-3">
+    <div className="min-h-screen bg-base text-white flex flex-col items-center justify-center gap-3">
       <AlertCircle className="w-10 h-10 text-red-400" />
       <p className="text-2xl font-bold">404</p>
       <p className="text-white/60">

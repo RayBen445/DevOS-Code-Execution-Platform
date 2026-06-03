@@ -120,7 +120,7 @@ export default function SubdomainPreview({ username, previewId }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-3">
+      <div className="min-h-screen bg-base flex flex-col items-center justify-center gap-3">
         <Zap className="w-8 h-8 text-blue-500 animate-pulse" />
         <p className="text-sm text-white/40 uppercase tracking-widest font-bold">
           Loading Preview…
@@ -131,7 +131,7 @@ export default function SubdomainPreview({ username, previewId }: Props) {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center text-white gap-3 p-6 text-center">
+      <div className="min-h-screen bg-base flex flex-col items-center justify-center text-white gap-3 p-6 text-center">
         <AlertCircle className="w-12 h-12 text-red-400" />
         <p className="text-xl font-bold">Preview not found</p>
         <p className="text-white/50 text-sm">{error}</p>

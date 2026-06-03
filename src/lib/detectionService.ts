@@ -167,7 +167,7 @@ export function detectProject(files: FileData[]): DetectionResult {
 
 /** Tailwind colour classes for the framework badge */
 export const FRAMEWORK_BADGE_COLORS: Record<DetectedFramework, string> = {
-  "Next.js": "bg-white/10 text-white border-white/20",
+  "Next.js": "bg-white/10 text-white border-border-base",
   React: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
   Vue: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   Vite: "bg-violet-500/15 text-violet-400 border-violet-500/30",

@@ -201,10 +201,10 @@ export default function ProjectSettingsModal({
             initial={{ opacity: 0, scale: 0.96, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 10 }}
-            className="w-full max-w-3xl max-h-[85vh] bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            className="w-full max-w-3xl max-h-[85vh] bg-card border border-border-base rounded-2xl overflow-hidden shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border-base shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
                   <Settings className="w-5 h-5 text-white/60" />
@@ -221,7 +221,7 @@ export default function ProjectSettingsModal({
 
             <div className="flex flex-1 min-h-0">
               {/* Sidebar */}
-              <div className="w-48 border-r border-white/5 p-3 shrink-0 overflow-y-auto">
+              <div className="w-48 border-r border-border-base p-3 shrink-0 overflow-y-auto">
                 {SECTIONS.filter((s) =>
                   s.id !== "danger" || project.isDeletable !== false
                 ).map((s) => (
@@ -257,7 +257,7 @@ export default function ProjectSettingsModal({
                           type="text"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all"
+                          className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all"
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -266,7 +266,7 @@ export default function ProjectSettingsModal({
                           value={description}
                           onChange={(e) => setDescription(e.target.value)}
                           rows={3}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all resize-none"
+                          className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all resize-none"
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -278,7 +278,7 @@ export default function ProjectSettingsModal({
                               "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all",
                               isPublic
                                 ? "bg-green-500/10 border-green-500/30 text-green-400"
-                                : "border-white/10 text-white/40 hover:border-white/20"
+                                : "border-border-base text-white/40 hover:border-border-base"
                             )}
                           >
                             <Eye className="w-4 h-4" /> Public
@@ -288,8 +288,8 @@ export default function ProjectSettingsModal({
                             className={cn(
                               "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all",
                               !isPublic
-                                ? "bg-white/10 border-white/20 text-white"
-                                : "border-white/10 text-white/40 hover:border-white/20"
+                                ? "bg-white/10 border-border-base text-white"
+                                : "border-border-base text-white/40 hover:border-border-base"
                             )}
                           >
                             <EyeOff className="w-4 h-4" /> Private
@@ -319,14 +319,14 @@ export default function ProjectSettingsModal({
                             placeholder="KEY"
                             value={pair.key}
                             onChange={(e) => setEnvPairs((prev) => prev.map((p, idx) => idx === i ? { ...p, key: e.target.value } : p))}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500/50 transition-all"
+                            className="flex-1 bg-white/5 border border-border-base rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500/50 transition-all"
                           />
                           <input
                             type="text"
                             placeholder="VALUE"
                             value={pair.value}
                             onChange={(e) => setEnvPairs((prev) => prev.map((p, idx) => idx === i ? { ...p, value: e.target.value } : p))}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500/50 transition-all"
+                            className="flex-1 bg-white/5 border border-border-base rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500/50 transition-all"
                           />
                           <button
                             onClick={() => setEnvPairs((prev) => prev.filter((_, idx) => idx !== i))}
@@ -338,7 +338,7 @@ export default function ProjectSettingsModal({
                       ))}
                       <button
                         onClick={() => setEnvPairs((prev) => [...prev, { key: "", value: "" }])}
-                        className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-white/10 hover:border-white/20 text-white/40 hover:text-white text-sm transition-all w-full"
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-border-base hover:border-border-base text-white/40 hover:text-white text-sm transition-all w-full"
                       >
                         <Plus className="w-4 h-4" />
                         Add variable
@@ -359,7 +359,7 @@ export default function ProjectSettingsModal({
                   <div className="space-y-5">
                     <h3 className="text-sm font-bold text-white/60 uppercase tracking-widest">Deployment</h3>
                     <div className="space-y-3">
-                      <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                      <div className="p-4 rounded-xl bg-white/5 border border-border-base">
                         <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1">Status</p>
                         <span className={cn(
                           "text-sm font-semibold capitalize",
@@ -372,7 +372,7 @@ export default function ProjectSettingsModal({
                         </span>
                       </div>
                       {project.deployUrl && (
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                        <div className="p-4 rounded-xl bg-white/5 border border-border-base">
                           <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1">Deploy URL</p>
                           <a
                             href={project.deployUrl}
@@ -408,7 +408,7 @@ export default function ProjectSettingsModal({
                     ) : (
                       <div className="space-y-2">
                         {versions.map((v) => (
-                          <div key={v.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                          <div key={v.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-border-base">
                             <GitBranch className="w-4 h-4 text-white/30 mt-0.5 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-white">{v.message}</p>
@@ -428,7 +428,7 @@ export default function ProjectSettingsModal({
                       {(project.collaborators ?? [])
                         .filter((c) => c !== user?.uid)
                         .map((uid) => (
-                          <div key={uid} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                          <div key={uid} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-border-base">
                             <span className="text-sm text-white/60 font-mono">{uid}</span>
                             <button
                               onClick={() => handleRemoveCollaborator(uid)}
@@ -445,7 +445,7 @@ export default function ProjectSettingsModal({
                         placeholder="User UID"
                         value={collabInput}
                         onChange={(e) => setCollabInput(e.target.value)}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all"
+                        className="flex-1 bg-white/5 border border-border-base rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all"
                       />
                       <button
                         onClick={handleAddCollaborator}

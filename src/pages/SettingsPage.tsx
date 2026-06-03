@@ -158,7 +158,7 @@ function ReferralsTab({ uid }: { uid: string }) {
           Your Referral Link
         </label>
         <div className="flex gap-2">
-          <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-mono text-white/60 truncate">
+          <div className="flex-1 bg-white/5 border border-border-base rounded-xl px-4 py-3 text-sm font-mono text-white/60 truncate">
             {referralLink || "Generating…"}
           </div>
           <button
@@ -184,7 +184,7 @@ function ReferralsTab({ uid }: { uid: string }) {
         </div>
       </div>
 
-      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-white/40 leading-relaxed">
+      <div className="p-4 rounded-2xl bg-white/5 border border-border-base text-xs text-white/40 leading-relaxed">
         <strong className="text-white/60">Rules:</strong> No self-referrals. Each new user can only use one referral code.
         Credits are awarded once per unique sign-up.
       </div>
@@ -249,7 +249,7 @@ export default function SettingsPage() {
 
   if (authLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0a0a0a]">
+      <div className="h-screen flex items-center justify-center bg-base">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
@@ -263,11 +263,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       {/* Mobile header bar — only visible below md */}
-      <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-[#0a0a0a] sticky top-0 z-20">
+      <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-border-base bg-base sticky top-0 z-20">
         <button
           onClick={() => setSidebarOpen(true)}
           className="p-2 rounded-xl hover:bg-white/5 text-white/50 hover:text-white transition-colors"
@@ -290,7 +290,7 @@ export default function SettingsPage() {
 
       {/* Mobile slide-in drawer */}
       <aside
-        className={`fixed top-0 left-0 h-full w-60 bg-[#0B0F17] border-r border-white/5 z-40 flex flex-col p-5 transform transition-transform duration-300 ease-in-out md:hidden ${
+        className={`fixed top-0 left-0 h-full w-60 bg-base border-r border-border-base z-40 flex flex-col p-5 transform transition-transform duration-300 ease-in-out md:hidden ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -352,6 +352,7 @@ function ProfileTab() {
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
   const [github, setGithub] = useState("");
   const [twitter, setTwitter] = useState("");
   const [website, setWebsite] = useState("");
@@ -375,6 +376,7 @@ function ProfileTab() {
         setUsername(d.username || "");
         setBio(d.bio || "");
         setAvatarUrl(d.avatarUrl || user.photoURL || "");
+        setBannerUrl(d.bannerUrl || "");
         setSkills(Array.isArray(d.skills) ? d.skills : []);
         setBirthday(d.birthday || "");
         const links = d.links || {};
@@ -445,6 +447,7 @@ function ProfileTab() {
         skills,
         avatarUrl,
         avatar: avatarUrl,
+        bannerUrl,
         updatedAt: serverTimestamp(),
         ...(birthday ? { birthday } : {}),
         ...(Object.keys(links).length ? { links } : {}),
@@ -457,6 +460,7 @@ function ProfileTab() {
         skills,
         avatarUrl,
         avatar: avatarUrl,
+        bannerUrl,
         updatedAt: serverTimestamp(),
         ...(birthday ? { birthday } : {}),
         ...(Object.keys(links).length ? { links } : {}),
@@ -496,6 +500,28 @@ function ProfileTab() {
     }
   };
 
+  const handleBannerUpload = async (file: File) => {
+    if (!user) return;
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      // Import userBannerPath dynamically if needed or assume it's imported (wait, let's make sure it's imported!)
+      const url = await uploadImage(file, `users/${user.uid}/banners/${Date.now()}-${file.name}`, {
+        onProgress: setUploadProgress,
+      });
+      setBannerUrl(url);
+      await Promise.all([
+        setDoc(doc(db, "users", user.uid), { bannerUrl: url, updatedAt: serverTimestamp() }, { merge: true }),
+        setDoc(doc(db, "user_settings", user.uid), { bannerUrl: url, updatedAt: serverTimestamp() }, { merge: true }),
+      ]);
+      toast.success("Profile banner updated!");
+    } catch (err: any) {
+      toast.error("Banner upload failed: " + (err?.message ?? "Unknown error"));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) {
     return <LoadingPanel />;
   }
@@ -510,7 +536,7 @@ function ProfileTab() {
       </div>
 
       {/* Avatar */}
-      <div className="flex items-center gap-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
         <ImageUpload
           shape="square"
           value={avatarSrc}
@@ -524,7 +550,26 @@ function ProfileTab() {
         <div>
           <p className="text-sm font-bold text-white">{fullName || username || "Your Name"}</p>
           <p className="text-white/40 text-sm font-mono">@{username || "username"}</p>
-          <p className="text-white/30 text-xs mt-1">Drop or click to change · max 5 MB</p>
+          <p className="text-white/30 text-xs mt-1">Profile Avatar · Drop or click to change · max 5 MB</p>
+        </div>
+      </div>
+
+      {/* Banner */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pt-4">
+        <ImageUpload
+          shape="rectangle"
+          value={bannerUrl}
+          onFile={handleBannerUpload}
+          onRemove={() => setBannerUrl("")}
+          uploading={uploading}
+          progress={uploadProgress}
+          maxSizeMB={5}
+          hint="Recommend 3:1 ratio — max 5 MB"
+        />
+        <div>
+          <p className="text-sm font-bold text-white">Profile Banner</p>
+          <p className="text-white/40 text-sm mt-1">This image will appear at the top of your portfolio.</p>
+          <p className="text-white/30 text-xs mt-1">Recommend 1500x500px</p>
         </div>
       </div>
 
@@ -565,7 +610,7 @@ function ProfileTab() {
           ) : null}
 
           {showUsernameRequestForm && usernameRequest?.status !== "pending" && (
-            <div className="mt-3 p-4 rounded-xl bg-white/3 border border-white/10 space-y-3">
+            <div className="mt-3 p-4 rounded-xl bg-white/3 border border-border-base space-y-3">
               <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Request Username Change</p>
               <div className="relative">
                 <input
@@ -631,7 +676,7 @@ function ProfileTab() {
         </p>
         <div className="flex flex-wrap gap-2 mb-3">
           {skills.map((skill) => (
-            <span key={skill} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs font-semibold">
+            <span key={skill} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-border-base text-white/70 text-xs font-semibold">
               {skill}
               <button
                 type="button"
@@ -759,7 +804,7 @@ function AccountTab() {
       <div className="space-y-4">
         <ReadOnlyField label="Email Address" value={user?.email || "—"} />
         <ReadOnlyField label="Account ID" value={user?.uid || "—"} mono copyValue={user?.uid} />
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+        <div className="p-5 rounded-2xl bg-white/5 border border-border-base flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1">Plan</p>
             <p className="text-white font-semibold">Free</p>
@@ -781,12 +826,12 @@ function AccountTab() {
         </div>
         {credits ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+            <div className="bg-white/5 border border-border-base rounded-2xl p-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Daily</p>
               <p className="text-2xl font-black text-white">{credits.daily}</p>
               <p className="text-[10px] text-white/30 mt-0.5">resets every 24 h</p>
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+            <div className="bg-white/5 border border-border-base rounded-2xl p-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Monthly</p>
               <p className="text-2xl font-black text-white">{credits.monthly}</p>
               <p className="text-[10px] text-white/30 mt-0.5">resets each month</p>
@@ -820,7 +865,7 @@ function AccountTab() {
               const isPositive = tx.delta >= 0;
               const ts = tx.createdAt?.toDate ? tx.createdAt.toDate() : tx.createdAt ? new Date(tx.createdAt) : null;
               return (
-                <div key={tx.id} className="flex items-center justify-between gap-3 bg-white/3 hover:bg-white/5 border border-white/5 rounded-xl px-4 py-3 transition-colors">
+                <div key={tx.id} className="flex items-center justify-between gap-3 bg-white/3 hover:bg-white/5 border border-border-base rounded-xl px-4 py-3 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${isPositive ? "bg-green-500/10" : "bg-red-500/10"}`}>
                       {isPositive
@@ -855,7 +900,7 @@ function AccountTab() {
             value={redeemCodeValue}
             onChange={(e) => setRedeemCodeValue(e.target.value.toUpperCase())}
             placeholder="e.g. DEVOS2024"
-            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono tracking-widest text-center focus:outline-none focus:border-yellow-500/50 transition-all uppercase placeholder-white/20"
+            className="flex-1 bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white font-mono tracking-widest text-center focus:outline-none focus:border-yellow-500/50 transition-all uppercase placeholder-white/20"
           />
           <button
             type="submit"
@@ -931,7 +976,7 @@ function SecurityTab() {
       </div>
 
       {/* Email verification status */}
-      <div className="p-5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-4 flex-wrap">
+      <div className="p-5 rounded-2xl bg-white/5 border border-border-base flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <Mail className="w-4 h-4 text-white/40" />
           <span className="text-sm text-white/80">Email address</span>
@@ -956,7 +1001,7 @@ function SecurityTab() {
       </div>
 
       {!isEmailProvider ? (
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+        <div className="p-5 rounded-2xl bg-white/5 border border-border-base">
           <p className="text-white/60 text-sm">
             You signed in with a social provider (Google / GitHub). Password management is handled by your provider.
           </p>
@@ -994,7 +1039,7 @@ function SecurityTab() {
       <div className="space-y-3">
         <h2 className="text-base font-bold text-white">Active Sessions</h2>
         {sessions.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/40">
+          <div className="rounded-2xl border border-border-base bg-white/5 p-4 text-sm text-white/40">
             No active sessions found.
           </div>
         ) : (
@@ -1002,7 +1047,7 @@ function SecurityTab() {
             {sessions.map((session) => {
               const isCurrent = session.uid === user?.uid;
               return (
-                <div key={session.uid} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div key={session.uid} className="flex items-center justify-between gap-3 rounded-2xl border border-border-base bg-white/[0.03] px-4 py-3">
                   <div className="min-w-0">
                     <p className="text-sm text-white font-semibold truncate">
                       {session.displayName || session.username}
@@ -1018,7 +1063,7 @@ function SecurityTab() {
                       await logoutAccount(session.uid);
                       setSessions(getSavedAccounts());
                     }}
-                    className="px-3 py-1.5 rounded-xl border border-white/10 text-xs text-white/60 hover:text-white hover:border-white/20 transition-all"
+                    className="px-3 py-1.5 rounded-xl border border-border-base text-xs text-white/60 hover:text-white hover:border-border-base transition-all"
                   >
                     {isCurrent ? "Sign out" : "Remove"}
                   </button>
@@ -1043,6 +1088,7 @@ function PreferencesTab() {
   const [fontSize, setFontSize] = useState(14);
   const [tabSize, setTabSize] = useState(2);
   const [navButtons, setNavButtons] = useState<NavOptionId[]>(["home", "projects", "explore", "profile"]);
+  const [topNavButtons, setTopNavButtons] = useState<NavOptionId[]>(["feed", "explore", "templates", "communities", "projects", "bots", "events", "learn"]);
 
   useEffect(() => {
     if (!user) return;
@@ -1054,6 +1100,8 @@ function PreferencesTab() {
         setTabSize(prefs.tabSize ?? 2);
         const saved: NavOptionId[] = data.bottomNavButtons ?? [];
         if (saved.length >= 1 && saved.length <= 4) setNavButtons(saved);
+        const topSaved: NavOptionId[] = data.topNavButtons ?? [];
+        if (topSaved.length > 0) setTopNavButtons(topSaved);
       }
       setLoading(false);
     });
@@ -1101,8 +1149,8 @@ function PreferencesTab() {
     if (!user) return;
     setSavingNav(true);
     try {
-      await setDoc(doc(db, "user_settings", user.uid), { bottomNavButtons: navButtons, updatedAt: serverTimestamp() }, { merge: true });
-      toast.success("Bottom navigation saved.");
+      await setDoc(doc(db, "user_settings", user.uid), { bottomNavButtons: navButtons, topNavButtons, updatedAt: serverTimestamp() }, { merge: true });
+      toast.success("Navigation preferences saved.");
     } catch {
       toast.error("Failed to save navigation.");
     } finally {
@@ -1151,6 +1199,40 @@ function PreferencesTab() {
         <SaveButton loading={saving} onClick={handleSave} />
       </div>
 
+      {/* ── Top Navigation Customisation ───────────────────── */}
+      <div className="border-t border-white/[0.06] pt-8 max-w-lg">
+        <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1 flex items-center gap-2">
+          <Code2 className="w-3.5 h-3.5" />Desktop Top Navigation
+        </p>
+        <p className="text-xs text-white/30 mb-5">Choose which shortcuts appear in the top navigation bar. Tap to toggle.</p>
+
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          {ALL_NAV_OPTIONS.filter(o => o.id !== "profile" && o.id !== "settings" && o.id !== "home").map(({ id, label, icon: Icon }) => {
+            const selected = topNavButtons.includes(id);
+            return (
+              <button
+                key={`top-${id}`}
+                type="button"
+                onClick={() => {
+                  setTopNavButtons((prev) => 
+                    prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]
+                  );
+                }}
+                className={cn(
+                  "relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border text-xs font-semibold transition-all",
+                  selected
+                    ? "bg-blue-600/15 border-blue-500/40 text-blue-300"
+                    : "bg-white/3 border-white/8 text-white/40 hover:bg-white/8 hover:text-white/70"
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Bottom Navigation Customisation ───────────────────── */}
       <div className="border-t border-white/[0.06] pt-8 max-w-lg">
         <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1 flex items-center gap-2">
@@ -1172,7 +1254,7 @@ function PreferencesTab() {
                   "relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border text-xs font-semibold transition-all",
                   selected
                     ? "bg-blue-600/15 border-blue-500/40 text-blue-300"
-                    : "bg-white/3 border-white/8 text-white/40 hover:bg-white/8 hover:text-white/70"
+                    : "bg-white/3 border-border-base text-white/40 hover:bg-white/8 hover:text-white/70"
                 )}
               >
                 {selected && (
@@ -1195,7 +1277,7 @@ function PreferencesTab() {
               const opt = ALL_NAV_OPTIONS.find((o) => o.id === id)!;
               const Icon = opt.icon;
               return (
-                <div key={id} className="flex items-center gap-3 bg-white/4 border border-white/8 rounded-xl px-3 py-2.5">
+                <div key={id} className="flex items-center gap-3 bg-white/4 border border-border-base rounded-xl px-3 py-2.5">
                   <GripVertical className="w-4 h-4 text-white/20 shrink-0" />
                   <Icon className="w-4 h-4 text-blue-400 shrink-0" />
                   <span className="flex-1 text-sm text-white font-medium">{opt.label}</span>
@@ -1426,7 +1508,7 @@ function DangerZoneTab() {
               initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-3xl p-8 shadow-2xl"
+              className="relative w-full max-w-md bg-card border border-border-base rounded-3xl p-8 shadow-2xl"
             >
               <button onClick={() => !deactivating && setShowDeactivate(false)} disabled={deactivating}
                 className="absolute top-5 right-5 p-2 hover:bg-white/5 rounded-full transition-colors disabled:opacity-40">
@@ -1441,7 +1523,7 @@ function DangerZoneTab() {
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setShowDeactivate(false)} disabled={deactivating}
-                  className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 font-medium text-sm hover:bg-white/5 transition-all disabled:opacity-40">
+                  className="flex-1 py-3 rounded-xl border border-border-base text-white/60 font-medium text-sm hover:bg-white/5 transition-all disabled:opacity-40">
                   Cancel
                 </button>
                 <button onClick={handleDeactivate} disabled={deactivating}
@@ -1465,7 +1547,7 @@ function DangerZoneTab() {
               initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-3xl p-8 shadow-2xl"
+              className="relative w-full max-w-md bg-card border border-border-base rounded-3xl p-8 shadow-2xl"
             >
               <button onClick={() => !requesting && setShowDeleteRequest(false)} disabled={requesting}
                 className="absolute top-5 right-5 p-2 hover:bg-white/5 rounded-full transition-colors disabled:opacity-40">
@@ -1486,12 +1568,12 @@ function DangerZoneTab() {
                   rows={3}
                   maxLength={500}
                   placeholder="Tell us why you'd like to delete your account…"
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-red-500 transition-colors"
+                  className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-red-500 transition-colors"
                 />
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setShowDeleteRequest(false)} disabled={requesting}
-                  className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 font-medium text-sm hover:bg-white/5 transition-all disabled:opacity-40">
+                  className="flex-1 py-3 rounded-xl border border-border-base text-white/60 font-medium text-sm hover:bg-white/5 transition-all disabled:opacity-40">
                   Cancel
                 </button>
                 <button onClick={handleRequestDeletion} disabled={requesting}
@@ -1511,10 +1593,10 @@ function DangerZoneTab() {
 /*  Shared helpers                                         */
 /* ─────────────────────────────────────────────────────── */
 const inputCls =
-  "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 transition-colors";
+  "w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 transition-colors";
 
 const selectCls =
-  "w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors";
+  "w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors";
 
 function Field({ label, icon, hint, children }: { label: string; icon?: React.ReactNode; hint?: string; children: React.ReactNode }) {
   return (
@@ -1541,7 +1623,7 @@ function ReadOnlyField({ label, value, mono = false, copyValue }: { label: strin
   };
 
   return (
-    <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+    <div className="p-5 rounded-2xl bg-white/5 border border-border-base">
       <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1.5">{label}</p>
       {copyValue ? (
         <button
@@ -1578,7 +1660,7 @@ function PasswordField({ label, value, onChange, show, toggle }: { label: string
 
 function Toggle({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (v: boolean) => void; }) {
   return (
-    <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+    <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-border-base">
       <div>
         <p className="text-sm font-bold text-white">{label}</p>
         <p className="text-white/40 text-xs mt-0.5">{description}</p>
@@ -1678,20 +1760,20 @@ function AccessibilityTab() {
       {SHORTCUT_SECTIONS.map((section) => (
         <div key={section.title} className="space-y-2">
           <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest px-1">{section.title}</h3>
-          <div className="rounded-2xl border border-white/10 overflow-hidden">
+          <div className="rounded-2xl border border-border-base overflow-hidden">
             {section.shortcuts.map((s, i) => (
               <div
                 key={i}
-                className={`flex items-center gap-4 px-5 py-3 ${i !== 0 ? "border-t border-white/5" : ""} bg-[#0a0a0a] hover:bg-white/[0.02] transition-colors`}
+                className={`flex items-center gap-4 px-5 py-3 ${i !== 0 ? "border-t border-border-base" : ""} bg-base hover:bg-white/[0.02] transition-colors`}
               >
                 <div className="flex items-center gap-1.5 min-w-[160px]">
-                  <kbd className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-white/80 text-xs font-mono">
+                  <kbd className="px-2 py-0.5 rounded-md bg-white/10 border border-border-base text-white/80 text-xs font-mono">
                     {s.mac}
                   </kbd>
                   {s.mac !== s.win && (
                     <>
                       <span className="text-white/20 text-xs">/</span>
-                      <kbd className="px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-white/60 text-xs font-mono">
+                      <kbd className="px-2 py-0.5 rounded-md bg-white/10 border border-border-base text-white/60 text-xs font-mono">
                         {s.win}
                       </kbd>
                     </>
@@ -1704,7 +1786,7 @@ function AccessibilityTab() {
         </div>
       ))}
 
-      <div className="flex gap-3 px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl">
+      <div className="flex gap-3 px-5 py-4 bg-white/[0.03] border border-border-base rounded-2xl">
         <Keyboard className="w-4 h-4 text-white/30 flex-shrink-0 mt-0.5" />
         <p className="text-white/40 text-sm leading-relaxed">
           Keyboard shortcut customisation is not yet available. It's on the roadmap and will be added in a future update.

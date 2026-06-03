@@ -41,7 +41,7 @@ export default function OrgsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       {/* Hero */}
@@ -82,7 +82,7 @@ export default function OrgsPage() {
               placeholder="Search organizations…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500/60 transition-all"
+              className="w-full bg-white/5 border border-border-base rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500/60 transition-all"
             />
           </div>
         </div>
@@ -163,7 +163,7 @@ function OrgCard({ org, index }: { org: Organization; index: number }) {
         to={`/org/${org.slug}`}
         className={cn(
           "group flex flex-col p-5 rounded-2xl border border-white/[0.06] bg-white/[0.03]",
-          "hover:border-white/10 hover:bg-white/[0.05] transition-all duration-300"
+          "hover:border-border-base hover:bg-white/[0.05] transition-all duration-300"
         )}
       >
         {/* Avatar */}

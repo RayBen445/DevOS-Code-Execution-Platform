@@ -92,10 +92,10 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-[#0f0f0f] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+              className="relative w-full max-w-lg bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl"
             >
               {/* Header */}
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="p-6 border-b border-border-base flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center">
                     <Building2 className="w-5 h-5 text-blue-400" />
@@ -123,7 +123,7 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
                     placeholder="Acme Corp"
                     value={name}
                     onChange={(e) => handleNameChange(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
                     required
                     maxLength={50}
                     disabled={creating}
@@ -134,7 +134,7 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
                   <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
                     URL Slug
                   </label>
-                  <div className="flex items-center rounded-xl border border-white/10 bg-white/5 overflow-hidden focus-within:border-blue-500 transition-all">
+                  <div className="flex items-center rounded-xl border border-border-base bg-white/5 overflow-hidden focus-within:border-blue-500 transition-all">
                     <span className="px-3 text-white/30 text-sm select-none">https://</span>
                     <input
                       type="text"
@@ -161,7 +161,7 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
                     placeholder="What does your organization build?"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all h-20 resize-none text-sm"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all h-20 resize-none text-sm"
                     maxLength={200}
                     disabled={creating}
                   />
@@ -175,7 +175,7 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
                       "p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5",
                       isPublic
                         ? "bg-blue-600/10 border-blue-600"
-                        : "bg-white/5 border-white/5 hover:border-white/10"
+                        : "bg-white/5 border-border-base hover:border-border-base"
                     )}
                     disabled={creating}
                   >
@@ -189,7 +189,7 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
                       "p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5",
                       !isPublic
                         ? "bg-blue-600/10 border-blue-600"
-                        : "bg-white/5 border-white/5 hover:border-white/10"
+                        : "bg-white/5 border-border-base hover:border-border-base"
                     )}
                     disabled={creating}
                   >
@@ -203,7 +203,7 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
                     type="button"
                     onClick={handleClose}
                     disabled={creating}
-                    className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 font-semibold transition-all text-sm"
+                    className="flex-1 py-3 rounded-xl bg-white/5 border border-border-base text-white/60 hover:text-white hover:bg-white/10 font-semibold transition-all text-sm"
                   >
                     Cancel
                   </button>

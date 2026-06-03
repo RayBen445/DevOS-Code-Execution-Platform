@@ -71,10 +71,10 @@ export default function ContactPage() {
     }
   };
 
-  const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/60 transition-all text-sm";
+  const inputCls = "w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/60 transition-all text-sm";
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       {/* Hero */}
@@ -121,7 +121,7 @@ export default function ContactPage() {
               </div>
             </div>
 
-            <div className="border-t border-white/5 pt-6">
+            <div className="border-t border-border-base pt-6">
               <p className="text-xs font-bold text-white/30 uppercase tracking-widest mb-4">Find Us Online</p>
               <div className="flex flex-col gap-3">
                 {config.githubUrl && (
@@ -159,7 +159,7 @@ export default function ContactPage() {
 
           {/* Right — form */}
           <motion.div {...fadeUp} className="md:col-span-3">
-            <div className="p-8 rounded-3xl bg-[#0f0f0f] border border-white/[0.06]">
+            <div className="p-8 rounded-3xl bg-base border border-white/[0.06]">
               {submitted ? (
                 <div className="py-16 flex flex-col items-center text-center">
                   <div className="w-16 h-16 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-5">
@@ -171,7 +171,7 @@ export default function ContactPage() {
                   </p>
                   <button
                     onClick={() => { setSubmitted(false); setName(""); setEmail(""); setMessage(""); setTopic(TOPICS[0]); }}
-                    className="px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 text-sm font-semibold transition-all"
+                    className="px-6 py-2.5 rounded-xl bg-white/5 border border-border-base text-white/60 hover:text-white hover:bg-white/10 text-sm font-semibold transition-all"
                   >
                     Send Another
                   </button>
@@ -254,7 +254,7 @@ export default function ContactPage() {
 function ContactDetail({ icon: Icon, label, value, href }: { icon: React.ElementType; label: string; value: string; href?: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+      <div className="w-9 h-9 rounded-xl bg-white/5 border border-border-base flex items-center justify-center flex-shrink-0 mt-0.5">
         <Icon className="w-4 h-4 text-white/40" />
       </div>
       <div>

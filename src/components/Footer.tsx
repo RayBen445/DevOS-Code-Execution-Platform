@@ -20,7 +20,7 @@ export default function Footer() {
   ].filter(({ href }) => !!href);
 
   return (
-    <footer className="relative border-t border-white/[0.06] bg-[#0a0a0a] mt-auto overflow-hidden">
+    <footer className="relative border-t border-white/[0.06] bg-base mt-auto overflow-hidden">
       {/* Subtle gradient glow */}
       <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[200px] bg-blue-600/5 rounded-full blur-[80px]" />
 
@@ -46,7 +46,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all"
+                  className="w-8 h-8 rounded-lg border border-border-base flex items-center justify-center text-white/40 hover:text-white hover:border-border-base hover:bg-white/5 transition-all"
                 >
                   <Icon className="w-3.5 h-3.5" />
                 </a>

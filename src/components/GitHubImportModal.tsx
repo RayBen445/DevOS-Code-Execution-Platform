@@ -188,9 +188,9 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-2xl bg-[#111] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
+            className="relative w-full max-w-2xl bg-card border border-border-base rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
           >
-            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-[#111] z-10">
+            <div className="p-6 border-b border-border-base flex items-center justify-between bg-card z-10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
                   <Github className="w-6 h-6 text-white" />
@@ -205,7 +205,7 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
               </button>
             </div>
 
-            <div className="p-6 border-b border-white/5 bg-[#0a0a0a]">
+            <div className="p-6 border-b border-border-base bg-base">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
                 <input
@@ -213,7 +213,7 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
                   placeholder="Search your repositories..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-white/5 border border-border-base rounded-2xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
             </div>
@@ -245,7 +245,7 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
                   <p className="text-white/60 font-medium">{error}</p>
                   <button
                     onClick={checkInstallation}
-                    className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
+                    className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-border-base text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
                   >
                     Retry
                   </button>
@@ -260,7 +260,7 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
                     key={repo.id}
                     onClick={() => handleImport(repo)}
                     disabled={isImporting}
-                    className="w-full group p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all flex items-center justify-between text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full group p-4 rounded-2xl bg-white/5 border border-border-base hover:border-blue-500/50 hover:bg-blue-500/5 transition-all flex items-center justify-between text-left disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-blue-600/20 transition-colors">
@@ -270,7 +270,7 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-white group-hover:text-blue-400 transition-colors">{repo.name}</span>
                           {repo.private && (
-                            <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-white/40 uppercase font-bold tracking-wider">Private</span>
+                            <span className="px-2 py-0.5 rounded-full bg-white/5 border border-border-base text-[10px] text-white/40 uppercase font-bold tracking-wider">Private</span>
                           )}
                         </div>
                         <p className="text-xs text-white/40 line-clamp-1 mt-0.5">{repo.description || "No description provided."}</p>
@@ -305,7 +305,7 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
               </div>
             )}
 
-            <div className="p-4 bg-[#0a0a0a] border-t border-white/5 flex items-center justify-between text-[10px] text-white/20 uppercase tracking-widest font-bold">
+            <div className="p-4 bg-base border-t border-border-base flex items-center justify-between text-[10px] text-white/20 uppercase tracking-widest font-bold">
               <span>GitHub API v3</span>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-3 h-3 text-green-500" />

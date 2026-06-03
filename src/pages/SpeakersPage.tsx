@@ -14,16 +14,16 @@ function SpeakerCard({ speaker }: { speaker: Speaker }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-blue-500/30 hover:bg-white/[0.07] transition-all flex flex-col items-center text-center"
+      className="bg-white/5 border border-border-base rounded-2xl p-5 hover:border-blue-500/30 hover:bg-white/[0.07] transition-all flex flex-col items-center text-center"
     >
       {speaker.image ? (
         <img
           src={speaker.image}
           alt={speaker.name}
-          className="w-20 h-20 rounded-full object-cover mb-3 border-2 border-white/10"
+          className="w-20 h-20 rounded-full object-cover mb-3 border-2 border-border-base"
         />
       ) : (
-        <div className="w-20 h-20 rounded-full bg-blue-600/20 flex items-center justify-center mb-3 border-2 border-white/10">
+        <div className="w-20 h-20 rounded-full bg-blue-600/20 flex items-center justify-center mb-3 border-2 border-border-base">
           <User className="w-9 h-9 text-blue-400" />
         </div>
       )}
@@ -94,7 +94,7 @@ export default function SpeakersPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-10 pb-24 md:pb-10">
@@ -114,7 +114,7 @@ export default function SpeakersPage() {
             placeholder="Search speakers…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+            className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-border-base rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
           />
         </div>
 

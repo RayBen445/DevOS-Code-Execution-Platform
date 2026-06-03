@@ -69,7 +69,7 @@ export default function BotsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-10 pb-24 md:pb-10 space-y-8">
@@ -102,14 +102,14 @@ export default function BotsPage() {
         </div>
 
         {/* Commands reference */}
-        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+        <div className="bg-white/[0.03] border border-border-base rounded-2xl p-5">
           <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-4 flex items-center gap-2">
             <Terminal className="w-4 h-4 text-blue-400" />
             Bot Commands (Terminal)
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {BOT_COMMANDS.map(({ cmd, desc, icon: Icon }) => (
-              <div key={cmd} className="bg-white/5 border border-white/10 rounded-xl p-3">
+              <div key={cmd} className="bg-white/5 border border-border-base rounded-xl p-3">
                 <div className="flex items-center gap-2 mb-1.5">
                   <Icon className="w-4 h-4 text-blue-400 shrink-0" />
                   <code className="text-xs font-mono font-bold text-white">{cmd}</code>
@@ -127,7 +127,7 @@ export default function BotsPage() {
             Registered Bots
           </h2>
           {bots.length === 0 ? (
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-10 text-center text-white/30">
+            <div className="bg-white/[0.03] border border-border-base rounded-2xl p-10 text-center text-white/30">
               <Bot className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm">No bots registered yet. Click "Run Test Flow" to initialize.</p>
             </div>
@@ -141,7 +141,7 @@ export default function BotsPage() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="bg-white/[0.03] border border-white/10 hover:border-white/20 rounded-2xl p-5 transition-all"
+                    className="bg-white/[0.03] border border-border-base hover:border-border-base rounded-2xl p-5 transition-all"
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-start gap-3">
@@ -168,7 +168,7 @@ export default function BotsPage() {
                     {bot.events?.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {bot.events.map((ev: string) => (
-                          <span key={ev} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
+                          <span key={ev} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-border-base text-white/50">
                             {ev}
                           </span>
                         ))}
@@ -202,7 +202,7 @@ export default function BotsPage() {
             <BotMessageSquare className="w-4 h-4 text-purple-400" />
             Activity Logs
           </h2>
-          <div className="bg-[#0b0b0b] border border-white/10 rounded-2xl p-4">
+          <div className="bg-base border border-border-base rounded-2xl p-4">
             <div className="space-y-2 max-h-80 overflow-auto pr-1">
               {logs.length === 0 ? (
                 <p className="text-sm text-white/30 py-4 text-center">No activity yet. Run the test flow to generate logs.</p>

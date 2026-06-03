@@ -73,7 +73,7 @@ export default function ConfigGuard({ children }: { children: React.ReactNode })
 
   if (status === "checking") {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0a0a0a]">
+      <div className="h-screen flex items-center justify-center bg-base">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
@@ -81,12 +81,12 @@ export default function ConfigGuard({ children }: { children: React.ReactNode })
 
   if (status === "blocked") {
     return (
-      <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center p-6">
+      <div className="fixed inset-0 z-[9999] bg-base flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 280 }}
-          className="max-w-md w-full bg-[#111] border border-red-500/20 rounded-2xl p-8 text-center shadow-2xl"
+          className="max-w-md w-full bg-card border border-red-500/20 rounded-2xl p-8 text-center shadow-2xl"
         >
           <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="w-8 h-8 text-red-400" />
@@ -100,7 +100,7 @@ export default function ConfigGuard({ children }: { children: React.ReactNode })
             configuration, network connection, or Firestore service status.
           </p>
 
-          <div className="text-left bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-6 space-y-1">
+          <div className="text-left bg-white/5 border border-border-base rounded-xl px-4 py-3 mb-6 space-y-1">
             <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">
               Failed check
             </p>
@@ -122,7 +122,7 @@ export default function ConfigGuard({ children }: { children: React.ReactNode })
             </button>
             <a
               href="/status"
-              className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-white/5 border border-border-base hover:bg-white/10 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
             >
               <ExternalLink className="w-4 h-4" />
               Open Setup Guide

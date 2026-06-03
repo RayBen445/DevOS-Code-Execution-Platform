@@ -152,9 +152,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-lg bg-[#111] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+            className="relative w-full max-w-lg bg-card border border-border-base rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
           >
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+            <div className="p-6 border-b border-border-base flex items-center justify-between">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 Profile Settings
               </h2>
@@ -210,7 +210,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="John Doe"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+                        className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
                       />
                     </div>
 
@@ -224,7 +224,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         value={username}
                         onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""))}
                         placeholder="johndoe"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+                        className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
                       />
                     </div>
                   </div>
@@ -239,13 +239,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       onChange={(e) => setBio(e.target.value)}
                       placeholder="Tell us about yourself..."
                       rows={3}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                      className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors resize-none"
                     />
                   </div>
 
                   {/* GitHub Status commented out as requested */}
                   <div className="pt-4 space-y-4">
-                    {/* <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                    {/* <div className="p-4 rounded-2xl bg-white/5 border border-border-base">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <Github className="w-5 h-5 text-white" />

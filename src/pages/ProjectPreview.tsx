@@ -218,7 +218,7 @@ export default function ProjectPreview() {
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#0a0a0a] text-white">
+      <div className="h-screen flex flex-col items-center justify-center bg-base text-white">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-4" />
         <p className="text-sm font-bold uppercase tracking-widest text-white/40">Loading Project...</p>
       </div>
@@ -227,7 +227,7 @@ export default function ProjectPreview() {
 
   if (error) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#0a0a0a] text-white p-6 text-center">
+      <div className="h-screen flex flex-col items-center justify-center bg-base text-white p-6 text-center">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
         <h1 className="text-2xl font-bold mb-2">Error</h1>
         <p className="text-white/60 max-w-md">{error}</p>

@@ -199,7 +199,7 @@ export default function GitPanel({ projectId, files }: GitPanelProps) {
 
   return (
     <>
-    <div className="flex flex-col h-full bg-[#0D1117]">
+    <div className="flex flex-col h-full bg-surface">
       {/* Header: current branch indicator */}
       <div className="px-4 py-3 border-b border-[#21262D] flex items-center gap-2 flex-shrink-0">
         <GitBranch className="w-3.5 h-3.5 text-white/40" />
@@ -259,7 +259,7 @@ export default function GitPanel({ projectId, files }: GitPanelProps) {
                 <p className="text-xs text-white/20 text-center py-4">No commits yet.</p>
               )}
               {commits.map((commit) => (
-                <div key={commit.id} className="group p-3 rounded-lg bg-[#161B22] border border-[#30363D] hover:border-white/15 transition-all">
+                <div key={commit.id} className="group p-3 rounded-lg bg-[#161B22] border border-[#30363D] hover:border-border-base transition-all">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <GitCommit className="w-3.5 h-3.5 text-white/30 flex-shrink-0" />
@@ -362,7 +362,7 @@ export default function GitPanel({ projectId, files }: GitPanelProps) {
                   <ChevronDown className="w-3 h-3 transition-transform group-open:rotate-180" />
                   {branches.filter(b => b.merged).length} merged branch{branches.filter(b => b.merged).length !== 1 ? "es" : ""}
                 </summary>
-                <div className="mt-2 space-y-1.5 pl-4 border-l border-white/5">
+                <div className="mt-2 space-y-1.5 pl-4 border-l border-border-base">
                   {branches.filter(b => b.merged).map((branch) => (
                     <div key={branch.id} className="flex items-center gap-2 py-1">
                       <GitMerge className="w-3 h-3 text-purple-400/50" />

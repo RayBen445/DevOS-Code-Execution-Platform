@@ -34,7 +34,7 @@ export default function LearnTopicPage() {
       : 0;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="max-w-3xl mx-auto w-full px-6 py-10 flex-1">
@@ -101,7 +101,7 @@ export default function LearnTopicPage() {
                     "group flex items-center gap-4 p-5 rounded-2xl border transition-all",
                     done
                       ? "bg-green-500/5 border-green-500/20 hover:bg-green-500/10"
-                      : "bg-white/[0.02] border-white/8 hover:bg-white/[0.05] hover:border-white/15"
+                      : "bg-white/[0.02] border-border-base hover:bg-white/[0.05] hover:border-border-base"
                   )}
                 >
                   {/* Step number / check */}
@@ -110,7 +110,7 @@ export default function LearnTopicPage() {
                       "w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-sm border",
                       done
                         ? "bg-green-500/15 border-green-500/30 text-green-400"
-                        : "bg-white/5 border-white/10 text-white/40"
+                        : "bg-white/5 border-border-base text-white/40"
                     )}
                   >
                     {done ? <CheckCircle2 className="w-4 h-4" /> : i + 1}

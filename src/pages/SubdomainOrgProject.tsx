@@ -112,7 +112,7 @@ export default function SubdomainOrgProject({ orgSlug, projectSlug }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <Zap className="w-8 h-8 text-blue-500 animate-pulse" />
       </div>
     );
@@ -120,7 +120,7 @@ export default function SubdomainOrgProject({ orgSlug, projectSlug }: Props) {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center text-white/60 gap-3">
+      <div className="min-h-screen bg-base flex flex-col items-center justify-center text-white/60 gap-3">
         <AlertCircle className="w-10 h-10 text-red-400" />
         <p className="text-lg">{error || "Project not found"}</p>
         {orgSlug && (
@@ -159,7 +159,7 @@ export default function SubdomainOrgProject({ orgSlug, projectSlug }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center gap-4 p-8">
+    <div className="min-h-screen bg-base text-white flex flex-col items-center justify-center gap-4 p-8">
       <h1 className="text-3xl font-bold">{project.title || project.name}</h1>
       {project.description && <p className="text-white/60 max-w-md text-center">{project.description}</p>}
       <a

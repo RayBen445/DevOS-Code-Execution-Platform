@@ -59,8 +59,8 @@ export default class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-6">
-          <div className="max-w-md w-full bg-[#111] border border-white/10 rounded-3xl p-8 text-center shadow-2xl">
+        <div className="min-h-screen flex items-center justify-center bg-base p-6">
+          <div className="max-w-md w-full bg-card border border-border-base rounded-3xl p-8 text-center shadow-2xl">
             <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
@@ -78,7 +78,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               </button>
               <button
                 onClick={this.handleReload}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white/60 rounded-xl font-medium hover:bg-white/10 transition-all"
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-border-base text-white/60 rounded-xl font-medium hover:bg-white/10 transition-all"
               >
                 Reload Application
               </button>

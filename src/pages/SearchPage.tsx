@@ -369,7 +369,7 @@ export default function SearchPage() {
   const hasTerm = !!searchTerm.trim();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 md:px-6 py-8 pb-24 md:pb-12">
@@ -396,7 +396,7 @@ export default function SearchPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by name, username, or keyword…"
-            className="w-full bg-white/[0.05] border border-white/10 rounded-2xl pl-11 pr-11 py-3.5 text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+            className="w-full bg-white/[0.05] border border-border-base rounded-2xl pl-11 pr-11 py-3.5 text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors text-sm"
           />
           {searchTerm && (
             <button
@@ -419,7 +419,7 @@ export default function SearchPage() {
                 "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0 border",
                 filter === f.id
                   ? "bg-blue-600 border-blue-500 text-white"
-                  : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"
+                  : "bg-white/5 border-border-base text-white/50 hover:text-white hover:bg-white/10"
               )}
             >
               {f.icon}
@@ -440,7 +440,7 @@ export default function SearchPage() {
                   className={cn(
                     "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border",
                     sort === s.id
-                      ? "bg-white/10 border-white/20 text-white"
+                      ? "bg-white/10 border-border-base text-white"
                       : "bg-transparent border-transparent text-white/30 hover:text-white/60"
                   )}
                 >
@@ -640,14 +640,14 @@ function UserCard({
       layout
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all"
+      className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all"
     >
       <Link to={`/@${profile.username}`} className="flex items-center gap-3 flex-1 min-w-0">
         <img
           src={avatar}
           alt={profile.displayName}
           className={cn(
-            "rounded-full object-cover flex-shrink-0 border border-white/10",
+            "rounded-full object-cover flex-shrink-0 border border-border-base",
             compact ? "w-9 h-9" : "w-11 h-11"
           )}
           referrerPolicy="no-referrer"
@@ -682,7 +682,7 @@ function ProjectResultCard({ project }: { project: Project }) {
     >
       <Link
         to={`/@${project.ownerUsername}/${project.id}`}
-        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
+        className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
       >
         <div className="w-10 h-10 rounded-xl bg-blue-600/15 flex items-center justify-center flex-shrink-0">
           <FolderCode className="w-4.5 h-4.5 text-blue-400" />
@@ -717,7 +717,7 @@ function TemplateResultCard({ template }: { template: Template }) {
     >
       <Link
         to={`/templates/${template.id}`}
-        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
+        className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
       >
         <div className="w-10 h-10 rounded-xl bg-purple-600/15 flex items-center justify-center flex-shrink-0">
           <Layout className="w-4.5 h-4.5 text-purple-400" />
@@ -748,7 +748,7 @@ function OrgResultCard({ org }: { org: Organization }) {
     <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
       <Link
         to={`/org/${org.slug}`}
-        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
+        className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
       >
         <div className="w-10 h-10 rounded-xl bg-cyan-600/15 flex items-center justify-center flex-shrink-0">
           <Globe className="w-4.5 h-4.5 text-cyan-400" />
@@ -770,7 +770,7 @@ function DocResultCard({ doc }: { doc: DocResult }) {
     <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
       <Link
         to={doc.path}
-        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
+        className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all group block"
       >
         <div className="w-10 h-10 rounded-xl bg-blue-600/15 flex items-center justify-center flex-shrink-0">
           <Layout className="w-4.5 h-4.5 text-blue-400" />
@@ -787,8 +787,8 @@ function DocResultCard({ doc }: { doc: DocResult }) {
 function CommandResultCard({ command }: { command: CommandResult }) {
   return (
     <motion.div layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
-      <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06]">
-        <kbd className="px-2 py-1 rounded-lg bg-white/10 border border-white/10 text-[11px] font-mono text-white/80">
+      <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface border border-white/[0.06]">
+        <kbd className="px-2 py-1 rounded-lg bg-white/10 border border-border-base text-[11px] font-mono text-white/80">
           {command.command}
         </kbd>
         <p className="text-white/55 text-xs">{command.description}</p>
@@ -804,7 +804,7 @@ function DeploymentResultCard({ deployment }: { deployment: Deployment }) {
         href={deployment.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group"
+        className="flex items-center gap-3 p-3.5 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all group"
       >
         <div className="w-10 h-10 rounded-xl bg-green-600/15 flex items-center justify-center flex-shrink-0">
           <Eye className="w-4.5 h-4.5 text-green-400" />

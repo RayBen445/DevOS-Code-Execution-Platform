@@ -138,7 +138,7 @@ export default function OrgChatPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex flex-col">
+      <div className="min-h-screen bg-base flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -149,7 +149,7 @@ export default function OrgChatPage() {
 
   if (!org) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex flex-col">
+      <div className="min-h-screen bg-base flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <p className="text-white/40">Organization not found.</p>
@@ -161,9 +161,9 @@ export default function OrgChatPage() {
   const participantCount = Object.keys(callParticipants).length;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07] bg-[#0d1117] shrink-0">
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07] bg-surface shrink-0">
         <Link
           to={`/org/${slug}`}
           className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/70 transition-colors"
@@ -205,7 +205,7 @@ export default function OrgChatPage() {
 
         {/* ── Members sidebar ───────────────────────────────────────────── */}
         {sidebarOpen && (
-          <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-white/[0.06] bg-[#0d1117] overflow-y-auto">
+          <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-white/[0.06] bg-surface overflow-y-auto">
             <div className="px-4 py-3 border-b border-white/[0.06]">
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
                 Members — {members.length}

@@ -224,7 +224,7 @@ export default function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
   const displayEmojis = query.trim() ? searchResults : currentCat.emojis;
 
   return (
-    <div className="w-72 rounded-2xl bg-[#0f1621] border border-white/10 shadow-2xl flex flex-col overflow-hidden" style={{ height: 340 }}>
+    <div className="w-72 rounded-2xl bg-surface border border-border-base shadow-2xl flex flex-col overflow-hidden" style={{ height: 340 }}>
       {/* Search bar */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.06]">
         <Search className="w-3.5 h-3.5 text-white/30 shrink-0" />

@@ -470,7 +470,7 @@ function SectionContent({ id }: { id: string }) {
               <p className="text-xs text-violet-400 font-mono">legal@devos.zone.id</p>
             </a>
             <a href="mailto:info@devos.zone.id"
-              className="glass border border-white/[0.07] rounded-2xl p-5 hover:border-white/15 card-glow block transition-all">
+              className="glass border border-white/[0.07] rounded-2xl p-5 hover:border-border-base card-glow block transition-all">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-9 h-9 rounded-xl bg-white/8 flex items-center justify-center">
                   <Mail className="w-4 h-4 text-white/50" />
@@ -519,7 +519,7 @@ export default function TermsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-base text-white flex flex-col overflow-x-hidden">
       <Navbar />
 
       {/* Hero */}
@@ -572,7 +572,7 @@ export default function TermsPage() {
           {SECTIONS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => scrollTo(id)}
               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex-shrink-0 border",
-                id === activeId ? "bg-violet-600/20 border-violet-500/40 text-violet-300" : "bg-white/5 border-white/10 text-white/50 hover:text-white")}>
+                id === activeId ? "bg-violet-600/20 border-violet-500/40 text-violet-300" : "bg-white/5 border-border-base text-white/50 hover:text-white")}>
               <Icon className="w-3 h-3" />{label}
             </button>
           ))}

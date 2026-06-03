@@ -161,7 +161,7 @@ export default function ProjectView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
@@ -169,8 +169,8 @@ export default function ProjectView() {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center gap-6 p-8 text-center">
-        <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center">
+      <div className="min-h-screen bg-base text-white flex flex-col items-center justify-center gap-6 p-8 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-white/5 border border-border-base flex items-center justify-center">
           <AlertCircle className="w-10 h-10 text-white/20" />
         </div>
         <h1 className="text-3xl font-bold">{error ?? "Project not found"}</h1>
@@ -196,11 +196,11 @@ export default function ProjectView() {
     const techStack = Array.from(extSet).slice(0, 8);
 
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+      <div className="min-h-screen bg-base text-white flex flex-col">
         <Navbar />
         <main className="flex-1 pb-20 md:pb-0">
           {/* Hero */}
-          <div className="relative overflow-hidden border-b border-white/5">
+          <div className="relative overflow-hidden border-b border-border-base">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-0 left-1/4 w-[600px] h-[300px] bg-blue-600/8 blur-[100px] rounded-full" />
               <div className="absolute top-0 right-1/4 w-[400px] h-[200px] bg-purple-600/8 blur-[100px] rounded-full" />
@@ -216,7 +216,7 @@ export default function ProjectView() {
 
               <div className="flex flex-col md:flex-row md:items-start gap-8">
                 {/* Project icon / initials */}
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-600/30 to-purple-600/30 border border-white/10 flex items-center justify-center flex-shrink-0 text-3xl font-black text-white/60 shadow-xl">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-600/30 to-purple-600/30 border border-border-base flex items-center justify-center flex-shrink-0 text-3xl font-black text-white/60 shadow-xl">
                   {project.name.charAt(0).toUpperCase()}
                 </div>
 
@@ -224,7 +224,7 @@ export default function ProjectView() {
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     {project.isPublic
                       ? <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20">Public</span>
-                      : <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/5 text-white/40 border border-white/10">Private</span>
+                      : <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/5 text-white/40 border border-border-base">Private</span>
                     }
                     {project.forkedFrom && (
                       <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/20 flex items-center gap-1">
@@ -244,7 +244,7 @@ export default function ProjectView() {
                   {techStack.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-6">
                       {techStack.map(ext => (
-                        <span key={ext} className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white/50 font-semibold uppercase">
+                        <span key={ext} className="px-3 py-1 rounded-lg bg-white/5 border border-border-base text-xs font-mono text-white/50 font-semibold uppercase">
                           {ext}
                         </span>
                       ))}
@@ -303,7 +303,7 @@ export default function ProjectView() {
                     </button>
                     <button
                       onClick={() => setIsFeedbackOpen(true)}
-                      className="flex items-center gap-2 px-5 py-3 bg-white/5 border border-white/10 hover:border-white/20 text-white/70 hover:text-white rounded-2xl font-semibold transition-all"
+                      className="flex items-center gap-2 px-5 py-3 bg-white/5 border border-border-base hover:border-border-base text-white/70 hover:text-white rounded-2xl font-semibold transition-all"
                     >
                       <MessageSquare className="w-4 h-4" />
                       Feedback
@@ -327,7 +327,7 @@ export default function ProjectView() {
                 </button>
 
                 {previewOpen && (
-                  <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl h-[460px]">
+                  <div className="rounded-2xl overflow-hidden border border-border-base shadow-2xl h-[460px]">
                     <PreviewPanel projectId={project.id} files={files} entryFile={project.entryFile} />
                   </div>
                 )}
@@ -354,7 +354,7 @@ export default function ProjectView() {
                     return (
                       <div key={ev.id} className="flex gap-4">
                         <div className="flex flex-col items-center">
-                          <div className={cn("w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 mt-1", iconColor)}>
+                          <div className={cn("w-8 h-8 rounded-full bg-white/5 border border-border-base flex items-center justify-center flex-shrink-0 mt-1", iconColor)}>
                             <Icon className="w-4 h-4" />
                           </div>
                           {i < Math.min(activityEvents.length, 5) - 1 && (
@@ -384,7 +384,7 @@ export default function ProjectView() {
 
   // ─── DEVELOPER VIEW (project owner) ──────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       {/* Developer mode banner */}
@@ -473,7 +473,7 @@ export default function ProjectView() {
                 href={liveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-white rounded-xl text-sm font-semibold transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-border-base hover:border-border-base text-white rounded-xl text-sm font-semibold transition-all"
               >
                 <ExternalLink className="w-4 h-4" />
                 Live
@@ -481,7 +481,7 @@ export default function ProjectView() {
             )}
             <button
               onClick={() => setIsFeedbackOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-white/70 hover:text-white rounded-xl text-sm font-semibold transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-border-base hover:border-border-base text-white/70 hover:text-white rounded-xl text-sm font-semibold transition-all"
             >
               <MessageSquare className="w-4 h-4" />
               Feedback
@@ -514,13 +514,13 @@ export default function ProjectView() {
 
         {/* Live preview */}
         {previewOpen && files.length > 0 && (
-          <div className="mb-8 rounded-2xl overflow-hidden border border-white/10 h-[420px] md:h-[520px]">
+          <div className="mb-8 rounded-2xl overflow-hidden border border-border-base h-[420px] md:h-[520px]">
             <PreviewPanel projectId={project.id} files={files} entryFile={project.entryFile} />
           </div>
         )}
 
         {/* Tabs: Files / Activity */}
-        <div className="flex gap-1 mb-4 border-b border-white/10">
+        <div className="flex gap-1 mb-4 border-b border-border-base">
           {(["files", "activity"] as const).map((tab) => (
             <button
               key={tab}
@@ -557,7 +557,7 @@ export default function ProjectView() {
                     <div key={ev.id} className="flex gap-4 group">
                       {/* Timeline line */}
                       <div className="flex flex-col items-center">
-                        <div className={cn("w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 mt-1", iconColor)}>
+                        <div className={cn("w-8 h-8 rounded-full bg-white/5 border border-border-base flex items-center justify-center flex-shrink-0 mt-1", iconColor)}>
                           <Icon className="w-4 h-4" />
                         </div>
                         {i < activityEvents.length - 1 && (
@@ -587,7 +587,7 @@ export default function ProjectView() {
           <div className="grid md:grid-cols-[220px_1fr] gap-4">
             {/* File list */}
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
-              <p className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-white/30 border-b border-white/5">
+              <p className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-white/30 border-b border-border-base">
                 Files ({files.length})
               </p>
               <ul className="py-2 max-h-[60vh] overflow-y-auto">
@@ -614,7 +614,7 @@ export default function ProjectView() {
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden flex flex-col">
               {activeFile ? (
                 <>
-                  <div className="px-4 py-3 text-xs text-white/40 border-b border-white/5 font-mono flex items-center gap-2">
+                  <div className="px-4 py-3 text-xs text-white/40 border-b border-border-base font-mono flex items-center gap-2">
                     <FileIcon className="w-3.5 h-3.5" />
                     {activeFile.path || activeFile.name}
                     <span className="ml-auto text-white/20">{activeFile.language}</span>
@@ -633,7 +633,7 @@ export default function ProjectView() {
         )}
 
         {activeTab === "files" && files.length === 0 && (
-          <div className="py-16 text-center rounded-2xl border border-dashed border-white/10">
+          <div className="py-16 text-center rounded-2xl border border-dashed border-border-base">
             <FileIcon className="w-10 h-10 text-white/10 mx-auto mb-3" />
             <p className="text-white/30 text-sm">No files in this project</p>
           </div>

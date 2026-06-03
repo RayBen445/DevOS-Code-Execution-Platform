@@ -86,10 +86,10 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="w-full max-w-md bg-[#0f0f0f] border border-white/10 rounded-2xl overflow-hidden shadow-2xl pointer-events-auto"
+              className="w-full max-w-md bg-base border border-border-base rounded-2xl overflow-hidden shadow-2xl pointer-events-auto"
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
                 <h2 className="text-base font-extrabold text-white tracking-tight">Send Feedback</h2>
                 <button
                   onClick={onClose}
@@ -115,7 +115,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                             : color === "yellow"
                             ? "bg-yellow-500/15 border-yellow-500/50 text-yellow-300"
                             : "bg-blue-600/15 border-blue-500/50 text-blue-300"
-                          : "bg-white/[0.03] border-white/[0.08] text-white/50 hover:border-white/15 hover:text-white/70"
+                          : "bg-white/[0.03] border-white/[0.08] text-white/50 hover:border-border-base hover:text-white/70"
                       )}
                     >
                       <Icon className="w-4 h-4" />
@@ -142,7 +142,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                         ? "What feature would you like to see?"
                         : "Share your thoughts about DevOS…"
                     }
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors resize-none"
                   />
                 </div>
 
@@ -151,7 +151,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 text-sm font-semibold hover:bg-white/10 transition-all"
+                    className="flex-1 py-2.5 rounded-xl bg-white/5 border border-border-base text-white/60 text-sm font-semibold hover:bg-white/10 transition-all"
                   >
                     Cancel
                   </button>

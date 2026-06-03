@@ -48,7 +48,7 @@ export default function ConfirmModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="relative w-full max-w-md bg-[#111] border border-white/10 rounded-3xl p-8 shadow-2xl"
+            className="relative w-full max-w-md bg-card border border-border-base rounded-3xl p-8 shadow-2xl"
           >
             {/* Close */}
             <button
@@ -80,7 +80,7 @@ export default function ConfirmModal({
               <button
                 onClick={onCancel}
                 disabled={loading}
-                className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 font-medium text-sm hover:bg-white/5 transition-all disabled:opacity-40"
+                className="flex-1 py-3 rounded-xl border border-border-base text-white/60 font-medium text-sm hover:bg-white/5 transition-all disabled:opacity-40"
               >
                 {cancelLabel}
               </button>

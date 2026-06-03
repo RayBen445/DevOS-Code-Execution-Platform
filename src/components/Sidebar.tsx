@@ -581,8 +581,8 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
 
   return (
     <>
-    <div className="w-64 border-r border-white/10 bg-[#111]/80 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)] flex flex-col">
-      <div className="p-4 flex items-center justify-between border-b border-white/5">
+    <div className="w-64 border-r border-border-base bg-card/80 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)] flex flex-col">
+      <div className="p-4 flex items-center justify-between border-b border-border-base">
         <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Explorer</span>
         {!readOnly && (
           <div className="flex items-center gap-1">
@@ -638,7 +638,7 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
 
       {zipStatus && (
         <div className={cn(
-          "px-4 py-2 text-[10px] font-bold border-b border-white/5",
+          "px-4 py-2 text-[10px] font-bold border-b border-border-base",
           zipStatus.startsWith("Failed") ? "text-red-400 bg-red-500/5" : "text-green-400 bg-green-500/5"
         )}>
           {zipStatus}

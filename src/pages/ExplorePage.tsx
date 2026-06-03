@@ -49,7 +49,7 @@ export default function ExplorePage() {
   useSEO({ title: "Explore — DevOS" });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 md:px-6 py-8 pb-24 md:pb-12">
@@ -74,7 +74,7 @@ export default function ExplorePage() {
                 "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 border",
                 activeTab === tab.id
                   ? "bg-blue-600 border-blue-500 text-white"
-                  : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"
+                  : "bg-white/5 border-border-base text-white/50 hover:text-white hover:bg-white/10"
               )}
             >
               {tab.icon}
@@ -143,7 +143,7 @@ function TrendingProjectsTab() {
 
 function ProjectCard({ project, rank }: { project: Project; rank: number }) {
   return (
-    <div className="p-4 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all group flex flex-col">
+    <div className="p-4 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all group flex flex-col">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-white/20 font-mono w-5 text-right">#{rank}</span>
@@ -220,10 +220,10 @@ function TrendingDevsTab({ currentUser }: { currentUser: any }) {
 function DevCard({ user, rank }: { user: UserProfile & { followerCount: number }; rank: number }) {
   const avatar = resolveAvatar(user.avatarUrl);
   return (
-    <div className="flex items-center gap-4 p-4 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all">
+    <div className="flex items-center gap-4 p-4 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all">
       <span className="text-xs font-bold text-white/20 font-mono w-5 text-right flex-shrink-0">#{rank}</span>
       <Link to={`/@${user.username}`} className="flex items-center gap-3 flex-1 min-w-0">
-        <img src={avatar} alt={user.displayName} className="w-11 h-11 rounded-full object-cover border border-white/10 flex-shrink-0" referrerPolicy="no-referrer" />
+        <img src={avatar} alt={user.displayName} className="w-11 h-11 rounded-full object-cover border border-border-base flex-shrink-0" referrerPolicy="no-referrer" />
         <div className="min-w-0">
           <p className="font-bold text-white truncate text-sm">{user.displayName || user.username}</p>
           <p className="text-white/40 text-xs font-mono">@{user.username}</p>
@@ -276,9 +276,9 @@ function ActivityCard({ post }: { post: FeedPost }) {
     feature: "Feature",
   };
   return (
-    <div className="flex gap-4 p-4 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all">
+    <div className="flex gap-4 p-4 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all">
       <Link to={`/@${post.username}`} className="flex-shrink-0">
-        <img src={avatar} alt={post.displayName || post.username} className="w-10 h-10 rounded-full object-cover border border-white/10" referrerPolicy="no-referrer" />
+        <img src={avatar} alt={post.displayName || post.username} className="w-10 h-10 rounded-full object-cover border border-border-base" referrerPolicy="no-referrer" />
       </Link>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
@@ -344,10 +344,10 @@ function LeaderboardTab({ currentUser }: { currentUser: any }) {
         </h2>
         <div className="space-y-2">
           {topDevs.map((u, i) => (
-            <div key={u.uid} className="flex items-center gap-3 p-3 rounded-xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all">
+            <div key={u.uid} className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all">
               <RankBadge rank={i + 1} />
               <Link to={`/@${u.username}`} className="flex items-center gap-2.5 flex-1 min-w-0">
-                <img src={resolveAvatar(u.avatarUrl)} alt={u.displayName} className="w-9 h-9 rounded-full object-cover border border-white/10" referrerPolicy="no-referrer" />
+                <img src={resolveAvatar(u.avatarUrl)} alt={u.displayName} className="w-9 h-9 rounded-full object-cover border border-border-base" referrerPolicy="no-referrer" />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-white truncate">{u.displayName || u.username}</p>
                   <p className="text-white/30 text-xs">{u.followerCount.toLocaleString()} followers</p>
@@ -366,7 +366,7 @@ function LeaderboardTab({ currentUser }: { currentUser: any }) {
         </h2>
         <div className="space-y-2">
           {topProjects.map((p, i) => (
-            <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all">
+            <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all">
               <RankBadge rank={i + 1} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white truncate">{p.name}</p>
@@ -403,7 +403,7 @@ function LoadingGrid({ count = 9 }: { count?: number }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="h-32 rounded-2xl bg-[#111827] animate-pulse" />
+        <div key={i} className="h-32 rounded-2xl bg-surface animate-pulse" />
       ))}
     </div>
   );
@@ -413,7 +413,7 @@ function LoadingList() {
   return (
     <div className="space-y-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="h-20 rounded-2xl bg-[#111827] animate-pulse" />
+        <div key={i} className="h-20 rounded-2xl bg-surface animate-pulse" />
       ))}
     </div>
   );

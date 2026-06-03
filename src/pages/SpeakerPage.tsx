@@ -67,7 +67,7 @@ export default function SpeakerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
@@ -75,7 +75,7 @@ export default function SpeakerPage() {
 
   if (notFound || !speaker) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-base text-white flex flex-col items-center justify-center gap-4">
         <p className="text-xl font-bold">Speaker not found</p>
         <Link to="/speakers" className="text-blue-400 hover:underline text-sm">← Back to Speakers</Link>
       </div>
@@ -83,7 +83,7 @@ export default function SpeakerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-3xl mx-auto w-full px-4 py-10 pb-24 md:pb-10">
@@ -92,15 +92,15 @@ export default function SpeakerPage() {
         </Link>
 
         {/* Profile card */}
-        <div className="flex flex-col sm:flex-row gap-6 items-start p-6 bg-white/5 border border-white/10 rounded-2xl mb-8">
+        <div className="flex flex-col sm:flex-row gap-6 items-start p-6 bg-white/5 border border-border-base rounded-2xl mb-8">
           {speaker.image ? (
             <img
               src={speaker.image}
               alt={speaker.name}
-              className="w-24 h-24 rounded-full object-cover border-2 border-white/10 shrink-0"
+              className="w-24 h-24 rounded-full object-cover border-2 border-border-base shrink-0"
             />
           ) : (
-            <div className="w-24 h-24 rounded-full bg-blue-600/20 flex items-center justify-center border-2 border-white/10 shrink-0">
+            <div className="w-24 h-24 rounded-full bg-blue-600/20 flex items-center justify-center border-2 border-border-base shrink-0">
               <User className="w-11 h-11 text-blue-400" />
             </div>
           )}
@@ -146,7 +146,7 @@ export default function SpeakerPage() {
                 <Link
                   key={ev.id}
                   to={`/events/${ev.slug}`}
-                  className="flex items-start gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:border-blue-500/30 hover:bg-white/[0.07] transition-all"
+                  className="flex items-start gap-4 p-4 bg-white/5 border border-border-base rounded-xl hover:border-blue-500/30 hover:bg-white/[0.07] transition-all"
                 >
                   <Calendar className="w-5 h-5 text-blue-400 mt-0.5 shrink-0" />
                   <div>

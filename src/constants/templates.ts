@@ -207,7 +207,7 @@ root.render(<App />);`,
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen">
   <div class="min-h-screen grid lg:grid-cols-[260px_1fr]">
-    <aside class="border-r border-white/10 p-5 space-y-4">
+    <aside class="border-r border-border-base p-5 space-y-4">
       <h1 class="text-xl font-bold text-blue-400">DevOS Analytics</h1>
       <nav class="space-y-2 text-sm">
         <a class="block px-3 py-2 rounded-lg bg-blue-600/20 text-blue-300">Overview</a>
@@ -225,12 +225,12 @@ root.render(<App />);`,
         <button class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold">Create report</button>
       </header>
       <section class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <article class="p-4 rounded-2xl border border-white/10 bg-white/5"><p class="text-xs text-slate-400">MRR</p><p class="text-2xl font-bold mt-1">$42,890</p></article>
-        <article class="p-4 rounded-2xl border border-white/10 bg-white/5"><p class="text-xs text-slate-400">New Users</p><p class="text-2xl font-bold mt-1">1,284</p></article>
-        <article class="p-4 rounded-2xl border border-white/10 bg-white/5"><p class="text-xs text-slate-400">Churn</p><p class="text-2xl font-bold mt-1">1.9%</p></article>
-        <article class="p-4 rounded-2xl border border-white/10 bg-white/5"><p class="text-xs text-slate-400">Deploy Success</p><p class="text-2xl font-bold mt-1">99.8%</p></article>
+        <article class="p-4 rounded-2xl border border-border-base bg-white/5"><p class="text-xs text-slate-400">MRR</p><p class="text-2xl font-bold mt-1">$42,890</p></article>
+        <article class="p-4 rounded-2xl border border-border-base bg-white/5"><p class="text-xs text-slate-400">New Users</p><p class="text-2xl font-bold mt-1">1,284</p></article>
+        <article class="p-4 rounded-2xl border border-border-base bg-white/5"><p class="text-xs text-slate-400">Churn</p><p class="text-2xl font-bold mt-1">1.9%</p></article>
+        <article class="p-4 rounded-2xl border border-border-base bg-white/5"><p class="text-xs text-slate-400">Deploy Success</p><p class="text-2xl font-bold mt-1">99.8%</p></article>
       </section>
-      <section class="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <section class="rounded-2xl border border-border-base bg-white/5 p-5">
         <h3 class="font-semibold mb-3">Recent activity</h3>
         <ul class="space-y-2 text-sm text-slate-300">
           <li>✅ Production deployment completed · 2m ago</li>
@@ -306,10 +306,10 @@ root.render(<App />);`,
     <!-- Form -->
     <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-3">
       <div id="signup-extra" class="hidden">
-        <input id="auth-name" type="text" placeholder="Full name" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm placeholder-white/30 focus:outline-none focus:border-indigo-500"/>
+        <input id="auth-name" type="text" placeholder="Full name" class="w-full px-4 py-3 bg-white/5 border border-border-base rounded-xl text-sm placeholder-white/30 focus:outline-none focus:border-indigo-500"/>
       </div>
-      <input id="auth-email" type="email" placeholder="Email address" required class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm placeholder-white/30 focus:outline-none focus:border-indigo-500"/>
-      <input id="auth-password" type="password" placeholder="Password" required minlength="6" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm placeholder-white/30 focus:outline-none focus:border-indigo-500"/>
+      <input id="auth-email" type="email" placeholder="Email address" required class="w-full px-4 py-3 bg-white/5 border border-border-base rounded-xl text-sm placeholder-white/30 focus:outline-none focus:border-indigo-500"/>
+      <input id="auth-password" type="password" placeholder="Password" required minlength="6" class="w-full px-4 py-3 bg-white/5 border border-border-base rounded-xl text-sm placeholder-white/30 focus:outline-none focus:border-indigo-500"/>
       <button type="submit" id="auth-submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2">
         <span id="auth-btn-label">Sign In</span>
         <div id="auth-spinner" class="hidden w-4 h-4 spinner"></div>
@@ -324,7 +324,7 @@ root.render(<App />);`,
 <div id="screen-app" class="hidden min-h-screen flex flex-col">
 
   <!-- Top bar -->
-  <header class="glass border-b border-white/8 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+  <header class="glass border-b border-border-base px-4 py-3 flex items-center justify-between sticky top-0 z-40">
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-sm font-black">🎓</div>
       <span class="font-bold text-sm hidden sm:block">DevOS Academy</span>

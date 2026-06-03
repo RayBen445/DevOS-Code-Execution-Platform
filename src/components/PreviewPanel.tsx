@@ -236,8 +236,8 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
   };
 
   return (
-    <div className="w-full bg-[#111] flex flex-col h-full overflow-hidden">
-      <div className="p-4 flex items-center justify-between border-b border-white/5">
+    <div className="w-full bg-card flex flex-col h-full overflow-hidden">
+      <div className="p-4 flex items-center justify-between border-b border-border-base">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-blue-400" />
           <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Preview</span>
@@ -282,7 +282,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
       </div>
 
       {/* Viewport wrapper — centres the iframe when in tablet/mobile mode */}
-      <div className="flex-1 bg-[#0d0d0d] flex flex-col items-center overflow-auto p-2 gap-2 min-h-0">
+      <div className="flex-1 bg-card flex flex-col items-center overflow-auto p-2 gap-2 min-h-0">
         {deviceMode !== "desktop" && (
           <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest pt-1 flex-shrink-0">
             {deviceMode === "tablet" ? "Tablet — 768px" : "Mobile — 390px"}
@@ -292,7 +292,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
         <div
           className={cn(
             "relative bg-white shadow-2xl overflow-hidden flex-shrink-0",
-            deviceMode === "desktop" ? "w-full flex-1 rounded-xl" : "rounded-2xl border-2 border-white/10"
+            deviceMode === "desktop" ? "w-full flex-1 rounded-xl" : "rounded-2xl border-2 border-border-base"
           )}
           style={
             deviceMode !== "desktop"
@@ -367,7 +367,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
       </div>
 
       {/* Status bar */}
-      <div className="p-4 border-t border-white/5 bg-black/20 flex-shrink-0">
+      <div className="p-4 border-t border-border-base bg-black/20 flex-shrink-0">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[10px] font-bold text-white/20 uppercase tracking-tighter">Status</span>
           <span className="flex items-center gap-1.5 text-[10px] text-green-500 font-bold">

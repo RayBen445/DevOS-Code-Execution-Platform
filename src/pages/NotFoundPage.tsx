@@ -9,7 +9,7 @@ export default function NotFoundPage() {
   useSEO({ title: "404 — Page Not Found | DevOS" });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center px-6 py-24">
@@ -24,7 +24,7 @@ export default function NotFoundPage() {
             <div className="absolute inset-0 bg-blue-600/20 rounded-full blur-[60px]" />
             <div className="relative flex items-center justify-center w-32 h-32 mx-auto">
               <span className="text-[80px] font-black text-white/5 select-none absolute">404</span>
-              <div className="w-20 h-20 bg-[#111] border border-white/10 rounded-3xl flex items-center justify-center shadow-2xl">
+              <div className="w-20 h-20 bg-card border border-border-base rounded-3xl flex items-center justify-center shadow-2xl">
                 <Code2 className="w-9 h-9 text-blue-400" />
               </div>
             </div>
@@ -64,14 +64,14 @@ export default function NotFoundPage() {
             </Link>
             <button
               onClick={() => window.history.back()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 rounded-xl font-bold text-sm transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-border-base rounded-xl font-bold text-sm transition-all"
             >
               <ArrowLeft className="w-4 h-4" />
               Go Back
             </button>
             <Link
               to="/search"
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 rounded-xl font-bold text-sm transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-border-base rounded-xl font-bold text-sm transition-all"
             >
               <Search className="w-4 h-4" />
               Search

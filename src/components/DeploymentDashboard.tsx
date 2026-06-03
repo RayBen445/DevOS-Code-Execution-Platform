@@ -118,7 +118,7 @@ export default function DeploymentDashboard({
               "rounded-xl border transition-colors",
               isActive
                 ? "border-green-500/30 bg-green-500/5"
-                : "border-white/8 bg-white/3 hover:bg-white/5"
+                : "border-border-base bg-white/3 hover:bg-white/5"
             )}
           >
             {/* Row */}
@@ -180,7 +180,7 @@ export default function DeploymentDashboard({
                       <button
                         onClick={() => handleRollback(dep)}
                         disabled={isBusy}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-white/5 hover:bg-amber-500/15 text-white/50 hover:text-amber-400 border border-white/5 hover:border-amber-500/30 transition-all disabled:opacity-40"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-white/5 hover:bg-amber-500/15 text-white/50 hover:text-amber-400 border border-border-base hover:border-amber-500/30 transition-all disabled:opacity-40"
                         title="Roll back to this deployment"
                       >
                         {isBusy ? (
@@ -197,7 +197,7 @@ export default function DeploymentDashboard({
                       <button
                         onClick={() => handlePromote(dep)}
                         disabled={isBusy}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-white/5 hover:bg-blue-500/15 text-white/50 hover:text-blue-400 border border-white/5 hover:border-blue-500/30 transition-all disabled:opacity-40"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-white/5 hover:bg-blue-500/15 text-white/50 hover:text-blue-400 border border-border-base hover:border-blue-500/30 transition-all disabled:opacity-40"
                         title="Promote to production"
                       >
                         {isBusy ? (
@@ -235,7 +235,7 @@ export default function DeploymentDashboard({
                   transition={{ duration: 0.15 }}
                   className="overflow-hidden"
                 >
-                  <div className="px-3 pb-3 border-t border-white/5 pt-2 flex flex-col gap-1.5 text-[11px]">
+                  <div className="px-3 pb-3 border-t border-border-base pt-2 flex flex-col gap-1.5 text-[11px]">
                     <div className="flex items-center gap-2 text-white/40">
                       <span className="font-medium text-white/60">Status:</span>
                       <span>{STATUS_LABEL[dep.status] ?? dep.status}</span>

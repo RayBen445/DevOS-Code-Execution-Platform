@@ -240,7 +240,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
 
   if (!portfolioData || !layoutData || !themeData) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#0a0a0a]">
+      <div className="h-full flex items-center justify-center bg-base">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           <p className="text-white/40 text-sm animate-pulse">Loading portfolio editor...</p>
@@ -251,9 +251,9 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
 
   return (
     <>
-    <div className="h-full flex flex-col bg-[#0a0a0a]">
+    <div className="h-full flex flex-col bg-base">
       {/* Tabs */}
-      <div className="flex border-b border-white/5 bg-[#111]">
+      <div className="flex border-b border-border-base bg-card">
         {[
           { id: "content", label: "Content", icon: User },
           { id: "layout", label: "Layout", icon: Layout },
@@ -276,7 +276,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
         ))}
         <div className="ml-auto flex items-center px-4 gap-3">
           {/* Status Indicator */}
-          <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
+          <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-border-base">
             {project.deployStatus === 'building' ? (
               <>
                 <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
@@ -302,7 +302,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
 
           <button
             onClick={() => setShowVersions(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 text-white/80 rounded-lg text-xs font-bold hover:bg-white/10 transition-all border border-white/10"
+            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 text-white/80 rounded-lg text-xs font-bold hover:bg-white/10 transition-all border border-border-base"
           >
             <History className="w-3 h-3" />
             History
@@ -311,7 +311,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 text-white/80 rounded-lg text-xs font-bold hover:bg-white/10 transition-all border border-white/10 disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 text-white/80 rounded-lg text-xs font-bold hover:bg-white/10 transition-all border border-border-base disabled:opacity-50"
           >
             {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
             Save Draft
@@ -344,7 +344,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                     type="text"
                     value={deployMessage}
                     onChange={e => setDeployMessage(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
                     placeholder="What changed in this deployment?"
                   />
                 </div>
@@ -360,7 +360,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                   <textarea
                     value={portfolioData.bio}
                     onChange={e => setPortfolioData({ ...portfolioData, bio: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all h-32 resize-none"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all h-32 resize-none"
                     placeholder="Tell the world about yourself..."
                   />
                 </div>
@@ -389,7 +389,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                           newLinks[index].url = e.target.value;
                           setPortfolioData({ ...portfolioData, links: newLinks });
                         }}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-all"
+                        className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-all"
                       />
                     </div>
                   ))}
@@ -414,7 +414,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                           newFeatured[index] = e.target.value;
                           setPortfolioData({ ...portfolioData, featuredProjects: newFeatured });
                         }}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-all font-mono text-sm"
+                        className="flex-1 bg-white/5 border border-border-base rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-all font-mono text-sm"
                       />
                       <button
                         onClick={() => {
@@ -429,7 +429,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                   ))}
                   <button
                     onClick={() => setPortfolioData({ ...portfolioData, featuredProjects: [...portfolioData.featuredProjects, ""] })}
-                    className="w-full py-3 border-2 border-dashed border-white/5 rounded-xl text-white/20 hover:text-white/40 hover:border-white/10 transition-all font-bold text-sm"
+                    className="w-full py-3 border-2 border-dashed border-border-base rounded-xl text-white/20 hover:text-white/40 hover:border-border-base transition-all font-bold text-sm"
                   >
                     + Add Project ID
                   </button>
@@ -448,7 +448,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                 <p className="text-sm text-white/40">Reorder the sections of your portfolio page.</p>
                 <div className="space-y-2">
                   {layoutData.sections.map((section: string, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
+                    <div key={index} className="flex items-center justify-between p-4 bg-white/5 border border-border-base rounded-xl">
                       <span className="font-bold text-white capitalize tracking-tight">{section}</span>
                       <div className="flex gap-2">
                         <button
@@ -502,7 +502,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                         type="text"
                         value={themeData.primaryColor}
                         onChange={e => setThemeData({ ...themeData, primaryColor: e.target.value })}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white font-mono text-sm"
+                        className="flex-1 bg-white/5 border border-border-base rounded-xl px-4 py-2 text-white font-mono text-sm"
                       />
                     </div>
                   </div>
@@ -520,7 +520,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                     />
                   </div>
                 </div>
-                <div className="flex items-center justify-between p-6 bg-white/5 border border-white/10 rounded-2xl">
+                <div className="flex items-center justify-between p-6 bg-white/5 border border-border-base rounded-2xl">
                   <div>
                     <h4 className="font-bold text-white mb-1">Dark Mode</h4>
                     <p className="text-xs text-white/40">Toggle between dark and light theme for your portfolio.</p>
@@ -558,9 +558,9 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              className="relative w-full max-w-md bg-[#0f0f0f] border-l border-white/10 h-full shadow-2xl flex flex-col"
+              className="relative w-full max-w-md bg-base border-l border-border-base h-full shadow-2xl flex flex-col"
             >
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="p-6 border-b border-border-base flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <History className="w-5 h-5 text-blue-500" />
                   <h2 className="text-lg font-bold text-white">Version History</h2>
@@ -578,7 +578,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                   </div>
                 ) : (
                   versions.map((v) => (
-                    <div key={v.id} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 group hover:border-white/20 transition-all">
+                    <div key={v.id} className="p-4 rounded-2xl bg-white/5 border border-border-base space-y-3 group hover:border-border-base transition-all">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-sm font-bold text-white line-clamp-2">{v.message}</p>

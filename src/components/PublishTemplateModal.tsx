@@ -131,7 +131,7 @@ export default function PublishTemplateModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative bg-[#111] border border-white/10 rounded-3xl p-8 w-full max-w-lg z-10"
+            className="relative bg-card border border-border-base rounded-3xl p-8 w-full max-w-lg z-10"
           >
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -162,7 +162,7 @@ export default function PublishTemplateModal({
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
                     placeholder="My Awesome Template"
                     required
                   />
@@ -190,7 +190,7 @@ export default function PublishTemplateModal({
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all h-24 resize-none"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all h-24 resize-none"
                     placeholder="What does this template do?"
                     required
                   />
@@ -205,7 +205,7 @@ export default function PublishTemplateModal({
                     type="text"
                     value={tags}
                     onChange={(e) => setTags(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
                     placeholder="react, tailwind, landing-page"
                   />
                 </div>
@@ -220,7 +220,7 @@ export default function PublishTemplateModal({
                   </p>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                <div className="flex justify-end gap-3 pt-4 border-t border-border-base">
                   <button
                     type="button"
                     onClick={onClose}

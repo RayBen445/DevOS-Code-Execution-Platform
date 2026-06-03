@@ -157,7 +157,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
   const openSignup = () => (setShowSignup ?? setShowLogin)(true);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="min-h-screen bg-base text-white selection:bg-blue-500/30 overflow-x-hidden">
       <Navbar onSignIn={() => setShowLogin(true)} />
 
       <main>
@@ -208,7 +208,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                   </button>
                   <a
                     href="/docs"
-                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/8 hover:bg-white/12 border border-white/15 hover:border-white/25 text-white font-bold text-sm transition-all"
+                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/8 hover:bg-white/12 border border-border-base hover:border-white/25 text-white font-bold text-sm transition-all"
                   >
                     View documentation
                     <ChevronRight className="w-4 h-4" />
@@ -238,9 +238,9 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                 transition={{ delay: 0.35, duration: 0.7, ease: "easeOut" }}
                 className="hidden lg:block"
               >
-                <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl shadow-blue-600/20 bg-[#0d0d0d] hover:border-white/25 transition-all">
+                <div className="relative rounded-2xl overflow-hidden border border-border-base shadow-2xl shadow-blue-600/20 bg-card hover:border-white/25 transition-all">
                   {/* Editor chrome */}
-                  <div className="flex items-center gap-2 px-4 py-3.5 bg-gradient-to-r from-[#161616] to-[#0d0d0d] border-b border-white/8">
+                  <div className="flex items-center gap-2 px-4 py-3.5 bg-gradient-to-r from-[#161616] to-[#0d0d0d] border-b border-border-base">
                     <span className="w-3 h-3 rounded-full bg-red-500/80" />
                     <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
                     <span className="w-3 h-3 rounded-full bg-green-500/80" />
@@ -249,7 +249,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                   </div>
                   {/* Sidebar stub */}
                   <div className="flex">
-                    <div className="w-10 bg-[#0a0a0a] border-r border-white/8 py-3 flex flex-col items-center gap-4">
+                    <div className="w-10 bg-base border-r border-border-base py-3 flex flex-col items-center gap-4">
                       <Code2 className="w-4 h-4 text-white/30 hover:text-white/50 transition-colors" />
                       <GitBranch className="w-4 h-4 text-white/30 hover:text-white/50 transition-colors" />
                       <Terminal className="w-4 h-4 text-white/30 hover:text-white/50 transition-colors" />
@@ -275,7 +275,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                     </div>
                   </div>
                   {/* Bottom status bar */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-600/40 to-blue-500/30 text-xs text-white/75 font-mono border-t border-white/8">
+                  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-600/40 to-blue-500/30 text-xs text-white/75 font-mono border-t border-border-base">
                     <span className="flex items-center gap-2">
                       <GitBranch className="w-3 h-3" /> main
                     </span>
@@ -293,7 +293,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
         {/* ── Onboarding flow ──────────────────────────────────────────── */}
         <section className="w-full">
           <div className="max-w-7xl mx-auto px-5 md:px-8 py-12 md:py-16">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+            <div className="rounded-3xl border border-border-base bg-white/[0.03] p-6 md:p-8">
               <p className="text-blue-400/80 text-xs font-bold uppercase tracking-widest mb-3">Onboarding</p>
               <h2 className="text-2xl md:text-3xl font-extrabold text-white">Start in under 2 minutes</h2>
               <div className="mt-6 grid md:grid-cols-3 gap-4">
@@ -302,7 +302,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                   { step: "2", title: "Create from template", desc: "Pick a starter template and open a file instantly in the editor." },
                   { step: "3", title: "Deploy & share", desc: "Deploy in one click and share your live URL with your team." },
                 ].map((item) => (
-                  <div key={item.step} className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                  <div key={item.step} className="rounded-2xl border border-border-base bg-black/25 p-4">
                     <div className="w-7 h-7 rounded-lg bg-blue-600/25 text-blue-300 text-sm font-bold flex items-center justify-center">{item.step}</div>
                     <p className="mt-3 font-semibold text-white">{item.title}</p>
                     <p className="text-sm text-white/45 mt-1">{item.desc}</p>
@@ -314,7 +314,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
         </section>
 
         {/* ── Stats bar ────────────────────────────────────────────────── */}
-        <section className="w-full border-y border-white/8 bg-gradient-to-r from-blue-600/5 via-white/[0.02] to-violet-600/5">
+        <section className="w-full border-y border-border-base bg-gradient-to-r from-blue-600/5 via-white/[0.02] to-violet-600/5">
           <div className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-20 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {STATS.map((s, i) => (
               <motion.div
@@ -358,7 +358,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.08, duration: 0.5 }}
-                  className={`relative p-8 rounded-2xl bg-gradient-to-br ${f.color} border border-white/10 hover:border-white/20 transition-all group hover:shadow-lg hover:shadow-white/5`}
+                  className={`relative p-8 rounded-2xl bg-gradient-to-br ${f.color} border border-border-base hover:border-border-base transition-all group hover:shadow-lg hover:shadow-white/5`}
                 >
                   <div className={`w-14 h-14 rounded-xl ${f.ring} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
                     <f.icon className={`w-6 h-6 ${f.accent}`} />
@@ -379,7 +379,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="relative overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-indigo-600/20 via-blue-600/15 to-violet-600/10 p-10 md:p-16 hover:border-white/25 transition-all group"
+              className="relative overflow-hidden rounded-3xl border border-border-base bg-gradient-to-br from-indigo-600/20 via-blue-600/15 to-violet-600/10 p-10 md:p-16 hover:border-white/25 transition-all group"
             >
               <div className="pointer-events-none absolute inset-0 overflow-hidden">
                 <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px]" />
@@ -399,7 +399,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {["DevOS Auth", "DevOS DB", "DevOS Storage", "DevOS Email", "DevOS Realtime", "DevOS AI"].map((p) => (
-                      <span key={p} className="px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs text-white/65 font-medium">
+                      <span key={p} className="px-3.5 py-1.5 rounded-full bg-white/10 border border-border-base text-xs text-white/65 font-medium">
                         {p}
                       </span>
                     ))}
@@ -415,7 +415,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                   </a>
                   <a
                     href="/docs#plugin-marketplace"
-                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/8 border border-white/15 hover:bg-white/12 hover:border-white/25 text-white/80 hover:text-white font-bold text-sm transition-all"
+                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/8 border border-border-base hover:bg-white/12 hover:border-white/25 text-white/80 hover:text-white font-bold text-sm transition-all"
                   >
                     Read the Docs
                     <ArrowRight className="w-4 h-4" />
@@ -448,7 +448,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.5 }}
-                  className="p-8 rounded-2xl bg-gradient-to-br from-white/8 to-white/3 border border-white/12 hover:border-white/20 transition-all group hover:shadow-lg hover:shadow-white/5"
+                  className="p-8 rounded-2xl bg-gradient-to-br from-white/8 to-white/3 border border-white/12 hover:border-border-base transition-all group hover:shadow-lg hover:shadow-white/5"
                 >
                   <div className="flex gap-1 mb-5">
                     {[...Array(5)].map((_, j) => (
@@ -456,7 +456,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                     ))}
                   </div>
                   <p className="text-white/70 text-base leading-relaxed mb-6 font-medium">"{t.text}"</p>
-                  <div className="flex items-center gap-3 pt-4 border-t border-white/10">
+                  <div className="flex items-center gap-3 pt-4 border-t border-border-base">
                     <div className={`w-10 h-10 rounded-full ${t.color} flex items-center justify-center font-bold text-sm text-white flex-shrink-0`}>
                       {t.avatar}
                     </div>
@@ -479,7 +479,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="relative rounded-3xl overflow-hidden border border-white/15 p-12 md:p-20 bg-gradient-to-br from-blue-600/15 via-indigo-600/10 to-transparent hover:border-white/25 transition-all group"
+              className="relative rounded-3xl overflow-hidden border border-border-base p-12 md:p-20 bg-gradient-to-br from-blue-600/15 via-indigo-600/10 to-transparent hover:border-white/25 transition-all group"
             >
               <div className="pointer-events-none absolute inset-0 overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-600/15 blur-[120px]" />

@@ -59,7 +59,7 @@ export default function ErrorPanel({ result, isRunning, onJumpToError, className
   return (
     <div className={cn("flex flex-col text-xs", className)}>
       {/* Summary bar */}
-      <div className="flex items-center gap-3 px-3 py-2 border-b border-white/5 bg-[#161B22]">
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-border-base bg-[#161B22]">
         {errors.length > 0 && (
           <span className="flex items-center gap-1 text-red-400 font-medium">
             <XCircle className="w-3.5 h-3.5" />
@@ -84,7 +84,7 @@ export default function ErrorPanel({ result, isRunning, onJumpToError, className
           const hasError = fileErrors.some((e) => e.severity === "error");
 
           return (
-            <div key={file} className="border-b border-white/5">
+            <div key={file} className="border-b border-border-base">
               {/* File header */}
               <button
                 className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-white/4 text-left transition-colors"

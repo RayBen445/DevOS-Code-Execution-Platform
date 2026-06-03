@@ -220,9 +220,9 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-lg bg-[#0f0f0f] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
+            className="relative w-full max-w-lg bg-base border border-border-base rounded-[32px] overflow-hidden shadow-2xl"
           >
-            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-blue-500/5 to-transparent">
+            <div className="p-6 border-b border-border-base flex items-center justify-between bg-gradient-to-r from-blue-500/5 to-transparent">
               <h2 className="text-xl font-bold flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-blue-600/20 flex items-center justify-center">
                   <Globe className="w-4 h-4 text-blue-500" />
@@ -297,7 +297,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                           "w-full p-4 rounded-xl border transition-all flex items-center justify-between group",
                           selectedEntry === path
                             ? "bg-blue-600/10 border-blue-500 text-blue-400"
-                            : "bg-white/5 border-white/10 text-white/60 hover:border-white/20"
+                            : "bg-white/5 border-border-base text-white/60 hover:border-border-base"
                         )}
                       >
                         <div className="flex items-center gap-3 truncate">
@@ -312,7 +312,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                   <div className="flex gap-3 pt-4">
                     <button
                       onClick={() => setStep("select")}
-                      className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 transition-all"
+                      className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-border-base text-white font-bold hover:bg-white/10 transition-all"
                     >
                       Back
                     </button>
@@ -390,7 +390,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                     Deployment successful. Your application is now accessible worldwide.
                   </p>
                   
-                  <div className="w-full p-2 rounded-2xl bg-black/40 border border-white/10 flex items-center gap-3 mb-10 group">
+                  <div className="w-full p-2 rounded-2xl bg-black/40 border border-border-base flex items-center gap-3 mb-10 group">
                     <div className="flex-1 px-4 py-3 rounded-xl bg-white/5 font-mono text-sm text-blue-400 truncate text-left">
                       {deployedUrl}
                     </div>
@@ -417,7 +417,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                   <div className="flex flex-col sm:flex-row gap-4 w-full">
                     <button
                       onClick={onClose}
-                      className="flex-1 px-8 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-bold hover:bg-white/10 transition-all active:scale-95"
+                      className="flex-1 px-8 py-4 bg-white/5 border border-border-base text-white rounded-2xl font-bold hover:bg-white/10 transition-all active:scale-95"
                     >
                       Back to IDE
                     </button>
@@ -435,7 +435,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
               )}
             </div>
             
-            <div className="p-4 bg-black/40 border-t border-white/5 flex items-center justify-center gap-2">
+            <div className="p-4 bg-black/40 border-t border-border-base flex items-center justify-center gap-2">
               <Zap className="w-3 h-3 text-white/20" />
               <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Built with DevOS</span>
             </div>

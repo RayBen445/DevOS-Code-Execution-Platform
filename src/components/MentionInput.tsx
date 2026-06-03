@@ -175,7 +175,7 @@ export default function MentionInput({
       {mentionQuery !== null && filtered.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 left-0 mt-1 w-64 bg-[#111827] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+          className="absolute z-50 left-0 mt-1 w-64 bg-surface border border-border-base rounded-2xl shadow-2xl overflow-hidden"
           style={{ top: "100%" }}
         >
           {filtered.map((user, idx) => (

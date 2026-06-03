@@ -158,7 +158,7 @@ export default function TemplatePage() {
     <motion.div
       key={template.id}
       whileHover={{ y: -4 }}
-      className="group p-6 rounded-2xl bg-[#111827] border border-white/[0.06] hover:border-white/[0.12] transition-all flex flex-col"
+      className="group p-6 rounded-2xl bg-surface border border-white/[0.06] hover:border-white/[0.12] transition-all flex flex-col"
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -210,7 +210,7 @@ export default function TemplatePage() {
       <div className="flex gap-2">
         <Link
           to={`/templates/${template.id}`}
-          className="flex-1 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-white/60 hover:text-white hover:border-white/20 text-sm"
+          className="flex-1 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 bg-white/5 border border-border-base text-white/60 hover:text-white hover:border-border-base text-sm"
         >
           <Eye className="w-4 h-4" />
           Preview
@@ -236,7 +236,7 @@ export default function TemplatePage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
       <div className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-10 pb-16 md:pb-10">
         {/* Header */}
@@ -269,7 +269,7 @@ export default function TemplatePage() {
               placeholder="Search templates…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-all"
+              className="w-full bg-white/5 border border-border-base rounded-2xl pl-12 pr-6 py-4 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-all"
             />
           </div>
           {/* Category chips — horizontally scrollable on mobile */}
@@ -296,7 +296,7 @@ export default function TemplatePage() {
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-32 text-center rounded-3xl border-2 border-dashed border-white/5">
+          <div className="py-32 text-center rounded-3xl border-2 border-dashed border-border-base">
             <Zap className="w-12 h-12 text-white/10 mx-auto mb-4" />
             <p className="text-white/40 font-medium">
               {search || activeCategory !== ALL_CATEGORY

@@ -8,7 +8,7 @@ import MobileBottomNav from "../components/MobileBottomNav";
 
 export default function PrivacyTerms() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30">
+    <div className="min-h-screen bg-base text-white selection:bg-blue-500/30">
       <Navbar />
       
       <main className="max-w-4xl mx-auto px-6 py-24">
@@ -45,7 +45,7 @@ export default function PrivacyTerms() {
                 </p>
                 
                 <div className="grid md:grid-cols-2 gap-8">
-                  <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
+                  <div className="p-6 rounded-3xl bg-white/5 border border-border-base">
                     <h3 className="text-white font-bold mb-3 flex items-center gap-2">
                       <Lock className="w-4 h-4 text-blue-500" />
                       Data Encryption
@@ -54,7 +54,7 @@ export default function PrivacyTerms() {
                       All source code and project data are encrypted at rest and in transit. Your tokens are stored in a secure, isolated Firestore collection.
                     </p>
                   </div>
-                  <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
+                  <div className="p-6 rounded-3xl bg-white/5 border border-border-base">
                     <h3 className="text-white font-bold mb-3 flex items-center gap-2">
                       <Shield className="w-4 h-4 text-blue-500" />
                       No Tracking
@@ -126,7 +126,7 @@ export default function PrivacyTerms() {
             </section>
           </div>
 
-          <div className="mt-24 pt-12 border-t border-white/5 text-center">
+          <div className="mt-24 pt-12 border-t border-border-base text-center">
             <p className="text-white/20 text-sm">
               Last Updated: March 24, 2026
             </p>

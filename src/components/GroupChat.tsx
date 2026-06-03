@@ -376,7 +376,7 @@ export default function GroupChat({
                     {/* Date separator */}
                     {showDateSep && msgDate && (
                       <div className="flex justify-center my-3">
-                        <span className="bg-[#1a2234] border border-white/[0.08] text-white/40 text-[10px] font-semibold px-3 py-1 rounded-full tracking-wide">
+                        <span className="bg-surface border border-white/[0.08] text-white/40 text-[10px] font-semibold px-3 py-1 rounded-full tracking-wide">
                           {dayLabel(msgDate)}
                         </span>
                       </div>
@@ -427,7 +427,7 @@ export default function GroupChat({
                             isOwn
                               ? cn(accent.bubble, isTail ? "rounded-t-2xl rounded-bl-2xl rounded-br-sm" : "rounded-2xl")
                               : cn(
-                                  "bg-[#1e2a3a] text-white/90 border border-white/[0.07]",
+                                  "bg-surface text-white/90 border border-white/[0.07]",
                                   isTail ? "rounded-t-2xl rounded-br-2xl rounded-bl-sm" : "rounded-2xl",
                                 ),
                           )}
@@ -489,7 +489,7 @@ export default function GroupChat({
           {/* ── Context menu ─────────────────────────────────────────────── */}
           {ctxMenu && (
             <div
-              className="fixed z-50 bg-[#1a2234] border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[160px] text-sm"
+              className="fixed z-50 bg-surface border border-border-base rounded-xl shadow-2xl overflow-hidden min-w-[160px] text-sm"
               style={{ left: Math.min(ctxMenu.x, window.innerWidth - 180), top: Math.min(ctxMenu.y, window.innerHeight - 200) }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -520,7 +520,7 @@ export default function GroupChat({
           )}
 
           {/* ── Bottom area ───────────────────────────────────────────────── */}
-          <div className="relative px-3 pb-3 pt-2 space-y-2 border-t border-white/[0.06] bg-[#0d1117]/60 backdrop-blur-sm">
+          <div className="relative px-3 pb-3 pt-2 space-y-2 border-t border-white/[0.06] bg-surface/60 backdrop-blur-sm">
 
             {/* Reply preview */}
             {replyTo && (
@@ -567,7 +567,7 @@ export default function GroupChat({
                   placeholder="Message…"
                   maxLength={2000}
                   rows={1}
-                  className="w-full bg-[#1e2a3a] border border-white/[0.08] rounded-2xl pl-3.5 pr-10 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-white/20 transition-all resize-none leading-relaxed"
+                  className="w-full bg-surface border border-white/[0.08] rounded-2xl pl-3.5 pr-10 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-border-base transition-all resize-none leading-relaxed"
                   style={{ maxHeight: 120, overflowY: "auto" }}
                   onInput={(e) => {
                     const t = e.currentTarget;

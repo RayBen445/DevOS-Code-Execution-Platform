@@ -44,7 +44,7 @@ export function buildPortfolioUrl(username: string) {
 }
 
 export function buildProjectUrl(username: string, projectSlug: string) {
-  return `https://${normalizeLabel(projectSlug)}.${normalizeLabel(username)}.${DEVOS_PRODUCT_HOST}`;
+  return `https://${normalizeLabel(projectSlug)}-${normalizeLabel(username)}.${DEVOS_PRODUCT_HOST}`;
 }
 
 export function buildOrgUrl(slug: string) {
@@ -69,6 +69,7 @@ export type DevosHostTarget =
   | { kind: "app" }
   | { kind: "portfolio"; username: string }
   | { kind: "project"; username: string; projectSlug: string }
+  | { kind: "legacy-project"; username: string; projectSlug: string }
   | { kind: "organization"; orgSlug: string }
   | { kind: "org-project"; orgSlug: string; projectSlug: string }
   | { kind: "reserved" }
@@ -116,11 +117,28 @@ export function parseDevosHost(hostname: string): DevosHostTarget {
     if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(username)) {
       return { kind: "reserved" };
     }
-    return { kind: "project", projectSlug, username };
+    // Return a legacy kind so App.tsx can redirect it to the hyphenated URL
+    return { kind: "legacy-project", projectSlug, username };
   }
 
   if (subdomains.length === 1) {
-    const [username] = subdomains;
+    const slug = subdomains[0];
+    
+    // If it contains a hyphen, it's a project (format: projectSlug-username)
+    // Since usernames cannot contain hyphens, the username is always the string after the LAST hyphen.
+    if (slug.includes("-")) {
+      const parts = slug.split("-");
+      const username = parts.pop()!;
+      const projectSlug = parts.join("-");
+      
+      if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(username)) {
+        return { kind: "reserved" };
+      }
+      return { kind: "project", projectSlug, username };
+    }
+    
+    // No hyphens = portfolio
+    const username = slug;
     if (RESERVED_SUBDOMAINS.has(username)) {
       return { kind: "reserved" };
     }

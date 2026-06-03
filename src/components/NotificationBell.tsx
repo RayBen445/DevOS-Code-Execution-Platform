@@ -172,11 +172,11 @@ export default function NotificationBell() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.14, ease: "easeOut" }}
-            className="absolute right-0 top-full mt-2 w-[380px] bg-[#111] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col"
+            className="absolute right-0 top-full mt-2 w-[380px] bg-card border border-border-base rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col"
             style={{ maxHeight: "540px" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border-base shrink-0">
               <div className="flex items-center gap-2">
                 <Inbox className="w-4 h-4 text-white/50" />
                 <span className="text-sm font-bold text-white">Inbox</span>
@@ -201,7 +201,7 @@ export default function NotificationBell() {
             </div>
 
             {/* Filter tabs */}
-            <div className="flex items-center gap-0.5 px-3 py-2 border-b border-white/5 shrink-0 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-0.5 px-3 py-2 border-b border-border-base shrink-0 overflow-x-auto scrollbar-none">
               {FILTER_TABS.map((tab) => {
                 const tabUnread = tab.id === "unread"
                   ? unread
@@ -306,7 +306,7 @@ export default function NotificationBell() {
             </div>
 
             {/* Footer */}
-            <div className="px-4 py-2.5 border-t border-white/5 shrink-0">
+            <div className="px-4 py-2.5 border-t border-border-base shrink-0">
               <button
                 onClick={() => { setIsOpen(false); navigate("/settings?tab=notifications"); }}
                 className="w-full text-center text-xs text-white/30 hover:text-white/60 transition-colors py-0.5"

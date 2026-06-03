@@ -114,6 +114,7 @@ export interface UserSettings {
   bio?: string;
   avatarUrl?: string;
   avatar?: string;
+  bannerUrl?: string;
   githubToken?: string;
   githubInstallationId?: string;
   skills?: string[];
@@ -136,6 +137,7 @@ export interface UserSettings {
     adminAnnouncements?: boolean;
   };
   bottomNavButtons?: string[];
+  topNavButtons?: string[];
   updatedAt?: any;
   isOfficial?: boolean;
 }

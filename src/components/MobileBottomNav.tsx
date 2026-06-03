@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, FolderCode, Compass, User, Newspaper, Users, Calendar, Layout, Settings, BookOpen } from "lucide-react";
+import { Home, FolderCode, Compass, User, Newspaper, Users, Calendar, Layout, Settings, BookOpen, Bot } from "lucide-react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
@@ -15,6 +15,7 @@ export const ALL_NAV_OPTIONS = [
   { id: "templates",   label: "Templates",   icon: Layout,    href: "/templates" },
   { id: "events",      label: "Events",      icon: Calendar,  href: "/events" },
   { id: "learn",       label: "Learn",       icon: BookOpen,  href: "/learn" },
+  { id: "bots",        label: "Bots",        icon: Bot,       href: "/bots" },
   { id: "profile",     label: "Profile",     icon: User,      href: "__profile__" },
   { id: "settings",    label: "Settings",    icon: Settings,  href: "/settings" },
 ] as const;
@@ -58,7 +59,7 @@ export default function MobileBottomNav() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0a]/95 backdrop-blur border-t border-white/10"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-base/95 backdrop-blur border-t border-border-base"
       aria-label="Mobile navigation"
     >
       <div className="flex items-center justify-around safe-area-bottom">

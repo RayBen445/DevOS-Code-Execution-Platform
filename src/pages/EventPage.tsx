@@ -54,7 +54,7 @@ function SpeakerCard({ speakerLink }: { speakerLink: EventSpeaker & { speaker: S
   const { speaker, role } = speakerLink;
   if (!speaker) return null;
   return (
-    <div className="flex items-start gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl">
+    <div className="flex items-start gap-4 p-4 bg-white/5 border border-border-base rounded-2xl">
       {speaker.image ? (
         <img src={speaker.image} alt={speaker.name} className="w-14 h-14 rounded-full object-cover shrink-0" />
       ) : (
@@ -65,7 +65,7 @@ function SpeakerCard({ speakerLink }: { speakerLink: EventSpeaker & { speaker: S
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-white">{speaker.name}</span>
-          <span className="text-xs text-white/40 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full capitalize">
+          <span className="text-xs text-white/40 bg-white/5 border border-border-base px-2 py-0.5 rounded-full capitalize">
             {role}
           </span>
         </div>
@@ -195,7 +195,7 @@ export default function EventPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
@@ -203,7 +203,7 @@ export default function EventPage() {
 
   if (notFound || !event) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-base text-white flex flex-col items-center justify-center gap-4">
         <p className="text-xl font-bold">Event not found</p>
         <Link to="/events" className="text-blue-400 hover:underline text-sm">← Back to Events</Link>
       </div>
@@ -213,7 +213,7 @@ export default function EventPage() {
   const isPremiumLocked = event.isPremium && !user;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-10 pb-24 md:pb-10">
@@ -252,7 +252,7 @@ export default function EventPage() {
                   <Lock className="w-3.5 h-3.5" /> Premium
                 </span>
               )}
-              <span className="text-xs text-white/30 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full capitalize">
+              <span className="text-xs text-white/30 bg-white/5 border border-border-base px-2.5 py-1 rounded-full capitalize">
                 {event.status}
               </span>
             </div>
@@ -290,7 +290,7 @@ export default function EventPage() {
             )}
 
             {/* Description */}
-            <div className="mt-4 border-t border-white/10 pt-5">
+            <div className="mt-4 border-t border-border-base pt-5">
               <h2 className="text-lg font-semibold text-white mb-3">About this event</h2>
               {isPremiumLocked ? (
                 <div className="p-6 rounded-2xl bg-yellow-400/5 border border-yellow-400/20 text-center">
@@ -324,7 +324,7 @@ export default function EventPage() {
 
           {/* Sidebar — RSVP */}
           <div className="lg:w-80 shrink-0">
-            <div className="sticky top-6 bg-white/5 border border-white/10 rounded-2xl p-5">
+            <div className="sticky top-6 bg-white/5 border border-border-base rounded-2xl p-5">
               <div className="text-sm text-white/50 mb-1">
                 {registrationCount} {registrationCount === 1 ? "person" : "people"} registered
               </div>
@@ -370,7 +370,7 @@ export default function EventPage() {
                           onChange={(e) => setRsvpName(e.target.value)}
                           placeholder="Your name"
                           required
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+                          className="w-full px-3 py-2 bg-white/5 border border-border-base rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
                         />
                       </div>
                       <div>
@@ -381,7 +381,7 @@ export default function EventPage() {
                           onChange={(e) => setRsvpEmail(e.target.value)}
                           placeholder="you@example.com"
                           required
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+                          className="w-full px-3 py-2 bg-white/5 border border-border-base rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
                         />
                       </div>
                       <div>
@@ -391,7 +391,7 @@ export default function EventPage() {
                           value={rsvpPhone}
                           onChange={(e) => setRsvpPhone(e.target.value)}
                           placeholder="+1 555 000 0000"
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+                          className="w-full px-3 py-2 bg-white/5 border border-border-base rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
                         />
                       </div>
                       <button

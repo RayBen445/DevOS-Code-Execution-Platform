@@ -80,7 +80,7 @@ function CreateCommunityModal({ open, onClose, userId, onCreated }: CreateModalP
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative bg-[#111827] border border-white/10 rounded-2xl p-6 w-full max-w-md z-10 shadow-2xl"
+        className="relative bg-surface border border-border-base rounded-2xl p-6 w-full max-w-md z-10 shadow-2xl"
       >
         <h2 className="text-xl font-bold text-white mb-1">Create a Community</h2>
         <p className="text-white/40 text-sm mb-6">Start a topic-based space for developers.</p>
@@ -93,7 +93,7 @@ function CreateCommunityModal({ open, onClose, userId, onCreated }: CreateModalP
               maxLength={50}
               required
               placeholder="e.g. Web Development"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
             />
             {slug && <p className="text-[11px] text-white/30 mt-1">URL: /c/{slug}</p>}
           </div>
@@ -106,7 +106,7 @@ function CreateCommunityModal({ open, onClose, userId, onCreated }: CreateModalP
               required
               rows={3}
               placeholder="What's this community about?"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none"
+              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none"
             />
           </div>
           <div>
@@ -131,7 +131,7 @@ function CreateCommunityModal({ open, onClose, userId, onCreated }: CreateModalP
             </button>
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 hover:bg-white/5 transition-all font-semibold">Cancel</button>
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-border-base text-white/60 hover:bg-white/5 transition-all font-semibold">Cancel</button>
             <button
               type="submit"
               disabled={saving || !name.trim() || !slug}
@@ -159,7 +159,7 @@ function CommunityCard({ community, userId, isMember, onJoin, onLeave, joining }
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      className="bg-[#111827] border border-white/5 hover:border-white/20 rounded-2xl overflow-hidden transition-all group flex flex-col"
+      className="bg-surface border border-border-base hover:border-border-base rounded-2xl overflow-hidden transition-all group flex flex-col"
     >
       {/* Banner */}
       <div className="h-20 bg-gradient-to-br from-blue-600/20 via-purple-600/10 to-transparent relative overflow-hidden">
@@ -169,7 +169,7 @@ function CommunityCard({ community, userId, isMember, onJoin, onLeave, joining }
         <div className="absolute inset-0 bg-gradient-to-t from-[#111827] to-transparent" />
         {/* Avatar */}
         <div className="absolute bottom-0 left-4 translate-y-1/2">
-          <div className="w-12 h-12 rounded-xl bg-[#0a0a0a] border-2 border-[#111827] flex items-center justify-center overflow-hidden shadow-lg">
+          <div className="w-12 h-12 rounded-xl bg-base border-2 border-[#111827] flex items-center justify-center overflow-hidden shadow-lg">
             {community.avatar ? (
               <img src={community.avatar} alt={community.name} className="w-full h-full object-cover" />
             ) : (
@@ -214,7 +214,7 @@ function CommunityCard({ community, userId, isMember, onJoin, onLeave, joining }
                 className={cn(
                   "text-xs font-bold px-3 py-1.5 rounded-lg transition-all",
                   isMember
-                    ? "bg-white/5 text-white/60 hover:bg-red-500/10 hover:text-red-400 border border-white/10"
+                    ? "bg-white/5 text-white/60 hover:bg-red-500/10 hover:text-red-400 border border-border-base"
                     : "bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20"
                 )}
               >
@@ -300,7 +300,7 @@ export default function CommunitiesPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 pb-20 md:pb-8">
@@ -330,7 +330,7 @@ export default function CommunitiesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search communities…"
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-all"
+              className="w-full bg-white/5 border border-border-base rounded-xl pl-11 pr-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-all"
             />
           </div>
         </div>
@@ -345,7 +345,7 @@ export default function CommunitiesPage() {
                 "shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all",
                 category === cat
                   ? "bg-blue-600 text-white"
-                  : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-white/5"
+                  : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-border-base"
               )}
             >
               {cat}

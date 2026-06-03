@@ -157,7 +157,7 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
   };
 
   return (
-    <div className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-5">
+    <div className="rounded-2xl bg-white/5 border border-border-base p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {enabled ? (
@@ -226,10 +226,10 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
             Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.).
           </p>
           <div className="flex justify-center">
-            <img src={qrUrl} alt="TOTP QR Code" className="rounded-xl border border-white/10" width={200} height={200} />
+            <img src={qrUrl} alt="TOTP QR Code" className="rounded-xl border border-border-base" width={200} height={200} />
           </div>
           {secretKey && (
-            <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+            <div className="rounded-xl bg-white/5 border border-border-base p-3">
               <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Manual entry key</p>
               <div className="flex items-center gap-2">
                 <code className="text-xs text-white/80 font-mono break-all flex-1">{secretKey}</code>
@@ -268,7 +268,7 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
             value={otp}
             onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
             placeholder="000000"
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-mono text-lg tracking-[0.4em] text-center focus:outline-none focus:border-blue-500/50 transition-colors"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-border-base text-white font-mono text-lg tracking-[0.4em] text-center focus:outline-none focus:border-blue-500/50 transition-colors"
           />
           <div className="flex gap-3">
             <button
@@ -296,7 +296,7 @@ export default function TwoFactorSetup({ onClose }: TwoFactorSetupProps) {
               Save these recovery codes now. They are shown only once and each code works a single time.
             </p>
           </div>
-          <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
+          <div className="rounded-xl bg-white/5 border border-border-base p-3 space-y-2">
             {recoveryCodes.map((code) => (
               <code key={code} className="block text-xs text-white/85 font-mono">{code}</code>
             ))}

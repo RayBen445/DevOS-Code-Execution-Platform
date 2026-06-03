@@ -35,7 +35,7 @@ export default function LearnDynamicLessonPage() {
 
   if (lesson === undefined) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
@@ -82,7 +82,7 @@ export default function LearnDynamicLessonPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-4xl mx-auto w-full px-4 md:px-6 py-8">
@@ -108,7 +108,7 @@ export default function LearnDynamicLessonPage() {
 
         {/* Explanation */}
         {lesson.explanation && (
-          <div className="mb-6 p-5 rounded-2xl bg-white/[0.02] border border-white/8">
+          <div className="mb-6 p-5 rounded-2xl bg-white/[0.02] border border-border-base">
             <div className="flex items-center gap-2 mb-3">
               <BookOpen className="w-4 h-4 text-blue-400" />
               <span className="text-sm font-bold text-white/70">Explanation</span>
@@ -118,8 +118,8 @@ export default function LearnDynamicLessonPage() {
         )}
 
         {/* Code editor */}
-        <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#0d0d0d] mb-4">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8 bg-white/[0.02]">
+        <div className="rounded-2xl border border-border-base overflow-hidden bg-card mb-4">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border-base bg-white/[0.02]">
             <div className="flex items-center gap-2">
               <div className="flex gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-500/50" />
@@ -162,7 +162,7 @@ export default function LearnDynamicLessonPage() {
               {isRunning ? "Running…" : isHTML ? "Preview" : "Run Code"}
             </button>
           ) : (
-            <div className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/40 rounded-xl text-sm font-medium">
+            <div className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-border-base text-white/40 rounded-xl text-sm font-medium">
               <Lock className="w-4 h-4" /> Sign in to run code
             </div>
           )}
@@ -173,8 +173,8 @@ export default function LearnDynamicLessonPage() {
 
         {/* HTML Preview */}
         {isHTML && hasRun && (
-          <div className="rounded-2xl border border-white/10 overflow-hidden mb-4">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/8 bg-white/[0.02]">
+          <div className="rounded-2xl border border-border-base overflow-hidden mb-4">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-base bg-white/[0.02]">
               <Eye className="w-3.5 h-3.5 text-white/40" />
               <span className="text-xs text-white/40">Live Preview</span>
             </div>
@@ -184,8 +184,8 @@ export default function LearnDynamicLessonPage() {
 
         {/* Terminal output */}
         {!isHTML && hasRun && (
-          <div className="rounded-2xl border border-white/10 overflow-hidden mb-6">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/8 bg-white/[0.02]">
+          <div className="rounded-2xl border border-border-base overflow-hidden mb-6">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-base bg-white/[0.02]">
               <Terminal className="w-3.5 h-3.5 text-green-400" />
               <span className="text-xs text-white/40">Output</span>
             </div>

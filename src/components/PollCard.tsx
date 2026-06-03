@@ -102,7 +102,7 @@ export default function PollCard({ poll, onVoted, className }: PollCardProps) {
   const showResults = hasVoted || isClosed;
 
   return (
-    <div className={cn("bg-[#111827] border border-white/10 rounded-2xl p-5 space-y-4", className)}>
+    <div className={cn("bg-surface border border-border-base rounded-2xl p-5 space-y-4", className)}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1 min-w-0">
@@ -146,10 +146,10 @@ export default function PollCard({ poll, onVoted, className }: PollCardProps) {
                 className={cn(
                   "w-full text-left rounded-xl border transition-all overflow-hidden relative",
                   showResults
-                    ? "cursor-default border-white/5"
+                    ? "cursor-default border-border-base"
                     : isSelected
                     ? "border-blue-500 bg-blue-500/10"
-                    : "border-white/10 bg-white/5 hover:border-white/20"
+                    : "border-border-base bg-white/5 hover:border-border-base"
                 )}
               >
                 {showResults && (
@@ -204,13 +204,13 @@ export default function PollCard({ poll, onVoted, className }: PollCardProps) {
             rows={2}
             maxLength={500}
             placeholder="Type your response…"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500/50 resize-none transition-all"
+            className="w-full bg-white/5 border border-border-base rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500/50 resize-none transition-all"
           />
         </div>
       )}
 
       {showResults && myVote?.textResponse && (
-        <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+        <div className="p-3 rounded-xl bg-white/5 border border-border-base">
           <p className="text-xs text-white/30 mb-1 flex items-center gap-1"><MessageSquare className="w-3 h-3" />Your response</p>
           <p className="text-sm text-white/70">{myVote.textResponse}</p>
         </div>

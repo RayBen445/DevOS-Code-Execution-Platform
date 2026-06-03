@@ -160,8 +160,8 @@ export default function Editor({ file, onChange, projectId, readOnly, onCursorCh
 
   if (file.language === "image") {
     return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-[#050505] p-12 overflow-auto">
-        <div className="max-w-full max-h-full rounded-2xl border border-white/10 overflow-hidden shadow-2xl shadow-black">
+      <div className="h-full w-full flex flex-col items-center justify-center bg-base p-12 overflow-auto">
+        <div className="max-w-full max-h-full rounded-2xl border border-border-base overflow-hidden shadow-2xl shadow-black">
           <img 
             src={file.content} 
             alt={file.name} 
@@ -181,7 +181,7 @@ export default function Editor({ file, onChange, projectId, readOnly, onCursorCh
     <div ref={containerRef} className="h-full w-full relative flex flex-col">
       {/* ── File-actions toolbar ── */}
       {showToolbar && (
-        <div className="flex items-center gap-1 px-3 py-1 bg-[#0D1117] border-b border-[#21262D] flex-shrink-0 overflow-x-auto">
+        <div className="flex items-center gap-1 px-3 py-1 bg-surface border-b border-[#21262D] flex-shrink-0 overflow-x-auto">
           <ToolbarBtn icon={copied ? Check : Copy} label={copied ? "Copied!" : "Copy"} onClick={handleCopy} active={copied} />
           {!readOnly && (
             <ToolbarBtn icon={Clipboard} label="Paste" onClick={handlePaste} />
@@ -196,7 +196,7 @@ export default function Editor({ file, onChange, projectId, readOnly, onCursorCh
 
       {/* ── View-raw overlay ── */}
       {showRaw && (
-        <div className="flex-shrink-0 relative bg-[#050505] border-b border-[#21262D]" style={{ maxHeight: 240, overflowY: "auto" }}>
+        <div className="flex-shrink-0 relative bg-base border-b border-[#21262D]" style={{ maxHeight: 240, overflowY: "auto" }}>
           <button
             onClick={() => setShowRaw(false)}
             className="absolute top-2 right-3 text-white/30 hover:text-white transition-colors z-10"

@@ -174,13 +174,13 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     {
       label: "Open Projects",
       icon: FolderCode,
-      color: "bg-white/5 border border-white/10 hover:bg-white/10 text-white",
+      color: "bg-white/5 border border-border-base hover:bg-white/10 text-white",
       onClick: () => navigate("/projects"),
     },
     {
       label: "Try Demo",
       icon: Sparkles,
-      color: "bg-white/5 border border-white/10 hover:bg-white/10 text-white",
+      color: "bg-white/5 border border-border-base hover:bg-white/10 text-white",
       onClick: onShowLogin ?? (() => navigate("/templates")),
     },
     ...(lastProject
@@ -188,7 +188,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
           {
             label: "Continue Last",
             icon: Clock,
-            color: "bg-white/5 border border-white/10 hover:bg-white/10 text-white",
+            color: "bg-white/5 border border-border-base hover:bg-white/10 text-white",
             onClick: () => onOpenProject(lastProject.id),
           },
         ]
@@ -422,7 +422,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col w-full max-w-full min-w-0 overflow-x-hidden">
+    <div className="min-h-screen bg-base text-white flex flex-col w-full max-w-full min-w-0 overflow-x-hidden">
       <Navbar />
 
       <main className="flex-1 pb-16 md:pb-0 w-full max-w-full min-w-0 overflow-x-hidden">
@@ -500,7 +500,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               {user && (
                 <button
                   onClick={() => setShowComposer(true)}
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/15 hover:bg-white/[0.05] transition-all group text-left"
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-border-base hover:bg-white/[0.05] transition-all group text-left"
                 >
                   <Avatar
                     src={settings?.avatarUrl || user.photoURL}
@@ -533,7 +533,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                   ))}
                 </div>
               ) : feed.length === 0 ? (
-                <div className="rounded-2xl bg-white/5 border border-white/5 p-10 text-center">
+                <div className="rounded-2xl bg-white/5 border border-border-base p-10 text-center">
                   <Zap className="w-10 h-10 text-white/20 mx-auto mb-3" />
                   <p className="text-white/40 text-sm">No activity yet. Be the first to deploy!</p>
                 </div>
@@ -568,7 +568,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               </div>
 
               {myProjects.length === 0 ? (
-                <div className="rounded-2xl bg-white/5 border border-white/5 p-6 text-center">
+                <div className="rounded-2xl bg-white/5 border border-border-base p-6 text-center">
                   <FolderCode className="w-8 h-8 text-white/20 mx-auto mb-2" />
                   <p className="text-white/40 text-xs">No projects yet</p>
                   <button
@@ -783,10 +783,10 @@ function PostComposerModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 16 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-lg z-50 bg-[#111827] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh]"
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-lg z-50 bg-surface border border-border-base rounded-2xl shadow-2xl flex flex-col max-h-[85vh]"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
               <div className="flex items-center gap-3">
                 <img
                   src={avatarUrl}
@@ -871,7 +871,7 @@ function PostComposerModal({
                         "flex items-start gap-3 p-3 rounded-xl border transition-all text-left",
                         postType === opt.value
                           ? "bg-blue-600/15 border-blue-500/60 shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
-                          : "bg-white/[0.03] border-white/[0.08] hover:border-white/15 hover:bg-white/[0.06]"
+                          : "bg-white/[0.03] border-white/[0.08] hover:border-border-base hover:bg-white/[0.06]"
                       )}
                     >
                       <opt.icon className="w-4 h-4 mt-0.5 text-white/50 shrink-0" />
@@ -901,8 +901,8 @@ function PostComposerModal({
                       className={cn(
                         "w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition-all text-left",
                         selectedProjectId === ""
-                          ? "bg-white/10 border-white/20"
-                          : "bg-white/[0.03] border-white/[0.08] hover:border-white/15"
+                          ? "bg-white/10 border-border-base"
+                          : "bg-white/[0.03] border-white/[0.08] hover:border-border-base"
                       )}
                     >
                       <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
@@ -919,7 +919,7 @@ function PostComposerModal({
                           "w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition-all text-left",
                           selectedProjectId === p.id
                             ? "bg-blue-600/15 border-blue-500/60"
-                            : "bg-white/[0.03] border-white/[0.08] hover:border-white/15 hover:bg-white/[0.06]"
+                            : "bg-white/[0.03] border-white/[0.08] hover:border-border-base hover:bg-white/[0.06]"
                         )}
                       >
                         <div className={cn(
@@ -950,7 +950,7 @@ function PostComposerModal({
             </div>
 
             {/* Sticky Post button */}
-            <div className="p-4 border-t border-white/5">
+            <div className="p-4 border-t border-border-base">
               <button
                 onClick={onSubmit}
                 disabled={isPosting || !postText.trim()}
@@ -1086,7 +1086,7 @@ function FeedItem({
             ? "border-purple-500/30 hover:border-purple-400/50 bg-gradient-to-br from-purple-600/10 to-purple-500/5 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20"
             : post.isOfficial
               ? "border-blue-500/30 hover:border-blue-400/50 bg-gradient-to-br from-blue-600/12 via-white/6 to-blue-500/8 shadow-xl shadow-blue-500/15 hover:shadow-blue-500/25"
-            : "border-white/15 hover:border-white/25 bg-gradient-to-br from-white/8 to-white/3 shadow-xl shadow-black/40"
+            : "border-border-base hover:border-white/25 bg-gradient-to-br from-white/8 to-white/3 shadow-xl shadow-black/40"
         )}
       >
       {/* Community banner */}
@@ -1167,7 +1167,7 @@ function FeedItem({
             <span
               className={cn(
                 "text-[10px] font-bold px-2.5 py-1 rounded-full border",
-                TYPE_COLORS[post.type] ?? "bg-white/5 text-white/40 border-white/10"
+                TYPE_COLORS[post.type] ?? "bg-white/5 text-white/40 border-border-base"
               )}
             >
               {TYPE_LABEL[post.type] ?? post.type}
@@ -1195,7 +1195,7 @@ function FeedItem({
 
       {/* Embedded original post (for reposts) */}
       {post.type === "repost" && post.originalPost && (
-        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/6 to-white/2 hover:border-white/15 transition-all p-4 mb-3 shadow-md shadow-black/20">
+        <div className="rounded-xl border border-border-base bg-gradient-to-br from-white/6 to-white/2 hover:border-border-base transition-all p-4 mb-3 shadow-md shadow-black/20">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-full bg-blue-600/30 flex items-center justify-center flex-shrink-0">
               <Code2 className="w-3.5 h-3.5 text-blue-300" />
@@ -1225,7 +1225,7 @@ function FeedItem({
       {post.projectName && post.type !== "repost" && (
         <a
           href={post.username ? `/@${post.username}` : undefined}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-sm text-white/60 hover:text-white w-fit max-w-full mb-3"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-border-base hover:border-border-base transition-all text-sm text-white/60 hover:text-white w-fit max-w-full mb-3"
         >
           <FolderCode className="w-3.5 h-3.5 flex-shrink-0 text-blue-400" />
           <span className="truncate font-medium">{post.projectName}</span>
@@ -1242,7 +1242,7 @@ function FeedItem({
       )}
 
       {/* Engagement bar */}
-      <div className="flex items-center gap-1 mt-4 pt-4 border-t border-white/8 flex-wrap min-w-0 max-w-full">
+      <div className="flex items-center gap-1 mt-4 pt-4 border-t border-border-base flex-wrap min-w-0 max-w-full">
         {/* Like */}
         <button
           onClick={() => onLike(post)}
@@ -1302,7 +1302,7 @@ function FeedItem({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="mt-3 pt-3 border-t border-white/5 space-y-3">
+            <div className="mt-3 pt-3 border-t border-border-base space-y-3">
               {comments.length === 0 ? (
                 <p className="text-xs text-white/25 text-center py-2">No comments yet</p>
               ) : (
@@ -1344,7 +1344,7 @@ function FeedItem({
                     currentUserId={userId}
                     placeholder="Write a comment… (@mention someone)"
                     multiline={false}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                    className="flex-1 bg-white/5 border border-border-base rounded-xl px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-border-base transition-colors"
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
                   />
                   <button
@@ -1377,7 +1377,7 @@ function FeedItem({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-[#111] border border-white/10 rounded-2xl shadow-2xl p-5"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-card border border-border-base rounded-2xl shadow-2xl p-5"
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-bold text-white">Repost</h3>
@@ -1391,11 +1391,11 @@ function FeedItem({
                 onChange={(e) => setRepostText(e.target.value)}
                 placeholder="Add your thoughts… (optional)"
                 rows={3}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/20 resize-none mb-3"
+                className="w-full bg-white/5 border border-border-base rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-border-base resize-none mb-3"
               />
 
               {/* Original post preview */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 mb-4">
+              <div className="rounded-xl border border-border-base bg-white/[0.03] p-3 mb-4">
                 <p className="text-xs font-semibold text-white/50 mb-1">@{post.username}</p>
                 <div className="text-xs leading-relaxed line-clamp-3">
                   <MarkdownContent text={post.content} className="text-xs" />
@@ -1405,7 +1405,7 @@ function FeedItem({
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowRepostModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white/60 hover:text-white transition-all"
+                  className="flex-1 py-2.5 rounded-xl bg-white/5 border border-border-base text-sm text-white/60 hover:text-white transition-all"
                 >
                   Cancel
                 </button>
@@ -1432,7 +1432,7 @@ function ProjectCard({ project, onOpen }: { project: Project; onOpen: () => void
   return (
     <button
       onClick={onOpen}
-      className="w-full text-left rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/10 transition-all p-4 group"
+      className="w-full text-left rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-border-base transition-all p-4 group"
     >
       <div className="flex items-start justify-between gap-2 mb-1">
         <p className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors truncate">

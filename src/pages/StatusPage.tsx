@@ -86,7 +86,7 @@ export default function StatusPage() {
       : XCircle;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <main className="flex-1 max-w-3xl mx-auto px-6 py-20 w-full">
@@ -113,11 +113,11 @@ export default function StatusPage() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-white/30 mb-4">
               Services
             </h2>
-            <div className="divide-y divide-white/5 rounded-2xl border border-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5 rounded-2xl border border-border-base overflow-hidden">
               {SERVICES.map((service) => (
                 <div
                   key={service.name}
-                  className="flex items-center justify-between px-6 py-4 bg-[#111] hover:bg-white/[0.02] transition-colors"
+                  className="flex items-center justify-between px-6 py-4 bg-card hover:bg-white/[0.02] transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <Activity className="w-4 h-4 text-white/20" />
@@ -139,7 +139,7 @@ export default function StatusPage() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-white/30 mb-4">
               Incidents
             </h2>
-            <div className="rounded-2xl border border-white/5 bg-[#111] px-6 py-8 flex flex-col items-center gap-3 text-center">
+            <div className="rounded-2xl border border-border-base bg-card px-6 py-8 flex flex-col items-center gap-3 text-center">
               <CheckCircle2 className="w-8 h-8 text-green-500/50" />
               <p className="text-white/40 text-sm">No active incidents. Everything is running smoothly.</p>
               <p className="text-white/20 text-xs">Last checked: {new Date().toUTCString()}</p>

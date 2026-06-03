@@ -1858,7 +1858,7 @@ User request: ${aiTestPrompt.trim()}`;
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-base text-white flex items-center justify-center">
         <p className="text-white/40">Please sign in to access the admin dashboard.</p>
       </div>
     );
@@ -1866,7 +1866,7 @@ User request: ${aiTestPrompt.trim()}`;
 
   if (isAdmin === false) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-base text-white flex items-center justify-center">
         <div className="text-center">
           <ShieldCheck className="w-16 h-16 text-red-500/40 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
@@ -1944,9 +1944,9 @@ User request: ${aiTestPrompt.trim()}`;
 
   return (
     <>
-    <div className="min-h-screen bg-[#0B0F17] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       {/* Top Navbar */}
-      <div className="border-b border-white/5 bg-[#0B0F17]/80 backdrop-blur-md sticky top-0 z-30">
+      <div className="border-b border-border-base bg-base/80 backdrop-blur-md sticky top-0 z-30">
         <div className="flex items-center justify-between h-14 px-4 md:px-6">
           <div className="flex items-center gap-3">
             {/* Mobile hamburger */}
@@ -1984,7 +1984,7 @@ User request: ${aiTestPrompt.trim()}`;
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
-        <aside className="hidden md:flex w-60 flex-shrink-0 flex-col border-r border-white/5 bg-[#0B0F17] overflow-y-auto">
+        <aside className="hidden md:flex w-60 flex-shrink-0 flex-col border-r border-border-base bg-base overflow-y-auto">
           <SidebarNav />
         </aside>
 
@@ -2004,9 +2004,9 @@ User request: ${aiTestPrompt.trim()}`;
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="fixed left-0 top-0 h-full w-72 bg-[#111827] border-r border-white/10 z-50 md:hidden flex flex-col shadow-2xl overflow-y-auto"
+                className="fixed left-0 top-0 h-full w-72 bg-surface border-r border-border-base z-50 md:hidden flex flex-col shadow-2xl overflow-y-auto"
               >
-                <div className="flex items-center justify-between p-4 border-b border-white/5">
+                <div className="flex items-center justify-between p-4 border-b border-border-base">
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-red-600/20 text-red-400 flex items-center justify-center">
                       <ShieldCheck className="w-4 h-4" />
@@ -2061,7 +2061,7 @@ User request: ${aiTestPrompt.trim()}`;
               <div className="relative" ref={adminNotifRef}>
                 <button
                   onClick={() => setShowAdminNotifPanel((v) => !v)}
-                  className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all border border-white/10"
+                  className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all border border-border-base"
                   title="Pending items"
                 >
                   <Bell className="w-5 h-5" />
@@ -2073,8 +2073,8 @@ User request: ${aiTestPrompt.trim()}`;
                 </button>
 
                 {showAdminNotifPanel && (
-                  <div className="absolute right-0 top-full mt-2 w-72 bg-[#111827] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-white/5">
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border-base rounded-2xl shadow-2xl z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-border-base">
                       <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Pending Items</p>
                     </div>
                     <div className="p-2 space-y-1">
@@ -2181,7 +2181,7 @@ User request: ${aiTestPrompt.trim()}`;
                     )}
 
                     {/* System Health */}
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <div className="flex items-center justify-between mb-5">
                         <h2 className="text-base font-bold text-white flex items-center gap-2">
                           <Activity className="w-4 h-4 text-green-400" />
@@ -2296,7 +2296,7 @@ User request: ${aiTestPrompt.trim()}`;
                     </div>
 
                     {/* Maintenance Mode Quick Toggle */}
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <h2 className="text-base font-bold text-white mb-1 flex items-center gap-2">
@@ -2319,7 +2319,7 @@ User request: ${aiTestPrompt.trim()}`;
                           </button>
                         )}
                       </div>
-                      <div className={`mt-4 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border ${maintenanceMode ? "bg-orange-500/10 text-orange-300 border-orange-500/20" : "bg-white/5 text-white/40 border-white/10"}`}>
+                      <div className={`mt-4 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border ${maintenanceMode ? "bg-orange-500/10 text-orange-300 border-orange-500/20" : "bg-white/5 text-white/40 border-border-base"}`}>
                         {maintenanceMode ? <><WifiOff className="w-4 h-4" /> Maintenance is <strong>ON</strong></> : <><Wifi className="w-4 h-4" /> Maintenance is <strong>OFF</strong></>}
                       </div>
                       <button
@@ -2351,18 +2351,18 @@ User request: ${aiTestPrompt.trim()}`;
                         </button>
                       </div>
                       {showCreateTemplate && (
-                        <form onSubmit={handleCreateOfficialTemplate} className="bg-[#111827] border border-white/10 rounded-2xl p-6 mb-6 space-y-4">
+                        <form onSubmit={handleCreateOfficialTemplate} className="bg-surface border border-border-base rounded-2xl p-6 mb-6 space-y-4">
                           <div className="space-y-2">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Template Name</label>
-                            <input value={newTplName} onChange={e => setNewTplName(e.target.value)} required placeholder="My Official Template" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+                            <input value={newTplName} onChange={e => setNewTplName(e.target.value)} required placeholder="My Official Template" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Description</label>
-                            <textarea value={newTplDesc} onChange={e => setNewTplDesc(e.target.value)} required placeholder="What does this template do?" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" />
+                            <textarea value={newTplDesc} onChange={e => setNewTplDesc(e.target.value)} required placeholder="What does this template do?" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" />
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Tags (comma-separated)</label>
-                            <input value={newTplTags} onChange={e => setNewTplTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+                            <input value={newTplTags} onChange={e => setNewTplTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
                           </div>
                           <div className="flex gap-3 pt-2">
                             <button type="button" onClick={() => setShowCreateTemplate(false)} className="px-5 py-2.5 rounded-xl font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
@@ -2405,7 +2405,7 @@ User request: ${aiTestPrompt.trim()}`;
                       ) : (
                         <div className="space-y-3">
                           {allTemplates.filter((t) => t.isApproved).map((template) => (
-                            <div key={template.id} className="p-4 rounded-2xl bg-[#111827] border border-white/5 flex items-center justify-between gap-4">
+                            <div key={template.id} className="p-4 rounded-2xl bg-surface border border-border-base flex items-center justify-between gap-4">
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 mb-0.5">
                                   <p className="font-bold text-white truncate">{template.name}</p>
@@ -2445,7 +2445,7 @@ User request: ${aiTestPrompt.trim()}`;
                     </div>
 
                     {/* ── AI Template Generator ──────────────────────── */}
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-5">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6 space-y-5">
                       <div className="flex items-center gap-2">
                         <Bot className="w-4 h-4 text-purple-400" />
                         <h2 className="text-sm font-bold text-white">Generate Template with AI</h2>
@@ -2459,7 +2459,7 @@ User request: ${aiTestPrompt.trim()}`;
                           onChange={(e) => setAiTestPrompt(e.target.value)}
                           placeholder="e.g. A dark-themed SaaS landing page with hero, features, and pricing sections"
                           rows={3}
-                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                          className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-purple-500 transition-colors resize-none"
                           required
                         />
                         <div className="flex items-center gap-3">
@@ -2483,20 +2483,20 @@ User request: ${aiTestPrompt.trim()}`;
                       )}
 
                       {aiGenReady && (
-                        <div className="space-y-4 border-t border-white/10 pt-5">
+                        <div className="space-y-4 border-t border-border-base pt-5">
                           <p className="text-xs font-bold text-white/30 uppercase tracking-widest">Review & Edit Before Publishing</p>
                           <div className="space-y-3">
                             <div>
                               <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Template Name</label>
-                              <input value={aiGenName} onChange={(e) => setAiGenName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors" />
+                              <input value={aiGenName} onChange={(e) => setAiGenName(e.target.value)} className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors" />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Description</label>
-                              <input value={aiGenDesc} onChange={(e) => setAiGenDesc(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors" />
+                              <input value={aiGenDesc} onChange={(e) => setAiGenDesc(e.target.value)} className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors" />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Tags (comma-separated)</label>
-                              <input value={aiGenTags} onChange={(e) => setAiGenTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors" />
+                              <input value={aiGenTags} onChange={(e) => setAiGenTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors" />
                             </div>
                           </div>
 
@@ -2504,7 +2504,7 @@ User request: ${aiTestPrompt.trim()}`;
                           <div className="space-y-2">
                             <p className="text-xs font-bold text-white/30 uppercase tracking-widest">{aiGenFiles.length} file{aiGenFiles.length !== 1 ? "s" : ""} generated</p>
                             {aiGenFiles.map((f, i) => (
-                              <div key={i} className="border border-white/10 rounded-xl overflow-hidden">
+                              <div key={i} className="border border-border-base rounded-xl overflow-hidden">
                                 <div className="flex items-center justify-between px-3 py-2 bg-white/3">
                                   <span className="text-xs font-mono text-blue-300">{f.name}</span>
                                   <span className="text-[10px] text-white/30">{f.language}</span>
@@ -2539,7 +2539,7 @@ User request: ${aiTestPrompt.trim()}`;
                     <p className="text-white/40 text-sm mb-6">{users.length} registered users</p>
                     {/* Pending Username Change Requests */}
                     {usernameRequests.length > 0 && (
-                      <div className="mb-6 bg-[#111827] border border-yellow-500/20 rounded-2xl p-5">
+                      <div className="mb-6 bg-surface border border-yellow-500/20 rounded-2xl p-5">
                         <div className="flex items-center gap-2 mb-4">
                           <AtSign className="w-4 h-4 text-yellow-400" />
                           <h3 className="text-sm font-bold text-white">Pending Username Requests</h3>
@@ -2549,7 +2549,7 @@ User request: ${aiTestPrompt.trim()}`;
                         </div>
                         <div className="space-y-3">
                           {usernameRequests.map((req) => (
-                            <div key={req.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/3 border border-white/5">
+                            <div key={req.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/3 border border-border-base">
                               <div className="min-w-0">
                                 <p className="text-sm text-white">
                                   <span className="font-mono text-white/60">@{req.currentUsername}</span>
@@ -2566,7 +2566,7 @@ User request: ${aiTestPrompt.trim()}`;
                                       value={rejectReason}
                                       onChange={(e) => setRejectReason(e.target.value)}
                                       placeholder="Reason (optional)"
-                                      className="text-xs px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-red-500/40 w-32"
+                                      className="text-xs px-2 py-1.5 rounded-xl bg-white/5 border border-border-base text-white placeholder-white/30 focus:outline-none focus:border-red-500/40 w-32"
                                     />
                                     <button
                                       onClick={() => handleRejectUsernameRequest(req)}
@@ -2609,7 +2609,7 @@ User request: ${aiTestPrompt.trim()}`;
                     {/* Desktop: table-like rows; Mobile: cards */}
                     <div className="space-y-2">
                       {users.map((u) => (
-                        <div key={u.uid} className="rounded-2xl bg-[#111827] border border-white/5">
+                        <div key={u.uid} className="rounded-2xl bg-surface border border-border-base">
                           <div className="p-4 flex items-center gap-3">
                           <Avatar src={u.avatarUrl} displayName={u.displayName} size="md" />
                           <div className="flex-1 min-w-0">
@@ -2750,7 +2750,7 @@ User request: ${aiTestPrompt.trim()}`;
                                 onChange={(e) => setUsernameEditValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
                                 placeholder="new_username"
                                 maxLength={20}
-                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500 transition-all"
+                                className="flex-1 bg-white/5 border border-border-base rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500 transition-all"
                               />
                               <button
                                 onClick={() => handleAdminChangeUsername(u.uid, usernameEditValue)}
@@ -2780,7 +2780,7 @@ User request: ${aiTestPrompt.trim()}`;
                 {activeTab === "credits" && (
                   <div className="space-y-8">
                     {/* Global Credit Config */}
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Settings2 className="w-4 h-4 text-purple-400" />
                         Global Credit Config
@@ -2790,7 +2790,7 @@ User request: ${aiTestPrompt.trim()}`;
                         <div className="flex items-center gap-2 text-white/30 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Loading config…</div>
                       ) : (
                         <form onSubmit={handleSaveCreditConfig} className="space-y-5">
-                          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-border-base">
                             <div>
                               <p className="text-sm font-semibold text-white">Credits Enabled</p>
                               <p className="text-xs text-white/40">When disabled, all actions are free for everyone.</p>
@@ -2818,7 +2818,7 @@ User request: ${aiTestPrompt.trim()}`;
                               min="0"
                               value={creditConfig.chargePerAction}
                               onChange={(e) => setCreditConfig((c) => ({ ...c, chargePerAction: parseInt(e.target.value, 10) || 0 }))}
-                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all"
+                              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all"
                               placeholder="0"
                             />
                             <p className="text-[11px] text-white/30">Set a flat cost per action. Leave 0 to use individual action costs below.</p>
@@ -2846,7 +2846,7 @@ User request: ${aiTestPrompt.trim()}`;
                                         },
                                       }));
                                     }}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition-all"
+                                    className="w-full bg-white/5 border border-border-base rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition-all"
                                   />
                                 </div>
                               ))}
@@ -2866,18 +2866,18 @@ User request: ${aiTestPrompt.trim()}`;
                       )}
                     </div>
 
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
                       <h2 className="text-lg font-bold text-white mb-1">Adjust User Credits</h2>
                       <p className="text-white/40 text-sm mb-6">Enter username, email, or UID and the amount to add (positive) or subtract (negative).</p>
                       <form onSubmit={handleAdjustCredits} className="space-y-5">
                         <div className="space-y-2">
                           <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Target User</label>
-                          <input type="text" value={creditTarget} onChange={(e) => setCreditTarget(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="username, email, or UID" required />
+                          <input type="text" value={creditTarget} onChange={(e) => setCreditTarget(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="username, email, or UID" required />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Amount</label>
-                            <input type="number" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="10" required />
+                            <input type="number" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="10" required />
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
@@ -2898,7 +2898,7 @@ User request: ${aiTestPrompt.trim()}`;
                     </div>
 
                     {/* Gift Credits */}
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Gift className="w-4 h-4 text-green-400" />
                         Gift Credits
@@ -2913,7 +2913,7 @@ User request: ${aiTestPrompt.trim()}`;
                             onChange={(e) => setGiftTarget(e.target.value)}
                             placeholder="username, email, or UID"
                             required
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
+                            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -2925,7 +2925,7 @@ User request: ${aiTestPrompt.trim()}`;
                               value={giftAmount}
                               onChange={(e) => setGiftAmount(e.target.value)}
                               required
-                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
+                              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
                             />
                           </div>
                           <div className="space-y-1.5">
@@ -2934,7 +2934,7 @@ User request: ${aiTestPrompt.trim()}`;
                               type="date"
                               value={giftExpiry}
                               onChange={(e) => setGiftExpiry(e.target.value)}
-                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
+                              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
                             />
                           </div>
                         </div>
@@ -2949,7 +2949,7 @@ User request: ${aiTestPrompt.trim()}`;
                     </div>
 
                     {/* Unlimited Credits Pass */}
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Infinity className="w-4 h-4 text-yellow-400" />
                         Grant Unlimited Pass
@@ -2964,7 +2964,7 @@ User request: ${aiTestPrompt.trim()}`;
                             onChange={(e) => setUnlimitedTarget(e.target.value)}
                             placeholder="username, email, or UID"
                             required
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-all"
+                            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-all"
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -2974,7 +2974,7 @@ User request: ${aiTestPrompt.trim()}`;
                             value={unlimitedUntil}
                             onChange={(e) => setUnlimitedUntil(e.target.value)}
                             required
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-all"
+                            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-all"
                           />
                         </div>
                         <button
@@ -2991,7 +2991,7 @@ User request: ${aiTestPrompt.trim()}`;
                       <h2 className="text-lg font-bold text-white mb-4">User Credits Overview</h2>
                       <div className="space-y-2">
                         {users.map((u) => (
-                          <div key={u.uid} className="p-4 rounded-2xl bg-[#111827] border border-white/5 flex items-center justify-between">
+                          <div key={u.uid} className="p-4 rounded-2xl bg-surface border border-border-base flex items-center justify-between">
                             <div>
                               <p className="font-bold text-white text-sm">@{u.username}</p>
                               <p className="text-xs text-white/30">{u.email}</p>
@@ -3016,7 +3016,7 @@ User request: ${aiTestPrompt.trim()}`;
                 {activeTab === "polls" && (
                   <div className="space-y-8 max-w-2xl">
                     {/* Create Poll */}
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Vote className="w-4 h-4 text-blue-400" />
                         Create Poll
@@ -3031,7 +3031,7 @@ User request: ${aiTestPrompt.trim()}`;
                             onChange={(e) => setPollQuestion(e.target.value)}
                             placeholder="e.g. What feature should we build next?"
                             required
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
+                            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all"
                           />
                         </div>
                         <div className="space-y-2">
@@ -3043,7 +3043,7 @@ User request: ${aiTestPrompt.trim()}`;
                                 value={opt}
                                 onChange={(e) => { const next = [...pollOptions]; next[i] = e.target.value; setPollOptions(next); }}
                                 placeholder={`Option ${i + 1}`}
-                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
+                                className="flex-1 bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
                               />
                               {pollOptions.length > 2 && (
                                 <button type="button" onClick={() => setPollOptions(pollOptions.filter((_, j) => j !== i))} className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all">
@@ -3067,7 +3067,7 @@ User request: ${aiTestPrompt.trim()}`;
                               max={pollOptions.filter(Boolean).length || 1}
                               value={pollMaxSelections}
                               onChange={(e) => setPollMaxSelections(parseInt(e.target.value, 10) || 1)}
-                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
+                              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
                             />
                           </div>
                           <div className="space-y-1.5">
@@ -3076,11 +3076,11 @@ User request: ${aiTestPrompt.trim()}`;
                               type="datetime-local"
                               value={pollExpiry}
                               onChange={(e) => setPollExpiry(e.target.value)}
-                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
+                              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-all"
                             />
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-border-base">
                           <input
                             id="pollAllowText"
                             type="checkbox"
@@ -3115,7 +3115,7 @@ User request: ${aiTestPrompt.trim()}`;
                       ) : (
                         <div className="space-y-3">
                           {polls.map((p) => (
-                            <div key={p.id} className="bg-[#111827] border border-white/10 rounded-2xl p-5">
+                            <div key={p.id} className="bg-surface border border-border-base rounded-2xl p-5">
                               <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="min-w-0">
                                   <p className="font-semibold text-white text-sm">{p.question}</p>
@@ -3173,7 +3173,7 @@ User request: ${aiTestPrompt.trim()}`;
                 {/* Notifications Tab */}
                 {activeTab === "notifications" && (
                   <div className="space-y-8">
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Bell className="w-4 h-4 text-blue-400" />
                         Send Notification
@@ -3182,7 +3182,7 @@ User request: ${aiTestPrompt.trim()}`;
                       <form onSubmit={handleSendNotification} className="space-y-4">
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Recipient (UID or "all")</label>
-                          <input type="text" value={notifUserId} onChange={(e) => setNotifUserId(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="all" />
+                          <input type="text" value={notifUserId} onChange={(e) => setNotifUserId(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="all" />
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
@@ -3196,7 +3196,7 @@ User request: ${aiTestPrompt.trim()}`;
                                   "py-2 px-3 rounded-xl text-xs font-bold border transition-all",
                                   notifType === t
                                     ? "bg-blue-600/20 border-blue-500 text-blue-300"
-                                    : "bg-white/5 border-white/10 text-white/50 hover:border-white/20"
+                                    : "bg-white/5 border-border-base text-white/50 hover:border-border-base"
                                 )}
                               >
                                 {t.replace("_", " ")}
@@ -3206,11 +3206,11 @@ User request: ${aiTestPrompt.trim()}`;
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Title</label>
-                          <input type="text" value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" required placeholder="Notification title" />
+                          <input type="text" value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" required placeholder="Notification title" />
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Message</label>
-                          <textarea value={notifMessage} onChange={(e) => setNotifMessage(e.target.value)} rows={3} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none" required placeholder="Notification message..." />
+                          <textarea value={notifMessage} onChange={(e) => setNotifMessage(e.target.value)} rows={3} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none" required placeholder="Notification message..." />
                         </div>
                         <button type="submit" disabled={sendingNotif} className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2">
                           {sendingNotif ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -3241,28 +3241,28 @@ User request: ${aiTestPrompt.trim()}`;
                     </div>
 
                     {showCreateCode && (
-                      <form onSubmit={handleCreateRedeemCode} className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-4 max-w-xl">
+                      <form onSubmit={handleCreateRedeemCode} className="bg-surface border border-border-base rounded-2xl p-6 space-y-4 max-w-xl">
                         <h3 className="text-base font-bold text-white">New Redeem Code</h3>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1.5 col-span-2">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Code</label>
-                            <input type="text" value={newCode} onChange={(e) => setNewCode(e.target.value.toUpperCase())} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white font-mono tracking-widest focus:outline-none focus:border-yellow-500/50 transition-all uppercase" required placeholder="DEVOS2024" />
+                            <input type="text" value={newCode} onChange={(e) => setNewCode(e.target.value.toUpperCase())} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white font-mono tracking-widest focus:outline-none focus:border-yellow-500/50 transition-all uppercase" required placeholder="DEVOS2024" />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Credits Value</label>
-                            <input type="number" value={newCodeValue} onChange={(e) => setNewCodeValue(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
+                            <input type="number" value={newCodeValue} onChange={(e) => setNewCodeValue(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Usage Limit (-1 = ∞)</label>
-                            <input type="number" value={newCodeUsageLimit} onChange={(e) => setNewCodeUsageLimit(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" required />
+                            <input type="number" value={newCodeUsageLimit} onChange={(e) => setNewCodeUsageLimit(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" required />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Per User Limit</label>
-                            <input type="number" value={newCodePerUser} onChange={(e) => setNewCodePerUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
+                            <input type="number" value={newCodePerUser} onChange={(e) => setNewCodePerUser(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" min="1" required />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Expires At (optional)</label>
-                            <input type="datetime-local" value={newCodeExpiry} onChange={(e) => setNewCodeExpiry(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" />
+                            <input type="datetime-local" value={newCodeExpiry} onChange={(e) => setNewCodeExpiry(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 transition-all" />
                           </div>
                         </div>
                         <div className="flex gap-3 pt-2">
@@ -3282,7 +3282,7 @@ User request: ${aiTestPrompt.trim()}`;
                     ) : (
                       <div className="space-y-3">
                         {redeemCodes.map((code) => (
-                          <div key={code.id} className="p-4 rounded-2xl bg-[#111827] border border-white/5 flex items-center gap-4">
+                          <div key={code.id} className="p-4 rounded-2xl bg-surface border border-border-base flex items-center gap-4">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className="font-mono font-bold text-white tracking-widest">{code.id}</span>
@@ -3313,7 +3313,7 @@ User request: ${aiTestPrompt.trim()}`;
                 {/* Admin Posts Tab */}
                 {activeTab === "posts" && (
                   <div className="space-y-8">
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 max-w-2xl">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-2xl">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Newspaper className="w-4 h-4 text-blue-400" />
                         Publish Official Post
@@ -3334,7 +3334,7 @@ User request: ${aiTestPrompt.trim()}`;
                                   "py-2.5 px-3 rounded-xl text-xs font-bold border transition-all",
                                   postType === t
                                     ? "bg-blue-600/20 border-blue-500 text-blue-300"
-                                    : "bg-white/5 border-white/10 text-white/50 hover:border-white/20"
+                                    : "bg-white/5 border-border-base text-white/50 hover:border-border-base"
                                 )}
                               >
                                 {t === "announcement" ? "Announcement" : t === "update" ? "Update" : "Feature"}
@@ -3344,7 +3344,7 @@ User request: ${aiTestPrompt.trim()}`;
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Content</label>
-                          <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} rows={5} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none" required placeholder="Write your official announcement here..." />
+                          <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} rows={5} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none" required placeholder="Write your official announcement here..." />
                         </div>
                         <div className="flex items-center gap-3">
                           <button type="submit" disabled={publishingPost} className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all">
@@ -3359,7 +3359,7 @@ User request: ${aiTestPrompt.trim()}`;
                 )}
                 {activeTab === "reserved" && (
                   <div className="space-y-6 max-w-xl">
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <AtSign className="w-4 h-4 text-blue-400" />
                         Reserve a Username
@@ -3373,7 +3373,7 @@ User request: ${aiTestPrompt.trim()}`;
                           value={newReservedName}
                           onChange={(e) => setNewReservedName(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
                           placeholder="e.g. devos, admin, support"
-                          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500 font-mono"
+                          className="flex-1 bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500 font-mono"
                         />
                         <button
                           type="submit"
@@ -3386,7 +3386,7 @@ User request: ${aiTestPrompt.trim()}`;
                       </form>
                     </div>
 
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest">Reserved List</h2>
                         <button
@@ -3406,7 +3406,7 @@ User request: ${aiTestPrompt.trim()}`;
                       ) : (
                         <div className="space-y-1.5">
                           {reservedNames.map((name) => (
-                            <div key={name} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-white/5">
+                            <div key={name} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-border-base">
                               <span className="text-sm font-mono text-white/80">@{name}</span>
                               <div className="flex items-center gap-2">
                                 {reservedPortfolios[name] ? (
@@ -3471,8 +3471,8 @@ User request: ${aiTestPrompt.trim()}`;
                         {feedbackItems.map((item) => (
                           <div
                             key={item.id}
-                            className={`bg-[#111827] border rounded-2xl p-5 transition-all ${
-                              item.status === "open" ? "border-white/10" : "border-white/5 opacity-60"
+                            className={`bg-surface border rounded-2xl p-5 transition-all ${
+                              item.status === "open" ? "border-border-base" : "border-border-base opacity-60"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
@@ -3491,7 +3491,7 @@ User request: ${aiTestPrompt.trim()}`;
                                     ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
                                     : item.status === "resolved"
                                     ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                    : "bg-white/5 text-white/30 border-white/10"
+                                    : "bg-white/5 text-white/30 border-border-base"
                                 }`}>
                                   {item.status}
                                 </span>
@@ -3560,8 +3560,8 @@ User request: ${aiTestPrompt.trim()}`;
                         {deletionRequests.map((req) => (
                           <div
                             key={req.id}
-                            className={`bg-[#111827] border rounded-2xl p-5 transition-all ${
-                              req.status === "pending" ? "border-red-500/20" : "border-white/5 opacity-50"
+                            className={`bg-surface border rounded-2xl p-5 transition-all ${
+                              req.status === "pending" ? "border-red-500/20" : "border-border-base opacity-50"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -3616,7 +3616,7 @@ User request: ${aiTestPrompt.trim()}`;
                     ) : (
                       <>
                         {/* Global toggle card */}
-                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                        <div className="bg-surface border border-border-base rounded-2xl p-6">
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
@@ -3641,7 +3641,7 @@ User request: ${aiTestPrompt.trim()}`;
                           <div className={`mt-4 px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 ${
                             maintenanceMode
                               ? "bg-orange-500/10 text-orange-300 border border-orange-500/20"
-                              : "bg-white/5 text-white/40 border border-white/10"
+                              : "bg-white/5 text-white/40 border border-border-base"
                           }`}>
                             {maintenanceMode
                               ? <><WifiOff className="w-4 h-4" /> Global maintenance is currently <strong>ON</strong></>
@@ -3650,7 +3650,7 @@ User request: ${aiTestPrompt.trim()}`;
                         </div>
 
                         {/* Per-page maintenance */}
-                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                        <div className="bg-surface border border-border-base rounded-2xl p-6">
                           <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">
                             Per-Page Maintenance
                           </h2>
@@ -3680,7 +3680,7 @@ User request: ${aiTestPrompt.trim()}`;
                                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
                                     isOn
                                       ? "bg-orange-500/10 border-orange-500/30 text-orange-300"
-                                      : "bg-black/20 border-white/10 text-white/50 hover:text-white hover:border-white/20"
+                                      : "bg-black/20 border-border-base text-white/50 hover:text-white hover:border-border-base"
                                   }`}
                                 >
                                   <span className="font-mono text-xs text-white/40 mr-3">{path}</span>
@@ -3700,7 +3700,7 @@ User request: ${aiTestPrompt.trim()}`;
                         </div>
 
                         {/* Banner message */}
-                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                        <div className="bg-surface border border-border-base rounded-2xl p-6">
                           <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-1">
                             Maintenance Banner Message
                           </h2>
@@ -3712,7 +3712,7 @@ User request: ${aiTestPrompt.trim()}`;
                             onChange={(e) => setMaintenanceBanner(e.target.value)}
                             placeholder="e.g. We'll be back in 30 minutes. Thanks for your patience!"
                             rows={3}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                            className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors resize-none"
                           />
                         </div>
 
@@ -3734,7 +3734,7 @@ User request: ${aiTestPrompt.trim()}`;
                 {/* Send Email Tab */}
                 {activeTab === "email" && (
                   <div className="space-y-6 max-w-2xl">
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Send className="w-4 h-4 text-blue-400" />
                         Send Email
@@ -3755,7 +3755,7 @@ User request: ${aiTestPrompt.trim()}`;
                             value={emailTo}
                             onChange={(e) => setEmailTo(e.target.value)}
                             placeholder="user@example.com, another@example.com"
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                            className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                             required
                           />
                           {/* Quick-fill from user list */}
@@ -3772,7 +3772,7 @@ User request: ${aiTestPrompt.trim()}`;
                                       if (existing.includes(u.email!)) return prev;
                                       return [...existing, u.email!].join(", ");
                                     })}
-                                    className="px-2 py-0.5 rounded-full bg-white/5 hover:bg-blue-600/20 border border-white/10 hover:border-blue-500/30 text-[10px] text-white/50 hover:text-blue-300 transition-all"
+                                    className="px-2 py-0.5 rounded-full bg-white/5 hover:bg-blue-600/20 border border-border-base hover:border-blue-500/30 text-[10px] text-white/50 hover:text-blue-300 transition-all"
                                   >
                                     @{u.username}
                                   </button>
@@ -3792,7 +3792,7 @@ User request: ${aiTestPrompt.trim()}`;
                             value={emailSubject}
                             onChange={(e) => setEmailSubject(e.target.value)}
                             placeholder="Your email subject"
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                            className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                             required
                           />
                         </div>
@@ -3807,7 +3807,7 @@ User request: ${aiTestPrompt.trim()}`;
                             onChange={(e) => setEmailMessage(e.target.value)}
                             placeholder={"<p>Hi {{name}},</p>\n<p>Your message here…</p>"}
                             rows={10}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors resize-y font-mono"
+                            className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors resize-y font-mono"
                             required
                           />
                         </div>
@@ -3845,7 +3845,7 @@ User request: ${aiTestPrompt.trim()}`;
                                   setEmailSubject(tpl.subject);
                                   setEmailMessage(tpl.body);
                                 }}
-                                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/60 hover:text-white transition-all"
+                                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-border-base text-xs text-white/60 hover:text-white transition-all"
                               >
                                 {tpl.label}
                               </button>
@@ -3887,28 +3887,28 @@ User request: ${aiTestPrompt.trim()}`;
 
                     {/* Create-community form */}
                     {showCreateCommunity && (
-                      <form onSubmit={handleAdminCreateCommunity} className="bg-[#111827] border border-blue-500/30 rounded-2xl p-5 space-y-3">
+                      <form onSubmit={handleAdminCreateCommunity} className="bg-surface border border-blue-500/30 rounded-2xl p-5 space-y-3">
                         <p className="text-sm font-bold text-white mb-1 flex items-center gap-2"><Plus className="w-4 h-4 text-blue-400" />Create New Community</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Name *</label>
-                            <input value={newCommunityName} onChange={(e) => setNewCommunityName(e.target.value)} placeholder="DevOS Community" required className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
+                            <input value={newCommunityName} onChange={(e) => setNewCommunityName(e.target.value)} placeholder="DevOS Community" required className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
                           </div>
                           <div>
                             <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Category</label>
-                            <input value={newCommunityCategory} onChange={(e) => setNewCommunityCategory(e.target.value)} placeholder="general" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
+                            <input value={newCommunityCategory} onChange={(e) => setNewCommunityCategory(e.target.value)} placeholder="general" className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
                           </div>
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Description</label>
-                          <textarea value={newCommunityDesc} onChange={(e) => setNewCommunityDesc(e.target.value)} rows={2} placeholder="What is this community about?" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none" />
+                          <textarea value={newCommunityDesc} onChange={(e) => setNewCommunityDesc(e.target.value)} rows={2} placeholder="What is this community about?" className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none" />
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <button type="button" onClick={() => setNewCommunityPublic((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newCommunityPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                          <button type="button" onClick={() => setNewCommunityPublic((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newCommunityPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-border-base text-white/40"}`}>
                             {newCommunityPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                             {newCommunityPublic ? "Public" : "Private"}
                           </button>
-                          <button type="button" onClick={() => setNewCommunityOfficial((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newCommunityOfficial ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                          <button type="button" onClick={() => setNewCommunityOfficial((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newCommunityOfficial ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400" : "bg-white/5 border-border-base text-white/40"}`}>
                             <BadgeCheck className="w-4 h-4" />
                             {newCommunityOfficial ? "Official ✓" : "Mark Official"}
                           </button>
@@ -3935,7 +3935,7 @@ User request: ${aiTestPrompt.trim()}`;
                     ) : (
                       <div className="space-y-3">
                         {communities.map((c) => (
-                          <div key={c.id} className="bg-[#111827] border border-white/10 rounded-2xl p-5">
+                          <div key={c.id} className="bg-surface border border-border-base rounded-2xl p-5">
                             {editingCommunity?.id === c.id ? (
                               <form onSubmit={handleSaveCommunity} className="space-y-3">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3944,7 +3944,7 @@ User request: ${aiTestPrompt.trim()}`;
                                     <input
                                       value={communityEditName}
                                       onChange={(e) => setCommunityEditName(e.target.value)}
-                                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                                      className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
                                       required
                                     />
                                   </div>
@@ -3954,7 +3954,7 @@ User request: ${aiTestPrompt.trim()}`;
                                       value={communityEditCategory}
                                       onChange={(e) => setCommunityEditCategory(e.target.value)}
                                       placeholder="general"
-                                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                                      className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
                                     />
                                   </div>
                                 </div>
@@ -3964,14 +3964,14 @@ User request: ${aiTestPrompt.trim()}`;
                                     value={communityEditDesc}
                                     onChange={(e) => setCommunityEditDesc(e.target.value)}
                                     rows={2}
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none"
+                                    className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none"
                                   />
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={() => setCommunityEditPublic(v => !v)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${communityEditPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${communityEditPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-border-base text-white/40"}`}
                                   >
                                     {communityEditPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                                     {communityEditPublic ? "Public" : "Private"}
@@ -4063,22 +4063,22 @@ User request: ${aiTestPrompt.trim()}`;
 
                     {/* Create-org form */}
                     {showCreateOrg && (
-                      <form onSubmit={handleAdminCreateOrg} className="bg-[#111827] border border-blue-500/30 rounded-2xl p-5 space-y-3">
+                      <form onSubmit={handleAdminCreateOrg} className="bg-surface border border-blue-500/30 rounded-2xl p-5 space-y-3">
                         <p className="text-sm font-bold text-white mb-1 flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-400" />Create New Organization</p>
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Name *</label>
-                          <input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} placeholder="DevOS HQ" required className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
+                          <input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} placeholder="DevOS HQ" required className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Description</label>
-                          <textarea value={newOrgDesc} onChange={(e) => setNewOrgDesc(e.target.value)} rows={2} placeholder="What does this org do?" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none" />
+                          <textarea value={newOrgDesc} onChange={(e) => setNewOrgDesc(e.target.value)} rows={2} placeholder="What does this org do?" className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none" />
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <button type="button" onClick={() => setNewOrgPublic((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newOrgPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                          <button type="button" onClick={() => setNewOrgPublic((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newOrgPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-border-base text-white/40"}`}>
                             {newOrgPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                             {newOrgPublic ? "Public" : "Private"}
                           </button>
-                          <button type="button" onClick={() => setNewOrgOfficial((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newOrgOfficial ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                          <button type="button" onClick={() => setNewOrgOfficial((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newOrgOfficial ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400" : "bg-white/5 border-border-base text-white/40"}`}>
                             <BadgeCheck className="w-4 h-4" />
                             {newOrgOfficial ? "Official ✓ (auto-joins everyone)" : "Mark Official"}
                           </button>
@@ -4105,7 +4105,7 @@ User request: ${aiTestPrompt.trim()}`;
                     ) : (
                       <div className="space-y-3">
                         {orgs.map((org) => (
-                          <div key={org.id} className="bg-[#111827] border border-white/10 rounded-2xl p-5">
+                          <div key={org.id} className="bg-surface border border-border-base rounded-2xl p-5">
                             {editingOrg?.id === org.id ? (
                               <form onSubmit={handleSaveOrg} className="space-y-3">
                                 <div>
@@ -4113,7 +4113,7 @@ User request: ${aiTestPrompt.trim()}`;
                                   <input
                                     value={orgEditName}
                                     onChange={(e) => setOrgEditName(e.target.value)}
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                                    className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
                                     required
                                   />
                                 </div>
@@ -4123,14 +4123,14 @@ User request: ${aiTestPrompt.trim()}`;
                                     value={orgEditDesc}
                                     onChange={(e) => setOrgEditDesc(e.target.value)}
                                     rows={2}
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none"
+                                    className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none"
                                   />
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={() => setOrgEditPublic(v => !v)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${orgEditPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${orgEditPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-border-base text-white/40"}`}
                                   >
                                     {orgEditPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                                     {orgEditPublic ? "Public" : "Private"}
@@ -4221,22 +4221,22 @@ User request: ${aiTestPrompt.trim()}`;
 
                     {/* Create project form */}
                     {showCreateProject && (
-                      <form onSubmit={handleAdminCreateProject} className="bg-[#111827] border border-blue-500/30 rounded-2xl p-5 space-y-3">
+                      <form onSubmit={handleAdminCreateProject} className="bg-surface border border-blue-500/30 rounded-2xl p-5 space-y-3">
                         <p className="text-sm font-bold text-white mb-1 flex items-center gap-2"><FolderPlus className="w-4 h-4 text-blue-400" />Create Official DevOS Project</p>
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Project Name *</label>
-                          <input value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} placeholder="DevOS Starter Kit" required className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
+                          <input value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} placeholder="DevOS Starter Kit" required className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Description</label>
-                          <textarea value={newProjectDesc} onChange={(e) => setNewProjectDesc(e.target.value)} rows={2} placeholder="Brief description of the project" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none" />
+                          <textarea value={newProjectDesc} onChange={(e) => setNewProjectDesc(e.target.value)} rows={2} placeholder="Brief description of the project" className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-none" />
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <button type="button" onClick={() => setNewProjectPublic((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newProjectPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                          <button type="button" onClick={() => setNewProjectPublic((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newProjectPublic ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-border-base text-white/40"}`}>
                             {newProjectPublic ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                             {newProjectPublic ? "Public" : "Private"}
                           </button>
-                          <button type="button" onClick={() => setNewProjectOfficial((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newProjectOfficial ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400" : "bg-white/5 border-white/10 text-white/40"}`}>
+                          <button type="button" onClick={() => setNewProjectOfficial((v) => !v)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${newProjectOfficial ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400" : "bg-white/5 border-border-base text-white/40"}`}>
                             <BadgeCheck className="w-4 h-4" />
                             {newProjectOfficial ? "Official ✓" : "Mark Official"}
                           </button>
@@ -4263,7 +4263,7 @@ User request: ${aiTestPrompt.trim()}`;
                     ) : (
                       <div className="space-y-3">
                         {adminProjects.map((proj) => (
-                          <div key={proj.id} className="bg-[#111827] border border-white/10 rounded-2xl p-4 flex items-start justify-between gap-4">
+                          <div key={proj.id} className="bg-surface border border-border-base rounded-2xl p-4 flex items-start justify-between gap-4">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="font-bold text-white text-sm">{proj.name}</p>
@@ -4294,7 +4294,7 @@ User request: ${aiTestPrompt.trim()}`;
                 {activeTab === "events" && (
                   <div className="space-y-6">
                     {/* Create Event */}
-                    <div className="bg-[#111827] border border-white/10 rounded-2xl overflow-hidden">
+                    <div className="bg-surface border border-border-base rounded-2xl overflow-hidden">
                       <button
                         onClick={() => setShowCreateEvent((v) => !v)}
                         className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors"
@@ -4308,19 +4308,19 @@ User request: ${aiTestPrompt.trim()}`;
                       </button>
 
                       {showCreateEvent && (
-                        <form onSubmit={handleCreateAdminEvent} className="border-t border-white/10 px-5 pb-5 pt-4 space-y-4">
+                        <form onSubmit={handleCreateAdminEvent} className="border-t border-border-base px-5 pb-5 pt-4 space-y-4">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="sm:col-span-2">
                               <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Title *</label>
-                              <input value={newEvTitle} onChange={(e) => setNewEvTitle(e.target.value)} required placeholder="e.g. DevOS Hackathon 2025" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                              <input value={newEvTitle} onChange={(e) => setNewEvTitle(e.target.value)} required placeholder="e.g. DevOS Hackathon 2025" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
                             </div>
                             <div className="sm:col-span-2">
                               <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Description *</label>
-                              <textarea value={newEvDesc} onChange={(e) => setNewEvDesc(e.target.value)} required rows={3} placeholder="What's this event about?" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors resize-none" />
+                              <textarea value={newEvDesc} onChange={(e) => setNewEvDesc(e.target.value)} required rows={3} placeholder="What's this event about?" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors resize-none" />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Type</label>
-                              <select value={newEvType} onChange={(e) => setNewEvType(e.target.value as EventType)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors">
+                              <select value={newEvType} onChange={(e) => setNewEvType(e.target.value as EventType)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors">
                                 <option value="online">Online</option>
                                 <option value="physical">Physical</option>
                                 <option value="hybrid">Hybrid</option>
@@ -4334,27 +4334,27 @@ User request: ${aiTestPrompt.trim()}`;
                             </div>
                             <div>
                               <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Start Date *</label>
-                              <input type="datetime-local" value={newEvStart} onChange={(e) => setNewEvStart(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                              <input type="datetime-local" value={newEvStart} onChange={(e) => setNewEvStart(e.target.value)} required className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">End Date *</label>
-                              <input type="datetime-local" value={newEvEnd} onChange={(e) => setNewEvEnd(e.target.value)} required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                              <input type="datetime-local" value={newEvEnd} onChange={(e) => setNewEvEnd(e.target.value)} required className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
                             </div>
                             {newEvType === "online" && (
                               <div className="sm:col-span-2">
                                 <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Event Link</label>
-                                <input type="url" value={newEvLink} onChange={(e) => setNewEvLink(e.target.value)} placeholder="https://meet.google.com/..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                                <input type="url" value={newEvLink} onChange={(e) => setNewEvLink(e.target.value)} placeholder="https://meet.google.com/..." className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
                               </div>
                             )}
                             {newEvType === "physical" && (
                               <>
                                 <div>
                                   <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Venue Name</label>
-                                  <input value={newEvVenue} onChange={(e) => setNewEvVenue(e.target.value)} placeholder="Tech Hub Lagos" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                                  <input value={newEvVenue} onChange={(e) => setNewEvVenue(e.target.value)} placeholder="Tech Hub Lagos" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
                                 </div>
                                 <div>
                                   <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-1.5">Address</label>
-                                  <input value={newEvAddress} onChange={(e) => setNewEvAddress(e.target.value)} placeholder="123 Tech Street" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
+                                  <input value={newEvAddress} onChange={(e) => setNewEvAddress(e.target.value)} placeholder="123 Tech Street" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" />
                                 </div>
                               </>
                             )}
@@ -4410,7 +4410,7 @@ User request: ${aiTestPrompt.trim()}`;
                           .map((ev) => (
                             <div
                               key={ev.id}
-                              className="bg-[#111827] border border-white/10 rounded-2xl p-5"
+                              className="bg-surface border border-border-base rounded-2xl p-5"
                             >
                               <div className="flex items-start justify-between gap-4 flex-wrap">
                                 <div className="flex-1 min-w-0">
@@ -4504,7 +4504,7 @@ User request: ${aiTestPrompt.trim()}`;
 
                               {/* RSVP panel */}
                               {expandedRsvpEventId === ev.id && (
-                                <div className="mt-4 border-t border-white/10 pt-4">
+                                <div className="mt-4 border-t border-border-base pt-4">
                                   {loadingRsvpEventId === ev.id ? (
                                     <div className="flex items-center gap-2 text-white/40 text-xs py-2">
                                       <Loader2 className="w-4 h-4 animate-spin" /> Loading RSVPs…
@@ -4524,7 +4524,7 @@ User request: ${aiTestPrompt.trim()}`;
                                         </thead>
                                         <tbody>
                                           {(eventRsvps[ev.id] ?? []).map((reg) => (
-                                            <tr key={reg.id} className="border-t border-white/5">
+                                            <tr key={reg.id} className="border-t border-border-base">
                                               <td className="py-2 pr-4 text-white/80">{reg.name}</td>
                                               <td className="py-2 pr-4 text-white/60">{reg.email}</td>
                                               <td className="py-2 pr-4 text-white/40">{reg.phone ?? "—"}</td>
@@ -4591,7 +4591,7 @@ User request: ${aiTestPrompt.trim()}`;
 
                     {/* Lesson create/edit form */}
                     {showLessonForm && (
-                      <form onSubmit={handleSaveLesson} className="bg-[#111827] border border-blue-500/30 rounded-2xl p-5 space-y-4">
+                      <form onSubmit={handleSaveLesson} className="bg-surface border border-blue-500/30 rounded-2xl p-5 space-y-4">
                         <p className="text-sm font-bold text-white flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-blue-400" />
                           {editingLesson ? "Edit Lesson" : "New Lesson"}
@@ -4604,7 +4604,7 @@ User request: ${aiTestPrompt.trim()}`;
                               onChange={(e) => setLessonForm((f) => ({ ...f, title: e.target.value, slug: slugifyTitle(e.target.value) }))}
                               placeholder="e.g. Variables & Data Types"
                               required
-                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                              className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
                             />
                           </div>
                           <div>
@@ -4613,7 +4613,7 @@ User request: ${aiTestPrompt.trim()}`;
                               value={lessonForm.slug}
                               onChange={(e) => setLessonForm((f) => ({ ...f, slug: e.target.value }))}
                               placeholder="auto-generated from title"
-                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white/70 font-mono placeholder-white/20 focus:outline-none focus:border-blue-500"
+                              className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white/70 font-mono placeholder-white/20 focus:outline-none focus:border-blue-500"
                             />
                           </div>
                         </div>
@@ -4623,7 +4623,7 @@ User request: ${aiTestPrompt.trim()}`;
                             value={lessonForm.description}
                             onChange={(e) => setLessonForm((f) => ({ ...f, description: e.target.value }))}
                             placeholder="Short description of this lesson"
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
                           />
                         </div>
                         <div>
@@ -4631,7 +4631,7 @@ User request: ${aiTestPrompt.trim()}`;
                           <select
                             value={lessonForm.language}
                             onChange={(e) => setLessonForm((f) => ({ ...f, language: e.target.value as DynamicLesson["language"] }))}
-                            className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                            className="bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
                           >
                             <option value="javascript">JavaScript</option>
                             <option value="typescript">TypeScript</option>
@@ -4645,7 +4645,7 @@ User request: ${aiTestPrompt.trim()}`;
                             onChange={(e) => setLessonForm((f) => ({ ...f, codeExample: e.target.value }))}
                             rows={6}
                             placeholder="// Paste the runnable code example here"
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono placeholder-white/20 focus:outline-none focus:border-blue-500 resize-y"
+                            className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white font-mono placeholder-white/20 focus:outline-none focus:border-blue-500 resize-y"
                           />
                         </div>
                         <div>
@@ -4655,7 +4655,7 @@ User request: ${aiTestPrompt.trim()}`;
                             onChange={(e) => setLessonForm((f) => ({ ...f, explanation: e.target.value }))}
                             rows={4}
                             placeholder="Explain the key concepts in this lesson…"
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-y"
+                            className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 resize-y"
                           />
                         </div>
                         <div>
@@ -4665,14 +4665,14 @@ User request: ${aiTestPrompt.trim()}`;
                             onChange={(e) => setLessonForm((f) => ({ ...f, expectedOutput: e.target.value }))}
                             rows={3}
                             placeholder={"DevOS\n42\ntrue"}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white font-mono placeholder-white/20 focus:outline-none focus:border-blue-500 resize-y"
+                            className="w-full bg-black/40 border border-border-base rounded-xl px-3 py-2 text-sm text-white font-mono placeholder-white/20 focus:outline-none focus:border-blue-500 resize-y"
                           />
                         </div>
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
                             onClick={() => setLessonForm((f) => ({ ...f, published: !f.published }))}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${lessonForm.published ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-white/10 text-white/40"}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${lessonForm.published ? "bg-green-600/10 border-green-500/30 text-green-400" : "bg-white/5 border-border-base text-white/40"}`}
                           >
                             {lessonForm.published ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                             {lessonForm.published ? "Published" : "Draft"}
@@ -4692,7 +4692,7 @@ User request: ${aiTestPrompt.trim()}`;
                     {loadingLessons ? (
                       <div className="flex items-center gap-2 text-white/30 py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
                     ) : dynamicLessons.length === 0 ? (
-                      <div className="bg-[#111827] border border-white/5 rounded-2xl p-8 text-center">
+                      <div className="bg-surface border border-border-base rounded-2xl p-8 text-center">
                         <BookOpen className="w-8 h-8 text-white/10 mx-auto mb-2" />
                         <p className="text-white/40 text-sm">No custom lessons yet. Click <strong>New Lesson</strong> to add one.</p>
                       </div>
@@ -4700,7 +4700,7 @@ User request: ${aiTestPrompt.trim()}`;
                       <div className="space-y-2">
                         <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-2">Custom Lessons ({dynamicLessons.length})</p>
                         {dynamicLessons.map((lesson) => (
-                          <div key={lesson.id} className="flex items-center justify-between gap-3 bg-[#111827] border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 transition-all">
+                          <div key={lesson.id} className="flex items-center justify-between gap-3 bg-surface border border-border-base hover:border-border-base rounded-xl px-4 py-3 transition-all">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-sm font-bold text-white truncate">{lesson.title}</p>
@@ -4732,7 +4732,7 @@ User request: ${aiTestPrompt.trim()}`;
                       <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-2">Built-in Topics ({TOPICS.length})</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {TOPICS.map((topic) => (
-                          <div key={topic.id} className="bg-[#111827] border border-white/5 rounded-2xl p-5">
+                          <div key={topic.id} className="bg-surface border border-border-base rounded-2xl p-5">
                             <div className="flex items-start justify-between mb-2">
                               <p className="font-bold text-white">{topic.title}</p>
                               <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 bg-white/5 px-2 py-0.5 rounded-md">
@@ -4777,7 +4777,7 @@ User request: ${aiTestPrompt.trim()}`;
                     ) : (
                       <form onSubmit={handleSaveSiteConfig} className="space-y-5">
                         {/* Branding */}
-                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-4">
+                        <div className="bg-surface border border-border-base rounded-2xl p-6 space-y-4">
                           <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
                             <Globe className="w-4 h-4 text-blue-400" />
                             Branding
@@ -4789,7 +4789,7 @@ User request: ${aiTestPrompt.trim()}`;
                               value={siteConfig.platformName}
                               onChange={(e) => setSiteConfig((s) => ({ ...s, platformName: e.target.value }))}
                               placeholder="DevOS"
-                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                              className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                               required
                             />
                           </div>
@@ -4800,7 +4800,7 @@ User request: ${aiTestPrompt.trim()}`;
                               value={siteConfig.tagline}
                               onChange={(e) => setSiteConfig((s) => ({ ...s, tagline: e.target.value }))}
                               placeholder="The cloud IDE built for builders…"
-                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                              className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                             />
                           </div>
                           <div>
@@ -4810,13 +4810,13 @@ User request: ${aiTestPrompt.trim()}`;
                               value={siteConfig.footerCredit}
                               onChange={(e) => setSiteConfig((s) => ({ ...s, footerCredit: e.target.value }))}
                               placeholder="Built by Kontyra and Tech Visionary Network"
-                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                              className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                             />
                           </div>
                         </div>
 
                         {/* Contact */}
-                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-4">
+                        <div className="bg-surface border border-border-base rounded-2xl p-6 space-y-4">
                           <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
                             <Send className="w-4 h-4 text-blue-400" />
                             Contact
@@ -4828,11 +4828,11 @@ User request: ${aiTestPrompt.trim()}`;
                               value={siteConfig.contactEmail}
                               onChange={(e) => setSiteConfig((s) => ({ ...s, contactEmail: e.target.value }))}
                               placeholder="info@devos.zone.id"
-                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                              className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                               required
                             />
                           </div>
-                          <div className="flex items-center justify-between py-3.5 px-4 bg-black/30 border border-white/10 rounded-xl">
+                          <div className="flex items-center justify-between py-3.5 px-4 bg-black/30 border border-border-base rounded-xl">
                             <div>
                               <p className="text-sm font-semibold text-white">Allow voice calls platform-wide</p>
                               <p className="text-xs text-white/35 mt-0.5">If disabled, community and organization voice call buttons are hidden.</p>
@@ -4848,7 +4848,7 @@ User request: ${aiTestPrompt.trim()}`;
                         </div>
 
                         {/* Social Links */}
-                        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 space-y-4">
+                        <div className="bg-surface border border-border-base rounded-2xl p-6 space-y-4">
                           <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
                             <Link2 className="w-4 h-4 text-blue-400" />
                             Social Links
@@ -4865,7 +4865,7 @@ User request: ${aiTestPrompt.trim()}`;
                                 value={(siteConfig as any)[key]}
                                 onChange={(e) => setSiteConfig((s) => ({ ...s, [key]: e.target.value }))}
                                 placeholder={placeholder}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
+                                className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors"
                               />
                             </div>
                           ))}
@@ -4991,10 +4991,10 @@ User request: ${aiTestPrompt.trim()}`;
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[#111827] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
+            className="bg-surface border border-border-base rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
           >
             {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border-base flex-shrink-0">
               <div className="flex items-center gap-3">
                 <FileCode className="w-5 h-5 text-blue-400" />
                 <div>
@@ -5020,7 +5020,7 @@ User request: ${aiTestPrompt.trim()}`;
                 <p className="text-sm text-white/30 text-center py-4">No files yet. Add one below.</p>
               )}
               {editingTemplateFiles.map((file, index) => (
-                <div key={index} className="rounded-xl border border-white/10 overflow-hidden">
+                <div key={index} className="rounded-xl border border-border-base overflow-hidden">
                   <div
                     className="flex items-center justify-between px-4 py-3 bg-white/5 cursor-pointer hover:bg-white/8 transition-colors"
                     onClick={() => setExpandedFileIndex(expandedFileIndex === index ? null : index)}
@@ -5048,7 +5048,7 @@ User request: ${aiTestPrompt.trim()}`;
                     <textarea
                       value={file.content}
                       onChange={(e) => handleUpdateTemplateFileContent(index, e.target.value)}
-                      className="w-full bg-[#0D1117] text-white/80 font-mono text-xs p-4 resize-none outline-none border-t border-white/10"
+                      className="w-full bg-surface text-white/80 font-mono text-xs p-4 resize-none outline-none border-t border-border-base"
                       rows={12}
                       spellCheck={false}
                       placeholder="File content..."
@@ -5058,27 +5058,27 @@ User request: ${aiTestPrompt.trim()}`;
               ))}
 
               {/* Add new file */}
-              <div className="rounded-xl border border-dashed border-white/10 p-4 space-y-3">
+              <div className="rounded-xl border border-dashed border-border-base p-4 space-y-3">
                 <p className="text-xs font-bold text-white/40 uppercase tracking-wider">Add New File</p>
                 <input
                   type="text"
                   value={newTplFileName}
                   onChange={(e) => setNewTplFileName(e.target.value)}
                   placeholder="filename (e.g. css/style.css)"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-blue-500/50 font-mono"
+                  className="w-full bg-white/5 border border-border-base rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-blue-500/50 font-mono"
                 />
                 <textarea
                   value={newTplFileContent}
                   onChange={(e) => setNewTplFileContent(e.target.value)}
                   placeholder="File content (optional)..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-blue-500/50 font-mono resize-none"
+                  className="w-full bg-white/5 border border-border-base rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-blue-500/50 font-mono resize-none"
                   rows={6}
                   spellCheck={false}
                 />
                 <button
                   onClick={handleAddTemplateFile}
                   disabled={!newTplFileName.trim()}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 text-sm rounded-lg font-bold transition-all disabled:opacity-40"
+                  className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-border-base text-white/80 text-sm rounded-lg font-bold transition-all disabled:opacity-40"
                 >
                   <Plus className="w-4 h-4" />
                   Add File
@@ -5087,7 +5087,7 @@ User request: ${aiTestPrompt.trim()}`;
             </div>
 
             {/* Modal footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10 flex-shrink-0">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-base flex-shrink-0">
               <button
                 onClick={() => setEditingTemplateId(null)}
                 className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors"
@@ -5128,7 +5128,7 @@ function StatCard({
     purple: "bg-purple-600/20 text-purple-400",
   };
   return (
-    <div className="p-6 rounded-2xl bg-[#111] border border-white/5">
+    <div className="p-6 rounded-2xl bg-card border border-border-base">
       <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4", colors[color])}>
         {icon}
       </div>
@@ -5151,7 +5151,7 @@ function TemplateCard({
 }) {
   const isBusy = moderating === template.id;
   return (
-    <div className="p-5 rounded-2xl bg-[#111] border border-white/5">
+    <div className="p-5 rounded-2xl bg-card border border-border-base">
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="font-bold text-white text-lg">{template.name}</p>

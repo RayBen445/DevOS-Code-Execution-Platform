@@ -200,7 +200,7 @@ export default function Portfolio() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <div className="relative">
           <div className="w-16 h-16 rounded-full border-2 border-blue-500/10 border-t-blue-500 animate-spin" />
           <Zap className="absolute inset-0 m-auto w-6 h-6 text-blue-500 animate-pulse" />
@@ -211,11 +211,11 @@ export default function Portfolio() {
 
   if (error || !userSettings) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-base text-white flex flex-col items-center justify-center p-6 text-center">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-24 h-24 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mb-8 shadow-2xl shadow-red-500/5"
+          className="w-24 h-24 rounded-[32px] bg-white/5 border border-border-base flex items-center justify-center mb-8 shadow-2xl shadow-red-500/5"
         >
           <AlertCircle className="w-12 h-12 text-white/20" />
         </motion.div>
@@ -234,7 +234,7 @@ export default function Portfolio() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-base text-white font-sans selection:bg-blue-500/30">
       {/* Navbar — show for authenticated users */}
       {currentUser && !isPreview && <Navbar />}
 
@@ -268,19 +268,33 @@ export default function Portfolio() {
       </div>
 
       {/* Header / Profile Section */}
-      <header className="relative w-full pt-32 pb-20 px-6 md:px-8">
+      <header className="relative w-full pt-32 pb-20 px-6 md:px-8 border-b border-border-base bg-base relative overflow-hidden">
+        {/* Banner Image */}
+        {userSettings.bannerUrl ? (
+          <div className="absolute top-0 left-0 w-full h-[320px] md:h-[400px] z-0">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-base z-10" />
+            <img src={userSettings.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <div className="absolute top-0 left-0 w-full h-[320px] md:h-[400px] z-0 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 via-purple-600/5 to-base z-10" />
+            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[150%] bg-blue-500/10 blur-[120px] rounded-full" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[120%] bg-purple-500/10 blur-[120px] rounded-full" />
+          </div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center text-center"
+          className="flex flex-col items-center text-center relative z-20 pt-16 md:pt-32"
         >
-          <div className="relative group mb-10">
+          <div className="relative group mb-8">
             <motion.div 
               animate={{ rotate: 360 }}
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               className="absolute inset-[-8px] rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 opacity-20 blur-md group-hover:opacity-40 transition-opacity"
             />
-            <div className="relative w-32 h-32 rounded-full bg-[#111] border-2 border-white/10 overflow-hidden shadow-2xl">
+            <div className="relative w-36 h-36 md:w-44 md:h-44 rounded-[2.5rem] bg-card border-4 border-base overflow-hidden shadow-2xl transition-transform duration-500 group-hover:scale-105">
               <img
                 src={portfolioAvatarUrl}
                 alt={portfolioDisplayName}
@@ -288,8 +302,8 @@ export default function Portfolio() {
                 referrerPolicy="no-referrer"
               />
             </div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-blue-600 border-4 border-[#050505] flex items-center justify-center shadow-lg">
-              <Zap className="w-3.5 h-3.5 text-white fill-white" />
+            <div className="absolute -bottom-3 -right-3 w-10 h-10 rounded-2xl bg-blue-600 border-4 border-base flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <Zap className="w-4 h-4 text-white fill-white" />
             </div>
           </div>
           
@@ -323,7 +337,7 @@ export default function Portfolio() {
               {userSettings.skills.map((skill) => (
                 <span
                   key={skill}
-                  className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs font-semibold"
+                  className="px-3 py-1 rounded-full bg-white/5 border border-border-base text-white/60 text-xs font-semibold"
                 >
                   {skill}
                 </span>
@@ -371,49 +385,54 @@ export default function Portfolio() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-2 mb-8">
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-6 mb-8 bg-white/5 backdrop-blur-md border border-border-base p-2 rounded-3xl w-fit mx-auto shadow-xl">
             {/* Follower/following counts */}
-            <button className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors">
-              <Users className="w-3.5 h-3.5" />
-              <span className="font-bold text-white">{followerCount ?? "…"}</span>
-              <span>followers</span>
+            <button className="flex items-center gap-1.5 px-4 py-2 rounded-2xl hover:bg-white/10 text-sm text-white/70 hover:text-white transition-all">
+              <Users className="w-4 h-4 text-blue-400" />
+              <span className="font-black text-white">{followerCount ?? "…"}</span>
+              <span className="font-medium tracking-wide">followers</span>
             </button>
-            <div className="w-1 h-1 rounded-full bg-white/10" />
-            <button className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors">
-              <span className="font-bold text-white">{followingCount ?? "…"}</span>
-              <span>following</span>
+            <div className="w-[1px] h-6 bg-border-base" />
+            <button className="flex items-center gap-1.5 px-4 py-2 rounded-2xl hover:bg-white/10 text-sm text-white/70 hover:text-white transition-all">
+              <span className="font-black text-white">{followingCount ?? "…"}</span>
+              <span className="font-medium tracking-wide">following</span>
             </button>
-            <div className="w-1 h-1 rounded-full bg-white/10" />
-            <div className="px-5 py-2 rounded-2xl bg-white/5 border border-white/10 text-xs font-bold text-white/60 flex items-center gap-2">
-              <Globe className="w-3.5 h-3.5" />
+            <div className="w-[1px] h-6 bg-border-base" />
+            <div className="px-4 py-2 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-sm font-bold text-blue-300 flex items-center gap-2">
+              <Globe className="w-4 h-4" />
               {projects.length} projects
             </div>
 
             {/* Owner vs Public actions */}
             {isOwner ? (
-              <div className="flex items-center gap-2">
+              <>
+                <div className="w-[1px] h-6 bg-border-base" />
                 <Link
                   to="/settings"
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all active:scale-90"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-white text-black text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-xl shadow-white/10"
                 >
-                  <Pencil className="w-3.5 h-3.5" />
+                  <Pencil className="w-4 h-4" />
                   Edit Profile
                 </Link>
-              </div>
+              </>
             ) : (
               uid && (
-                <FollowButton
-                  targetUid={uid}
-                  targetUsername={userSettings.username ?? username ?? ""}
-                  followerUsername={currentUser?.displayName ?? undefined}
-                />
+                <>
+                  <div className="w-[1px] h-6 bg-border-base" />
+                  <FollowButton
+                    targetUid={uid}
+                    targetUsername={userSettings.username ?? username ?? ""}
+                    followerUsername={currentUser?.displayName ?? undefined}
+                  />
+                </>
               )
             )}
 
+            <div className="w-[1px] h-6 bg-border-base" />
             <button
               onClick={() => handleCopyLink(buildPortfolioUrl(username ?? ""), "profile")}
               title="Copy portfolio URL"
-              className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90"
+              className="p-3 rounded-2xl bg-white/5 border border-border-base text-white/60 hover:text-white hover:bg-white/10 transition-all active:scale-90"
             >
               <Share2 className="w-4 h-4" />
             </button>
@@ -422,9 +441,9 @@ export default function Portfolio() {
       </header>
 
       {/* Tabs + main content */}
-      <main className="relative w-full px-6 md:px-8 pb-32">
+      <main className="relative w-full px-6 md:px-8 pb-32 -mt-6">
         {/* Tab nav */}
-        <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl mb-10 w-fit">
+        <div className="flex gap-1.5 p-1.5 bg-card/80 backdrop-blur-xl border border-border-base rounded-2xl mb-12 w-fit mx-auto shadow-2xl relative z-30">
           {(["projects", "posts", "about"] as PortfolioTab[]).map((tab) => (
             <button
               key={tab}
@@ -461,7 +480,7 @@ export default function Portfolio() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.08 }}
-                  className="group relative p-8 rounded-[32px] bg-[#0f0f0f] border border-white/5 hover:border-blue-500/30 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.1)] flex flex-col"
+                  className="group relative p-8 rounded-[32px] bg-base border border-border-base hover:border-blue-500/30 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(59,130,246,0.1)] flex flex-col"
                 >
                   <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[32px] pointer-events-none" />
 
@@ -502,7 +521,7 @@ export default function Portfolio() {
                     {project.tags && project.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-4">
                         {project.tags.slice(0, 4).map((tag: string) => (
-                          <span key={tag} className="px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[10px] font-semibold text-white/40 uppercase">
+                          <span key={tag} className="px-2.5 py-0.5 rounded-lg bg-white/5 border border-border-base text-[10px] font-semibold text-white/40 uppercase">
                             {tag}
                           </span>
                         ))}
@@ -524,7 +543,7 @@ export default function Portfolio() {
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between relative z-10">
+                  <div className="mt-auto pt-6 border-t border-border-base flex items-center justify-between relative z-10">
                     {(project.liveUrl || project.deployUrl) ? (
                       <a
                         href={project.liveUrl || project.deployUrl}
@@ -538,7 +557,7 @@ export default function Portfolio() {
                     ) : (
                       <Link
                         to={`/project/${project.id}`}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white/60 rounded-2xl text-xs font-bold hover:border-white/20 transition-all"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 border border-border-base text-white/60 rounded-2xl text-xs font-bold hover:border-border-base transition-all"
                       >
                         View Project
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -558,7 +577,7 @@ export default function Portfolio() {
 
             {projects.length === 0 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-32 text-center">
-                <div className="w-24 h-24 rounded-[40px] bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-8">
+                <div className="w-24 h-24 rounded-[40px] bg-white/5 border border-border-base flex items-center justify-center mx-auto mb-8">
                   <Globe className="w-10 h-10 text-white/10" />
                 </div>
                 <h3 className="text-2xl font-bold text-white/60 mb-3 tracking-tight">No public projects yet</h3>
@@ -574,7 +593,7 @@ export default function Portfolio() {
         {activeTab === "posts" && (
           <div className="space-y-4 max-w-2xl">
             {posts.length === 0 ? (
-              <div className="py-20 text-center rounded-2xl border border-dashed border-white/10">
+              <div className="py-20 text-center rounded-2xl border border-dashed border-border-base">
                 <Heart className="w-10 h-10 text-white/10 mx-auto mb-3" />
                 <p className="text-white/30 text-sm">No posts yet</p>
               </div>
@@ -585,7 +604,7 @@ export default function Portfolio() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/10 transition-all"
+                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-border-base transition-all"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-white/30 font-semibold capitalize">{post.type}</span>
@@ -600,7 +619,7 @@ export default function Portfolio() {
                       {post.projectName}
                     </div>
                   )}
-                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5 text-xs text-white/30">
+                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border-base text-xs text-white/30">
                     <Heart className="w-3.5 h-3.5" />
                     {post.likes > 0 ? post.likes : "0"} likes
                   </div>
@@ -720,7 +739,7 @@ export default function Portfolio() {
             )}
 
             {!portfolioConfig?.bio && !userSettings.bio && !portfolioConfig?.links?.some((l: any) => l.url) && !userSettings.links && isOwner && (
-              <div className="py-16 text-center rounded-2xl border border-dashed border-white/10">
+              <div className="py-16 text-center rounded-2xl border border-dashed border-border-base">
                 <UserIcon className="w-10 h-10 text-white/10 mx-auto mb-3" />
                 <p className="text-white/30 text-sm">No about info yet</p>
                 <Link to="/settings" className="inline-block mt-4 text-xs text-blue-400 hover:text-blue-300 transition-colors font-semibold">
@@ -740,10 +759,10 @@ export default function Portfolio() {
       )}
 
       {/* Footer */}
-      <footer className="relative w-full px-6 md:px-8 py-20 border-t border-white/5 text-center">
+      <footer className="relative w-full px-6 md:px-8 py-20 border-t border-border-base text-center">
         <div className="flex flex-col items-center gap-6">
           <Link to="/" className="group inline-flex flex-col items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-blue-600 group-hover:border-blue-500 transition-all duration-500">
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-border-base flex items-center justify-center group-hover:bg-blue-600 group-hover:border-blue-500 transition-all duration-500">
               <Zap className="w-5 h-5 text-white/20 group-hover:text-white group-hover:fill-white transition-all" />
             </div>
             <span className="text-xs font-bold uppercase tracking-[0.3em] text-white/20 group-hover:text-white transition-colors">Built with DevOS</span>

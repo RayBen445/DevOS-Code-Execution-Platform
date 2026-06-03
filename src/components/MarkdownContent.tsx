@@ -55,7 +55,7 @@ function MarkdownToken({ token }: { token: TextToken }) {
 
     case "codeblock":
       return (
-        <pre className="bg-black/40 border border-white/10 rounded-lg p-4 overflow-x-auto">
+        <pre className="bg-black/40 border border-border-base rounded-lg p-4 overflow-x-auto">
           <code className="text-green-400/90 font-mono text-sm whitespace-pre-wrap break-words">
             {token.content}
           </code>
@@ -70,7 +70,7 @@ function MarkdownToken({ token }: { token: TextToken }) {
 
     case "code":
       return (
-        <code className="bg-white/10 px-2 py-1 rounded text-blue-300 font-mono text-sm border border-white/5 break-words [overflow-wrap:anywhere]">
+        <code className="bg-white/10 px-2 py-1 rounded text-blue-300 font-mono text-sm border border-border-base break-words [overflow-wrap:anywhere]">
           {token.content}
         </code>
       );

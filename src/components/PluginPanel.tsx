@@ -847,7 +847,7 @@ export default function PluginPanel({ project, projectId, readOnly = false, onFi
   const installedCount = Object.keys(installedPlugins).length;
 
   return (
-    <div className="h-full flex flex-col bg-[#0D1117]">
+    <div className="h-full flex flex-col bg-surface">
       {/* Header */}
       <div className="p-4 border-b border-[#21262D] flex-shrink-0">
         <div className="flex items-center gap-2 mb-1">
@@ -920,7 +920,7 @@ export default function PluginPanel({ project, projectId, readOnly = false, onFi
                 const c = col(plugin.color);
                 const Icon = plugin.icon;
                 return (
-                  <div key={plugin.id} className={cn("rounded-xl border p-3 space-y-3", c.border, "bg-[#0D1117]")}>
+                  <div key={plugin.id} className={cn("rounded-xl border p-3 space-y-3", c.border, "bg-surface")}>
                     {/* Plugin header */}
                     <div className="flex items-center gap-3">
                       <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", c.bg)}>
@@ -945,7 +945,7 @@ export default function PluginPanel({ project, projectId, readOnly = false, onFi
                           const isHidden = hiddenKeys.has(`settings_${envKey}`);
                           const displayValue = isHidden ? "•".repeat(Math.min(envValue.length || 20, 20)) : (envValue || "(auto-generated)");
                           return (
-                            <div key={envKey} className="rounded-lg bg-black/30 border border-white/5 p-2">
+                            <div key={envKey} className="rounded-lg bg-black/30 border border-border-base p-2">
                               <p className="text-[10px] font-mono text-white/50 mb-1">{envKey}</p>
                               <div className="flex items-center gap-1.5">
                                 <code className="flex-1 text-[10px] font-mono text-green-300/70 truncate">
@@ -981,14 +981,14 @@ export default function PluginPanel({ project, projectId, readOnly = false, onFi
                     {/* Usage snippet */}
                     <div>
                       <p className="text-[10px] text-white/30 uppercase tracking-wider font-bold mb-1.5">Usage Example</p>
-                      <pre className="text-[10px] font-mono text-green-300/60 bg-black/40 border border-white/5 rounded-lg p-2 overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                      <pre className="text-[10px] font-mono text-green-300/60 bg-black/40 border border-border-base rounded-lg p-2 overflow-x-auto leading-relaxed whitespace-pre-wrap">
                         {plugin.snippet}
                       </pre>
                     </div>
 
                     {/* Uninstall */}
                     {!readOnly && (
-                      <div className="pt-1 border-t border-white/5">
+                      <div className="pt-1 border-t border-border-base">
                         <button
                           onClick={() => {
                             setActiveTab("marketplace");
@@ -1027,7 +1027,7 @@ export default function PluginPanel({ project, projectId, readOnly = false, onFi
               className={cn(
                 "rounded-xl border transition-all",
                 isInstalled
-                  ? `${c.border} bg-[#0D1117]`
+                  ? `${c.border} bg-surface`
                   : "border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.04]"
               )}
             >

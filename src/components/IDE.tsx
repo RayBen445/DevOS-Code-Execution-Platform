@@ -1344,7 +1344,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#0D1117] gap-4">
+      <div className="h-screen flex flex-col items-center justify-center bg-surface gap-4">
         <div className="w-12 h-12 rounded-2xl bg-blue-600/20 flex items-center justify-center">
           <Code2 className="w-6 h-6 text-blue-400" />
         </div>
@@ -1367,7 +1367,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
   return (
     <div
-      className="h-screen flex flex-col bg-[#0D1117] overflow-hidden"
+      className="h-screen flex flex-col bg-surface overflow-hidden"
       onClick={() => contextMenu && setContextMenu(null)}
     >
       {/* Org project permission banner */}
@@ -1504,7 +1504,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-400 ring-1 ring-[#161B22]" />
                     {/* Tooltip */}
                     <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-50 pointer-events-none">
-                      <div className="bg-[#1a1a2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl text-xs text-white whitespace-nowrap">
+                      <div className="bg-surface border border-border-base rounded-lg px-2.5 py-1.5 shadow-xl text-xs text-white whitespace-nowrap">
                         <p className="font-semibold">{u.name}</p>
                         {u.currentFile && <p className="text-white/50 text-[11px]">editing {u.currentFile}</p>}
                       </div>
@@ -1627,7 +1627,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
       {/* ── Mobile top navigation bar (replaces slide-in drawer) ───────────── */}
       {project?.systemType !== 'portfolio' && !isFocusMode && (
-        <nav className="md:hidden flex-shrink-0 bg-[#0B0F19] border-b border-[#21262D] overflow-x-auto">
+        <nav className="md:hidden flex-shrink-0 bg-base border-b border-[#21262D] overflow-x-auto">
           <div className="flex items-stretch min-w-max">
             {mobileNavTabs.map(({ id, icon: Icon, label }) => (
               <button
@@ -1656,7 +1656,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Sidebar icon tabs — desktop only, hidden in focus mode */}
         {project?.systemType !== 'portfolio' && !isFocusMode && (
-          <div className="hidden md:flex w-12 border-r border-[#21262D] bg-[#0D1117] flex-col items-center py-3 gap-1 flex-shrink-0">
+          <div className="hidden md:flex w-12 border-r border-[#21262D] bg-surface flex-col items-center py-3 gap-1 flex-shrink-0">
             {[
               { id: "explorer" as PanelType, icon: Files, label: "Explorer" },
               { id: "git" as PanelType, icon: GitBranch, label: "Source Control" },
@@ -1694,7 +1694,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.12 }}
-              className="md:hidden absolute inset-0 z-20 bg-[#0D1117] flex flex-col overflow-hidden"
+              className="md:hidden absolute inset-0 z-20 bg-surface flex flex-col overflow-hidden"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -1752,7 +1752,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
               {/* Terminal — full-height on mobile */}
               {mobileTab === "terminal" && (
-                <div className="h-full flex flex-col bg-[#0D1117]">
+                <div className="h-full flex flex-col bg-surface">
                   <div className="flex items-center justify-between px-4 py-2 border-b border-[#21262D] bg-[#161B22] flex-shrink-0">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2 text-white/40">
@@ -1811,7 +1811,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   </div>
                   <form
                     onSubmit={handleTerminalSubmit}
-                    className="flex items-center gap-2 px-4 py-2 border-t border-[#21262D] bg-[#0D1117] flex-shrink-0"
+                    className="flex items-center gap-2 px-4 py-2 border-t border-[#21262D] bg-surface flex-shrink-0"
                   >
                     <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0 whitespace-nowrap">
                       devos ▶ {project?.name || "project"} $
@@ -1880,7 +1880,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
               {/* Git Panel — hidden on mobile, hidden in focus mode */}
               {project?.systemType !== 'portfolio' && activePanel === "git" && !isFocusMode && (
-                <div className="hidden md:flex w-80 border-r border-white/5">
+                <div className="hidden md:flex w-80 border-r border-border-base">
                   <GitPanel projectId={projectId} files={files} />
                 </div>
               )}
@@ -1899,22 +1899,22 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
               {/* Plugin Marketplace Panel */}
               {project?.systemType !== 'portfolio' && activePanel === "plugins" && !isFocusMode && (
-                <div className="hidden md:flex w-80 border-r border-white/5 flex-col overflow-hidden">
+                <div className="hidden md:flex w-80 border-r border-border-base flex-col overflow-hidden">
                   <PluginPanel projectId={projectId} project={project} readOnly={!canDeploy} />
                 </div>
               )}
 
               {/* Collaborators Panel — org projects only, hidden on mobile */}
               {project?.systemType !== 'portfolio' && activePanel === "collaborators" && !isFocusMode && isOrgProject && (
-                <div className="hidden md:flex w-72 border-r border-white/5 flex-col overflow-y-auto">
+                <div className="hidden md:flex w-72 border-r border-border-base flex-col overflow-y-auto">
                   <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} presenceUsers={presenceUsers} activityItems={activityItems} />
                 </div>
               )}
 
               {/* Deployments Panel — shows history, rollback, branch deployments */}
               {project?.systemType !== 'portfolio' && activePanel === "settings" && !isFocusMode && canDeploy && (
-                <div className="hidden md:flex w-80 border-r border-white/5 flex-col overflow-y-auto">
-                  <div className="p-4 border-b border-white/5">
+                <div className="hidden md:flex w-80 border-r border-border-base flex-col overflow-y-auto">
+                  <div className="p-4 border-b border-border-base">
                     <h3 className="text-xs font-bold text-white/60 uppercase tracking-wider">Deployments</h3>
                   </div>
                   <div className="flex-1 overflow-y-auto p-3">
@@ -1930,7 +1930,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
               {/* Editor Area */}
               <main
-                className="flex-1 relative bg-[#0D1117] flex flex-col overflow-hidden"
+                className="flex-1 relative bg-surface flex flex-col overflow-hidden"
                 onContextMenu={handleContextMenu}
               >
                 {/* File tabs */}
@@ -1948,7 +1948,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                           className={cn(
                             "flex items-center gap-1.5 px-3 py-2 text-xs cursor-pointer border-r border-[#21262D] flex-shrink-0 group select-none min-w-0 transition-colors",
                             isActive
-                              ? "bg-[#0D1117] text-white border-b-2 border-b-blue-500"
+                              ? "bg-surface text-white border-b-2 border-b-blue-500"
                               : "text-white/35 hover:text-white/70 hover:bg-white/[0.04]"
                           )}
                           onClick={() => setActiveFileId(fileId)}
@@ -2064,7 +2064,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 initial={{ y: 256 }}
                 animate={{ y: 0 }}
                 exit={{ y: 256 }}
-                className="border-t border-[#21262D] bg-[#0D1117] flex flex-col relative z-10 shadow-2xl"
+                className="border-t border-[#21262D] bg-surface flex flex-col relative z-10 shadow-2xl"
                 style={{ height: terminalHeight }}
               >
                 {/* Resize handle */}
@@ -2146,7 +2146,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 {/* Command input */}
                 <form
                   onSubmit={handleTerminalSubmit}
-                  className="flex items-center gap-2 px-4 py-2 border-t border-[#21262D] bg-[#0D1117] flex-shrink-0"
+                  className="flex items-center gap-2 px-4 py-2 border-t border-[#21262D] bg-surface flex-shrink-0"
                 >
                   <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0 whitespace-nowrap">
                     devos ▶ {project?.name || "project"} $
@@ -2182,7 +2182,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           {/* Right Pane: Live Preview — hidden on mobile, hidden in focus mode */}
           {project?.systemType !== 'portfolio' && !isFocusMode && (
             <div className={cn(
-              "bg-[#0D1117] hidden md:flex flex-col border-l border-[#21262D] overflow-hidden",
+              "bg-surface hidden md:flex flex-col border-l border-[#21262D] overflow-hidden",
               isPreviewFullscreen ? "flex-1" : "w-1/2"
             )}>
               <div className="h-10 border-b border-[#21262D] flex items-center justify-between px-3 bg-[#161B22] flex-shrink-0">
@@ -2462,12 +2462,12 @@ function ProjectHomepage({ project, files, isReadOnly, onOpenFile, onCreateFile,
   const techStack = Array.from(extSet).slice(0, 8);
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0D1117] text-white">
+    <div className="h-full overflow-y-auto bg-surface text-white">
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
 
         {/* ── Project header ── */}
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600/30 to-purple-600/20 border border-white/10 flex items-center justify-center text-2xl font-black text-white/60 flex-shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600/30 to-purple-600/20 border border-border-base flex items-center justify-center text-2xl font-black text-white/60 flex-shrink-0">
             {project.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
@@ -2475,7 +2475,7 @@ function ProjectHomepage({ project, files, isReadOnly, onOpenFile, onCreateFile,
               <h1 className="text-xl font-extrabold text-white truncate">{project.name}</h1>
               {project.isPublic
                 ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20">Public</span>
-                : <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white/40 border border-white/10">Private</span>
+                : <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white/40 border border-border-base">Private</span>
               }
               {project.forkedFrom && (
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/20 flex items-center gap-1">
@@ -2489,7 +2489,7 @@ function ProjectHomepage({ project, files, isReadOnly, onOpenFile, onCreateFile,
             {techStack.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {techStack.map(ext => (
-                  <span key={ext} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[11px] font-mono text-white/40 uppercase">
+                  <span key={ext} className="px-2 py-0.5 rounded-md bg-white/5 border border-border-base text-[11px] font-mono text-white/40 uppercase">
                     {ext}
                   </span>
                 ))}
@@ -2510,7 +2510,7 @@ function ProjectHomepage({ project, files, isReadOnly, onOpenFile, onCreateFile,
             </button>
             <button
               onClick={onOpenExplorer}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 text-white/60 rounded-lg font-semibold hover:bg-white/10 transition-all text-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-border-base text-white/60 rounded-lg font-semibold hover:bg-white/10 transition-all text-xs"
             >
               <Files className="w-3.5 h-3.5" />
               Open Explorer
@@ -2686,7 +2686,7 @@ function ReadmeRenderer({ content }: { content: string }) {
         out.push(
           <pre
             key={`code-${i}`}
-            className="bg-white/5 border border-white/10 rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-green-300 leading-relaxed my-3"
+            className="bg-white/5 border border-border-base rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-green-300 leading-relaxed my-3"
             data-lang={codeLang || undefined}
           >
             <code>{codeLines.join("\n")}</code>
@@ -2708,14 +2708,14 @@ function ReadmeRenderer({ content }: { content: string }) {
       out.push(<h3 key={i} className="text-base font-bold text-white mt-4 mb-1">{renderInline(line.slice(4), `h3-${i}`)}</h3>);
     } else if (line.startsWith("## ")) {
       flushList();
-      out.push(<h2 key={i} className="text-lg font-extrabold text-white mt-5 mb-2 border-b border-white/10 pb-1">{renderInline(line.slice(3), `h2-${i}`)}</h2>);
+      out.push(<h2 key={i} className="text-lg font-extrabold text-white mt-5 mb-2 border-b border-border-base pb-1">{renderInline(line.slice(3), `h2-${i}`)}</h2>);
     } else if (line.startsWith("# ")) {
       flushList();
       out.push(<h1 key={i} className="text-xl font-black text-white mt-5 mb-2">{renderInline(line.slice(2), `h1-${i}`)}</h1>);
     // Horizontal rule: --- or *** or ___
     } else if (/^(\s*[-*_]){3,}\s*$/.test(line)) {
       flushList();
-      out.push(<hr key={i} className="border-white/10 my-4" />);
+      out.push(<hr key={i} className="border-border-base my-4" />);
     // Blockquote
     } else if (line.startsWith("> ")) {
       flushList();
@@ -2749,7 +2749,7 @@ function ReadmeRenderer({ content }: { content: string }) {
   flushList();
   if (inCodeBlock && codeLines.length) {
     out.push(
-      <pre key="code-eof" className="bg-white/5 border border-white/10 rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-green-300 leading-relaxed my-3">
+      <pre key="code-eof" className="bg-white/5 border border-border-base rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-green-300 leading-relaxed my-3">
         <code>{codeLines.join("\n")}</code>
       </pre>
     );

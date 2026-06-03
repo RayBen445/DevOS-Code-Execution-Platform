@@ -140,7 +140,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
   const monthlyPct = credits ? Math.round((credits.monthly / MONTHLY_CREDITS_AMOUNT) * 100) : 0;
 
   return (
-    <nav className="h-14 border-b border-white/15 bg-[#0a0a0a]/70 supports-[backdrop-filter]:bg-[#0a0a0a]/55 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.35)] flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
+    <nav className="h-14 border-b border-border-base bg-base/70 supports-[backdrop-filter]:bg-base/55 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.35)] flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
       <div className="flex items-center gap-4">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/25 transition-transform group-hover:scale-105">
@@ -232,7 +232,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -6, scale: 0.97 }}
                     transition={{ duration: 0.13 }}
-                    className="absolute left-0 top-full mt-2 w-52 bg-[#111] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50"
+                    className="absolute left-0 top-full mt-2 w-52 bg-card border border-border-base rounded-xl shadow-xl overflow-hidden z-50"
                   >
                     {userOrgs.length > 0 ? (
                       <>
@@ -247,7 +247,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                             <span className="truncate">{org.name}</span>
                           </Link>
                         ))}
-                        <div className="border-t border-white/5" />
+                        <div className="border-t border-border-base" />
                       </>
                     ) : (
                       <div className="px-4 py-3">
@@ -261,7 +261,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                       <Plus className="w-4 h-4" />
                       Create Organisation
                     </button>
-                    <div className="border-t border-white/5" />
+                    <div className="border-t border-border-base" />
                     <Link
                       to="/orgs"
                       onClick={() => setIsOrgsOpen(false)}
@@ -316,7 +316,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.97 }}
                       transition={{ duration: 0.13 }}
-                      className="absolute right-0 top-full mt-2 w-64 bg-[#111] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 p-4"
+                      className="absolute right-0 top-full mt-2 w-64 bg-card border border-border-base rounded-xl shadow-xl overflow-hidden z-50 p-4"
                     >
                       <div className="flex items-center gap-2 mb-3">
                         <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", isAdmin ? "bg-red-500/15" : "bg-yellow-500/15")}>
@@ -378,10 +378,10 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                         </>
                       )}
 
-                      <div className="border-t border-white/5 mt-4 pt-3">
+                      <div className="border-t border-border-base mt-4 pt-3">
                         <button
                           onClick={() => { setIsCreditsPanelOpen(false); setIsRedeemOpen(true); }}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-white/70 hover:text-white transition-all font-semibold"
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-border-base text-sm text-white/70 hover:text-white transition-all font-semibold"
                         >
                           <Gift className="w-4 h-4" />
                           Redeem Code
@@ -434,7 +434,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             <div className="hidden md:block relative" ref={profileDropdownRef}>
               <button
                 onClick={() => setIsProfileOpen((v) => !v)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-border-base hover:border-border-base transition-all"
               >
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={displayName} className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />
@@ -464,7 +464,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -6, scale: 0.97 }}
                     transition={{ duration: 0.13 }}
-                    className="absolute right-0 top-full mt-2 w-56 bg-[#111] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50"
+                    className="absolute right-0 top-full mt-2 w-56 bg-card border border-border-base rounded-xl shadow-xl overflow-hidden z-50"
                   >
                     {/* ── Workspaces Section ── */}
                     <div className="px-4 pt-3 pb-1.5">
@@ -508,7 +508,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                         </button>
                       );
                     })}
-                    <div className="border-t border-white/5 my-1" />
+                    <div className="border-t border-border-base my-1" />
                     {username && (
                       <a
                         href={buildPortfolioUrl(username)}
@@ -537,7 +537,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     {/* Switch Account */}
                     {savedAccounts.filter((a) => a.uid !== user?.uid).length > 0 && (
                       <>
-                        <div className="border-t border-white/5 my-1" />
+                        <div className="border-t border-border-base my-1" />
                         <button
                           onClick={() => setIsSwitchAccountOpen((v) => !v)}
                           className="w-full flex items-center justify-between gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left"
@@ -599,7 +599,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                         )}
                       </>
                     )}
-                    <div className="border-t border-white/5 my-1" />
+                    <div className="border-t border-border-base my-1" />
                     {/* My Organizations — quick navigation links */}
                     {userOrgs.length > 0 && (
                       <>
@@ -617,7 +617,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                             <span className="truncate">{org.name}</span>
                           </Link>
                         ))}
-                        <div className="border-t border-white/5 my-1" />
+                        <div className="border-t border-border-base my-1" />
                       </>
                     )}
                     <button
@@ -673,7 +673,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               className="fixed top-0 right-0 h-full w-72 glass-dark border-l border-white/[0.06] z-50 flex flex-col md:hidden shadow-2xl"
             >
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
                 <div className="flex items-center gap-2">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
@@ -833,7 +833,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 {/* Workspaces (mobile) */}
                 {(userOrgs.length > 0 || true) && (
                   <>
-                    <div className="border-t border-white/5 my-2" />
+                    <div className="border-t border-border-base my-2" />
                     <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Workspace</p>
                     {/* Personal */}
                     <button
@@ -871,7 +871,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   </>
                 )}
 
-                <div className="border-t border-white/5 my-2" />
+                <div className="border-t border-border-base my-2" />
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Account</p>
                 {username && (
                   <a

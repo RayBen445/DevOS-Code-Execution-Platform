@@ -76,7 +76,7 @@ export default function FollowButton({
         className={`${baseCls(size)} ${
           hovering
             ? "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
-            : "bg-white/8 border-white/10 text-white/70 hover:border-white/20"
+            : "bg-white/8 border-border-base text-white/70 hover:border-border-base"
         } ${className}`}
       >
         {loading ? (

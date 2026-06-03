@@ -16,7 +16,7 @@ export default function UIThemeSwitcher({ compact, className }: UIThemeSwitcherP
     return (
       <div className={cn("relative group", className)}>
         <button
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-xs font-bold transition-all border border-white/5 hover:border-white/10"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-xs font-bold transition-all border border-border-base hover:border-border-base"
           title="Switch UI theme"
         >
           <Palette className="w-3.5 h-3.5" />

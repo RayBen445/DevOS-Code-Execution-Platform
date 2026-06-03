@@ -131,7 +131,7 @@ export default function TemplatePreviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
@@ -139,8 +139,8 @@ export default function TemplatePreviewPage() {
 
   if (error || !template) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center gap-6 p-8 text-center">
-        <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center">
+      <div className="min-h-screen bg-base text-white flex flex-col items-center justify-center gap-6 p-8 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-white/5 border border-border-base flex items-center justify-center">
           <AlertCircle className="w-10 h-10 text-white/20" />
         </div>
         <h1 className="text-3xl font-bold">{error ?? "Template not found"}</h1>
@@ -152,7 +152,7 @@ export default function TemplatePreviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <main className="flex-1 pb-16 md:pb-0 max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12">
@@ -211,7 +211,7 @@ export default function TemplatePreviewPage() {
             {/* File explorer */}
             <div className="grid md:grid-cols-[180px_1fr] gap-4">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
-                <p className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-white/30 border-b border-white/5">
+                <p className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-white/30 border-b border-border-base">
                   Files ({template.files.length})
                 </p>
                 <ul className="py-2 max-h-[50vh] overflow-y-auto">
@@ -237,7 +237,7 @@ export default function TemplatePreviewPage() {
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
                 {activeFile ? (
                   <>
-                    <div className="px-4 py-3 text-xs text-white/40 border-b border-white/5 font-mono flex items-center gap-2">
+                    <div className="px-4 py-3 text-xs text-white/40 border-b border-border-base font-mono flex items-center gap-2">
                       <FileIcon className="w-3.5 h-3.5" />
                       {activeFile.path || activeFile.name}
                       <span className="ml-auto text-white/20">{activeFile.language}</span>

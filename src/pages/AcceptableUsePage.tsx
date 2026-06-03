@@ -380,7 +380,7 @@ export default function AcceptableUsePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-base text-white flex flex-col overflow-x-hidden">
       <Navbar />
 
       <div className="relative border-b border-white/[0.06] overflow-hidden">
@@ -421,7 +421,7 @@ export default function AcceptableUsePage() {
           {SECTIONS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => scrollTo(id)}
               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex-shrink-0 border",
-                id === activeId ? "bg-emerald-600/20 border-emerald-500/40 text-emerald-300" : "bg-white/5 border-white/10 text-white/50 hover:text-white")}>
+                id === activeId ? "bg-emerald-600/20 border-emerald-500/40 text-emerald-300" : "bg-white/5 border-border-base text-white/50 hover:text-white")}>
               <Icon className="w-3 h-3" />{label}
             </button>
           ))}

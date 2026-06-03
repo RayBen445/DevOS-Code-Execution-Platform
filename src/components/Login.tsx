@@ -364,7 +364,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.93, y: 24 }}
         transition={{ type: "spring", damping: 28, stiffness: 320 }}
-        className="relative w-full max-w-md glass-dark border border-white/10 rounded-3xl p-8 shadow-2xl overflow-hidden"
+        className="relative w-full max-w-md glass-dark border border-border-base rounded-3xl p-8 shadow-2xl overflow-hidden"
       >
         {/* Ambient glow */}
         <div className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-600/12 rounded-full blur-[60px]" />
@@ -440,7 +440,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                       setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6));
                     }
                   }}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white text-center tracking-widest text-xl font-mono focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-black/40 border border-border-base rounded-2xl pl-12 pr-4 py-4 text-white text-center tracking-widest text-xl font-mono focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
               {error && <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3">{error}</p>}
@@ -472,7 +472,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                   placeholder="Your email address"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-black/40 border border-border-base rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
               {error && <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3">{error}</p>}
@@ -517,7 +517,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                   placeholder="Email or username (optional)"
                   value={passkeyIdentifier}
                   onChange={(e) => setPasskeyIdentifier(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-black/40 border border-border-base rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
               {error && <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3">{error}</p>}
@@ -613,7 +613,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                         placeholder="Full Name"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                        className="w-full bg-black/40 border border-border-base rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
                       />
                     </div>
 
@@ -634,7 +634,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                               ? "border-green-500/60 focus:border-green-500"
                               : usernameStatus === "error"
                               ? "border-yellow-500/60 focus:border-yellow-500"
-                              : "border-white/10 focus:border-blue-500"
+                              : "border-border-base focus:border-blue-500"
                           }`}
                         />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -693,7 +693,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                     placeholder={isSignUp ? "Email address" : "Email or username"}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    className="w-full bg-black/40 border border-border-base rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
                   />
                 </div>
 
@@ -706,7 +706,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    className="w-full bg-black/40 border border-border-base rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
                   />
                   <button
                     type="button"
@@ -759,7 +759,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
           )}
         </AnimatePresence>
 
-        <div className="mt-8 pt-8 border-t border-white/5 text-center">
+        <div className="mt-8 pt-8 border-t border-border-base text-center">
           <p className="text-xs text-white/20">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>

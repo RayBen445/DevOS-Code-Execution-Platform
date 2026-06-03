@@ -125,7 +125,7 @@ function PostComposer({ communityId, communityName, communitySlug, userId, usern
             placeholder="Share something with this community…"
             rows={2}
             maxLength={1000}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-indigo-500/60 focus:bg-white/[0.07] transition-all placeholder-white/25"
+            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-indigo-500/60 focus:bg-white/[0.07] transition-all placeholder-white/25"
           />
           <div className="flex items-center justify-end mt-2 gap-2">
             <span className="text-[11px] text-white/20">{text.length}/1000</span>
@@ -326,11 +326,11 @@ function MemberRow({ member, communityId, communityName, currentUserRole, curren
   const roleColors: Record<CommunityMemberRole, string> = {
     admin: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
     moderator: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-    member: "text-white/30 bg-white/5 border-white/10",
+    member: "text-white/30 bg-white/5 border-border-base",
   };
 
   return (
-    <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
+    <div className="flex items-center justify-between py-3 border-b border-border-base last:border-0">
       <div className="flex items-center gap-3">
         <Link to={userData?.username ? `/@${userData.username}` : "#"}>
           <img src={resolveAvatar(userData?.avatarUrl)} alt="" className="w-9 h-9 rounded-full object-cover" />
@@ -602,7 +602,7 @@ export default function CommunityPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex flex-col">
+      <div className="min-h-screen bg-base flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
@@ -624,7 +624,7 @@ export default function CommunityPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       {/* Hero banner */}
@@ -644,7 +644,7 @@ export default function CommunityPage() {
         {/* Community header */}
         <div className="relative mb-6 flex flex-col sm:flex-row sm:items-end gap-4">
           {/* Avatar */}
-          <div className="w-22 h-22 w-[88px] h-[88px] rounded-2xl bg-[#111827] border-4 border-[#0a0a0f] flex items-center justify-center overflow-hidden shadow-2xl shrink-0 ring-1 ring-white/10">
+          <div className="w-22 h-22 w-[88px] h-[88px] rounded-2xl bg-surface border-4 border-[#0a0a0f] flex items-center justify-center overflow-hidden shadow-2xl shrink-0 ring-1 ring-white/10">
             {community.avatar ? (
               <img src={community.avatar} alt={community.name} className="w-full h-full object-cover" />
             ) : (
@@ -660,7 +660,7 @@ export default function CommunityPage() {
                 <div className="flex items-center gap-2.5 flex-wrap mb-1">
                   <h1 className="text-2xl font-black text-white tracking-tight">{community.name}</h1>
                   {!community.isPublic
-                    ? <span className="flex items-center gap-1 text-[11px] text-white/40 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full"><Lock className="w-3 h-3" />Private</span>
+                    ? <span className="flex items-center gap-1 text-[11px] text-white/40 bg-white/5 border border-border-base px-2 py-0.5 rounded-full"><Lock className="w-3 h-3" />Private</span>
                     : <span className="flex items-center gap-1 text-[11px] text-indigo-400/70 bg-indigo-500/5 border border-indigo-500/20 px-2 py-0.5 rounded-full"><Globe className="w-3 h-3" />Public</span>
                   }
                 </div>
@@ -678,7 +678,7 @@ export default function CommunityPage() {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <Link to="/communities" className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10">
+                <Link to="/communities" className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-border-base">
                   <ArrowLeft className="w-3.5 h-3.5" />
                   Back
                 </Link>
@@ -686,7 +686,7 @@ export default function CommunityPage() {
                 <button
                   onClick={copyCommunityLink}
                   title="Copy community link"
-                  className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10"
+                  className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-border-base"
                 >
                   {linkCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Link2 className="w-3.5 h-3.5" />}
                 </button>
@@ -697,7 +697,7 @@ export default function CommunityPage() {
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all",
                       isMember
-                        ? "bg-white/5 text-white/50 hover:bg-red-500/10 hover:text-red-400 border border-white/10 hover:border-red-500/20"
+                        ? "bg-white/5 text-white/50 hover:bg-red-500/10 hover:text-red-400 border border-border-base hover:border-red-500/20"
                         : "bg-indigo-600 hover:bg-indigo-500 text-white active:scale-95 shadow-lg shadow-indigo-500/20 border border-indigo-500/30"
                     )}
                   >
@@ -882,7 +882,7 @@ export default function CommunityPage() {
                     onChange={(e) => setSettingsName(e.target.value)}
                     maxLength={100}
                     placeholder="Community name"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
                   />
                 </div>
 
@@ -895,7 +895,7 @@ export default function CommunityPage() {
                     maxLength={500}
                     rows={3}
                     placeholder="What is this community about?"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors resize-none"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors resize-none"
                   />
                 </div>
 
@@ -908,11 +908,11 @@ export default function CommunityPage() {
                     onChange={(e) => setSettingsCategory(e.target.value)}
                     maxLength={50}
                     placeholder="e.g. Web Dev, AI/ML, Gaming…"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
+                    className="w-full bg-white/5 border border-border-base rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-colors"
                   />
                 </div>
 
-                <div className="space-y-3 border-t border-white/10 pt-4">
+                <div className="space-y-3 border-t border-border-base pt-4">
                   <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest">Realtime</h3>
                   <ToggleRow
                     label="Group chat"

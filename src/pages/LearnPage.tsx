@@ -32,11 +32,11 @@ export default function LearnPage() {
   const pct = TOTAL_LESSONS > 0 ? Math.round((totalCompleted / TOTAL_LESSONS) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       {/* Hero */}
-      <div className="relative overflow-hidden border-b border-white/5">
+      <div className="relative overflow-hidden border-b border-border-base">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-purple-600/5 to-transparent pointer-events-none" />
         <div className="relative max-w-7xl mx-auto px-6 py-16 md:py-24">
           <motion.div {...fadeUp} className="flex items-center gap-3 mb-5">

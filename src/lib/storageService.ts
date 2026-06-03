@@ -20,13 +20,18 @@ import {
   StorageError,
 } from "firebase/storage";
 
+import imageCompression from "browser-image-compression";
+
 export interface UploadOptions {
   /** Optional upload progress callback 0–100. Only supported for Firebase fallback. */
   onProgress?: (pct: number) => void;
+  /** Skip image compression if true. */
+  skipCompression?: boolean;
 }
 
 /**
  * Upload a file and return its public URL.
+ * Image files are automatically compressed on the client before upload.
  *
  * @param file   The File or Blob to upload.
  * @param path   Storage path, e.g. "avatars/uid/filename.jpg"
@@ -37,15 +42,32 @@ export async function uploadImage(
   path: string,
   opts: UploadOptions = {}
 ): Promise<string> {
+  let finalFile = file;
+
+  // Compress image if it's an image file and compression is not skipped
+  if (!opts.skipCompression && file.type.startsWith("image/") && file instanceof File) {
+    try {
+      const options = {
+        maxSizeMB: 1, // Max 1MB
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+      finalFile = await imageCompression(file, options);
+      console.log(`Compressed image from ${(file.size / 1024).toFixed(2)}KB to ${(finalFile.size / 1024).toFixed(2)}KB`);
+    } catch (err) {
+      console.warn("Image compression failed, using original file:", err);
+    }
+  }
+
   if (isSupabaseReady && supabase) {
     try {
-      return await uploadToSupabase(file, path);
+      return await uploadToSupabase(finalFile, path);
     } catch (supabaseErr) {
       // Supabase RLS or network error — fall back to Firebase Storage automatically.
       console.warn("[storageService] Supabase upload failed, falling back to Firebase Storage:", supabaseErr);
     }
   }
-  return uploadToFirebase(file, path, opts);
+  return uploadToFirebase(finalFile, path, opts);
 }
 
 // ── Supabase ─────────────────────────────────────────────────────────────────
@@ -115,6 +137,12 @@ function uploadToFirebase(
 export function avatarPath(uid: string, file: File): string {
   const ext = file.name.split(".").pop() ?? "jpg";
   return `users/${uid}/avatars/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+}
+
+/** Generate a unique storage path for a user profile banner. */
+export function userBannerPath(uid: string, file: File): string {
+  const ext = file.name.split(".").pop() ?? "jpg";
+  return `users/${uid}/banners/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 }
 
 /** Generate a unique storage path for an event banner. */

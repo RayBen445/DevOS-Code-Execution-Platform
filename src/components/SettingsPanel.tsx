@@ -181,8 +181,8 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
   };
 
   return (
-    <div className="w-80 border-r border-white/5 bg-[#111] flex flex-col h-full">
-      <div className="p-4 flex items-center justify-between border-b border-white/5">
+    <div className="w-80 border-r border-border-base bg-card flex flex-col h-full">
+      <div className="p-4 flex items-center justify-between border-b border-border-base">
         <div className="flex items-center gap-2">
           <Settings className="w-4 h-4 text-blue-400" />
           <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Settings</span>
@@ -205,7 +205,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-3">
+              <div className="p-4 rounded-xl bg-white/5 border border-border-base space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-white/40 font-bold uppercase tracking-tighter">Repository</span>
                   <span className="text-[10px] text-blue-400 font-mono truncate max-w-[120px]">
@@ -222,7 +222,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
                     value={commitMessage}
                     onChange={(e) => setCommitMessage(e.target.value)}
                     placeholder="What changed?"
-                    className="w-full h-20 bg-black/40 border border-white/5 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-blue-500/50 resize-none"
+                    className="w-full h-20 bg-black/40 border border-border-base rounded-lg p-2 text-xs text-white focus:outline-none focus:border-blue-500/50 resize-none"
                   />
                 </div>
 
@@ -272,7 +272,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
             <Lock className="w-4 h-4" />
             <span className="text-xs font-bold uppercase tracking-wider">Environment Variables</span>
           </div>
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
+          <div className="p-4 rounded-xl bg-white/5 border border-border-base space-y-4">
             <div className="space-y-2">
               {project?.env && Object.entries(project.env).map(([key, value]) => (
                 <div key={key} className="flex items-center gap-2 group">
@@ -293,21 +293,21 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
               )}
             </div>
 
-            <div className="pt-4 border-t border-white/5 space-y-3">
+            <div className="pt-4 border-t border-border-base space-y-3">
               <div className="space-y-2">
                 <input
                   type="text"
                   value={newEnvKey}
                   onChange={(e) => setNewEnvKey(e.target.value)}
                   placeholder="VARIABLE_NAME"
-                  className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-blue-500/50"
+                  className="w-full bg-black/40 border border-border-base rounded-lg px-3 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-blue-500/50"
                 />
                 <input
                   type="text"
                   value={newEnvValue}
                   onChange={(e) => setNewEnvValue(e.target.value)}
                   placeholder="Value"
-                  className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-blue-500/50"
+                  className="w-full bg-black/40 border border-border-base rounded-lg px-3 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-blue-500/50"
                 />
               </div>
               <button
@@ -331,7 +331,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
             <Settings className="w-4 h-4" />
             <span className="text-xs font-bold uppercase tracking-wider">Project Info</span>
           </div>
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
+          <div className="p-4 rounded-xl bg-white/5 border border-border-base space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-white/40 font-bold uppercase tracking-tighter">Project Name</span>
               <span className="text-[10px] text-white/80">{project?.name}</span>
@@ -370,7 +370,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
               </button>
             </div>
             {project?.isPublic && (
-              <div className="pt-2 border-t border-white/5">
+              <div className="pt-2 border-t border-border-base">
                 <p className="text-[9px] text-white/20 leading-relaxed">
                   Public projects are visible on your portfolio page and can be discovered by others.
                 </p>
@@ -425,7 +425,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
       {/* Commit Message Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-md bg-card border border-border-base rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-white">Push to GitHub</h3>
@@ -441,7 +441,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
                   value={commitMessage}
                   onChange={(e) => setCommitMessage(e.target.value)}
                   placeholder="Describe your changes..."
-                  className="w-full h-32 bg-black/40 border border-white/5 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-blue-500/50 resize-none"
+                  className="w-full h-32 bg-black/40 border border-border-base rounded-xl p-4 text-sm text-white focus:outline-none focus:border-blue-500/50 resize-none"
                 />
               </div>
 
@@ -468,7 +468,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
         </div>
       )}
 
-      <div className="p-4 border-t border-white/5 bg-black/20">
+      <div className="p-4 border-t border-border-base bg-black/20">
         <div className="text-[10px] text-white/20 text-center">
           DevOS IDE v1.0.0
         </div>

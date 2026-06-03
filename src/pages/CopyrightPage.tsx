@@ -297,7 +297,7 @@ function SectionContent({ id }: { id: string }) {
               <p className="text-xs text-white/35 mt-1">Takedown & counter-notice submissions</p>
             </a>
             <a href="mailto:legal@devos.zone.id"
-              className="glass border border-white/[0.07] hover:border-white/15 rounded-2xl p-5 block transition-all">
+              className="glass border border-white/[0.07] hover:border-border-base rounded-2xl p-5 block transition-all">
               <div className="flex items-center gap-3 mb-1">
                 <div className="w-9 h-9 rounded-xl bg-white/8 flex items-center justify-center">
                   <Scale className="w-4 h-4 text-white/50" />
@@ -340,7 +340,7 @@ export default function CopyrightPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-base text-white flex flex-col overflow-x-hidden">
       <Navbar />
 
       <div className="relative border-b border-white/[0.06] overflow-hidden">
@@ -381,7 +381,7 @@ export default function CopyrightPage() {
           {SECTIONS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => scrollTo(id)}
               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex-shrink-0 border",
-                id === activeId ? "bg-rose-600/20 border-rose-500/40 text-rose-300" : "bg-white/5 border-white/10 text-white/50 hover:text-white")}>
+                id === activeId ? "bg-rose-600/20 border-rose-500/40 text-rose-300" : "bg-white/5 border-border-base text-white/50 hover:text-white")}>
               <Icon className="w-3 h-3" />{label}
             </button>
           ))}

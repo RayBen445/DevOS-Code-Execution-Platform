@@ -403,7 +403,7 @@ export default function OrgPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <Building2 className="w-8 h-8 text-blue-500 animate-pulse" />
       </div>
     );
@@ -414,12 +414,12 @@ export default function OrgPage() {
   const isAdmin = myMember?.role === "admin";
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
       <main className="flex-1 w-full px-4 md:px-8 py-8 pb-24 md:pb-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
-          <div className="w-16 h-16 rounded-xl bg-[#1a1a2e] border border-gray-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+          <div className="w-16 h-16 rounded-xl bg-surface border border-gray-800 flex items-center justify-center overflow-hidden flex-shrink-0">
             {org.avatar ? (
               <img src={org.avatar} alt={org.name} className="w-full h-full object-cover" />
             ) : (
@@ -599,17 +599,17 @@ export default function OrgPage() {
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Stat cards */}
-            <div className="bg-[#111] border border-gray-800 rounded-xl p-5 flex flex-col gap-1">
+            <div className="bg-card border border-gray-800 rounded-xl p-5 flex flex-col gap-1">
               <p className="text-gray-500 text-xs uppercase tracking-wider">Members</p>
               <p className="text-3xl font-bold text-white">{org.memberCount}</p>
             </div>
-            <div className="bg-[#111] border border-gray-800 rounded-xl p-5 flex flex-col gap-1">
+            <div className="bg-card border border-gray-800 rounded-xl p-5 flex flex-col gap-1">
               <p className="text-gray-500 text-xs uppercase tracking-wider">Visibility</p>
               <p className="text-lg font-semibold text-white capitalize">
                 {org.isPublic ? "Public" : "Private"}
               </p>
             </div>
-            <div className="bg-[#111] border border-gray-800 rounded-xl p-5 flex flex-col gap-1">
+            <div className="bg-card border border-gray-800 rounded-xl p-5 flex flex-col gap-1">
               <p className="text-gray-500 text-xs uppercase tracking-wider">Created</p>
               <p className="text-sm text-gray-300">
                 {org.createdAt
@@ -619,7 +619,7 @@ export default function OrgPage() {
             </div>
 
             {/* Recent members preview */}
-            <div className="md:col-span-3 bg-[#111] border border-gray-800 rounded-xl p-5">
+            <div className="md:col-span-3 bg-card border border-gray-800 rounded-xl p-5">
               <h3 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-400" />
                 Recent members
@@ -653,7 +653,7 @@ export default function OrgPage() {
             {members.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center gap-3 bg-[#111] border border-gray-800 rounded-xl px-4 py-3"
+                className="flex items-center gap-3 bg-card border border-gray-800 rounded-xl px-4 py-3"
               >
                 <div className="w-9 h-9 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold">
                   {m.username?.[0]?.toUpperCase() ?? "?"}
@@ -676,7 +676,7 @@ export default function OrgPage() {
                       <Shield className="w-3.5 h-3.5" />
                       <ChevronDown className="w-3 h-3" />
                     </button>
-                    <div className="absolute right-0 top-6 bg-[#1a1a2e] border border-gray-700 rounded-lg shadow-xl z-10 hidden group-hover:block min-w-[110px]">
+                    <div className="absolute right-0 top-6 bg-surface border border-gray-700 rounded-lg shadow-xl z-10 hidden group-hover:block min-w-[110px]">
                       {(["member", "moderator", "admin"] as const).map((role) => (
                         <button
                           key={role}
@@ -724,7 +724,7 @@ export default function OrgPage() {
                 {orgProjects.map((project) => (
                   <div
                     key={project.id}
-                    className="bg-[#111] border border-gray-800 hover:border-blue-500/40 rounded-xl p-4 flex flex-col gap-3 transition-all group"
+                    className="bg-card border border-gray-800 hover:border-blue-500/40 rounded-xl p-4 flex flex-col gap-3 transition-all group"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -763,7 +763,7 @@ export default function OrgPage() {
         {activeTab === "settings" && isAdmin && (
           <div className="space-y-6">
             {/* Join Policy */}
-            <div className="bg-[#111] border border-gray-800 rounded-xl p-5">
+            <div className="bg-card border border-gray-800 rounded-xl p-5">
               <h3 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
                 <Settings className="w-4 h-4 text-blue-400" />
                 Join Policy
@@ -792,7 +792,7 @@ export default function OrgPage() {
             </div>
 
             {/* Chat toggle */}
-            <div className="bg-[#111] border border-gray-800 rounded-xl p-5">
+            <div className="bg-card border border-gray-800 rounded-xl p-5">
               <h3 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-blue-400" />
                 Group Chat
@@ -820,7 +820,7 @@ export default function OrgPage() {
               </div>
             </div>
 
-            <div className="bg-[#111] border border-gray-800 rounded-xl p-5">
+            <div className="bg-card border border-gray-800 rounded-xl p-5">
               <h3 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
                 <Phone className="w-4 h-4 text-blue-400" />
                 Voice Calls
@@ -856,7 +856,7 @@ export default function OrgPage() {
 
             {/* Pending Join Requests */}
             {(org.joinPolicy ?? "open") === "request" && (
-              <div className="bg-[#111] border border-gray-800 rounded-xl p-5">
+              <div className="bg-card border border-gray-800 rounded-xl p-5">
                 <h3 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-orange-400" />
                   Pending Requests ({joinRequests.length})
@@ -944,7 +944,7 @@ function CreateOrgProjectModal({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="w-full max-w-md bg-[#111] border border-white/10 rounded-2xl shadow-2xl">
+        <div className="w-full max-w-md bg-card border border-border-base rounded-2xl shadow-2xl">
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
             <div className="flex items-center gap-2">
               <FolderCode className="w-4 h-4 text-blue-400" />
@@ -964,7 +964,7 @@ function CreateOrgProjectModal({
                 maxLength={100}
                 placeholder="my-awesome-project"
                 autoFocus
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full bg-white/5 border border-border-base rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500/50 transition-colors"
               />
             </div>
             <div className="space-y-1.5">
@@ -975,7 +975,7 @@ function CreateOrgProjectModal({
                 maxLength={500}
                 rows={3}
                 placeholder="What does this project do?"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+                className="w-full bg-white/5 border border-border-base rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
               />
             </div>
             <div className="flex items-center justify-between px-4 py-3 bg-white/[0.03] border border-white/[0.07] rounded-xl">
@@ -1048,7 +1048,7 @@ function OrgPostComposer({
             placeholder={`Share something with ${orgName}…`}
             rows={2}
             maxLength={1000}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-blue-500/60 focus:bg-white/[0.07] transition-all placeholder-white/25"
+            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-blue-500/60 focus:bg-white/[0.07] transition-all placeholder-white/25"
           />
           <div className="flex items-center justify-end mt-2 gap-2">
             <span className="text-[11px] text-white/20">{text.length}/1000</span>

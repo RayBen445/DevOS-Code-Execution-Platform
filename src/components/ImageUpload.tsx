@@ -155,8 +155,8 @@ export default function ImageUpload({
         dragging
           ? "border-blue-400 bg-blue-500/10 scale-[1.02]"
           : value
-            ? "border-white/10 cursor-pointer"
-            : "border-white/15 bg-white/[0.03] hover:border-white/30 hover:bg-white/[0.06] cursor-pointer",
+            ? "border-border-base cursor-pointer"
+            : "border-border-base bg-white/[0.03] hover:border-white/30 hover:bg-white/[0.06] cursor-pointer",
         disabled && "opacity-50 pointer-events-none",
         className,
       )}

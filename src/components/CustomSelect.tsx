@@ -64,8 +64,8 @@ export default function CustomSelect({
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl border text-sm text-left transition-all",
-          "bg-white/5 border-white/10 text-white",
-          "hover:border-white/20 focus:outline-none focus:border-blue-500",
+          "bg-white/5 border-border-base text-white",
+          "hover:border-border-base focus:outline-none focus:border-blue-500",
           open && "border-blue-500",
           disabled && "opacity-50 cursor-not-allowed"
         )}
@@ -83,7 +83,7 @@ export default function CustomSelect({
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute z-50 mt-1.5 w-full bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute z-50 mt-1.5 w-full bg-card border border-border-base rounded-xl shadow-2xl overflow-hidden">
           <div className="py-1 max-h-56 overflow-y-auto">
             {options.map((opt) => {
               const isActive = opt.value === value;

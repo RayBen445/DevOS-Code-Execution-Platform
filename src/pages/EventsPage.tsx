@@ -32,7 +32,7 @@ function EventCard({ event }: { event: Event }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-blue-500/40 hover:bg-white/[0.07] transition-all group"
+      className="bg-white/5 border border-border-base rounded-2xl overflow-hidden hover:border-blue-500/40 hover:bg-white/[0.07] transition-all group"
     >
       {event.bannerImage ? (
         <div className="h-44 overflow-hidden">
@@ -125,7 +125,7 @@ export default function EventsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 py-10 pb-24 md:pb-10">
@@ -157,7 +157,7 @@ export default function EventsPage() {
               placeholder="Search events…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+              className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-border-base rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
             />
           </div>
           <div className="flex items-center gap-2">

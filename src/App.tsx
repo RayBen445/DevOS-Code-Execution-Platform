@@ -163,11 +163,18 @@ export default function App() {
   // without full app chrome and without changing the browser URL.
   //
   //   username.devos.kontyra.name.ng          → portfolio
-  //   project.username.devos.kontyra.name.ng  → deployed project
+  //   project-username.devos.kontyra.name.ng  → deployed project
   const currentHostname = window.location.hostname.toLowerCase();
   const hostTarget = parseDevosHost(currentHostname);
   const isCompanyHost =
     currentHostname === COMPANY_DOMAIN || currentHostname.endsWith(`.${COMPANY_DOMAIN}`);
+
+  // Redirect legacy nested subdomains to the new hyphenated format
+  if (hostTarget.kind === "legacy-project") {
+    window.location.replace(`${buildProjectUrl(hostTarget.username, hostTarget.projectSlug)}${window.location.pathname}${window.location.search}`);
+    return null;
+  }
+
   if (hostTarget.kind === "reserved") {
     return <SubdomainReserved />;
   }
@@ -308,24 +315,34 @@ export default function App() {
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
       if (isTypingTarget(event.target)) return;
 
-      const key = event.key.toLowerCase();
-      const routeByKey: Record<string, string> = {
-        k: "/search",
-        p: "/projects",
-        e: "/explore",
-        d: "/communities",
-        t: "/templates",
-        l: "/learn",
-        "/": "/settings?tab=accessibility",
-      };
-      const route = routeByKey[key];
-      if (!route) return;
-      event.preventDefault();
-      if (window.location.pathname !== route) {
-        window.location.assign(route);
+      // Handle ? for accessibility shortcuts
+      if (event.key === "?" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        event.preventDefault();
+        window.location.assign("/settings?tab=accessibility");
+        return;
+      }
+
+      // Handle Ctrl + [key]
+      if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+        const key = event.key.toLowerCase();
+        const routeByKey: Record<string, string> = {
+          k: "/search",
+          p: "/projects",
+          e: "/explore",
+          d: "/communities",
+          t: "/templates",
+          l: "/learn",
+          ",": "/settings",
+        };
+        const route = routeByKey[key];
+        if (route) {
+          event.preventDefault();
+          if (window.location.pathname !== route) {
+            window.location.assign(route);
+          }
+        }
       }
     };
 
@@ -335,7 +352,7 @@ export default function App() {
 
   if (loading || maintenance === null) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0a0a0a]">
+      <div className="h-screen flex items-center justify-center bg-base">
         <Zap className="w-8 h-8 text-blue-500 animate-pulse" />
       </div>
     );
@@ -361,7 +378,7 @@ export default function App() {
   // Banned user — hard block, force sign-out
   if (user && userStatus === "banned") {
     return (
-      <div className="fixed inset-0 z-[9999] bg-[#0B0F17] flex items-center justify-center p-6">
+      <div className="fixed inset-0 z-[9999] bg-base flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -389,7 +406,7 @@ export default function App() {
   // Suspended user — timed notice, force sign-out
   if (user && userStatus === "suspended") {
     return (
-      <div className="fixed inset-0 z-[9999] bg-[#0B0F17] flex items-center justify-center p-6">
+      <div className="fixed inset-0 z-[9999] bg-base flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -417,14 +434,14 @@ export default function App() {
   // Deactivated user — inform and sign out
   if (user && userStatus === "deactivated") {
     return (
-      <div className="fixed inset-0 z-[9999] bg-[#0B0F17] flex items-center justify-center p-6">
+      <div className="fixed inset-0 z-[9999] bg-base flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 280 }}
           className="max-w-md w-full text-center"
         >
-          <div className="w-20 h-20 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 rounded-2xl bg-white/10 border border-border-base flex items-center justify-center mx-auto mb-6">
             <ShieldAlert className="w-9 h-9 text-white/40" />
           </div>
           <h1 className="text-2xl font-extrabold text-white mb-3">Account Deactivated</h1>
@@ -446,7 +463,7 @@ export default function App() {
   const DashboardView = selectedProjectId ? (
     <IDE projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
   ) : (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
       <div className="flex-1 pb-16 md:pb-0">
         <Dashboard onSelectProject={setSelectedProjectId} />

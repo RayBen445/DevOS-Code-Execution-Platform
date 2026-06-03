@@ -90,7 +90,7 @@ export default function PasskeySetup() {
   };
 
   return (
-    <div className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-4">
+    <div className="rounded-2xl bg-white/5 border border-border-base p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Fingerprint className="w-5 h-5 text-blue-400" />
@@ -110,7 +110,7 @@ export default function PasskeySetup() {
           value={deviceName}
           onChange={(e) => setDeviceName(e.target.value)}
           placeholder="Device name (optional)"
-          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
+          className="flex-1 bg-white/5 border border-border-base rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
           maxLength={80}
         />
         <button
@@ -129,7 +129,7 @@ export default function PasskeySetup() {
           <Loader2 className="w-4 h-4 animate-spin" /> Loading devices...
         </div>
       ) : devices.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-white/50">
+        <div className="rounded-xl border border-border-base bg-white/[0.02] p-4 text-xs text-white/50">
           No passkeys added yet. Register this device to enable biometric passkey sign-in.
         </div>
       ) : (
@@ -138,14 +138,14 @@ export default function PasskeySetup() {
             const isEditing = editingId === d.credentialId;
             const deviceLabel = d.deviceName || "Passkey device";
             return (
-              <div key={d.credentialId} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+              <div key={d.credentialId} className="flex items-center justify-between gap-3 rounded-xl border border-border-base bg-white/[0.03] px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   {isEditing ? (
                     <div className="flex items-center gap-2">
                       <input
                         value={editingName}
                         onChange={(e) => setEditingName(e.target.value)}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50"
+                        className="flex-1 bg-white/5 border border-border-base rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50"
                         maxLength={80}
                       />
                       <button

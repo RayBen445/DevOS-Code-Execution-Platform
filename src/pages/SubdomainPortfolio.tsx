@@ -118,7 +118,7 @@ export default function SubdomainPortfolio({ username }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <div className="relative">
           <div className="w-16 h-16 rounded-full border-2 border-blue-500/10 border-t-blue-500 animate-spin" />
           <Zap className="absolute inset-0 m-auto w-6 h-6 text-blue-500 animate-pulse" />
@@ -129,8 +129,8 @@ export default function SubdomainPortfolio({ username }: Props) {
 
   if (error || !userSettings) {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-white/60 gap-4 px-6 text-center">
-        <div className="w-20 h-20 rounded-[24px] bg-white/5 border border-white/10 flex items-center justify-center mb-2">
+      <div className="min-h-screen bg-base flex flex-col items-center justify-center text-white/60 gap-4 px-6 text-center">
+        <div className="w-20 h-20 rounded-[24px] bg-white/5 border border-border-base flex items-center justify-center mb-2">
           <AlertCircle className="w-10 h-10 text-white/20" />
         </div>
         <h1 className="text-3xl font-bold text-white">{error || "Portfolio not found"}</h1>
@@ -152,7 +152,7 @@ export default function SubdomainPortfolio({ username }: Props) {
   const isVerified = (userSettings as any).isVerified || false;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-blue-500/30">
+    <div className="min-h-screen bg-base text-white selection:bg-blue-500/30">
       {/* Ambient background */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-[140px]" />
@@ -215,14 +215,14 @@ export default function SubdomainPortfolio({ username }: Props) {
 
           {/* Action row */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-xs font-bold text-white/50 flex items-center gap-1.5">
+            <div className="px-4 py-2 rounded-2xl bg-white/5 border border-border-base text-xs font-bold text-white/50 flex items-center gap-1.5">
               <Globe className="w-3.5 h-3.5" />
               {projects.length} project{projects.length !== 1 ? "s" : ""}
             </div>
             <button
               onClick={handleShare}
               title="Copy portfolio URL"
-              className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all"
+              className="p-2.5 rounded-2xl bg-white/5 border border-border-base text-white/40 hover:text-white hover:bg-white/10 transition-all"
             >
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Share2 className="w-4 h-4" />}
             </button>
@@ -246,7 +246,7 @@ export default function SubdomainPortfolio({ username }: Props) {
             animate={{ opacity: 1 }}
             className="flex flex-col items-center justify-center py-20 gap-3 text-center"
           >
-            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-2">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-border-base flex items-center justify-center mb-2">
               <ExternalLink className="w-8 h-8 text-white/15" />
             </div>
             <p className="text-white/40 font-medium">No public projects yet</p>
@@ -322,7 +322,7 @@ export default function SubdomainPortfolio({ username }: Props) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-8 text-center">
+      <footer className="border-t border-border-base py-8 text-center">
         <a href={buildDevosUrl()} className="inline-flex items-center gap-2 text-white/20 text-xs hover:text-white/50 transition-colors">
           <Zap className="w-3.5 h-3.5" />
           Powered by {PRODUCT_BRAND_NAME}

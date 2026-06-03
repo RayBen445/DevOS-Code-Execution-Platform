@@ -81,7 +81,7 @@ export default function ActivityGraph({ userId }: Props) {
   }, [heatmap]);
 
   return (
-    <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5">
+    <div className="bg-white/[0.03] border border-border-base rounded-2xl p-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h3 className="text-sm font-semibold text-white/70">
@@ -164,7 +164,7 @@ export default function ActivityGraph({ userId }: Props) {
           {/* Tooltip */}
           {tooltip && (
             <div
-              className="fixed z-50 pointer-events-none bg-[#1a1a2e] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white shadow-xl"
+              className="fixed z-50 pointer-events-none bg-surface border border-border-base rounded-lg px-2.5 py-1.5 text-xs text-white shadow-xl"
               style={{ left: tooltip.x + 8, top: tooltip.y - 40 }}
             >
               <span className="font-semibold">{tooltip.count} contribution{tooltip.count !== 1 ? "s" : ""}</span>

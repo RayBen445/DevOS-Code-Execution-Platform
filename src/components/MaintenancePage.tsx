@@ -10,7 +10,7 @@ interface MaintenancePageProps {
 
 export default function MaintenancePage({ banner, isAuthenticated, onSignIn, onSignOut }: MaintenancePageProps) {
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#0B0F17] flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[9999] bg-base flex items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -60,7 +60,7 @@ export default function MaintenancePage({ banner, isAuthenticated, onSignIn, onS
           {isAuthenticated ? (
             <button
               onClick={onSignOut}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-sm font-medium transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-border-base text-white/60 hover:text-white text-sm font-medium transition-all"
             >
               <LogOut className="w-4 h-4" />
               Sign Out

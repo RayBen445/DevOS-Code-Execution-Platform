@@ -117,14 +117,14 @@ export default function CreateEventPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-base flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
       <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-10 pb-24 md:pb-10">
@@ -164,7 +164,7 @@ export default function CreateEventPage() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Build with AI — Lagos"
               required
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
+              className="w-full px-4 py-2.5 bg-white/5 border border-border-base rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
             />
           </div>
 
@@ -179,7 +179,7 @@ export default function CreateEventPage() {
               placeholder="Tell attendees what to expect…"
               required
               rows={5}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+              className="w-full px-4 py-2.5 bg-white/5 border border-border-base rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
             />
           </div>
 
@@ -210,7 +210,7 @@ export default function CreateEventPage() {
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all ${
                   type === "online"
                     ? "bg-green-600/20 border-green-500/40 text-green-300"
-                    : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10"
+                    : "bg-white/5 border-border-base text-white/50 hover:bg-white/10"
                 }`}
               >
                 <Globe className="w-4 h-4" /> Online
@@ -221,7 +221,7 @@ export default function CreateEventPage() {
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-all ${
                   type === "physical"
                     ? "bg-orange-600/20 border-orange-500/40 text-orange-300"
-                    : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10"
+                    : "bg-white/5 border-border-base text-white/50 hover:bg-white/10"
                 }`}
               >
                 <MapPin className="w-4 h-4" /> In Person
@@ -240,7 +240,7 @@ export default function CreateEventPage() {
                 value={eventLink}
                 onChange={(e) => setEventLink(e.target.value)}
                 placeholder="https://meet.google.com/…"
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full px-4 py-2.5 bg-white/5 border border-border-base rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
               />
             </div>
           )}
@@ -257,7 +257,7 @@ export default function CreateEventPage() {
                   onChange={(e) => setVenueName(e.target.value)}
                   placeholder="e.g. Google Lagos Office"
                   required={type === "physical"}
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
+                  className="w-full px-4 py-2.5 bg-white/5 border border-border-base rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
                 />
               </div>
               <div>
@@ -269,7 +269,7 @@ export default function CreateEventPage() {
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="123 Victoria Island, Lagos, Nigeria"
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
+                  className="w-full px-4 py-2.5 bg-white/5 border border-border-base rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
                 />
               </div>
             </>
@@ -286,7 +286,7 @@ export default function CreateEventPage() {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors [color-scheme:dark]"
+                className="w-full px-4 py-2.5 bg-white/5 border border-border-base rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors [color-scheme:dark]"
               />
             </div>
             <div>
@@ -298,13 +298,13 @@ export default function CreateEventPage() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 min={startDate}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors [color-scheme:dark]"
+                className="w-full px-4 py-2.5 bg-white/5 border border-border-base rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors [color-scheme:dark]"
               />
             </div>
           </div>
 
           {/* Premium Toggle */}
-          <div className="flex items-start gap-4 p-4 bg-white/5 border border-white/10 rounded-xl">
+          <div className="flex items-start gap-4 p-4 bg-white/5 border border-border-base rounded-xl">
             <div className="flex-1">
               <p className="text-sm font-medium text-white flex items-center gap-2">
                 <Lock className="w-4 h-4 text-yellow-400" />
