@@ -813,8 +813,16 @@ app.post("/api/auth/password/login", passkeyRouteRateLimiter, async (req, res) =
       return res.json({ mfaRequired: true, challengeId });
     }
 
-    const customToken = await admin.auth().createCustomToken(uid);
-    return res.json({ success: true, customToken });
+    try {
+      const customToken = await admin.auth().createCustomToken(uid);
+      return res.json({ success: true, customToken });
+    } catch (tokenErr: any) {
+      if (isAuthServiceConfigError(tokenErr)) {
+        // Local dev fallback when no service account is available to mint tokens
+        return res.json({ success: true, customToken: null, email });
+      }
+      throw tokenErr;
+    }
   } catch (error: any) {
     const message = error?.message || "Invalid credentials.";
     if (isAuthServiceConfigError(error)) {
