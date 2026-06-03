@@ -2351,29 +2351,48 @@ User request: ${aiTestPrompt.trim()}`;
                           Create Template
                         </button>
                       </div>
-                      {showCreateTemplate && (
-                        <form onSubmit={handleCreateOfficialTemplate} className="bg-surface border border-border-base rounded-2xl p-6 mb-6 space-y-4">
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Template Name</label>
-                            <input value={newTplName} onChange={e => setNewTplName(e.target.value)} required placeholder="My Official Template" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+                      <AnimatePresence>
+                        {showCreateTemplate && (
+                          <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/80 backdrop-blur-sm flex min-h-full items-center justify-center p-4">
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                              className="w-full max-w-2xl bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl"
+                            >
+                              <div className="p-8 border-b border-border-base flex items-center justify-between">
+                                <h2 className="text-2xl font-bold text-white tracking-tight">Create Official Template</h2>
+                                <button onClick={() => setShowCreateTemplate(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                                  <X className="w-6 h-6 text-white/40" />
+                                </button>
+                              </div>
+                              <form onSubmit={handleCreateOfficialTemplate} className="p-8 space-y-8">
+                                <div className="space-y-6">
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Template Name</label>
+                                    <input autoFocus value={newTplName} onChange={e => setNewTplName(e.target.value)} required placeholder="My Official Template" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Description</label>
+                                    <textarea value={newTplDesc} onChange={e => setNewTplDesc(e.target.value)} required placeholder="What does this template do?" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 h-24 resize-none transition-all" />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Tags (comma-separated)</label>
+                                    <input value={newTplTags} onChange={e => setNewTplTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end gap-4 pt-8 border-t border-border-base">
+                                  <button type="button" onClick={() => setShowCreateTemplate(false)} className="px-6 py-3 rounded-xl font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
+                                  <button type="submit" disabled={creatingTemplate} className="px-10 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50">
+                                    {creatingTemplate && <Loader2 className="w-5 h-5 animate-spin" />}
+                                    {creatingTemplate ? "Creating..." : "Create Template"}
+                                  </button>
+                                </div>
+                              </form>
+                            </motion.div>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Description</label>
-                            <textarea value={newTplDesc} onChange={e => setNewTplDesc(e.target.value)} required placeholder="What does this template do?" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Tags (comma-separated)</label>
-                            <input value={newTplTags} onChange={e => setNewTplTags(e.target.value)} placeholder="react, landing-page" className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
-                          </div>
-                          <div className="flex gap-3 pt-2">
-                            <button type="button" onClick={() => setShowCreateTemplate(false)} className="px-5 py-2.5 rounded-xl font-bold text-white/40 hover:text-white transition-colors">Cancel</button>
-                            <button type="submit" disabled={creatingTemplate} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60">
-                              {creatingTemplate && <Loader2 className="w-4 h-4 animate-spin" />}
-                              {creatingTemplate ? "Creating..." : "Create Official Template"}
-                            </button>
-                          </div>
-                        </form>
-                      )}
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     {pendingTemplates.length > 0 && (
