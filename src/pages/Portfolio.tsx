@@ -18,6 +18,7 @@ import ActivityGraph from "../components/ActivityGraph";
 import { getFollowerCount, getFollowingCount } from "../lib/followService";
 import { subscribeFeed } from "../lib/feedService";
 import { buildPortfolioUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
+import PremiumLoader from "../components/PremiumLoader";
 
 type PortfolioTab = "projects" | "posts" | "about";
 
@@ -199,14 +200,7 @@ export default function Portfolio() {
 
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-base flex items-center justify-center">
-        <div className="relative">
-          <div className="w-16 h-16 rounded-full border-2 border-blue-500/10 border-t-blue-500 animate-spin" />
-          <Zap className="absolute inset-0 m-auto w-6 h-6 text-blue-500 animate-pulse" />
-        </div>
-      </div>
-    );
+    return <PremiumLoader fullScreen message="LOADING PORTFOLIO" />;
   }
 
   if (error || !userSettings) {

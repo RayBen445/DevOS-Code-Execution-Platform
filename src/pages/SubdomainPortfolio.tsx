@@ -13,6 +13,7 @@ import ActivityGraph from "../components/ActivityGraph";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { buildDevosUrl, buildPortfolioUrl, buildProjectUrl, PRODUCT_BRAND_NAME } from "../lib/brand";
+import PremiumLoader from "../components/PremiumLoader";
 
 interface Props {
   username: string;
@@ -117,14 +118,7 @@ export default function SubdomainPortfolio({ username }: Props) {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-base flex items-center justify-center">
-        <div className="relative">
-          <div className="w-16 h-16 rounded-full border-2 border-blue-500/10 border-t-blue-500 animate-spin" />
-          <Zap className="absolute inset-0 m-auto w-6 h-6 text-blue-500 animate-pulse" />
-        </div>
-      </div>
-    );
+    return <PremiumLoader fullScreen message="LOADING PORTFOLIO" />;
   }
 
   if (error || !userSettings) {

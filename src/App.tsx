@@ -64,6 +64,7 @@ import { db } from "./lib/firebase";
 import { signOut } from "firebase/auth";
 import { initializeDefaultBots, emitBotEventWithToast } from "./lib/botEngine";
 import { buildPortfolioUrl, buildProjectUrl, COMPANY_DOMAIN, getLegacyRedirectUrl, parseDevosHost } from "./lib/brand";
+import PremiumLoader from "./components/PremiumLoader";
 
 import { Toaster } from "sonner";
 
@@ -359,11 +360,7 @@ export default function App() {
   }, []);
 
   if (loading || maintenance === null) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-base">
-        <Zap className="w-8 h-8 text-blue-500 animate-pulse" />
-      </div>
-    );
+    return <PremiumLoader fullScreen message="INITIALIZING SECURE ENVIRONMENT" />;
   }
 
   // Maintenance mode — block everyone except admins, but allow sign-in
