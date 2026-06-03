@@ -94,7 +94,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "../lib/utils";
+import { cn, generateAppId } from '../lib/utils';
 import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 import CustomSelect from "../components/CustomSelect";
@@ -1574,6 +1574,7 @@ export default function AdminDashboard() {
       const username = userDoc.exists() ? (userDoc.data().username ?? "admin") : "admin";
       const slug = newProjectName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       const ref = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
         name: newProjectName.trim(),
         description: newProjectDesc.trim(),
         projectSlug: slug,

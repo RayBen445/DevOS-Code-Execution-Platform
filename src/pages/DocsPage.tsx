@@ -571,28 +571,6 @@ const sections: DocSection[] = [
     ),
   },
   {
-    id: "plugin-marketplace-guide",
-    label: "Plugin Marketplace",
-    icon: Puzzle,
-    content: (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Plugin Marketplace</h2>
-        <p className="text-white/60 leading-relaxed">
-          Install backend plugins (Auth, Database, Storage, Email, and more) directly from the IDE. Environment variables are automatically injected into your project.
-        </p>
-        <Section title="Installing a plugin">
-          Open the <strong>Plugin Marketplace</strong> panel in the IDE sidebar. Browse available plugins and click <strong>Install</strong>. The plugin is activated and its environment variables are immediately available in your project runtime.
-        </Section>
-        <Section title="Available plugins">
-          DevOS ships official plugins for Auth (sign-up/sign-in), Database (Firestore-backed), Storage (file &amp; image uploads), Email (transactional), Realtime (WebSocket pub/sub), and more.
-        </Section>
-        <InfoBox>
-          DevOS is now served from <code className="text-blue-300 text-xs bg-white/10 px-1 rounded">{DEVOS_PRODUCT_HOST}</code> with user and project hosts under the KONTYRA wildcard domain.
-        </InfoBox>
-      </div>
-    ),
-  },
-  {
     id: "branching-prs",
     label: "Branching & Pull Requests",
     icon: GitBranch,

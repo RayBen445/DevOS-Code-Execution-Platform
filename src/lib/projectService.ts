@@ -1,3 +1,4 @@
+import { generateAppId } from '../utils';
 import {
   collection,
   addDoc,
@@ -37,6 +38,7 @@ export async function forkProject(
   const forkName = options.name ?? `${project.name} (Fork)`;
 
   const docRef = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
     // Identity
     name: forkName,
     title: forkName,

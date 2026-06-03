@@ -1,3 +1,4 @@
+import { generateAppId } from '../lib/utils';
 import React, { useState, useEffect } from "react";
 import { X, Github, Search, Loader2, ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -105,6 +106,7 @@ export default function GitHubImportModal({ isOpen, onClose, onImportComplete }:
 
       // 1. Create Project in Firestore
       const docRef = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
         name: repo.name,
         ownerId: user.uid,
         githubRepo: repo.full_name,

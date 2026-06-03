@@ -11,9 +11,12 @@ interface Props {
   /** When rendered via a user subdomain (e.g. project.professor.devos.kontyra.name.ng),
    *  this is the owner's username so we can show a back link to their portfolio. */
   ownerUsername?: string;
+  /** When rendered via apps subdomain (e.g. project-abc123.apps.kontyra.name.ng),
+   *  this is the unique appId mapping to the project. */
+  appId?: string;
 }
 
-export default function SubdomainProject({ slug, ownerUsername }: Props) {
+export default function SubdomainProject({ slug, ownerUsername, appId }: Props) {
   const [project, setProject] = useState<Project | null>(null);
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +60,22 @@ export default function SubdomainProject({ slug, ownerUsername }: Props) {
     const fetchProject = async () => {
       try {
         const projectsRef = collection(db, "projects");
+
+        // When an appId is provided (app subdomain routing), scope lookup to that appId
+        if (appId) {
+          let oSnap = await getDocs(query(projectsRef, where("slug", "==", slug), where("appId", "==", appId), limit(1)));
+          if (oSnap.empty) {
+            oSnap = await getDocs(query(projectsRef, where("projectSlug", "==", slug), where("appId", "==", appId), limit(1)));
+          }
+          if (!oSnap.empty) {
+            const data = oSnap.docs[0].data() as Project;
+            await loadProjectContent({ id: oSnap.docs[0].id, ...data } as Project);
+            return;
+          }
+          setError("Project not found");
+          setLoading(false);
+          return;
+        }
 
         // When an ownerUsername is provided (user-subdomain path routing), scope
         // the lookup to that owner first to avoid global slug collisions.

@@ -14,7 +14,7 @@ import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
 import PluginPanel from "./PluginPanel";
 import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem, DetectionResult, BuildJob } from "../types";
-import { cn } from "../lib/utils";
+import { cn, generateAppId } from '../lib/utils';
 import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
 import { canPerform } from "../lib/rbacService";
 import { logAudit } from "../lib/auditService";
@@ -1200,6 +1200,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
     try {
       const docRef = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
         name: `${project.name} (Fork)`,
         description: project.description || "",
         ownerId: user.uid,

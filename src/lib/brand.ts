@@ -8,6 +8,7 @@ export const PRODUCT_DESCRIPTION =
   `${PRODUCT_BRAND_NAME} is a cloud-based developer platform for building, deploying, and showcasing projects instantly.`;
 
 export const DEVOS_PRODUCT_HOST = `devos.${COMPANY_DOMAIN}`;
+export const APPS_HOST = `apps.${COMPANY_DOMAIN}`;
 export const DEVOS_CANONICAL_ORIGIN = `https://${DEVOS_PRODUCT_HOST}`;
 
 export const RESERVED = [
@@ -43,7 +44,10 @@ export function buildPortfolioUrl(username: string) {
   return `https://${normalizeLabel(username)}.${DEVOS_PRODUCT_HOST}`;
 }
 
-export function buildProjectUrl(username: string, projectSlug: string) {
+export function buildProjectUrl(username: string, projectSlug: string, appId?: string) {
+  if (appId) {
+    return `https://${normalizeLabel(projectSlug)}-${normalizeLabel(appId)}.${APPS_HOST}`;
+  }
   return `https://${normalizeLabel(projectSlug)}-${normalizeLabel(username)}.${DEVOS_PRODUCT_HOST}`;
 }
 
@@ -69,6 +73,7 @@ export type DevosHostTarget =
   | { kind: "app" }
   | { kind: "portfolio"; username: string }
   | { kind: "project"; username: string; projectSlug: string }
+  | { kind: "app-project"; appId: string; projectSlug: string }
   | { kind: "legacy-project"; username: string; projectSlug: string }
   | { kind: "organization"; orgSlug: string }
   | { kind: "org-project"; orgSlug: string; projectSlug: string }
@@ -83,6 +88,26 @@ export function parseDevosHost(hostname: string): DevosHostTarget {
 
   if (normalizedHost === COMPANY_DOMAIN) {
     return { kind: "root" };
+  }
+
+  // Handle apps.kontyra.name.ng domain for project URLs
+  const appsSuffix = `.${APPS_HOST}`;
+  if (normalizedHost.endsWith(appsSuffix)) {
+    const subdomainPart = normalizedHost.slice(0, -appsSuffix.length);
+    if (!subdomainPart) return { kind: "unknown" };
+
+    const slug = normalizeLabel(subdomainPart);
+    if (slug.includes("-")) {
+      const parts = slug.split("-");
+      const appId = parts.pop()!;
+      const projectSlug = parts.join("-");
+      
+      if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(appId)) {
+        return { kind: "reserved" };
+      }
+      return { kind: "app-project", projectSlug, appId };
+    }
+    return { kind: "unknown" };
   }
 
   const suffix = `.devos.${COMPANY_DOMAIN}`;

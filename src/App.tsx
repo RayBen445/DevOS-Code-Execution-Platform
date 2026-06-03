@@ -189,6 +189,14 @@ export default function App() {
       />
     );
   }
+  if (hostTarget.kind === "app-project") {
+    return (
+      <SubdomainRouter
+        appId={hostTarget.appId}
+        projectSlug={hostTarget.projectSlug}
+      />
+    );
+  }
   if (hostTarget.kind === "organization") {
     return <SubdomainOrg slug={hostTarget.orgSlug} />;
   }

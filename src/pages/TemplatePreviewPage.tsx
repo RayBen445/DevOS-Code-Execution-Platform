@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Template } from "../types";
-import { cn } from "../lib/utils";
+import { cn, generateAppId } from '../lib/utils';
 import { incrementDownloads } from "../lib/templateService";
 import { deductCredits } from "../lib/creditsService";
 import { useSEO } from "../hooks/useSEO";
@@ -88,6 +88,7 @@ export default function TemplatePreviewPage() {
       const projectSlug = projectName.toLowerCase().replace(/[^a-z0-9]/g, "-");
 
       const docRef = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
         name: projectName,
         description: template.description,
         ownerId: user.uid,

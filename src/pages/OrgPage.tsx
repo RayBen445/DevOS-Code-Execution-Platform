@@ -67,7 +67,7 @@ import {
   MessageSquare,
   Phone,
 } from "lucide-react";
-import { formatRelativeTime, formatTime } from "../lib/utils";
+import { formatRelativeTime, formatTime, generateAppId } from '../lib/utils';
 import { cn } from "../lib/utils";
 import { renderDevosEmojiText } from "../lib/devosEmoji";
 import { getSiteConfig, SITE_CONFIG_DEFAULTS } from "../lib/creditsService";
@@ -367,6 +367,7 @@ export default function OrgPage() {
       const projectSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
       const template = TEMPLATES[0]; // blank
       const docRef = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
         name: name.trim(),
         projectSlug,
         description: description.trim(),

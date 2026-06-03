@@ -86,3 +86,11 @@ export function formatRelativeTime(date: any): string {
     return "—";
   }
 }
+
+/**
+ * Generates a random 6-character alphanumeric string for project appIds
+ * used in the URL: [projectSlug]-[appId].apps.kontyra.name.ng
+ */
+export function generateAppId(): string {
+  return Math.random().toString(36).substring(2, 8);
+}

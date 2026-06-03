@@ -5,7 +5,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
-import { cn, formatRelativeTime, toValidDate } from "../lib/utils";
+import { cn, formatRelativeTime, toValidDate, generateAppId } from '../lib/utils';
 import GitHubImportModal from "./GitHubImportModal";
 import PublishTemplateModal from "./PublishTemplateModal";
 import ProjectSettingsModal from "./ProjectSettingsModal";
@@ -185,6 +185,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
       }
       
       const docRef = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
         name: newProjectName,
         projectSlug,
         description: newProjectDescription || template.description,
@@ -285,6 +286,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
 
     try {
       const docRef = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
         name: "Demo Project",
         description: "A sample project to explore DevOS features.",
         ownerId: user.uid,
@@ -483,6 +485,7 @@ p {
 
     try {
       const docRef = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
         name: `${project.name} (Fork)`,
         description: project.description || "",
         ownerId: user.uid,

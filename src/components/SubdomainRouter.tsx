@@ -30,11 +30,12 @@ function setCachedType(subdomain: string, type: SubdomainType): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface Props {
-  username: string;
+  username?: string;
   projectSlug?: string;
+  appId?: string;
 }
 
-export default function SubdomainRouter({ username, projectSlug }: Props) {
+export default function SubdomainRouter({ username, projectSlug, appId }: Props) {
   const [resolvedType, setResolvedType] = useState<SubdomainType>("loading");
 
   // Extract path slug: `professor.devos.kontyra.name.ng/devos-first-test-script`
@@ -43,6 +44,16 @@ export default function SubdomainRouter({ username, projectSlug }: Props) {
   const effectiveProjectSlug = projectSlug || pathSlug;
 
   useEffect(() => {
+    if (appId) {
+      setResolvedType("user"); // bypassing user check for apps
+      return;
+    }
+
+    if (!username) {
+      setResolvedType("not-found");
+      return;
+    }
+
     const normalizedUsername = username.toLowerCase();
 
     if (RESERVED_SUBDOMAINS.has(normalizedUsername)) {
@@ -78,7 +89,7 @@ export default function SubdomainRouter({ username, projectSlug }: Props) {
     };
 
     resolve();
-  }, [username]);
+  }, [username, appId]);
 
   if (resolvedType === "loading") {
     return (
@@ -89,10 +100,13 @@ export default function SubdomainRouter({ username, projectSlug }: Props) {
   }
 
   if (resolvedType === "user") {
+    if (appId && effectiveProjectSlug) {
+      return <SubdomainProject slug={effectiveProjectSlug} appId={appId} />;
+    }
     if (effectiveProjectSlug) {
       return <SubdomainProject slug={effectiveProjectSlug} ownerUsername={username} />;
     }
-    return <SubdomainPortfolio username={username} />;
+    return <SubdomainPortfolio username={username!} />;
   }
 
   if (resolvedType === "reserved") {

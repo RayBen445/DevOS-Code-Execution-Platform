@@ -30,7 +30,7 @@ import {
   Eye,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "../lib/utils";
+import { cn, generateAppId } from '../lib/utils';
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
@@ -107,6 +107,7 @@ export default function TemplatePage() {
       const projectSlug = projectName.toLowerCase().replace(/[^a-z0-9]/g, "-");
 
       const docRef = await addDoc(collection(db, "projects"), {
+      appId: generateAppId(),
         name: projectName,
         description: template.description,
         ownerId: user.uid,
