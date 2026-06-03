@@ -381,7 +381,7 @@ const runCommand = async (
       {
         cwd,
         timeout: timeoutMs,
-        env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=256" },
+        env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=256", HOME: cwd, npm_config_cache: path.join(cwd, '.npm') },
         maxBuffer: 1024 * 1024 * 10,
       },
       (error, stdout, stderr) => {
@@ -1866,7 +1866,7 @@ app.post("/api/terminal", async (req, res) => {
   execFile(
     executable,
     args,
-    { timeout: timeoutMs, cwd: workspaceDir },
+    { timeout: timeoutMs, cwd: workspaceDir, env: { ...process.env, HOME: workspaceDir, npm_config_cache: path.join(workspaceDir, '.npm') } },
     (error, stdout, stderr) => {
       res.json({
         stdout: stdout || "",

@@ -23,6 +23,7 @@ import { createFeedPost } from "../lib/feedService";
 import CreateOrgModal from "./CreateOrgModal";
 import { useActiveContext } from "../hooks/useActiveContext";
 import CustomSelect from "./CustomSelect";
+import LiveMap from "./LiveMap";
 
 interface DashboardProps {
   onSelectProject: (projectId: string) => void;
@@ -1253,6 +1254,8 @@ p {
           )}
         </div>
       )}
+
+      <LiveMap className="mt-16 mb-16" />
 
       <div className="mt-24 pt-12 border-t border-border-base flex flex-col items-center gap-4">
         <div className="flex items-center gap-2 text-white/20 text-sm font-medium">

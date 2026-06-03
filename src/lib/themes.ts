@@ -2,7 +2,7 @@
  * UI Themes — defines CSS custom-property overrides applied to :root.
  * The default "dark" theme is the existing design; all others are variants.
  */
-export type UITheme = 'system' | 'dark' | 'midnight' | 'ocean' | 'light' | 'sunset';
+export type UITheme = 'system' | 'dark' | 'midnight' | 'ocean' | 'light' | 'sunset' | 'custom';
 
 export interface ThemeDefinition {
   id: UITheme;
@@ -105,16 +105,22 @@ export const THEMES: ThemeDefinition[] = [
 ];
 
 /** Apply a theme by injecting CSS variables onto <html> */
-export function applyTheme(theme: UITheme): void {
+export function applyTheme(theme: UITheme, customVars?: Record<string, string>): void {
   const resolvedTheme: UITheme = theme === "system"
     ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
     : theme;
-  const def = THEMES.find((t) => t.id === resolvedTheme) ?? THEMES[1];
   const root = document.documentElement;
 
   // Enable smooth cross-fade for the duration of the switch
   root.classList.add("theme-transitioning");
-  Object.entries(def.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+  
+  if (resolvedTheme === "custom" && customVars) {
+    Object.entries(customVars).forEach(([k, v]) => root.style.setProperty(k, v));
+  } else {
+    const def = THEMES.find((t) => t.id === resolvedTheme) ?? THEMES[1];
+    Object.entries(def.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+  }
+
   root.setAttribute("data-theme", resolvedTheme);
   // Remove transitioning class after the CSS transition completes (250 ms)
   setTimeout(() => root.classList.remove("theme-transitioning"), 300);

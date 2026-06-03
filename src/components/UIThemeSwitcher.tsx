@@ -1,7 +1,8 @@
 import { useUITheme } from "../hooks/useUITheme";
 import { THEMES, UITheme } from "../lib/themes";
-import { Palette, Check } from "lucide-react";
+import { Palette, Check, Wand2 } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface UIThemeSwitcherProps {
   /** If true, renders in compact pill form (e.g. in Navbar) */
@@ -11,6 +12,7 @@ interface UIThemeSwitcherProps {
 
 export default function UIThemeSwitcher({ compact, className }: UIThemeSwitcherProps) {
   const { theme, changeTheme } = useUITheme();
+  const navigate = useNavigate();
 
   if (compact) {
     return (
@@ -49,6 +51,14 @@ export default function UIThemeSwitcher({ compact, className }: UIThemeSwitcherP
               {theme === t.id && <Check className="w-3.5 h-3.5 text-blue-400" />}
             </button>
           ))}
+          <div className="h-px bg-white/10 my-1 mx-2" />
+          <button
+            onClick={() => navigate("/theme-studio")}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all text-left text-blue-400 hover:bg-blue-500/10 font-medium"
+          >
+            <Wand2 className="w-4 h-4 flex-shrink-0" />
+            <span>Open Theme Studio</span>
+          </button>
         </div>
       </div>
     );
@@ -97,6 +107,13 @@ export default function UIThemeSwitcher({ compact, className }: UIThemeSwitcherP
           );
         })}
       </div>
+      <button
+        onClick={() => navigate("/theme-studio")}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-sm font-bold transition-colors"
+      >
+        <Wand2 className="w-4 h-4" />
+        Open Theme Studio
+      </button>
     </div>
   );
 }

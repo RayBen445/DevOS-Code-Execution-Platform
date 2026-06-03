@@ -6,12 +6,15 @@ import { db } from "../lib/firebase";
 import { UITheme, applyTheme } from "../lib/themes";
 
 const STORAGE_KEY = "devos_ui_theme";
+const CUSTOM_STORAGE_KEY = "devos_custom_theme";
 
 // Apply saved theme synchronously before the first React render so there is
 // no flash of the default dark background when a non-dark theme is active.
 (function initTheme() {
   const saved = localStorage.getItem(STORAGE_KEY) as UITheme | null;
-  applyTheme(saved ?? "system");
+  const savedCustom = localStorage.getItem(CUSTOM_STORAGE_KEY);
+  const customVars = savedCustom ? JSON.parse(savedCustom) : undefined;
+  applyTheme(saved ?? "system", customVars);
 })();
 
 /** Reads, persists, and applies the user's chosen UI theme. */
@@ -20,17 +23,33 @@ export function useUITheme() {
   const [theme, setThemeState] = useState<UITheme>(() => {
     return (localStorage.getItem(STORAGE_KEY) as UITheme) ?? "system";
   });
+  const [customTheme, setCustomThemeState] = useState<Record<string, string> | null>(() => {
+    const saved = localStorage.getItem(CUSTOM_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  });
 
   // Sync from Firestore once user is known
   useEffect(() => {
     if (!user) return;
     getDoc(doc(db, "user_settings", user.uid)).then((snap) => {
       if (!snap.exists()) return;
-      const firestoreTheme = snap.data()?.preferences?.uiTheme as UITheme | undefined;
+      const data = snap.data();
+      const firestoreTheme = data?.preferences?.uiTheme as UITheme | undefined;
+      const firestoreCustom = data?.preferences?.customTheme as Record<string, string> | undefined;
+      
+      let changed = false;
       if (firestoreTheme && firestoreTheme !== theme) {
         setThemeState(firestoreTheme);
-        applyTheme(firestoreTheme);
         localStorage.setItem(STORAGE_KEY, firestoreTheme);
+        changed = true;
+      }
+      if (firestoreCustom && JSON.stringify(firestoreCustom) !== JSON.stringify(customTheme)) {
+        setCustomThemeState(firestoreCustom);
+        localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(firestoreCustom));
+        changed = true;
+      }
+      if (changed) {
+        applyTheme(firestoreTheme || theme, firestoreCustom || customTheme || undefined);
       }
     }).catch(() => {});
   }, [user?.uid]);
@@ -46,7 +65,7 @@ export function useUITheme() {
 
   const changeTheme = async (newTheme: UITheme) => {
     setThemeState(newTheme);
-    applyTheme(newTheme);
+    applyTheme(newTheme, customTheme || undefined);
     localStorage.setItem(STORAGE_KEY, newTheme);
     if (user) {
       try {
@@ -57,5 +76,20 @@ export function useUITheme() {
     }
   };
 
-  return { theme, changeTheme };
+  const setCustomTheme = async (newCustom: Record<string, string>) => {
+    setCustomThemeState(newCustom);
+    localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(newCustom));
+    if (theme === "custom") {
+      applyTheme("custom", newCustom);
+    }
+    if (user) {
+      try {
+        await updateDoc(doc(db, "user_settings", user.uid), {
+          "preferences.customTheme": newCustom,
+        });
+      } catch { /* best-effort */ }
+    }
+  };
+
+  return { theme, changeTheme, customTheme, setCustomTheme };
 }

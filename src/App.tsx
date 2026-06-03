@@ -25,6 +25,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import StatusPage from "./pages/StatusPage";
 import DocsPage from "./pages/DocsPage";
 import SettingsPage from "./pages/SettingsPage";
+import ThemeStudio from "./components/ThemeStudio";
 import SearchPage from "./pages/SearchPage";
 import ExplorePage from "./pages/ExplorePage";
 import ScrollToTop from "./components/ScrollToTop";
@@ -512,6 +513,7 @@ export default function App() {
             <Route path="/status" element={<StatusPage />} />
             <Route path="/docs" element={withPageMaintenance("/docs", <DocsPage />)} />
             <Route path="/settings" element={withPageMaintenance("/settings", <SettingsPage />)} />
+            <Route path="/theme-studio" element={withPageMaintenance("/theme-studio", <ThemeStudio />)} />
             <Route path="/search" element={withPageMaintenance("/search", <SearchPage />)} />
             <Route path="/explore" element={withPageMaintenance("/explore", <ExplorePage />)} />
             <Route path="/org/:slug" element={withPageMaintenance("/org", <OrgPage />)} />
