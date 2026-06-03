@@ -492,7 +492,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
             <div className="lg:col-span-2 space-y-4 w-full max-w-full min-w-0">
               <div className="flex items-center justify-between px-1">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
-                  Community Feed
+                  Dev Team Feed
                 </h2>
               </div>
 
@@ -595,7 +595,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               <div className="space-y-3 w-full max-w-full min-w-0">
                 <div className="flex items-center justify-between px-1">
                   <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
-                    Community Polls
+                    Dev Team Polls
                   </h2>
                 </div>
                 {activePolls.map((poll) => {
@@ -1089,7 +1089,7 @@ function FeedItem({
             : "border-border-base hover:border-white/25 bg-gradient-to-br from-white/8 to-white/3 shadow-xl shadow-black/40"
         )}
       >
-      {/* Community banner */}
+      {/* Dev Team banner */}
       {post.communityId && (
         <div className="flex items-center gap-1.5 text-xs text-purple-400/80 mb-3 font-medium">
           <Users className="w-3.5 h-3.5" />
@@ -1103,7 +1103,7 @@ function FeedItem({
                 {post.communityName}
               </a>
             ) : (
-              "Community Post"
+              "Dev Team Post"
             )}
           </span>
         </div>

@@ -82,8 +82,8 @@ export default function ProjectSettingsModal({
     try {
       const snap = await getDocs(
         query(
-          collection(db, "projects", project.id, "commits"),
-          orderBy("timestamp", "desc")
+          collection(db, "projects", project.id, "versions"),
+          orderBy("createdAt", "desc")
         )
       );
       setVersions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -397,23 +397,56 @@ export default function ProjectSettingsModal({
                 {activeSection === "versions" && (
                   <div className="space-y-5">
                     <h3 className="text-sm font-bold text-white/60 uppercase tracking-widest">Version History</h3>
+                    <p className="text-xs text-white/40">These are automatic snapshots created every time you manually save your project.</p>
                     {loadingVersions ? (
                       <div className="flex items-center justify-center py-12">
                         <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
                       </div>
                     ) : versions.length === 0 ? (
                       <div className="py-12 text-center text-white/20 text-sm">
-                        No commits yet
+                        No versions found.
                       </div>
                     ) : (
                       <div className="space-y-2">
                         {versions.map((v) => (
-                          <div key={v.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-border-base">
-                            <GitBranch className="w-4 h-4 text-white/30 mt-0.5 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-white">{v.message}</p>
-                              <p className="text-xs text-white/30">by {v.authorName}</p>
+                          <div key={v.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-border-base group">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <GitBranch className="w-4 h-4 text-white/30 mt-0.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white">{v.message || "Manual Save"}</p>
+                                <p className="text-xs text-white/30">
+                                  {v.createdAt?.toDate ? v.createdAt.toDate().toLocaleString() : "Unknown date"}
+                                </p>
+                              </div>
                             </div>
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm("Are you sure you want to rollback to this version? Your current unsaved changes will be lost.")) return;
+                                try {
+                                  // 1. Delete all current files
+                                  const currentFilesSnap = await getDocs(collection(db, "projects", project.id, "files"));
+                                  await Promise.all(currentFilesSnap.docs.map(d => deleteDoc(d.ref)));
+                                  
+                                  // 2. Restore files from snapshot
+                                  if (v.filesSnapshot && Array.isArray(v.filesSnapshot)) {
+                                    await Promise.all(v.filesSnapshot.map((f: any) => 
+                                      addDoc(collection(db, "projects", project.id, "files"), {
+                                        ...f,
+                                        projectId: project.id,
+                                        updatedAt: serverTimestamp()
+                                      })
+                                    ));
+                                  }
+                                  toast.success("Rolled back successfully! Please refresh the page.");
+                                  onClose();
+                                } catch (e) {
+                                  toast.error("Failed to rollback version.");
+                                }
+                              }}
+                              className="px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-semibold transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              Restore
+                            </button>
                           </div>
                         ))}
                       </div>

@@ -4,7 +4,7 @@ import { db, auth } from "../lib/firebase";
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { UserSettings, Project, FeedPost } from "../types";
-import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil, Flame, BadgeCheck } from "lucide-react";
+import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil, Flame, BadgeCheck, Briefcase, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn, formatRelativeTime, toValidDate } from "../lib/utils";
@@ -428,7 +428,28 @@ export default function Portfolio() {
               )
             )}
 
+            {userSettings.availableForWork && (
+              <>
+                <div className="w-[1px] h-6 bg-border-base" />
+                <button
+                  onClick={() => window.open(`mailto:?subject=Opportunity for ${userSettings.fullName || userSettings.username}`)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-bold transition-all hover:bg-green-500 hover:text-white hover:scale-105 shadow-lg shadow-green-500/10"
+                >
+                  <Briefcase className="w-4 h-4" />
+                  Hire Me
+                </button>
+              </>
+            )}
+            
             <div className="w-[1px] h-6 bg-border-base" />
+            <button
+              onClick={() => window.print()}
+              title="Download Resume / Print"
+              className="p-3 rounded-2xl bg-white/5 border border-border-base text-white/60 hover:text-white hover:bg-white/10 transition-all active:scale-90 flex items-center justify-center"
+            >
+              <FileText className="w-4 h-4" />
+            </button>
+
             <button
               onClick={() => handleCopyLink(buildPortfolioUrl(username ?? ""), "profile")}
               title="Copy portfolio URL"

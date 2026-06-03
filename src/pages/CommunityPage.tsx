@@ -104,7 +104,7 @@ function PostComposer({ communityId, communityName, communitySlug, userId, usern
         communitySlug,
       });
       setText("");
-      toast.success("Post shared to community!");
+      toast.success("Post shared to dev team!");
       onPosted();
     } catch {
       toast.error("Failed to post");
@@ -122,7 +122,7 @@ function PostComposer({ communityId, communityName, communitySlug, userId, usern
             ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Share something with this community…"
+            placeholder="Share something with this dev team…"
             rows={2}
             maxLength={1000}
             className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-indigo-500/60 focus:bg-white/[0.07] transition-all placeholder-white/25"
@@ -302,7 +302,7 @@ function MemberRow({ member, communityId, communityName, currentUserRole, curren
       await removeMember(communityId, member.userId);
       onRemoved(member.userId);
       toast.success("Member removed");
-      sendNotification({ userId: member.userId, type: "community_moderated", title: "Removed from community", message: `You were removed from ${communityName ?? "the community"}.`, createdBy: "system" }).catch(() => {});
+      sendNotification({ userId: member.userId, type: "community_moderated", title: "Removed from dev team", message: `You were removed from ${communityName ?? "the dev team"}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to remove member");
     } finally {
@@ -411,7 +411,7 @@ export default function CommunityPage() {
   const [bannerUploading, setBannerUploading] = useState(false);
 
   useSEO({
-    title: community ? `${community.name} — DevOS` : "Community — DevOS",
+    title: community ? `${community.name} — DevOS` : "Dev Team — DevOS",
     description: community?.description,
   });
 
@@ -498,7 +498,7 @@ export default function CommunityPage() {
   const handleSaveSettings = async () => {
     if (!community) return;
     const trimmedName = settingsName.trim();
-    if (!trimmedName) { toast.error("Community name is required"); return; }
+    if (!trimmedName) { toast.error("Dev Team name is required"); return; }
     setSavingSettings(true);
     try {
       await updateCommunity(community.id, {
@@ -509,7 +509,7 @@ export default function CommunityPage() {
         banner: settingsBanner.trim(),
         isPublic: settingsIsPublic,
       });
-      toast.success("Community settings saved!");
+      toast.success("Dev Team settings saved!");
     } catch {
       toast.error("Failed to save settings");
     } finally {
@@ -551,7 +551,7 @@ export default function CommunityPage() {
     try {
       await joinCommunity(community.id, user.uid);
       toast.success(`Joined ${community.name}!`);
-      sendNotification({ userId: user.uid, type: "community_join", title: "Joined community", message: `You joined ${community.name}.`, createdBy: "system" }).catch(() => {});
+      sendNotification({ userId: user.uid, type: "community_join", title: "Joined dev team", message: `You joined ${community.name}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to join");
     } finally {
@@ -573,7 +573,7 @@ export default function CommunityPage() {
     try {
       await leaveCommunity(community.id, user.uid);
       toast.success(`Left ${community.name}`);
-      sendNotification({ userId: user.uid, type: "community_join", title: "Left community", message: `You left ${community.name}.`, createdBy: "system" }).catch(() => {});
+      sendNotification({ userId: user.uid, type: "community_join", title: "Left dev team", message: `You left ${community.name}.`, createdBy: "system" }).catch(() => {});
     } catch {
       toast.error("Failed to leave");
     } finally {
@@ -607,7 +607,7 @@ export default function CommunityPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-            <p className="text-white/30 text-sm">Loading community…</p>
+            <p className="text-white/30 text-sm">Loading dev team…</p>
           </div>
         </div>
       </div>
@@ -685,7 +685,7 @@ export default function CommunityPage() {
                 {/* Copy link */}
                 <button
                   onClick={copyCommunityLink}
-                  title="Copy community link"
+                  title="Copy dev team link"
                   className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors px-3 py-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-border-base"
                 >
                   {linkCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Link2 className="w-3.5 h-3.5" />}
@@ -762,15 +762,15 @@ export default function CommunityPage() {
               )}
               {!user && (
                 <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5 mb-4 text-center">
-                  <p className="text-white/40 text-sm mb-3">Sign in to post in this community</p>
+                  <p className="text-white/40 text-sm mb-3">Sign in to post in this dev team</p>
                   <Link to="/" className="text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors">Sign in →</Link>
                 </div>
               )}
               {user && !isMember && (
                 <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5 mb-4 text-center">
-                  <p className="text-white/40 text-sm mb-3">Join this community to post</p>
+                  <p className="text-white/40 text-sm mb-3">Join this dev team to post</p>
                   <button onClick={handleJoin} disabled={joining} className="text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors">
-                    Join Community →
+                    Join Dev Team →
                   </button>
                 </div>
               )}

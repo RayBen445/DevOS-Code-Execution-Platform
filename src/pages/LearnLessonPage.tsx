@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams, Navigate, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,6 +22,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
 import { useSEO } from "../hooks/useSEO";
+import Editor from "../components/Editor";
 import {
   findTopic,
   findLesson,
@@ -157,7 +159,23 @@ export default function LearnLessonPage() {
         setRunError(data.error || "Execution failed.");
         setOutput([]);
       } else {
-        setOutput(data.logs ?? []);
+        const runLogs = data.logs ?? [];
+        setOutput(runLogs);
+        
+        // Auto-check against expected output
+        if (!isHTML && lesson.output && lesson.output.length > 0) {
+          const logsStr = runLogs.join("\n").trim();
+          const expectedStr = lesson.output.join("\n").trim();
+          if (logsStr === expectedStr) {
+            markComplete(topicId, lessonId);
+            toast.success("Correct output! Lesson completed.");
+          } else {
+            toast.info("Code ran, but output didn't match expected.");
+          }
+        } else if (!isHTML) {
+          markComplete(topicId, lessonId);
+          toast.success("Code ran successfully!");
+        }
       }
     } catch (err: unknown) {
       setRunError(err instanceof Error ? err.message : "Network error.");
@@ -293,31 +311,20 @@ export default function LearnLessonPage() {
                   </button>
                 </div>
 
-                {/* Editable textarea */}
-                <textarea
-                  ref={textareaRef}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  spellCheck={false}
-                  className="w-full bg-transparent font-mono text-sm text-white/85 px-5 py-4 focus:outline-none resize-none leading-relaxed min-h-[260px]"
-                  style={{ tabSize: 2 }}
-                  onKeyDown={(e) => {
-                    // Insert 2-space indent on Tab
-                    if (e.key === "Tab") {
-                      e.preventDefault();
-                      const start = e.currentTarget.selectionStart;
-                      const end   = e.currentTarget.selectionEnd;
-                      const updated = code.slice(0, start) + "  " + code.slice(end);
-                      setCode(updated);
-                      requestAnimationFrame(() => {
-                        if (textareaRef.current) {
-                          textareaRef.current.selectionStart = start + 2;
-                          textareaRef.current.selectionEnd   = start + 2;
-                        }
-                      });
-                    }
-                  }}
-                />
+                  <div className="flex-1 relative min-h-[260px]">
+                    <Editor
+                      projectId="lesson"
+                      file={{
+                        id: "lesson-file",
+                        name: `lesson.${lesson.language === "html" ? "html" : lesson.language === "typescript" ? "ts" : "js"}`,
+                        path: `lesson.${lesson.language === "html" ? "html" : lesson.language === "typescript" ? "ts" : "js"}`,
+                        content: code,
+                        language: lesson.language,
+                      }}
+                      onChange={setCode}
+                      showToolbar={false}
+                    />
+                  </div>
               </div>
 
               {/* Run button */}

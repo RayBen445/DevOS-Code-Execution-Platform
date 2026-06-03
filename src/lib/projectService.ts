@@ -6,9 +6,11 @@ import {
   updateDoc,
   serverTimestamp,
   increment,
+  query,
+  orderBy
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Project } from "../types";
+import { Project, Commit, FileData } from "../types";
 
 export interface ForkOptions {
   /** Custom name for the fork. Defaults to "<original> (Fork)". */
@@ -87,4 +89,46 @@ export async function forkProject(
   });
 
   return docRef.id;
+}
+
+/**
+ * Saves a version (commit) of the project files to the 'commits' subcollection.
+ */
+export async function saveProjectVersion(
+  projectId: string,
+  message: string,
+  authorId: string,
+  authorName: string,
+  files: FileData[]
+): Promise<string> {
+  const filesSnapshot = files.map(f => ({
+    name: f.name,
+    path: f.path,
+    content: f.content,
+    language: f.language,
+  }));
+
+  const commitRef = await addDoc(collection(db, "projects", projectId, "commits"), {
+    projectId,
+    message,
+    authorId,
+    authorName,
+    timestamp: serverTimestamp(),
+    filesSnapshot,
+  });
+
+  return commitRef.id;
+}
+
+/**
+ * Fetches all versions (commits) for a project, ordered from newest to oldest.
+ */
+export async function getProjectVersions(projectId: string): Promise<Commit[]> {
+  const q = query(
+    collection(db, "projects", projectId, "commits"),
+    orderBy("timestamp", "desc")
+  );
+  
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Commit));
 }

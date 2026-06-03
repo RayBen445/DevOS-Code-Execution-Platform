@@ -359,6 +359,7 @@ function ProfileTab() {
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [birthday, setBirthday] = useState("");
+  const [availableForWork, setAvailableForWork] = useState(false);
 
   const [usernameRequest, setUsernameRequest] = useState<UsernameChangeRequest | null>(null);
   const [showUsernameRequestForm, setShowUsernameRequestForm] = useState(false);
@@ -379,6 +380,7 @@ function ProfileTab() {
         setBannerUrl(d.bannerUrl || "");
         setSkills(Array.isArray(d.skills) ? d.skills : []);
         setBirthday(d.birthday || "");
+        setAvailableForWork(d.availableForWork ?? false);
         const links = d.links || {};
         setGithub(links.github || "");
         setTwitter(links.twitter || "");
@@ -737,6 +739,22 @@ function ProfileTab() {
             <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://yoursite.com" className={inputCls} />
           </Field>
         </div>
+      </div>
+
+      {/* Available for Work */}
+      <div className="pt-4 border-t border-border-base">
+        <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white/5 border border-border-base hover:border-blue-500/30 transition-all group">
+          <input 
+            type="checkbox" 
+            checked={availableForWork}
+            onChange={(e) => setAvailableForWork(e.target.checked)}
+            className="w-5 h-5 rounded border-border-base text-blue-600 focus:ring-blue-500/20 bg-white/10 cursor-pointer"
+          />
+          <div>
+            <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">Available for Work</p>
+            <p className="text-white/40 text-xs mt-0.5">Show a "Hire Me" button on your portfolio to let recruiters know you are open to opportunities.</p>
+          </div>
+        </label>
       </div>
 
       <SaveButton loading={saving} onClick={handleSave} />

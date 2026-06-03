@@ -138,6 +138,7 @@ export interface UserSettings {
   };
   bottomNavButtons?: string[];
   topNavButtons?: string[];
+  availableForWork?: boolean;
   updatedAt?: any;
   isOfficial?: boolean;
 }
