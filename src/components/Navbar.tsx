@@ -23,7 +23,7 @@ import {
   type SavedAccount,
 } from "../lib/sessionManager";
 import { useActiveContext } from "../hooks/useActiveContext";
-import { useUITheme } from "../hooks/useUITheme";
+import UIThemeSwitcher from "./UIThemeSwitcher";
 import { PRODUCT_NAV_LABEL, buildPortfolioUrl } from "../lib/brand";
 
 interface NavbarProps {
@@ -53,8 +53,6 @@ export default function Navbar({ onSignIn }: NavbarProps) {
 
   // Active org/user context
   const { context, setUserContext, setOrgContext } = useActiveContext();
-  const { theme, changeTheme } = useUITheme();
-  const isLightTheme = theme === "light";
 
   useEffect(() => {
     if (!user) {
@@ -418,14 +416,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             >
               <Accessibility className="w-5 h-5" />
             </Link>
-            {/* Theme quick-toggle */}
-            <button
-              onClick={() => changeTheme(isLightTheme ? "dark" : "light")}
-              title={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
-              className="p-2 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
-            >
-              {isLightTheme ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-            </button>
+            <UIThemeSwitcher compact className="hidden sm:block" />
             <NotificationBell />
 
             {/* Feedback button — desktop only */}
@@ -932,13 +923,9 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     ))}
                   </>
                 )}
-                <button
-                  onClick={() => changeTheme(isLightTheme ? "dark" : "light")}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"
-                >
-                  {isLightTheme ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                  {isLightTheme ? "Dark Mode" : "Light Mode"}
-                </button>
+                <div className="px-3">
+                  <UIThemeSwitcher />
+                </div>
                 <button
                   onClick={() => { setIsMobileMenuOpen(false); setIsFeedbackOpen(true); }}
                   className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"
