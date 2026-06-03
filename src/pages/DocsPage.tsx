@@ -718,7 +718,14 @@ export default function DocsPage() {
     <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
 
-      <section className="w-full max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12">
+      <section className="w-full max-w-7xl mx-auto px-4 md:px-6 pt-8">
+        <button
+          onClick={() => window.history.back()}
+          className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-white/50 hover:text-white transition-colors mb-4 group"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          Back
+        </button>
         <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-[#10131a] via-[#0a0c10] to-[#050505] p-8 md:p-12 shadow-2xl shadow-black/60 group">
           <div className="absolute inset-0 pointer-events-none">
             <motion.div 
@@ -785,16 +792,9 @@ export default function DocsPage() {
       </section>
 
       <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12 gap-8 relative">
-        <button
-          onClick={() => window.history.back()}
-          className="absolute -top-2 left-4 md:left-6 inline-flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Back
-        </button>
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col gap-2 w-64 flex-shrink-0 sticky top-24 h-fit bg-[#0f1117] border border-border-base rounded-2xl p-3 shadow-lg shadow-black/30">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-2 px-2">
+        <aside className="hidden md:flex flex-col gap-2 w-64 flex-shrink-0 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto no-scrollbar bg-[#0f1117] border border-border-base rounded-2xl p-3 shadow-lg shadow-black/30">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-2 px-2 flex-shrink-0">
             Documentation
           </p>
           {filteredSections.map((section) => {
