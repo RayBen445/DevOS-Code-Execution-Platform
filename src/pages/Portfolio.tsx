@@ -286,7 +286,7 @@ export default function Portfolio() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center text-center relative z-20 pt-16 md:pt-32"
+          className="flex flex-col items-center text-center relative z-20 pt-16 md:pt-32 max-w-5xl mx-auto"
         >
           <div className="relative group mb-8">
             <motion.div 
@@ -462,7 +462,7 @@ export default function Portfolio() {
       </header>
 
       {/* Tabs + main content */}
-      <main className="relative w-full px-6 md:px-8 pb-32 -mt-6">
+      <main className="relative w-full max-w-7xl mx-auto px-6 md:px-8 pb-32 -mt-6">
         {/* Tab nav */}
         <div className="flex gap-1.5 p-1.5 bg-card/80 backdrop-blur-xl border border-border-base rounded-2xl mb-12 w-fit mx-auto shadow-2xl relative z-30">
           {(["projects", "posts", "about"] as PortfolioTab[]).map((tab) => (
@@ -494,7 +494,7 @@ export default function Portfolio() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {projects.map((project, index) => (
                 <motion.div
                   key={project.id}

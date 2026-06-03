@@ -160,7 +160,7 @@ export default function SubdomainPortfolio({ username }: Props) {
       </div>
 
       {/* Hero / Profile header */}
-      <header className="relative max-w-4xl mx-auto px-6 pt-14 pb-10">
+      <header className="relative max-w-5xl mx-auto px-6 pt-14 pb-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -231,7 +231,7 @@ export default function SubdomainPortfolio({ username }: Props) {
       </header>
 
       {/* Projects grid */}
-      <main className="max-w-4xl mx-auto px-6 pb-20">
+      <main className="max-w-5xl mx-auto px-6 pb-20">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold tracking-tight flex items-center gap-3">
             Projects
@@ -253,7 +253,7 @@ export default function SubdomainPortfolio({ username }: Props) {
             <p className="text-white/20 text-sm">Projects published by @{username} will appear here.</p>
           </motion.div>
         ) : (
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project, i) => {
               const projectUrl = project.projectSlug || project.slug
                 ? buildProjectUrl(username, project.projectSlug || project.slug || "")
