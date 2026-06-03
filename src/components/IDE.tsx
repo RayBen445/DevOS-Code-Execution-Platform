@@ -30,6 +30,7 @@ import { emitBotEvent } from "../lib/botEngine";
 import ErrorPanel from "./ErrorPanel";
 import { validateProject } from "../lib/validationService";
 import { ValidationResult } from "../types";
+import ProjectAnalytics from "./ProjectAnalytics";
 
 interface IDEProps {
   projectId: string;
@@ -2453,6 +2454,7 @@ interface ProjectHomepageProps {
 }
 
 function ProjectHomepage({ project, files, isReadOnly, onOpenFile, onCreateFile, onOpenExplorer }: ProjectHomepageProps) {
+  const [activeTab, setActiveTab] = useState<"overview" | "analytics">("overview");
   const readmeFile = files.find(f => f.name.toLowerCase() === "readme.md");
   const sortedFiles = [...files].sort((a, b) => a.name.localeCompare(b.name));
 

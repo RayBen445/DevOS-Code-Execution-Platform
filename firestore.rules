@@ -112,7 +112,7 @@ service cloud.firestore {
 
     function isValidProject(data) {
       let requiredFields = ['name', 'ownerId', 'createdAt', 'updatedAt', 'isPublic', 'isTemplate', 'forksCount', 'collaborators'];
-      let allowedFields = requiredFields.concat(['description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'parentTemplateId', 'forkedFrom', 'forkedFromOwner', 'forkedFromTitle', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'savedAt', 'env', 'plugins', 'ownerType', 'ownerOrgId', 'activeDeploymentId', 'isOfficial', 'group', 'tags', 'ownerOrgSlug', 'ownerOrgName', 'slug', 'deployed', 'language', 'framework', 'thumbnailUrl']);
+      let allowedFields = requiredFields.concat(['appId', 'description', 'title', 'ownerUsername', 'projectSlug', 'parentProjectId', 'parentTemplateId', 'forkedFrom', 'forkedFromOwner', 'forkedFromTitle', 'githubRepo', 'githubUrl', 'deployUrl', 'liveUrl', 'isSystem', 'systemType', 'isEditable', 'isDeletable', 'views', 'draft', 'published', 'deployStatus', 'lastDeployedAt', 'deployError', 'entryFile', 'savedAt', 'env', 'plugins', 'ownerType', 'ownerOrgId', 'activeDeploymentId', 'isOfficial', 'group', 'tags', 'ownerOrgSlug', 'ownerOrgName', 'slug', 'deployed', 'language', 'framework', 'thumbnailUrl']);
       return data.keys().hasAll(requiredFields) &&
              data.keys().hasOnly(allowedFields) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
@@ -346,12 +346,11 @@ service cloud.firestore {
       allow read: if resource.data.get('isPublic', false) == true || isAuthenticated();
       allow create: if isAuthenticated() && (
         // Posts without a communityId are always allowed for authenticated users
-        !('communityId' in request.resource.data) ||
-        request.resource.data.communityId == null ||
+        request.resource.data.get('communityId', '') == '' ||
         // Community posts — must be a community member
-        exists(/databases/$(database)/documents/communities/$(request.resource.data.communityId)/members/$(request.auth.uid)) ||
+        exists(/databases/$(database)/documents/communities/$(request.resource.data.get('communityId', ''))/members/$(request.auth.uid)) ||
         // Org posts — communityId stores the org's id; must be an org member
-        exists(/databases/$(database)/documents/organizations/$(request.resource.data.communityId)/members/$(request.auth.uid))
+        exists(/databases/$(database)/documents/organizations/$(request.resource.data.get('communityId', ''))/members/$(request.auth.uid))
       );
       allow update: if isAuthenticated() && (
         // Post owner and admins may update any field

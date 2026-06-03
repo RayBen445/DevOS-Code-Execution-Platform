@@ -65,6 +65,7 @@ import { signOut } from "firebase/auth";
 import { initializeDefaultBots, emitBotEventWithToast } from "./lib/botEngine";
 import { buildPortfolioUrl, buildProjectUrl, COMPANY_DOMAIN, getLegacyRedirectUrl, parseDevosHost } from "./lib/brand";
 import PremiumLoader from "./components/PremiumLoader";
+import CommandPalette from "./components/CommandPalette";
 
 import { Toaster } from "sonner";
 
@@ -337,7 +338,6 @@ export default function App() {
       if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
         const key = event.key.toLowerCase();
         const routeByKey: Record<string, string> = {
-          k: "/search",
           p: "/projects",
           e: "/explore",
           d: "/communities",
@@ -579,6 +579,7 @@ export default function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </AnimatePresence>
+        <CommandPalette />
       </ConfigGuard>
     </>
   );
