@@ -2037,7 +2037,7 @@ app.post("/api/build-job", async (req, res) => {
     emitLog("success", "Dependencies installed");
 
     // Force Next.js Static Export if this is a Next.js project
-    if (framework === "nextjs") {
+    if (framework === "nextjs" || framework === "Next.js") {
       emitLog("info", "Configuring Next.js for Static Export...");
       const configPaths = ["next.config.mjs", "next.config.js"];
       let configModified = false;
@@ -2073,12 +2073,19 @@ app.post("/api/build-job", async (req, res) => {
     if (buildResult.stdout) buildResult.stdout.split("\n").forEach((l) => emitLog("info", l));
     if (buildResult.stderr) buildResult.stderr.split("\n").forEach((l) => emitLog("warning", l));
 
+    if (buildResult.exitCode && buildResult.exitCode !== 0) {
+      throw new Error(`Build failed:\n${buildResult.stderr || buildResult.stdout}`);
+    }
+
     // Detect output dir — only check against the allowed whitelist to prevent path traversal
     const safeRequestedDir =
       requestedOutputDir && ALLOWED_OUTPUT_DIRS.has(requestedOutputDir) ? requestedOutputDir : null;
     const candidates = [safeRequestedDir, "dist", "build", ".next", "out"].filter(Boolean) as string[];
     const outputDirName = candidates.find((d) => ALLOWED_OUTPUT_DIRS.has(d) && fs.existsSync(path.join(tmpDir, d)));
-    if (!outputDirName) throw new Error("Build output directory not found");
+    
+    if (!outputDirName) {
+      throw new Error("Build output directory not found. Expected one of: out, dist, build, .next");
+    }
 
     emitLog("success", `Build complete — output: ${outputDirName}`);
 
