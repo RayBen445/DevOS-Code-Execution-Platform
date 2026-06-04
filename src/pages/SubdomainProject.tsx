@@ -98,9 +98,15 @@ export default function SubdomainProject({ slug, ownerUsername, appId }: Props) 
           } catch (err) {
             // Unauthenticated users will get Permission Denied for unrestricted queries.
             // Fall back to restricted queries that the rules allow.
-            oSnap = await getDocs(query(projectsRef, where("slug", "==", slug), where("ownerId", "==", ownerId), where("deployed", "==", true), limit(1)));
+            oSnap = await getDocs(query(projectsRef, where("projectSlug", "==", slug), where("ownerId", "==", ownerId), where("isPublic", "==", true), limit(1)));
+            if (oSnap.empty) {
+              oSnap = await getDocs(query(projectsRef, where("slug", "==", slug), where("ownerId", "==", ownerId), where("isPublic", "==", true), limit(1)));
+            }
             if (oSnap.empty) {
               oSnap = await getDocs(query(projectsRef, where("projectSlug", "==", slug), where("ownerId", "==", ownerId), where("deployed", "==", true), limit(1)));
+            }
+            if (oSnap.empty) {
+              oSnap = await getDocs(query(projectsRef, where("slug", "==", slug), where("ownerId", "==", ownerId), where("deployed", "==", true), limit(1)));
             }
           }
 
@@ -121,9 +127,15 @@ export default function SubdomainProject({ slug, ownerUsername, appId }: Props) 
         }
 
         // Global slug search (deployed or public)
-        let snap = await getDocs(query(projectsRef, where("slug", "==", slug), where("deployed", "==", true), limit(1)));
+        let snap = await getDocs(query(projectsRef, where("projectSlug", "==", slug), where("isPublic", "==", true), limit(1)));
         if (snap.empty) {
-          snap = await getDocs(query(projectsRef, where("projectSlug", "==", slug), where("isPublic", "==", true), limit(1)));
+          snap = await getDocs(query(projectsRef, where("slug", "==", slug), where("isPublic", "==", true), limit(1)));
+        }
+        if (snap.empty) {
+          snap = await getDocs(query(projectsRef, where("projectSlug", "==", slug), where("deployed", "==", true), limit(1)));
+        }
+        if (snap.empty) {
+          snap = await getDocs(query(projectsRef, where("slug", "==", slug), where("deployed", "==", true), limit(1)));
         }
 
         if (snap.empty) {
