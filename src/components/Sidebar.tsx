@@ -380,9 +380,9 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
 
       for (const [relativePath, zipEntry] of Object.entries(zipContent.files)) {
         if (zipEntry.dir) continue;
-        // Skip hidden/system files
+        // Skip hidden/system files and node_modules
         const parts = relativePath.split("/");
-        if (parts.some(p => p.startsWith("."))) continue;
+        if (parts.some(p => p.startsWith(".") || p === "node_modules")) continue;
 
         const content = await zipEntry.async("string");
         const nameParts = relativePath.split("/");
@@ -431,6 +431,83 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
       setTimeout(() => setZipStatus(null), 3000);
     } finally {
       setIsZipUploading(false);
+    }
+  };
+
+  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFiles = e.target.files;
+    if (!uploadedFiles || uploadedFiles.length === 0) return;
+    
+    setIsUploading(true);
+    setZipStatus("Uploading folder...");
+
+    try {
+      const languageMap: Record<string, string> = {
+        js: "javascript", ts: "typescript", tsx: "typescript",
+        jsx: "javascript", json: "json", css: "css", html: "html", md: "markdown"
+      };
+
+      const fileEntries: Array<{ path: string; name: string; content: string; language: string }> = [];
+
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
+        const relativePath = file.webkitRelativePath || file.name;
+        
+        // Skip hidden/system files and node_modules
+        const parts = relativePath.split("/");
+        if (parts.some(p => p.startsWith(".") || p === "node_modules")) continue;
+
+        // Skip binary/image files for now to avoid huge base64 encoding limits
+        const ext = file.name.split(".").pop()?.toLowerCase() || "txt";
+        const isImage = ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico"].includes(ext);
+        if (isImage) continue;
+
+        const content = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.readAsText(file);
+        });
+
+        fileEntries.push({
+          path: relativePath.includes('/') ? relativePath.substring(relativePath.indexOf('/') + 1) : relativePath, // Remove top-level directory name
+          name: file.name,
+          content,
+          language: languageMap[ext] || "plaintext"
+        });
+      }
+
+      const existingPaths = new Set(files.map(f => f.path));
+
+      for (const entry of fileEntries) {
+        if (existingPaths.has(entry.path)) {
+          const existingFile = files.find(f => f.path === entry.path);
+          if (existingFile) {
+            await updateDoc(doc(db, "projects", projectId, "files", existingFile.id), {
+              content: entry.content,
+              updatedAt: serverTimestamp()
+            });
+          }
+        } else {
+          await addDoc(collection(db, "projects", projectId, "files"), {
+            projectId,
+            name: entry.name,
+            path: entry.path,
+            content: entry.content,
+            language: entry.language,
+            updatedAt: serverTimestamp()
+          });
+        }
+      }
+
+      setZipStatus("Folder uploaded successfully");
+      setTimeout(() => setZipStatus(null), 3000);
+    } catch (error) {
+      console.error("Folder upload error:", error);
+      setZipStatus("Failed to upload folder");
+      setTimeout(() => setZipStatus(null), 3000);
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -593,6 +670,22 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
           <div className="flex items-center gap-1">
             <label
               className="p-1 hover:bg-white/5 rounded text-white/40 hover:text-white transition-colors cursor-pointer"
+              title="Upload Folder"
+            >
+              <Folder className="w-4 h-4" />
+              <input
+                type="file"
+                className="hidden"
+                onChange={handleFolderUpload}
+                disabled={isUploading || isZipUploading}
+                // @ts-expect-error webkitdirectory is non-standard but supported in all major browsers
+                webkitdirectory="true"
+                directory="true"
+                multiple
+              />
+            </label>
+            <label
+              className="p-1 hover:bg-white/5 rounded text-white/40 hover:text-white transition-colors cursor-pointer"
               title="Upload ZIP"
             >
               {isZipUploading ? (
@@ -609,7 +702,7 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
                 disabled={isZipUploading}
               />
             </label>
-            <label className="p-1 hover:bg-white/5 rounded text-white/40 hover:text-white transition-colors cursor-pointer relative">
+            <label className="p-1 hover:bg-white/5 rounded text-white/40 hover:text-white transition-colors cursor-pointer relative" title="Upload File">
               {isUploading ? (
                 <div className="relative">
                   <Loader2 className="w-4 h-4 animate-spin text-blue-500" />

@@ -15,6 +15,64 @@ export interface ProjectTemplate {
 
 export const TEMPLATES: ProjectTemplate[] = [
   {
+    id: "nextjs-starter",
+    name: "Next.js Sandbox",
+    description: "A minimal Next.js app to test the terminal and build pipeline.",
+    icon: "Rocket",
+    files: [
+      {
+        name: "package.json",
+        path: "package.json",
+        content: `{
+  "name": "nextjs-sandbox",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  }
+}`,
+        language: "json"
+      },
+      {
+        name: "next.config.mjs",
+        path: "next.config.mjs",
+        content: `/** @type {import('next').NextConfig} */\nconst nextConfig = {};\nexport default nextConfig;`,
+        language: "javascript"
+      },
+      {
+        name: "page.jsx",
+        path: "app/page.jsx",
+        content: `export default function Home() {
+  return (
+    <div style={{ fontFamily: "sans-serif", padding: "40px", textAlign: "center", background: "#000", color: "#fff", minHeight: "100vh" }}>
+      <h1>Hello from Next.js on DevOS! 🚀</h1>
+      <p>Open the Terminal, type <code>npm install</code>, then <code>npm run build</code> to test!</p>
+    </div>
+  );
+}`,
+        language: "javascript"
+      },
+      {
+        name: "layout.jsx",
+        path: "app/layout.jsx",
+        content: `export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body style={{ margin: 0 }}>{children}</body>
+    </html>
+  );
+}`,
+        language: "javascript"
+      }
+    ]
+  },
+  {
     id: "blank",
     name: "Blank Project",
     description: "Start from scratch with a single index.html file.",

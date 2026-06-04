@@ -91,6 +91,13 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
     const htmlFiles = deployableFiles.filter(f => f.name.toLowerCase() === "index.html").map(f => f.path);
     
     if (htmlFiles.length === 0) {
+      if (deployableFiles.some(f => f.name === "package.json")) {
+        // Bypass index.html requirement for Node/Next.js apps
+        setEntryFiles(["package.json"]);
+        setSelectedEntry("package.json");
+        handleDeploy(deployMethod, "package.json");
+        return;
+      }
       toast.error("No index.html found. Please create an index.html file to deploy.");
       return;
     }

@@ -2036,6 +2036,38 @@ app.post("/api/build-job", async (req, res) => {
     if (installResult.stderr) emitLog("warning", installResult.stderr.slice(0, 500));
     emitLog("success", "Dependencies installed");
 
+    // Force Next.js Static Export if this is a Next.js project
+    if (framework === "nextjs") {
+      emitLog("info", "Configuring Next.js for Static Export...");
+      const configPaths = ["next.config.mjs", "next.config.js"];
+      let configModified = false;
+      for (const cp of configPaths) {
+        const fullCp = path.join(tmpDir, cp);
+        if (fs.existsSync(fullCp)) {
+          let content = fs.readFileSync(fullCp, "utf-8");
+          // If it doesn't already have output: 'export' or output: "export"
+          if (!content.includes("output: 'export'") && !content.includes('output: "export"')) {
+            // Very hacky but effective way to inject for simple configs:
+            if (content.includes("const nextConfig = {")) {
+              content = content.replace("const nextConfig = {", "const nextConfig = { output: 'export',");
+            } else if (content.includes("module.exports = {")) {
+              content = content.replace("module.exports = {", "module.exports = { output: 'export',");
+            } else {
+              // fallback append
+              content += "\n// Injected by DevOS\nif(typeof nextConfig !== 'undefined') nextConfig.output = 'export';";
+            }
+            fs.writeFileSync(fullCp, content, "utf-8");
+          }
+          configModified = true;
+          break;
+        }
+      }
+      if (!configModified) {
+        // Create one if it doesn't exist
+        fs.writeFileSync(path.join(tmpDir, "next.config.mjs"), "/** @type {import('next').NextConfig} */\nconst nextConfig = { output: 'export' };\nexport default nextConfig;", "utf-8");
+      }
+    }
+
     emitLog("info", "Running: npm run build");
     const buildResult = await runCommand("npm", buildArgs, tmpDir, 60_000);
     if (buildResult.stdout) buildResult.stdout.split("\n").forEach((l) => emitLog("info", l));
