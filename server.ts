@@ -1848,7 +1848,22 @@ app.post("/api/terminal", async (req, res) => {
         "utf-8"
       );
     } catch {
-      // Ignore malformed package.json — don't abort the command
+      // Ignore malformed package.json
+    }
+  }
+
+  // Sync all project files if provided
+  const { files } = req.body;
+  if (Array.isArray(files)) {
+    for (const file of files) {
+      if (file.path && typeof file.content === "string") {
+        const fullPath = path.join(workspaceDir, file.path);
+        const dir = path.dirname(fullPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(fullPath, file.content, "utf-8");
+      }
     }
   }
 

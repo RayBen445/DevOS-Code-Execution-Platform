@@ -37,7 +37,7 @@ interface IDEProps {
   onBack: () => void;
 }
 
-type PanelType = "explorer" | "git" | "terminal" | "preview" | "plugins" | "settings" | "collaborators" | null;
+type PanelType = "explorer" | "git" | "terminal" | "preview" | "deployments" | "settings" | "collaborators" | null;
 
 interface LogEntry {
   type: "system" | "success" | "error" | "info" | "output" | "warning";
@@ -97,7 +97,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [showErrors, setShowErrors] = useState(false);
 
   // Mobile top-nav state (replaces slide-in drawer)
-  type MobileTabId = "editor" | "files" | "preview" | "git" | "terminal" | "plugins" | "settings" | "collaborators";
+  type MobileTabId = "editor" | "files" | "preview" | "git" | "terminal" | "deployments" | "settings" | "collaborators";
   const [mobileTab, setMobileTab] = useState<MobileTabId>("editor");
   const touchStartX = useRef<number>(0);
 
@@ -124,6 +124,35 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const botDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [botSuggestions, setBotSuggestions] = useState<string[]>([]);
   const autoOpenedInitialFileRef = useRef(false);
+
+  // Splitter state
+  const [splitWidth, setSplitWidth] = useState(50);
+  const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
+  const splitDragStartX = useRef(0);
+  const splitDragStartW = useRef(50);
+
+  const handleSplitterMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingSplitter(true);
+    splitDragStartX.current = e.clientX;
+    splitDragStartW.current = splitWidth;
+  };
+
+  useEffect(() => {
+    if (!isDraggingSplitter) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - splitDragStartX.current;
+      const deltaPercent = (deltaX / window.innerWidth) * 100;
+      setSplitWidth(Math.max(20, Math.min(80, splitDragStartW.current + deltaPercent)));
+    };
+    const handleMouseUp = () => setIsDraggingSplitter(false);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingSplitter]);
 
   // Persist active file and panel to localStorage (per-project key)
   useEffect(() => {
@@ -516,7 +545,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     ...(isOrgProject ? [{ id: "collaborators" as MobileTabId, icon: Users, label: "Team" }] : []),
     { id: "git" as MobileTabId, icon: GitBranch, label: "Git" },
     { id: "terminal" as MobileTabId, icon: Terminal, label: "Term" },
-    { id: "plugins" as MobileTabId, icon: Puzzle, label: "Plugins" },
+    { id: "deployments" as MobileTabId, icon: Rocket, label: "Deploy" },
     { id: "settings" as MobileTabId, icon: Settings, label: "More" },
   ];
 
@@ -1668,7 +1697,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               { id: "git" as PanelType, icon: GitBranch, label: "Source Control" },
               { id: "terminal" as PanelType, icon: Terminal, label: "Terminal" },
               { id: "preview" as PanelType, icon: Eye, label: "Preview" },
-              { id: "plugins" as PanelType, icon: Puzzle, label: "Plugins" },
+              { id: "deployments" as PanelType, icon: Rocket, label: "Deploy" },
               ...(isOrgProject ? [{ id: "collaborators" as PanelType, icon: Users, label: "Collaborators" }] : []),
               { id: "settings" as PanelType, icon: Settings, label: "Settings" },
             ].map(({ id, icon: Icon, label }) => (
@@ -1903,13 +1932,6 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 </div>
               )}
 
-              {/* Plugin Marketplace Panel */}
-              {project?.systemType !== 'portfolio' && activePanel === "plugins" && !isFocusMode && (
-                <div className="hidden md:flex w-80 border-r border-border-base flex-col overflow-hidden">
-                  
-                </div>
-              )}
-
               {/* Collaborators Panel — org projects only, hidden on mobile */}
               {project?.systemType !== 'portfolio' && activePanel === "collaborators" && !isFocusMode && isOrgProject && (
                 <div className="hidden md:flex w-72 border-r border-border-base flex-col overflow-y-auto">
@@ -2001,7 +2023,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   );
                 })()}
 
-                <div className="flex-1 relative">
+                <div className="flex-1 relative min-h-0">
                   {project?.systemType === 'portfolio' ? (
                     <PortfolioEditor 
                       project={project} 
