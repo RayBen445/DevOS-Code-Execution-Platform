@@ -320,6 +320,8 @@ export default function LearnLessonPage() {
                         path: `lesson.${lesson.language === "html" ? "html" : lesson.language === "typescript" ? "ts" : "js"}`,
                         content: code,
                         language: lesson.language,
+                        projectId: "lesson",
+                        updatedAt: new Date(),
                       }}
                       onChange={setCode}
                       showToolbar={false}

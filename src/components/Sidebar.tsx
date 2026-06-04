@@ -69,7 +69,8 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
     const sortedFiles = [...files].sort((a, b) => a.path.localeCompare(b.path));
 
     sortedFiles.forEach(file => {
-      const parts = file.path.split('/');
+      const parts = file.path.split('/').filter(Boolean);
+      if (parts.length === 0) return;
       let currentPath = '';
       let currentLevel = root;
 
@@ -78,13 +79,15 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
         currentPath = currentPath ? `${currentPath}/${part}` : part;
 
         if (isLast) {
-          currentLevel.push({
-            id: file.id,
-            name: part,
-            path: file.path,
-            type: 'file',
-            file
-          });
+          if (part !== '.keep') {
+            currentLevel.push({
+              id: file.id,
+              name: part,
+              path: file.path,
+              type: 'file',
+              file
+            });
+          }
         } else {
           if (!folders[currentPath]) {
             const folder: FileTreeItem = {
@@ -115,16 +118,18 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
       : newFileName;
 
     if (isCreating.type === 'folder') {
-      // For folders, we don't actually create a document in Firestore
-      // because folders are virtual. We just need to make sure the UI
-      // knows about it. But wait, if we don't create a document,
-      // it won't persist if it's empty.
-      // Let's create a placeholder file .keep if it's an empty folder?
-      // Or just let the user create a file inside it immediately.
-      // Actually, the prompt says "Support nested folders: e.g. App/components/file.html".
-      // So if I create a file with that path, the folders will appear.
-      // If I want to create an empty folder, I might need a placeholder.
-      // Let's just support creating files with paths for now.
+      try {
+        await addDoc(collection(db, "projects", projectId, "files"), {
+          projectId,
+          name: ".keep",
+          path: `${fullPath}/.keep`,
+          content: "",
+          language: "plaintext",
+          updatedAt: serverTimestamp()
+        });
+      } catch (error) {
+        console.error("Error creating folder:", error);
+      }
       setNewFileName("");
       setIsCreating(null);
       return;

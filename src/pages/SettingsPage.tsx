@@ -559,7 +559,7 @@ function ProfileTab() {
       {/* Banner */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pt-4">
         <ImageUpload
-          shape="rectangle"
+          shape="banner"
           value={bannerUrl}
           onFile={handleBannerUpload}
           onRemove={() => setBannerUrl("")}

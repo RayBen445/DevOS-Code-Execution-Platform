@@ -1873,10 +1873,16 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 </div>
               )}
 
-              {/* Plugins */}
-              {mobileTab === "plugins" && (
-                <div className="h-full overflow-y-auto">
-                  
+              {/* Deployments */}
+              {mobileTab === "deployments" && canDeploy && (
+                <div className="h-full overflow-y-auto p-4">
+                  <h3 className="text-sm font-bold text-white mb-4">Deployments</h3>
+                  <DeploymentDashboard
+                    projectId={projectId}
+                    userId={user?.uid ?? ""}
+                    activeDeploymentId={project?.activeDeploymentId}
+                    canManage={canDeploy}
+                  />
                 </div>
               )}
 
