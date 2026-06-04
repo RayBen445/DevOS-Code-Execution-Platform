@@ -89,11 +89,22 @@ export default function SubdomainProject({ slug, ownerUsername, appId }: Props) 
           }
 
           const ownerId = ownerSnap.docs[0].id;
-          let oSnap = await getDocs(query(projectsRef, where("slug", "==", slug), where("ownerId", "==", ownerId), limit(1)));
-          if (oSnap.empty) {
-            oSnap = await getDocs(query(projectsRef, where("projectSlug", "==", slug), where("ownerId", "==", ownerId), limit(1)));
+          let oSnap;
+          try {
+            oSnap = await getDocs(query(projectsRef, where("slug", "==", slug), where("ownerId", "==", ownerId), limit(1)));
+            if (oSnap.empty) {
+              oSnap = await getDocs(query(projectsRef, where("projectSlug", "==", slug), where("ownerId", "==", ownerId), limit(1)));
+            }
+          } catch (err) {
+            // Unauthenticated users will get Permission Denied for unrestricted queries.
+            // Fall back to restricted queries that the rules allow.
+            oSnap = await getDocs(query(projectsRef, where("slug", "==", slug), where("ownerId", "==", ownerId), where("deployed", "==", true), limit(1)));
+            if (oSnap.empty) {
+              oSnap = await getDocs(query(projectsRef, where("projectSlug", "==", slug), where("ownerId", "==", ownerId), where("deployed", "==", true), limit(1)));
+            }
           }
-          if (!oSnap.empty) {
+
+          if (oSnap && !oSnap.empty) {
             const data = oSnap.docs[0].data() as Project;
             if (data.ownerType === "organization" || data.ownerOrgId) {
               setError("Project not found");

@@ -120,7 +120,7 @@ function parseInlineMarkdown(text: string): TextToken[] {
         content: match[1],
         url: match[2],
       });
-      result = result.substring(0, match.index) + `__LINK_${tokens.length - 1}__` + result.substring(match.index! + match[0].length);
+      result = result.substring(0, match.index) + `@@LINK-${tokens.length - 1}@@` + result.substring(match.index! + match[0].length);
     }
     processedContent = result;
   }
@@ -134,7 +134,7 @@ function parseInlineMarkdown(text: string): TextToken[] {
         type: "bold",
         content: match[1],
       });
-      processedContent = processedContent.substring(0, match.index) + `__BOLD_${tokens.length - 1}__` + processedContent.substring(match.index! + match[0].length);
+      processedContent = processedContent.substring(0, match.index) + `@@BOLD-${tokens.length - 1}@@` + processedContent.substring(match.index! + match[0].length);
     }
   }
 
@@ -150,7 +150,7 @@ function parseInlineMarkdown(text: string): TextToken[] {
       });
       processedContent =
         processedContent.substring(0, italicMatch.index) +
-        `__ITALIC_${tokens.length - 1}__` +
+        `@@ITALIC-${tokens.length - 1}@@` +
         processedContent.substring(italicMatch.index + italicMatch[0].length);
     }
   }
@@ -164,7 +164,7 @@ function parseInlineMarkdown(text: string): TextToken[] {
         type: "code",
         content: match[1],
       });
-      processedContent = processedContent.substring(0, match.index) + `__CODE_${tokens.length - 1}__` + processedContent.substring(match.index! + match[0].length);
+      processedContent = processedContent.substring(0, match.index) + `@@CODE-${tokens.length - 1}@@` + processedContent.substring(match.index! + match[0].length);
     }
   }
 
@@ -173,7 +173,7 @@ function parseInlineMarkdown(text: string): TextToken[] {
   let textParts: TextToken[] = [];
 
   // Replace placeholders back
-  const placeholderRegex = /__([A-Z]+)_(\d+)__/g;
+  const placeholderRegex = /@@([A-Z]+)-(\d+)@@/g;
   let lastPos = 0;
   let placeholderMatch;
 
@@ -202,17 +202,17 @@ function parseInlineMarkdown(text: string): TextToken[] {
 }
 
 function processLinks(text: string): string {
-  return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "__LINK__$1__URL__$2__ENDLINK__");
+  return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "@@LINK@@$1@@URL@@$2@@ENDLINK@@");
 }
 
 function processBold(text: string): string {
-  return text.replace(/\*\*([^*]+)\*\*/g, "__BOLD__$1__ENDBOLD__");
+  return text.replace(/\*\*([^*]+)\*\*/g, "@@BOLD@@$1@@ENDBOLD@@");
 }
 
 function processItalic(text: string): string {
-  return text.replace(/[*_]([^*_]+)[*_]/g, "__ITALIC__$1__ENDITALIC__");
+  return text.replace(/[*_]([^*_]+)[*_]/g, "@@ITALIC@@$1@@ENDITALIC@@");
 }
 
 function processCode(text: string): string {
-  return text.replace(/`([^`]+)`/g, "__CODE__$1__ENDCODE__");
+  return text.replace(/`([^`]+)`/g, "@@CODE@@$1@@ENDCODE@@");
 }
