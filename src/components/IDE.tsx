@@ -12,7 +12,7 @@ import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
 import PortfolioEditor from "./PortfolioEditor";
-import PluginPanel from "./PluginPanel";
+
 import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem, DetectionResult, BuildJob } from "../types";
 import { cn, generateAppId } from '../lib/utils';
 import { subscribeOrgMembers, getOrgMember } from "../lib/orgService";
@@ -597,9 +597,12 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         if (data.systemType !== 'portfolio') {
           setEditorMode("code");
         }
+      } else {
+        setLoading(false);
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `projects/${projectId}`);
+      setLoading(false);
     });
 
     // Fetch files
@@ -625,6 +628,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, `projects/${projectId}/files`);
+      setLoading(false);
     });
 
     return () => {
@@ -1843,7 +1847,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               {/* Plugins */}
               {mobileTab === "plugins" && (
                 <div className="h-full overflow-y-auto">
-                  <PluginPanel projectId={projectId} project={project} readOnly={!canDeploy} />
+                  
                 </div>
               )}
 
@@ -1902,7 +1906,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               {/* Plugin Marketplace Panel */}
               {project?.systemType !== 'portfolio' && activePanel === "plugins" && !isFocusMode && (
                 <div className="hidden md:flex w-80 border-r border-border-base flex-col overflow-hidden">
-                  <PluginPanel projectId={projectId} project={project} readOnly={!canDeploy} />
+                  
                 </div>
               )}
 

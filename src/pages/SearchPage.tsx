@@ -65,7 +65,7 @@ interface CommandResult {
 
 const DOC_RESULTS: DocResult[] = [
   { title: "Documentation", path: "/docs", keywords: ["docs", "documentation", "guides", "help"] },
-  { title: "Template Marketplace Docs", path: "/docs#plugin-marketplace", keywords: ["templates", "plugins", "marketplace"] },
+  
   { title: "Terms", path: "/terms", keywords: ["legal", "terms", "policy"] },
   { title: "Privacy", path: "/privacy", keywords: ["privacy", "data"] },
   { title: "Acceptable Use", path: "/acceptable-use", keywords: ["rules", "policy", "abuse"] },

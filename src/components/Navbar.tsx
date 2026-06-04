@@ -178,15 +178,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               <Users className="w-4 h-4" />
               Dev Teams
             </Link>
-            <span
-              role="link"
-              aria-disabled="true"
-              aria-label="Marketplace is coming soon"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-sm font-medium cursor-not-allowed"
-            >
-              <Layout className="w-4 h-4" />
-              Marketplace · Coming Soon
-            </span>
+
             <Link
               to="/projects"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
@@ -775,10 +767,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   <Users className="w-4 h-4" />
                   Dev Teams
                 </Link>
-                <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5 text-white/45 text-sm font-medium">
-                  <Layout className="w-4 h-4" />
-                  Marketplace · Coming Soon
-                </div>
+
                 <Link
                   to="/projects"
                   onClick={() => setIsMobileMenuOpen(false)}

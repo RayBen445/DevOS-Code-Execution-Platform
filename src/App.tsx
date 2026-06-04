@@ -273,6 +273,11 @@ export default function App() {
 
   // Real-time listener on maintenance config (public read)
   useEffect(() => {
+    // Fallback timeout in case Firestore snapshot is blocked (e.g. ad blockers) or network hangs
+    const timeout = setTimeout(() => {
+      setMaintenance(prev => prev === null ? { enabled: false, banner: "", pages: [] } : prev);
+    }, 3000);
+
     const unsub = onSnapshot(doc(db, "system_config", "maintenance"), (snap) => {
       if (snap.exists()) {
         setMaintenance({
@@ -284,7 +289,10 @@ export default function App() {
         setMaintenance({ enabled: false, banner: "", pages: [] });
       }
     }, () => setMaintenance({ enabled: false, banner: "", pages: [] }));
-    return () => unsub();
+    return () => {
+      unsub();
+      clearTimeout(timeout);
+    };
   }, []);
 
   // Capture ?ref= query param on first visit

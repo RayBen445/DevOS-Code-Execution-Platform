@@ -362,60 +362,7 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
           </div>
         </section>
 
-        {/* ── Plugin Marketplace teaser ─────────────────────────────── */}
-        <section className="w-full">
-          <div className="max-w-7xl mx-auto px-5 md:px-8 pb-24 md:pb-32">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="relative overflow-hidden rounded-3xl border border-border-base bg-gradient-to-br from-indigo-600/20 via-blue-600/15 to-violet-600/10 p-10 md:p-16 hover:border-white/25 transition-all group"
-            >
-              <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px]" />
-                <div className="absolute -bottom-12 -left-12 w-72 h-72 bg-violet-600/15 rounded-full blur-[100px]" />
-              </div>
-              <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-                <div className="flex-1">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-600/25 border border-green-500/40 text-green-300 text-xs font-bold uppercase tracking-widest mb-6">
-                    <Puzzle className="w-3.5 h-3.5" />
-                    Coming Soon
-                  </div>
-                  <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-5">
-                    DevOS Marketplace
-                  </h2>
-                  <p className="text-white/55 max-w-2xl leading-relaxed text-lg mb-6">
-                    We are upgrading the plugin marketplace experience. New one-click integrations are coming soon.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {["DevOS Auth", "DevOS DB", "DevOS Storage", "DevOS Email", "DevOS Realtime", "DevOS AI"].map((p) => (
-                      <span key={p} className="px-3.5 py-1.5 rounded-full bg-white/10 border border-border-base text-xs text-white/65 font-medium">
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-3 shrink-0 w-full sm:w-auto">
-                  <a
-                    href="/templates"
-                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-600/30 hover:shadow-indigo-500/40"
-                  >
-                    Browse Templates
-                    <ArrowRight className="w-4 h-4" />
-                  </a>
-                  <a
-                    href="/docs#plugin-marketplace"
-                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/8 border border-border-base hover:bg-white/12 hover:border-white/25 text-white/80 hover:text-white font-bold text-sm transition-all"
-                  >
-                    Read the Docs
-                    <ArrowRight className="w-4 h-4" />
-                  </a>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
+        
 
         {/* ── Testimonials ─────────────────────────────────────────── */}
         <section className="w-full">

@@ -147,7 +147,7 @@ function SectionContent({ id }: { id: string }) {
           </div>
           <Sub>Platform Features</Sub>
           <Body>
-            The Service includes an in-browser IDE, project deployment infrastructure, social developer feed, community spaces with real-time chat and voice calls, organization workspaces with role-based access control (RBAC), a credit-based AI feature system, user-uploaded media storage (avatars, banners) via Supabase, and a Plugin Marketplace (coming soon). Features may be added, modified, or removed at our discretion.
+            The Service includes an in-browser IDE, project deployment infrastructure, social developer feed, community spaces with real-time chat and voice calls, organization workspaces with role-based access control (RBAC), a credit-based AI feature system, user-uploaded media storage (avatars, banners) via Supabase. Features may be added, modified, or removed at our discretion.
           </Body>
           <InfoBox icon={AlertTriangle} color="yellow">
             If you do not agree to these Terms, you must not access or use the Service.

@@ -65,6 +65,7 @@ service cloud.firestore {
 
     function canReadProject(projectId, projectData) {
       return projectData.get('isPublic', false) == true || 
+             projectData.get('deployed', false) == true ||
              (projectData.get('isSystem', false) == true && projectData.get('systemType', '') == 'portfolio') || (
         isAuthenticated() && (
           isAdmin() ||

@@ -993,7 +993,7 @@ function formatTime(ts) {
   // ── AI ────────────────────────────────────────────────────────────────────
   function AISDK(key) { this._key = key; }
   AISDK.prototype.complete = async function (opts) {
-    if (!this._key) return { text: 'AI plugin not configured yet. Install DevOS AI from the Plugin Marketplace and add your key to enable live AI responses.' };
+    if (!this._key) return { text: 'AI plugin not configured yet. Add your OpenAI key in Settings to enable live AI responses.' };
     const r = await fetch(BASE + '/ai/v1/complete', { method:'POST', headers: headers(this._key), body: JSON.stringify(opts) });
     if (!r.ok) throw new Error((await r.json()).message || 'AI failed');
     return r.json();

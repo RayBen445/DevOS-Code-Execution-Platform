@@ -867,7 +867,7 @@ p {
             className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-border-base text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
           >
             <Layout className="w-4 h-4 text-purple-400" />
-            Marketplace
+            Templates
           </button>
           {/* Tertiary */}
           <button
