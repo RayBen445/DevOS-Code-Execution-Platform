@@ -88,8 +88,17 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
         }
         setPortfolioData(parsed);
       }
-      if (layoutFile) setLayoutData(JSON.parse(layoutFile.content));
-      if (themeFile) setThemeData(JSON.parse(themeFile.content));
+      if (layoutFile) {
+        setLayoutData(JSON.parse(layoutFile.content));
+      } else {
+        setLayoutData({ sections: ["hero", "projects", "contact"] });
+      }
+      
+      if (themeFile) {
+        setThemeData(JSON.parse(themeFile.content));
+      } else {
+        setThemeData({ primaryColor: "#3b82f6", fontFamily: "Inter", darkMode: true });
+      }
     } catch (e) {
       console.error("Error parsing portfolio files:", e);
     }

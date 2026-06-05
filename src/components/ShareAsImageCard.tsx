@@ -4,7 +4,7 @@ import { FeedPost, Project } from "../types";
 import { resolveAvatar } from "../lib/avatars";
 import { formatRelativeTime } from "../lib/utils";
 
-type ExportStyle = "default" | "gradient" | "minimal";
+type ExportStyle = "default" | "gradient" | "minimal" | "premium" | "hacker";
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
@@ -234,6 +234,54 @@ export function ProjectShareCard({ project, username, avatarUrl, cardRef, styleV
           }}
         >
           {project.isPublic ? "Public Project" : "Private Project"}
+        </span>
+        <Branding />
+      </div>
+    </ExportShell>
+  );
+}
+
+
+interface LearnProgressShareCardProps {
+  topicTitle: string;
+  username?: string | null;
+  avatarUrl?: string | null;
+  cardRef: RefObject<HTMLDivElement | null>;
+  styleVariant?: ExportStyle;
+}
+
+export function LearnProgressShareCard({ topicTitle, username, avatarUrl, cardRef, styleVariant = "premium" }: LearnProgressShareCardProps) {
+  return (
+    <ExportShell cardRef={cardRef} styleVariant={styleVariant}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+        <Avatar src={avatarUrl} name={username} />
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>{username ?? "Developer"}</div>
+          <div style={{ fontSize: 16, color: "#9CA3AF" }}>Learning Progress</div>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
+        <h2 style={{ margin: 0, fontSize: 44, lineHeight: 1.15 }}>{topicTitle}</h2>
+        <p style={{ margin: 0, fontSize: 28, lineHeight: 1.35, color: "#10b981", fontWeight: 600 }}>
+          🎉 Topic Completed!
+        </p>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20 }}>
+        <span
+          style={{
+            display: "inline-flex",
+            padding: "8px 16px",
+            borderRadius: 999,
+            border: "1px solid #10B981",
+            background: "rgba(16,185,129,0.1)",
+            color: "#6ee7b7",
+            fontSize: 16,
+            fontWeight: 700,
+          }}
+        >
+          DevOS Learn
         </span>
         <Branding />
       </div>

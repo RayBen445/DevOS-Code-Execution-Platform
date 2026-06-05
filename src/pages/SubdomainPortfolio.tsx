@@ -20,9 +20,76 @@ interface Props {
   username: string;
 }
 
+
+const PortfolioContactForm = ({ portfolioId }: { portfolioId: string }) => {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !email || !message) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+      await addDoc(collection(db, "projects", portfolioId, "messages"), {
+        name,
+        email,
+        message,
+        createdAt: serverTimestamp(),
+        read: false
+      });
+      setSubmitted(true);
+      toast.success("Message sent successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to send message. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="p-6 border border-green-500/30 bg-green-500/10 rounded-2xl text-center">
+        <Check className="w-8 h-8 text-green-400 mx-auto mb-2" />
+        <h3 className="text-xl font-bold text-green-400 mb-2">Message Sent</h3>
+        <p className="text-white/70">Thank you for getting in touch! I will get back to you soon.</p>
+        <button onClick={() => setSubmitted(false)} className="mt-4 text-sm text-green-400 hover:text-green-300 underline">Send another message</button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-lg mt-8 p-6 bg-white/5 border border-border-base rounded-2xl">
+      <div>
+        <label className="block text-sm font-medium text-white/70 mb-1">Name</label>
+        <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Your name" />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-white/70 mb-1">Email</label>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="your@email.com" />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-white/70 mb-1">Message</label>
+        <textarea value={message} onChange={e => setMessage(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors min-h-[120px] resize-y" placeholder="How can I help you?"></textarea>
+      </div>
+      <button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all">
+        {submitting ? "Sending..." : "Send Message"}
+      </button>
+    </form>
+  );
+};
+
 export default function SubdomainPortfolio({ username }: Props) {
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [uid, setUid] = useState<string | null>(null);
+  const [portfolioId, setPortfolioId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,6 +178,7 @@ export default function SubdomainPortfolio({ username }: Props) {
           );
           const pSnap = await getDocs(pQ);
           if (!pSnap.empty) {
+            setPortfolioId(pSnap.docs[0].id);
             const pDoc = pSnap.docs[0].data() as Project;
             if (pDoc.draft && pDoc.draft.portfolio) {
               setPortfolioData(pDoc.draft.portfolio as PortfolioData);
@@ -226,12 +294,15 @@ export default function SubdomainPortfolio({ username }: Props) {
             className="prose prose-invert prose-blue max-w-none"
             dangerouslySetInnerHTML={{ __html: markdownHtml }}
           />
+          {activePageSlug === '/contact' && portfolioId && (
+            <PortfolioContactForm portfolioId={portfolioId} />
+          )}
         </main>
 
         {/* Footer */}
         <footer className="border-t border-border-base py-12 mt-auto">
           <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-white/40 text-sm">{portfolioData.global?.footer?.text || `© ${new Date().getFullYear()} ${displayName}`}</p>
+            <p className="text-white/40 text-sm">© {new Date().getFullYear()} {displayName}. <span className="text-white/20 px-2">|</span> Built with {PRODUCT_BRAND_NAME}</p>
             {portfolioData.global?.footer?.showSocials && (
               <div className="flex items-center gap-4">
                 {links.github && (

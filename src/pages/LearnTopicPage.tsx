@@ -8,6 +8,11 @@ import { useSEO } from "../hooks/useSEO";
 import { findTopic } from "../lib/learnData";
 import { useLearnProgress } from "../hooks/useLearnProgress";
 import { cn } from "../lib/utils";
+import { useRef } from "react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "../lib/firebase";
+import { useShareAsImage, LearnProgressShareCard } from "../components/ShareAsImageCard";
+import { Share2 } from "lucide-react";
 
 // Approximate reading time per lesson in minutes
 const APPROX_MINUTES = 5;
@@ -22,6 +27,9 @@ export default function LearnTopicPage() {
   });
 
   const { completedSet } = useLearnProgress();
+  const [user] = useAuthState(auth);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const { capture, capturing } = useShareAsImage(cardRef, `${topic?.title}_progress.png`);
 
   if (!topic) return <Navigate to="/learn" replace />;
 
@@ -166,16 +174,32 @@ export default function LearnTopicPage() {
                 Great work — head back to explore more topics.
               </p>
             </div>
-            <Link
-              to="/learn"
-              className="ml-auto shrink-0 px-4 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-400 rounded-xl text-sm font-bold transition-colors"
-            >
-              All Topics
-            </Link>
+            <div className="ml-auto shrink-0 flex items-center gap-2">
+              <button
+                onClick={capture}
+                disabled={capturing}
+                className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 rounded-xl text-sm font-bold transition-colors flex items-center gap-2"
+              >
+                <Share2 className="w-4 h-4" />
+                {capturing ? "Generating..." : "Share Progress"}
+              </button>
+              <Link
+                to="/learn"
+                className="px-4 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-400 rounded-xl text-sm font-bold transition-colors"
+              >
+                All Topics
+              </Link>
+            </div>
           </motion.div>
         )}
       </div>
 
+      <LearnProgressShareCard
+        topicTitle={topic.title}
+        username={user?.displayName || user?.email?.split('@')[0]}
+        avatarUrl={user?.photoURL}
+        cardRef={cardRef}
+      />
       <Footer />
       <MobileBottomNav />
     </div>

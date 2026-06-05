@@ -259,6 +259,11 @@ service cloud.firestore {
         allow create, delete: if canWriteProject(projectId, getProjectData(projectId));
       }
 
+      match /messages/{messageId} {
+        allow create: if true;
+        allow read, update, delete: if canWriteProject(projectId, getProjectData(projectId));
+      }
+
       // Real-time presence: each user writes only their own doc; all project readers can see who's online
       match /presence/{uid} {
         allow read: if canReadProject(projectId, getProjectData(projectId));
@@ -821,11 +826,16 @@ service cloud.firestore {
     }
 
     // ── Voice Rooms — real-time call presence ─────────────────────────────────
-    // Written exclusively by the server (Admin SDK) on join/leave.
-    // Any authenticated user may read so the chat header can show the call banner.
     match /voice_rooms/{roomId} {
       allow read: if isAuthenticated();
-      allow write: if false;
+      // Allow users to create or update the room (to add/remove themselves from participants)
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+      
+      // Signals subcollection for WebRTC SDP and ICE candidates
+      match /signals/{signalId} {
+        allow read, write: if isAuthenticated();
+      }
     }
 
     // ── Learn Lessons — admin-managed content ─────────────────────────────────
