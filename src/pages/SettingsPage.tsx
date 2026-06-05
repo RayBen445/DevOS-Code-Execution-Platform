@@ -60,6 +60,12 @@ import {
   ArrowDownRight,
   Keyboard,
   History,
+  Linkedin,
+  Facebook,
+  Instagram,
+  Youtube,
+  Dribbble,
+  MessageCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -356,6 +362,12 @@ function ProfileTab() {
   const [github, setGithub] = useState("");
   const [twitter, setTwitter] = useState("");
   const [website, setWebsite] = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [facebook, setFacebook] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [youtube, setYoutube] = useState("");
+  const [dribbble, setDribbble] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [birthday, setBirthday] = useState("");
@@ -385,6 +397,12 @@ function ProfileTab() {
         setGithub(links.github || "");
         setTwitter(links.twitter || "");
         setWebsite(links.website || "");
+        setLinkedin(links.linkedin || "");
+        setFacebook(links.facebook || "");
+        setInstagram(links.instagram || "");
+        setYoutube(links.youtube || "");
+        setDribbble(links.dribbble || "");
+        setWhatsapp(links.whatsapp || "");
       }
       setLoading(false);
     });
@@ -438,6 +456,12 @@ function ProfileTab() {
         ...(github ? { github } : {}),
         ...(twitter ? { twitter } : {}),
         ...(website ? { website } : {}),
+        ...(linkedin ? { linkedin } : {}),
+        ...(facebook ? { facebook } : {}),
+        ...(instagram ? { instagram } : {}),
+        ...(youtube ? { youtube } : {}),
+        ...(dribbble ? { dribbble } : {}),
+        ...(whatsapp ? { whatsapp } : {}),
       };
       const publicData = {
         uid: user.uid,
@@ -491,7 +515,7 @@ function ProfileTab() {
       handleSave(true);
     }, 1500);
     return () => clearTimeout(timer);
-  }, [fullName, bio, skills, availableForWork, birthday, github, twitter, website]);
+  }, [fullName, bio, skills, availableForWork, birthday, github, twitter, website, linkedin, facebook, instagram, youtube, dribbble, whatsapp]);
 
   const handleAvatarUpload = async (file: File) => {
     if (!user) return;
@@ -740,15 +764,33 @@ function ProfileTab() {
 
       <div>
         <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Social Links</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field label="GitHub" icon={<Github className="w-3.5 h-3.5" />}>
             <input type="url" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="https://github.com/…" className={inputCls} />
           </Field>
           <Field label="Twitter / X" icon={<Twitter className="w-3.5 h-3.5" />}>
             <input type="url" value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="https://twitter.com/…" className={inputCls} />
           </Field>
+          <Field label="LinkedIn" icon={<Linkedin className="w-3.5 h-3.5" />}>
+            <input type="url" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="https://linkedin.com/in/…" className={inputCls} />
+          </Field>
+          <Field label="Facebook" icon={<Facebook className="w-3.5 h-3.5" />}>
+            <input type="url" value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="https://facebook.com/…" className={inputCls} />
+          </Field>
+          <Field label="Instagram" icon={<Instagram className="w-3.5 h-3.5" />}>
+            <input type="url" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="https://instagram.com/…" className={inputCls} />
+          </Field>
+          <Field label="YouTube" icon={<Youtube className="w-3.5 h-3.5" />}>
+            <input type="url" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/…" className={inputCls} />
+          </Field>
+          <Field label="Dribbble" icon={<Dribbble className="w-3.5 h-3.5" />}>
+            <input type="url" value={dribbble} onChange={(e) => setDribbble(e.target.value)} placeholder="https://dribbble.com/…" className={inputCls} />
+          </Field>
           <Field label="Website" icon={<Globe className="w-3.5 h-3.5" />}>
             <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://yoursite.com" className={inputCls} />
+          </Field>
+          <Field label="WhatsApp" icon={<MessageCircle className="w-3.5 h-3.5" />}>
+            <input type="text" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="wa.me/1234567890" className={inputCls} />
           </Field>
         </div>
       </div>

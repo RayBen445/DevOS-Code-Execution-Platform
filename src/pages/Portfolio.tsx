@@ -4,7 +4,7 @@ import { db, auth } from "../lib/firebase";
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { UserSettings, Project, FeedPost } from "../types";
-import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil, Flame, BadgeCheck, Briefcase, FileText } from "lucide-react";
+import { Globe, Github, ExternalLink, Calendar, User as UserIcon, Zap, Copy, Check, Share2, ArrowUpRight, AlertCircle, Twitter, Linkedin, Eye, Heart, GitFork, Users, Pencil, Flame, BadgeCheck, Briefcase, FileText, Facebook, Instagram, Youtube, Dribbble, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn, formatRelativeTime, toValidDate } from "../lib/utils";
@@ -227,6 +227,24 @@ export default function Portfolio() {
     );
   }
 
+  const mergedLinks: { platform: string, url: string }[] = [];
+  
+  if (userSettings?.links) {
+    Object.entries(userSettings.links).forEach(([platform, url]) => {
+      if (url && typeof url === 'string') {
+        mergedLinks.push({ platform, url });
+      }
+    });
+  }
+  
+  if (portfolioConfig?.links) {
+    portfolioConfig.links.forEach((link: any) => {
+      if (link.url && typeof link.url === 'string' && !mergedLinks.some(l => l.platform === link.platform)) {
+        mergedLinks.push({ platform: link.platform, url: link.url });
+      }
+    });
+  }
+
   return (
     <div className="min-h-screen bg-base text-white font-sans selection:bg-blue-500/30">
       {/* Navbar — show for authenticated users */}
@@ -357,10 +375,21 @@ export default function Portfolio() {
             </div>
           )}
 
-          {portfolioConfig?.links && portfolioConfig.links.some((l: any) => l.url) && (
-            <div className="flex items-center gap-6 mb-10">
-              {portfolioConfig.links.map((link: any, index: number) => {
+          {mergedLinks.length > 0 && (
+            <div className="flex flex-wrap justify-center items-center gap-6 mb-10">
+              {mergedLinks.map((link: any, index: number) => {
                 if (!link.url) return null;
+                const p = link.platform.toLowerCase();
+                let Icon = Globe;
+                if (p === 'github') Icon = Github;
+                else if (p === 'twitter') Icon = Twitter;
+                else if (p === 'linkedin') Icon = Linkedin;
+                else if (p === 'facebook') Icon = Facebook;
+                else if (p === 'instagram') Icon = Instagram;
+                else if (p === 'youtube') Icon = Youtube;
+                else if (p === 'dribbble') Icon = Dribbble;
+                else if (p === 'whatsapp') Icon = MessageCircle;
+
                 return (
                   <a
                     key={index}
@@ -369,9 +398,7 @@ export default function Portfolio() {
                     rel="noopener noreferrer"
                     className="text-white/40 hover:text-white transition-all flex items-center gap-2 text-sm font-bold group"
                   >
-                    {link.platform === 'github' && <Github className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-                    {link.platform === 'twitter' && <Twitter className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-                    {link.platform === 'linkedin' && <Linkedin className="w-4 h-4 group-hover:scale-110 transition-transform" />}
+                    <Icon className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     <span className="capitalize">{link.platform}</span>
                   </a>
                 );
@@ -682,12 +709,22 @@ export default function Portfolio() {
               ))}
             </div>
 
-            {portfolioConfig?.links && portfolioConfig.links.some((l: any) => l.url) && (
+            {mergedLinks.length > 0 && (
               <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">Links</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">External Links</p>
                 <div className="flex flex-col gap-3">
-                  {portfolioConfig.links.map((link: any, index: number) => {
-                    if (!link.url) return null;
+                  {mergedLinks.map((link: any, index: number) => {
+                    const p = link.platform.toLowerCase();
+                    let Icon = Globe;
+                    if (p === 'github') Icon = Github;
+                    else if (p === 'twitter') Icon = Twitter;
+                    else if (p === 'linkedin') Icon = Linkedin;
+                    else if (p === 'facebook') Icon = Facebook;
+                    else if (p === 'instagram') Icon = Instagram;
+                    else if (p === 'youtube') Icon = Youtube;
+                    else if (p === 'dribbble') Icon = Dribbble;
+                    else if (p === 'whatsapp') Icon = MessageCircle;
+
                     return (
                       <a
                         key={index}
@@ -696,40 +733,12 @@ export default function Portfolio() {
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 text-sm text-white/60 hover:text-white transition-colors group"
                       >
-                        {link.platform === "github" && <Github className="w-4 h-4 flex-shrink-0" />}
-                        {link.platform === "twitter" && <Twitter className="w-4 h-4 flex-shrink-0" />}
-                        {link.platform === "linkedin" && <Linkedin className="w-4 h-4 flex-shrink-0" />}
+                        <Icon className="w-4 h-4 flex-shrink-0" />
                         <span className="truncate">{link.url}</span>
                         <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-40 group-hover:opacity-100 ml-auto" />
                       </a>
                     );
                   })}
-                </div>
-              </div>
-            )}
-
-            {userSettings.links && (
-              <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">External Links</p>
-                <div className="flex flex-col gap-3">
-                  {userSettings.links.github && (
-                    <a href={userSettings.links.github} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 text-sm text-white/60 hover:text-white transition-colors">
-                      <Github className="w-4 h-4" /> {userSettings.links.github}
-                    </a>
-                  )}
-                  {userSettings.links.twitter && (
-                    <a href={userSettings.links.twitter} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 text-sm text-white/60 hover:text-white transition-colors">
-                      <Twitter className="w-4 h-4" /> {userSettings.links.twitter}
-                    </a>
-                  )}
-                  {userSettings.links.website && (
-                    <a href={userSettings.links.website} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 text-sm text-white/60 hover:text-white transition-colors">
-                      <Globe className="w-4 h-4" /> {userSettings.links.website}
-                    </a>
-                  )}
                 </div>
               </div>
             )}
@@ -753,7 +762,7 @@ export default function Portfolio() {
               </div>
             )}
 
-            {!portfolioConfig?.bio && !userSettings.bio && !portfolioConfig?.links?.some((l: any) => l.url) && !userSettings.links && isOwner && (
+            {!portfolioConfig?.bio && !userSettings.bio && mergedLinks.length === 0 && isOwner && (
               <div className="py-16 text-center rounded-2xl border border-dashed border-border-base">
                 <UserIcon className="w-10 h-10 text-white/10 mx-auto mb-3" />
                 <p className="text-white/30 text-sm">No about info yet</p>
