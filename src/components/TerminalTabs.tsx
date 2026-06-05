@@ -16,7 +16,7 @@ export default function TerminalTabs({ socket, onClose, cwd }: TerminalTabsProps
 
   const handleAddTerminal = () => {
     const newId = `term-${Date.now()}`;
-    setTerminals(prev => [...prev, { id: newId, name: "bash" }]);
+    setTerminals(prev => [...prev, { id: newId, name: "Terminal" }]);
     setActiveTerminalId(newId);
   };
 
