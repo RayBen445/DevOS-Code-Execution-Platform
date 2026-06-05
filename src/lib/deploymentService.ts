@@ -23,7 +23,8 @@ export async function createDeployment(
   projectId: string,
   userId: string,
   username: string,
-  url: string
+  url: string,
+  deployTarget?: "internal" | "cloudrun" | "vercel"
 ): Promise<string> {
   const ref = await addDoc(collection(db, "deployments"), {
     projectId,
@@ -31,6 +32,7 @@ export async function createDeployment(
     username,
     url,
     status: "ready",
+    deployTarget: deployTarget || "internal",
     createdAt: serverTimestamp(),
     completedAt: serverTimestamp(),
   });

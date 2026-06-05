@@ -35,7 +35,7 @@ interface DeployModalProps {
 
 export default function DeployModal({ isOpen, onClose, projectName, projectId, files, onDeployed }: DeployModalProps) {
   const [step, setStep] = useState<"select" | "entry-selection" | "deploying" | "success">("select");
-  const [method, setMethod] = useState<"vercel" | "internal" | null>(null);
+  const [method, setMethod] = useState<"vercel" | "internal" | "aws" | null>(null);
   const [deployedUrl, setDeployedUrl] = useState("");
   const [isCopying, setIsCopying] = useState(false);
   const [entryFiles, setEntryFiles] = useState<string[]>([]);
@@ -66,7 +66,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
     }
   };
 
-  const startDeployFlow = async (deployMethod: "internal") => {
+  const startDeployFlow = async (deployMethod: "internal" | "vercel") => {
     setMethod(deployMethod);
     
     // Apply .devignore filtering
@@ -91,8 +91,8 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
     const htmlFiles = deployableFiles.filter(f => f.name.toLowerCase() === "index.html").map(f => f.path);
     
     if (htmlFiles.length === 0) {
-      if (deployableFiles.some(f => f.name === "package.json")) {
-        // Bypass index.html requirement for Node/Next.js apps
+      if (deployableFiles.some(f => f.name === "package.json") || deployMethod === "vercel") {
+        // Bypass index.html requirement for Node/Next.js apps or Vercel
         setEntryFiles(["package.json"]);
         setSelectedEntry("package.json");
         handleDeploy(deployMethod, "package.json");
@@ -122,7 +122,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
     }
   };
 
-  const handleDeploy = async (deployMethod: "internal", entryFile: string) => {
+  const handleDeploy = async (deployMethod: "internal" | "vercel", entryFile: string) => {
     setStep("deploying");
     setCompletedSteps(-1);
 
@@ -158,27 +158,50 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       const projectDoc = await getDoc(doc(db, "projects", projectId));
       const projectData = projectDoc.data();
       
-      const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
-      const url = buildProjectUrl(username, projectSlug);
-      
-      const projectRef = doc(db, "projects", projectId);
-      await updateDoc(projectRef, {
-        projectSlug,
-        deployUrl: url,
-        liveUrl: url,
-        title: projectName,
-        ownerUsername: username,
-        entryFile,
-        isPublic: true,
-        deployStatus: "success",
-        lastDeployedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      let finalDeployUrl = "";
+
+      if (deployMethod === "vercel") {
+        const response = await fetch("/api/deploy/vercel", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
+          },
+          body: JSON.stringify({
+            projectId,
+            files,
+            framework: projectData?.framework || "Unknown",
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "Cloud Run deployment failed");
+        }
+        finalDeployUrl = data.url;
+      } else {
+        const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
+        finalDeployUrl = buildProjectUrl(username, projectSlug);
+        
+        const projectRef = doc(db, "projects", projectId);
+        await updateDoc(projectRef, {
+          projectSlug,
+          deployUrl: finalDeployUrl,
+          liveUrl: finalDeployUrl,
+          title: projectName,
+          ownerUsername: username,
+          entryFile,
+          isPublic: true,
+          deployStatus: "success",
+          lastDeployedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
 
       // Record deployment in the deployments collection
-      await createDeployment(projectId, auth.currentUser.uid, username, url);
+      await createDeployment(projectId, auth.currentUser.uid, username, finalDeployUrl, deployMethod);
 
-      setDeployedUrl(url);
+      setDeployedUrl(finalDeployUrl);
       setStep("success");
       toast.success("Your project is live!");
       notifyDeployment({ uid: auth.currentUser.uid, projectName, success: true, projectId }).catch(() => {});
@@ -265,10 +288,26 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                       </div>
                       <div className="text-left">
                         <div className="font-bold text-lg">Deploy to DevOS</div>
-                        <div className="text-xs opacity-60 font-medium">Instant sandbox deployment</div>
+                        <div className="text-xs opacity-60 font-medium">Instant static preview</div>
                       </div>
                     </div>
                     <Zap className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
+                  </button>
+
+                  <button
+                    onClick={() => startDeployFlow("vercel" as any)}
+                    className="w-full mt-4 p-6 rounded-2xl bg-[#000000] text-white hover:bg-[#111111] border border-white/20 transition-all flex items-center justify-between group active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shadow-lg">
+                        <svg viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="white"/></svg>
+                      </div>
+                      <div className="text-left">
+                        <div className="font-bold text-lg text-white">Production Vercel</div>
+                        <div className="text-xs text-white/60 font-medium">Global Edge Network (Next.js/React)</div>
+                      </div>
+                    </div>
+                    <Globe className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
                   </button>
 
                   <div className="mt-8 p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10 text-[11px] text-white/40 leading-relaxed relative overflow-hidden group">

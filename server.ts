@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import type { Request } from "express";
 import path from "path";
@@ -2140,6 +2141,109 @@ app.post("/api/build-job", async (req, res) => {
   } finally {
     activeBuildCount--;
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* cleanup best effort */ }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// External Deployment API (Vercel)
+// ---------------------------------------------------------------------------
+app.post("/api/deploy/vercel", express.json({ limit: "50mb" }), async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) return res.status(401).json({ error: "Unauthorized" });
+  const idToken = authHeader.split("Bearer ")[1];
+  
+  let uid: string;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid = decoded.uid;
+  } catch {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+
+  const { projectId, files, framework } = req.body;
+  if (!projectId || !files || !Array.isArray(files)) return res.status(400).json({ error: "Missing required fields" });
+
+  const jobId = Math.random().toString(36).slice(2, 10);
+  const emitLog = (level: "info" | "success" | "warning" | "error", message: string) => {
+    (globalThis as any).__devosIo?.to(projectId).emit("build-log", { jobId, level, message, timestamp: new Date().toISOString() });
+  };
+
+  const startedAt = Date.now();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `devos-vercel-${uid.slice(0, 8)}-`));
+
+  try {
+    emitLog("info", "Extracting files to temporary directory...");
+    for (const file of files) {
+      if (!file.path || !file.content) continue;
+      const fullPath = path.join(tmpDir, file.path);
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+      fs.writeFileSync(fullPath, file.content, "utf-8");
+    }
+
+    // Check if package.json has "next" dependency
+    let isNextJs = false;
+    const pkgPath = path.join(tmpDir, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+        if (pkg.dependencies?.next || pkg.devDependencies?.next) {
+          isNextJs = true;
+        }
+      } catch { }
+    }
+
+    emitLog("info", "Generating Vercel project configuration...");
+    const vercelConfig = {
+      version: 2,
+      name: `devos-${projectId.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40)}`,
+      framework: isNextJs ? "nextjs" : null
+    };
+    fs.writeFileSync(path.join(tmpDir, "vercel.json"), JSON.stringify(vercelConfig, null, 2), "utf-8");
+
+    // Get Vercel Token dynamically
+    const vercelToken = process.env.VERCEL_TOKEN;
+    if (!vercelToken) {
+      throw new Error("DevOS Server missing VERCEL_TOKEN environment variable. Cannot deploy to Vercel.");
+    }
+
+    emitLog("info", "Authenticating and Deploying to Vercel global edge network...");
+    
+    // We use npx vercel instead of global vercel, so the user doesn't even need to pre-install the CLI globally!
+    const buildResult = await runCommand(process.platform === "win32" ? "cmd.exe" : "npx", process.platform === "win32" ? ["/c", `npx --yes vercel --prod --yes --token ${vercelToken}`] : ["--yes", "vercel", "--prod", "--yes", "--token", vercelToken], tmpDir, 300000);
+    
+    if (buildResult.exitCode !== 0) {
+      throw new Error(`Vercel deployment failed:\n${buildResult.stderr || buildResult.stdout}`);
+    }
+
+    // Extract URL from output. Vercel prints the prod URL in stdout.
+    let deployUrl = "";
+    const match = (buildResult.stdout + buildResult.stderr).match(/https:\/\/[^\s]+\.vercel\.app/i);
+    if (match) deployUrl = match[0];
+
+    if (!deployUrl) throw new Error("Could not determine Vercel URL from deployment output.\nLogs:\n" + buildResult.stdout);
+
+    emitLog("success", `Deployed successfully to Vercel Edge Network!`);
+    emitLog("info", "Configuring DevOS proxy to wrap the deployment...");
+
+    // Update project with real URL
+    await admin.firestore().collection("projects").doc(projectId).update({
+      vercelUrl: deployUrl,
+      deployUrl: deployUrl, // We store the vercel URL, but SubdomainRouter will iframe it
+      deployTarget: "vercel",
+      deployStatus: "success",
+      lastDeployedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    (globalThis as any).__devosIo?.to(projectId).emit("build-complete", { jobId, status: "success", previewUrl: deployUrl });
+
+    return res.json({ success: true, url: deployUrl, duration: Date.now() - startedAt });
+  } catch (err: any) {
+    const errorMsg = String(err?.message || "Vercel deployment failed");
+    emitLog("error", errorMsg);
+    (globalThis as any).__devosIo?.to(projectId).emit("build-complete", { jobId, status: "failed", error: errorMsg });
+    return res.status(500).json({ success: false, error: errorMsg });
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { }
   }
 });
 

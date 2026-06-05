@@ -67,6 +67,7 @@ import { initializeDefaultBots, emitBotEventWithToast } from "./lib/botEngine";
 import { buildPortfolioUrl, buildProjectUrl, COMPANY_DOMAIN, getLegacyRedirectUrl, parseDevosHost } from "./lib/brand";
 import PremiumLoader from "./components/PremiumLoader";
 import CommandPalette from "./components/CommandPalette";
+import OfflineGame from "./components/OfflineGame";
 
 import { Toaster } from "sonner";
 
@@ -504,6 +505,7 @@ export default function App() {
   return (
     <>
       <Toaster position="top-right" richColors theme="dark" />
+      <OfflineGame />
       <ConfigGuard>
         <ScrollToTop />
         <RouteTracker user={user} />

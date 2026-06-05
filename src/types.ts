@@ -29,6 +29,8 @@ export interface Project {
   views?: number;
   deployUrl?: string;
   liveUrl?: string;
+  vercelUrl?: string;
+  deployTarget?: 'internal' | 'cloudrun' | 'vercel';
   parentProjectId?: string;
   forkedFrom?: string;           // projectId of the source project
   forkedFromOwner?: string;      // username of the source project owner
@@ -531,6 +533,7 @@ export interface Deployment {
   buildCommand?: string;
   outputDir?: string;
   framework?: string;
+  deployTarget?: 'internal' | 'cloudrun' | 'vercel';
   createdAt: any;
   completedAt?: any;
   error?: string;
