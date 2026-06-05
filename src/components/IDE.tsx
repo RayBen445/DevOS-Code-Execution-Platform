@@ -24,6 +24,7 @@ import { enqueueJob, subscribeProjectBuildJobs, buildPreviewUrl } from "../lib/b
 import DeploymentDashboard from "./DeploymentDashboard";
 import BuildStatusBadge from "./BuildStatusBadge";
 import { Loader2, ArrowLeft, Share2, Play, GitBranch, Files, Rocket, Terminal, X, GitFork, Globe, Settings, Code2, Plus, Upload, Maximize2, Minimize2, User as UserIcon, Eye, Copy, Clipboard, Save, Check, RefreshCw, ExternalLink, Users, Building2, Crown, Shield, UserCheck, Activity, Clock, Puzzle } from "lucide-react";
+import TerminalTabs from "./TerminalTabs";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { emitBotEvent } from "../lib/botEngine";
@@ -1788,81 +1789,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               {/* Terminal — full-height on mobile */}
               {mobileTab === "terminal" && (
                 <div className="h-full flex flex-col bg-surface">
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-[#21262D] bg-[#161B22] flex-shrink-0">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 text-white/40">
-                        <Terminal className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">DevOS Terminal</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className={cn("w-1.5 h-1.5 rounded-full", (isRunning || isExecRunning) ? "bg-yellow-500 animate-pulse" : "bg-green-500")} />
-                        <span className="text-[9px] text-white/20 font-bold uppercase">
-                          {(isRunning || isExecRunning) ? "Running" : "Ready"}
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => { setRunOutput([]); setCmdHistory([]); setHistoryIdx(-1); setTerminalInitialized(false); }}
-                      className="text-[9px] font-bold uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors px-2 py-1 rounded hover:bg-white/5"
-                    >
-                      Clear
-                    </button>
+                  <div className="flex-1 min-h-0 relative">
+                    <TerminalTabs socket={socket} onClose={() => setMobileTab("files")} cwd={(project?.systemType as string) === "v0" ? "/app" : undefined} />
                   </div>
-                  <div
-                    className="flex-1 px-4 py-3 font-mono text-[11px] overflow-y-auto custom-scrollbar"
-                    onClick={() => terminalInputRef.current?.focus()}
-                  >
-                    <div className="space-y-1.5">
-                      {runOutput.length === 0 && (
-                        <div className="text-white/20 italic text-[10px]">DevOS Terminal — Type 'help' for available commands.</div>
-                      )}
-                      {runOutput.map((log, i) => (
-                        <div key={i} className="flex gap-3">
-                          <span className="text-white/10 select-none shrink-0 tabular-nums">{log.timestamp}</span>
-                          <span className={cn(
-                            "break-all leading-relaxed whitespace-pre-wrap",
-                            log.type === "system" && "text-green-400/80 font-bold",
-                            log.type === "info" && "text-blue-400",
-                            log.type === "success" && "text-green-400",
-                            log.type === "error" && "text-red-400",
-                            log.type === "warning" && "text-yellow-400",
-                            log.type === "output" && "text-white/80"
-                          )}>
-                            {log.message}
-                          </span>
-                        </div>
-                      ))}
-                      {(isRunning || isExecRunning) && (
-                        <div className="flex gap-3 animate-pulse">
-                          <span className="text-white/10 select-none shrink-0">--:--:--</span>
-                          <div className="flex items-center gap-2 text-white/40 italic">
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            Running...
-                          </div>
-                        </div>
-                      )}
-                      <div ref={terminalEndRef} />
-                    </div>
-                  </div>
-                  <form
-                    onSubmit={handleTerminalSubmit}
-                    className="flex items-center gap-2 px-4 py-2 border-t border-[#21262D] bg-surface flex-shrink-0"
-                  >
-                    <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0 whitespace-nowrap">
-                      devos ▶ {project?.name || "project"} $
-                    </span>
-                    <input
-                      ref={terminalInputRef}
-                      type="text"
-                      value={terminalInput}
-                      onChange={e => setTerminalInput(e.target.value)}
-                      onKeyDown={handleTerminalKeyDown}
-                      placeholder="Type a command…"
-                      className="flex-1 bg-transparent text-white/80 font-mono text-[11px] outline-none placeholder-white/15"
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </form>
                 </div>
               )}
 
@@ -2106,77 +2035,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   className="h-1 cursor-row-resize bg-transparent hover:bg-blue-500/30 active:bg-blue-500/50 transition-colors flex-shrink-0"
                   onMouseDown={handleTerminalResizeStart}
                 />
-                {/* Terminal title bar */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-[#21262D] bg-[#161B22] flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-white/40">
-                      <Terminal className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">DevOS Terminal v1.0</span>
-                    </div>
-                    <div className="h-3 w-[1px] bg-white/5" />
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-1.5 h-1.5 rounded-full", (isRunning || isExecRunning) ? "bg-yellow-500 animate-pulse" : "bg-green-500")} />
-                      <span className="text-[9px] text-white/20 font-bold uppercase tracking-tighter">
-                        {(isRunning || isExecRunning) ? "Running" : "Ready"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => { setRunOutput([]); setCmdHistory([]); setHistoryIdx(-1); setTerminalInitialized(false); }}
-                      className="text-[9px] font-bold uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors px-2 py-1 rounded hover:bg-white/5"
-                    >
-                      Clear
-                    </button>
-                    <button 
-                      onClick={() => setActivePanel(null)}
-                      className="p-1 text-white/20 hover:text-white transition-colors hover:bg-white/5 rounded"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
+                <div className="flex-1 min-h-0 relative">
+                  <TerminalTabs socket={socket} onClose={() => setActivePanel(null)} cwd={(project?.systemType as string) === "v0" ? "/app" : undefined} />
                 </div>
-
-                {/* Output log */}
-                <div
-                  className="flex-1 px-4 py-3 font-mono text-[11px] overflow-y-auto custom-scrollbar"
-                  onClick={() => terminalInputRef.current?.focus()}
-                >
-                  <div className="space-y-1.5">
-                    {runOutput.length === 0 && (
-                      <div className="text-white/20 italic text-[10px]">
-                        DevOS Terminal v1.0 — Type 'help' for available commands. Use ↑/↓ for history.
-                      </div>
-                    )}
-                    {runOutput.map((log, i) => (
-                      <div key={i} className="flex gap-3 group">
-                        <span className="text-white/10 select-none shrink-0 tabular-nums">{log.timestamp}</span>
-                        <span className={cn(
-                          "break-all leading-relaxed whitespace-pre-wrap",
-                          log.type === "system" && "text-green-400/80 font-bold",
-                          log.type === "info" && "text-blue-400",
-                          log.type === "success" && "text-green-400",
-                          log.type === "error" && "text-red-400",
-                          log.type === "warning" && "text-yellow-400",
-                          log.type === "output" && "text-white/80"
-                        )}>
-                          {log.message}
-                        </span>
-                      </div>
-                    ))}
-                    {(isRunning || isExecRunning) && (
-                      <div className="flex gap-3 animate-pulse">
-                        <span className="text-white/10 select-none shrink-0">--:--:--</span>
-                        <div className="flex items-center gap-2 text-white/40 italic">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Running...
-                        </div>
-                      </div>
-                    )}
-                    <div ref={terminalEndRef} />
-                  </div>
-                </div>
-
                 {/* Command input */}
                 <form
                   onSubmit={handleTerminalSubmit}

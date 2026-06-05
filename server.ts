@@ -2852,6 +2852,62 @@ if (process.env.VERCEL !== "1") {
       syncVoiceRoom(roomId);
     });
 
+    // ── Terminal PTY Daemon ────────────────────────────────────────────────────
+    socket.on("terminal-spawn", async ({ terminalId, cwd }: { terminalId: string; cwd?: string }) => {
+      let pty: any;
+      try {
+        const ptyModule = await import("node-pty");
+        pty = ptyModule.default || ptyModule;
+      } catch (e) {
+        return socket.emit(`terminal-data-${terminalId}`, "\r\n[DevOS] Terminal unavailable (node-pty not installed). Try running npm install node-pty.\r\n");
+      }
+
+      try {
+        const shell = process.platform === "win32" ? "powershell.exe" : "bash";
+        const ptyProcess = pty.spawn(shell, [], {
+          name: "xterm-color",
+          cols: 80,
+          rows: 24,
+          cwd: cwd || process.cwd(),
+          env: process.env,
+        });
+        
+        if (!socket.data.terminals) socket.data.terminals = [];
+        socket.data.terminals.push({ id: terminalId, pty: ptyProcess });
+
+        ptyProcess.onData((data: string) => {
+          socket.emit(`terminal-data-${terminalId}`, data);
+        });
+        
+        ptyProcess.onExit(() => {
+          socket.data.terminals = socket.data.terminals.filter((t: any) => t.id !== terminalId);
+          socket.emit(`terminal-exit-${terminalId}`);
+        });
+      } catch (e: any) {
+        socket.emit(`terminal-data-${terminalId}`, `\r\n[DevOS Error] Failed to spawn PTY: ${e.message}\r\n`);
+      }
+    });
+
+    socket.on("terminal-input", ({ terminalId, input }: { terminalId: string; input: string }) => {
+      const t = socket.data.terminals?.find((x: any) => x.id === terminalId);
+      if (t) t.pty.write(input);
+    });
+
+    socket.on("terminal-resize", ({ terminalId, cols, rows }: { terminalId: string; cols: number; rows: number }) => {
+      const t = socket.data.terminals?.find((x: any) => x.id === terminalId);
+      if (t) {
+        try { t.pty.resize(cols, rows); } catch (e) {}
+      }
+    });
+
+    socket.on("terminal-kill", ({ terminalId }: { terminalId: string }) => {
+      const t = socket.data.terminals?.find((x: any) => x.id === terminalId);
+      if (t) {
+        try { t.pty.kill(); } catch (e) {}
+        socket.data.terminals = socket.data.terminals.filter((x: any) => x.id !== terminalId);
+      }
+    });
+
     socket.on("disconnect", () => {
       const voice = socket.data?.voice;
       if (voice?.roomId && voice?.userId) {
@@ -2859,6 +2915,11 @@ if (process.env.VERCEL !== "1") {
         if (voiceRooms.get(voice.roomId)?.size === 0) voiceRooms.delete(voice.roomId);
         socket.to(voice.roomId).emit("voice-user-left", { userId: voice.userId });
         syncVoiceRoom(voice.roomId);
+      }
+      if (socket.data.terminals) {
+        socket.data.terminals.forEach((t: any) => {
+          try { t.pty.kill(); } catch (e) {}
+        });
       }
     });
   });
