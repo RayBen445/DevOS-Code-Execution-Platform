@@ -2863,13 +2863,20 @@ if (process.env.VERCEL !== "1") {
       }
 
       try {
-        const shell = process.platform === "win32" ? "powershell.exe" : "bash";
-        const ptyProcess = pty.spawn(shell, [], {
+        const isWin = process.platform === "win32";
+        const shell = isWin ? "powershell.exe" : "bash";
+        const shellArgs = isWin 
+          ? ["-NoExit", "-Command", "function prompt { \"$([char]27)[32mdevos ▶$([char]27)[0m $(Split-Path -Leaf (Get-Location)) `$ \" }; Clear-Host"]
+          : [];
+          
+        const ptyEnv = { ...process.env, PS1: "\\[\\e[32m\\]devos ▶\\[\\e[0m\\] \\W $ " };
+
+        const ptyProcess = pty.spawn(shell, shellArgs, {
           name: "xterm-color",
           cols: 80,
           rows: 24,
           cwd: cwd || process.cwd(),
-          env: process.env,
+          env: ptyEnv as any,
         });
         
         if (!socket.data.terminals) socket.data.terminals = [];
