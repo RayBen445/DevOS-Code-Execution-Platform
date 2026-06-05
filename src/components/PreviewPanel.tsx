@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Globe, RefreshCw, ExternalLink, Monitor, Smartphone, Tablet } from "lucide-react";
+import { Globe, RefreshCw, ExternalLink, Monitor, Smartphone, Tablet, Terminal } from "lucide-react";
 import { FileData, Project } from "../types";
 import { cn } from "../lib/utils";
 import { db } from "../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { SandpackProvider, SandpackPreview, SandpackLayout } from "@codesandbox/sandpack-react";
+import { SandpackProvider, SandpackPreview, SandpackLayout, SandpackConsole } from "@codesandbox/sandpack-react";
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
 
@@ -44,6 +44,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
   const [projectEnv, setProjectEnv] = useState<Record<string, string>>({});
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
   const [sandpackKey, setSandpackKey] = useState(0);
+  const [showConsole, setShowConsole] = useState(false);
 
   useEffect(() => {
     const fetchProjectEnv = async () => {
@@ -111,6 +112,14 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
+          <div className="w-px h-4 bg-white/10 mx-0.5" />
+          <button 
+            onClick={() => setShowConsole(c => !c)}
+            className={cn("p-1 rounded transition-colors", showConsole ? "bg-white/10 text-white" : "hover:bg-white/5 text-white/40 hover:text-white")}
+            title="Toggle Build Logs"
+          >
+            <Terminal className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -146,12 +155,17 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
               }}
               style={{ width: "100%", height: "100%" }}
             >
-              <SandpackLayout style={{ width: "100%", height: "100%", border: "none", borderRadius: 0 }}>
+              <SandpackLayout style={{ width: "100%", height: "100%", border: "none", borderRadius: 0, display: "flex", flexDirection: "column" }}>
                 <SandpackPreview 
                   showOpenInCodeSandbox={false}
                   showRefreshButton={false}
-                  style={{ width: "100%", height: "100%" }} 
+                  style={{ width: "100%", flex: showConsole ? 1 : "1 1 100%" }} 
                 />
+                {showConsole && (
+                  <div className="h-64 border-t border-border-base w-full bg-[#0a0a0a]">
+                    <SandpackConsole style={{ width: "100%", height: "100%" }} />
+                  </div>
+                )}
               </SandpackLayout>
             </SandpackProvider>
           ) : (
