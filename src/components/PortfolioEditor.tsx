@@ -86,10 +86,14 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
             layout: 'classic'
           };
         }
+        if (!parsed.links) parsed.links = [];
+        if (!parsed.featuredProjects) parsed.featuredProjects = [];
         setPortfolioData(parsed);
       }
       if (layoutFile) {
-        setLayoutData(JSON.parse(layoutFile.content));
+        const parsed = JSON.parse(layoutFile.content);
+        if (!parsed.sections) parsed.sections = ["hero", "projects", "contact"];
+        setLayoutData(parsed);
       } else {
         setLayoutData({ sections: ["hero", "projects", "contact"] });
       }
@@ -397,7 +401,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                   Social Links
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {portfolioData.links.map((link: any, index: number) => (
+                  {(portfolioData.links || []).map((link: any, index: number) => (
                     <div key={index} className="space-y-2">
                       <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
                         {link.platform === 'github' && <Github className="w-3 h-3" />}
@@ -415,7 +419,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                           setPortfolioData({ ...portfolioData, links: newLinks });
                         }}
                         className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-all disabled:opacity-50"
-                            disabled={page.isSystem}
+
                       />
                     </div>
                   ))}
@@ -429,7 +433,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                 </h3>
                 <p className="text-sm text-white/40">Enter the IDs of the projects you want to feature on your portfolio.</p>
                 <div className="space-y-3">
-                  {portfolioData.featuredProjects.map((id: string, index: number) => (
+                  {(portfolioData.featuredProjects || []).map((id: string, index: number) => (
                     <div key={index} className="flex gap-2">
                       <input
                         type="text"
@@ -487,7 +491,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                   </button>
                 </div>
                 <div className="space-y-4">
-                  {portfolioData.pages.map((page: any, index: number) => (
+                  {(portfolioData.pages || []).map((page: any, index: number) => (
                     <div key={page.id} className="p-4 bg-white/5 border border-border-base rounded-xl space-y-4 relative group">
                       <div className="flex gap-4">
                         <div className="flex-1 space-y-2">
@@ -563,7 +567,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                 </h3>
                 <p className="text-sm text-white/40">Reorder the sections of your portfolio page.</p>
                 <div className="space-y-2">
-                  {layoutData.sections.map((section: string, index: number) => (
+                  {(layoutData.sections || []).map((section: string, index: number) => (
                     <div key={index} className="flex items-center justify-between p-4 bg-white/5 border border-border-base rounded-xl">
                       <span className="font-bold text-white capitalize tracking-tight">{section}</span>
                       <div className="flex gap-2">
