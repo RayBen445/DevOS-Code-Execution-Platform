@@ -36,7 +36,7 @@ const getSandpackTemplate = (sandpackFiles: Record<string, string>): "nextjs" | 
   if (hasJsxTsx) return "react-ts";
   
   const hasHtml = !!sandpackFiles["/index.html"];
-  if (hasHtml) return "static";
+  if (hasHtml) return "vanilla";
   
   return "react-ts";
 };
