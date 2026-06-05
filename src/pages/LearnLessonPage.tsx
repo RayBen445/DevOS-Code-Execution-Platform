@@ -352,7 +352,7 @@ export default function LearnLessonPage() {
                 )}
 
                 {/* Expected output hint */}
-                {!isHTML && lesson.output.length > 0 && (
+                {!isHTML && lesson.output?.length > 0 && (
                   <span className="text-xs text-white/25">
                     Expected: <code className="text-white/40">{lesson.output[0]}</code>
                     {lesson.output.length > 1 ? ` +${lesson.output.length - 1} more` : ""}

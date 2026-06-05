@@ -42,6 +42,7 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
   const [zipStatus, setZipStatus] = useState<string | null>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
   const [newFileName, setNewFileName] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
   
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null); // path of the folder
@@ -376,21 +377,33 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
         jsx: "javascript", json: "json", css: "css", html: "html", md: "markdown"
       };
 
-      const fileEntries: Array<{ path: string; name: string; content: string; language: string }> = [];
-
-      for (const [relativePath, zipEntry] of Object.entries(zipContent.files)) {
-        if (zipEntry.dir) continue;
-        // Skip hidden/system files and node_modules
+      const rawEntries = Object.entries(zipContent.files).filter(([_, entry]) => !entry.dir);
+      const validEntries = rawEntries.filter(([relativePath]) => {
         const parts = relativePath.split("/");
-        if (parts.some(p => p.startsWith(".") || p === "node_modules")) continue;
+        return !parts.some(p => p.startsWith(".") || p === "node_modules");
+      });
 
+      // Determine if there's a single common root folder
+      let commonRoot = "";
+      if (validEntries.length > 0) {
+        const firstParts = validEntries[0][0].split("/");
+        if (firstParts.length > 1) {
+          const possibleRoot = firstParts[0] + "/";
+          if (validEntries.every(([p]) => p.startsWith(possibleRoot))) {
+            commonRoot = possibleRoot;
+          }
+        }
+      }
+
+      for (const [relativePath, zipEntry] of validEntries) {
         const content = await zipEntry.async("string");
-        const nameParts = relativePath.split("/");
+        const adjustedPath = commonRoot ? relativePath.substring(commonRoot.length) : relativePath;
+        const nameParts = adjustedPath.split("/");
         const name = nameParts[nameParts.length - 1];
         const ext = name.split(".").pop()?.toLowerCase() || "txt";
 
         fileEntries.push({
-          path: relativePath,
+          path: adjustedPath,
           name,
           content,
           language: languageMap[ext] || "plaintext"
@@ -511,6 +524,138 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!readOnly && !isDragOver) setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    if (readOnly) return;
+
+    const items = e.dataTransfer.items;
+    if (!items || items.length === 0) return;
+
+    setIsUploading(true);
+    setZipStatus("Uploading items...");
+
+    const fileEntries: Array<{ path: string; name: string; content: string; language: string }> = [];
+    const languageMap: Record<string, string> = {
+      js: "javascript", ts: "typescript", tsx: "typescript",
+      jsx: "javascript", json: "json", css: "css", html: "html", md: "markdown"
+    };
+
+    const traverseFileTree = async (item: any, path: string = "") => {
+      if (item.isFile) {
+        const file = await new Promise<File>((resolve) => item.file(resolve));
+        const ext = file.name.split(".").pop()?.toLowerCase() || "txt";
+        const isImage = ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico"].includes(ext);
+        if (isImage || file.name.startsWith(".")) return;
+
+        const content = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve(ev.target?.result as string);
+          reader.readAsText(file);
+        });
+
+        fileEntries.push({
+          path: path + file.name,
+          name: file.name,
+          content,
+          language: languageMap[ext] || "plaintext"
+        });
+      } else if (item.isDirectory) {
+        if (item.name === "node_modules" || item.name.startsWith(".")) return;
+        const dirReader = item.createReader();
+        
+        const readEntriesPromise = new Promise<any[]>((resolve) => {
+          const entries: any[] = [];
+          const read = () => {
+            dirReader.readEntries((results: any[]) => {
+              if (!results.length) {
+                resolve(entries);
+              } else {
+                entries.push(...results);
+                read();
+              }
+            });
+          };
+          read();
+        });
+        
+        const entries = await readEntriesPromise;
+        for (const entry of entries) {
+          await traverseFileTree(entry, path + item.name + "/");
+        }
+      }
+    };
+
+      try {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i].webkitGetAsEntry();
+        if (item) await traverseFileTree(item);
+      }
+
+      // Determine if there's a single common root folder
+      let commonRoot = "";
+      if (fileEntries.length > 0) {
+        const firstParts = fileEntries[0].path.split("/");
+        if (firstParts.length > 1) {
+          const possibleRoot = firstParts[0] + "/";
+          if (fileEntries.every((entry) => entry.path.startsWith(possibleRoot))) {
+            commonRoot = possibleRoot;
+          }
+        }
+      }
+
+      if (commonRoot) {
+        for (const entry of fileEntries) {
+          entry.path = entry.path.substring(commonRoot.length);
+        }
+      }
+
+      const existingPaths = new Set(files.map(f => f.path));
+
+      for (const entry of fileEntries) {
+        if (existingPaths.has(entry.path)) {
+          const existingFile = files.find(f => f.path === entry.path);
+          if (existingFile) {
+            await updateDoc(doc(db, "projects", projectId, "files", existingFile.id), {
+              content: entry.content,
+              updatedAt: serverTimestamp()
+            });
+          }
+        } else {
+          await addDoc(collection(db, "projects", projectId, "files"), {
+            projectId,
+            name: entry.name,
+            path: entry.path,
+            content: entry.content,
+            language: entry.language,
+            updatedAt: serverTimestamp()
+          });
+        }
+      }
+
+      setZipStatus("Upload complete");
+      setTimeout(() => setZipStatus(null), 3000);
+    } catch (error) {
+      console.error("Drop upload error:", error);
+      setZipStatus("Failed to upload items");
+      setTimeout(() => setZipStatus(null), 3000);
+    } finally {
+      setIsUploading(false);
+    }
+  };
   const getFileIcon = (name: string, language?: string) => {
     const ext = name.split(".").pop()?.toLowerCase();
     if (language === "image" || ["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext || "")) 
@@ -663,7 +808,21 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
 
   return (
     <>
-    <div className="w-64 border-r border-border-base bg-card/80 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)] flex flex-col">
+    <div 
+      className={cn(
+        "w-64 border-r border-border-base flex flex-col relative transition-all duration-200",
+        isDragOver ? "bg-blue-500/10 border-blue-500 shadow-[inset_0_0_20px_rgba(59,130,246,0.2)]" : "bg-card/80 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+      )}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none rounded-r-2xl border-2 border-dashed border-blue-500">
+          <Upload className="w-10 h-10 text-blue-500 mb-2 animate-bounce" />
+          <p className="text-sm font-bold text-blue-400">Drop files here</p>
+        </div>
+      )}
       <div className="p-4 flex items-center justify-between border-b border-border-base">
         <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Explorer</span>
         {!readOnly && (

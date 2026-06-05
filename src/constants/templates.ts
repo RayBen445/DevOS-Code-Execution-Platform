@@ -5,6 +5,7 @@ export interface ProjectTemplate {
   name: string;
   description: string;
   icon: string;
+  category?: string;
   files: {
     name: string;
     path: string;
@@ -14,6 +15,109 @@ export interface ProjectTemplate {
 }
 
 export const TEMPLATES: ProjectTemplate[] = [
+  {
+    id: "ecommerce-store",
+    name: "E-Commerce Storefront",
+    description: "A complete responsive e-commerce template with product grids, cart state, and modern UI.",
+    icon: "Layout",
+    category: "Full Pages",
+    files: [
+      {
+        name: "index.html",
+        path: "index.html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern E-Commerce</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="text-2xl font-black tracking-tight text-indigo-600">DevShop</div>
+                <div class="hidden sm:flex space-x-8">
+                    <a href="#" class="text-gray-900 font-medium">New Arrivals</a>
+                    <a href="#" class="text-gray-500 hover:text-gray-900">Men</a>
+                    <a href="#" class="text-gray-500 hover:text-gray-900">Women</a>
+                    <a href="#" class="text-gray-500 hover:text-gray-900">Accessories</a>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button class="text-gray-500 hover:text-gray-900">Search</button>
+                    <button class="relative text-gray-500 hover:text-gray-900" id="cart-btn">
+                        Cart <span id="cart-count" class="absolute -top-2 -right-3 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <header class="bg-indigo-900 text-white py-24 text-center">
+        <h1 class="text-5xl font-extrabold mb-4">Summer Collection 2026</h1>
+        <p class="text-indigo-200 text-xl mb-8 max-w-2xl mx-auto">Discover the latest trends and elevate your style with our premium collection.</p>
+        <button class="bg-white text-indigo-900 px-8 py-3 rounded-full font-bold hover:bg-gray-100 transition shadow-lg">Shop Now</button>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="flex justify-between items-end mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">Trending Now</h2>
+            <a href="#" class="text-indigo-600 font-semibold hover:text-indigo-700">View all &rarr;</a>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8" id="product-grid">
+            <!-- Products injected by JS -->
+        </div>
+    </main>
+    <script src="app.js"></script>
+</body>
+</html>`,
+        language: "html"
+      },
+      {
+        name: "app.js",
+        path: "app.js",
+        content: `const products = [
+    { id: 1, name: "Classic White Sneaker", price: 89, image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=400&q=80", category: "Shoes" },
+    { id: 2, name: "Minimalist Watch", price: 145, image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80", category: "Accessories" },
+    { id: 3, name: "Premium Leather Tote", price: 210, image: "https://images.unsplash.com/photo-1584916201218-f4242ceb4809?auto=format&fit=crop&w=400&q=80", category: "Bags" },
+    { id: 4, name: "Aviator Sunglasses", price: 65, image: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=400&q=80", category: "Accessories" }
+];
+
+let cart = 0;
+
+function renderProducts() {
+    const grid = document.getElementById('product-grid');
+    grid.innerHTML = products.map(p => \`
+        <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <div class="aspect-w-4 aspect-h-3 bg-gray-200">
+                <img src="\${p.image}" alt="\${p.name}" class="object-cover w-full h-64 group-hover:scale-105 transition-transform duration-500">
+            </div>
+            <div class="p-5">
+                <p class="text-xs text-indigo-600 font-bold uppercase tracking-wider mb-1">\${p.category}</p>
+                <h3 class="text-lg font-bold text-gray-900 mb-2">\${p.name}</h3>
+                <div class="flex items-center justify-between">
+                    <span class="text-xl font-black text-gray-900">$\${p.price}</span>
+                    <button onclick="addToCart()" class="bg-gray-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 transition">Add</button>
+                </div>
+            </div>
+        </div>
+    \`).join('');
+}
+
+window.addToCart = function() {
+    cart++;
+    const badge = document.getElementById('cart-count');
+    badge.textContent = cart;
+    badge.classList.add('animate-ping');
+    setTimeout(() => badge.classList.remove('animate-ping'), 300);
+};
+
+renderProducts();`,
+        language: "javascript"
+      }
+    ]
+  },
   {
     id: "nextjs-starter",
     name: "Next.js Sandbox",

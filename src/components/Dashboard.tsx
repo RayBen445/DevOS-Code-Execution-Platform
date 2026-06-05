@@ -44,6 +44,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [checkingProjectName, setCheckingProjectName] = useState(false);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("blank");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All Templates");
   const [selectedLicense, setSelectedLicense] = useState<string>("none");
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [publicProjects, setPublicProjects] = useState<Project[]>([]);
@@ -159,6 +160,36 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
     };
   }, [user, context]);
 
+  const marketplaceTemplates = publicProjects.filter(p => p.isTemplate);
+  const allAvailableTemplates = useMemo(() => [
+    ...TEMPLATES.map(t => ({ 
+      id: t.id, 
+      name: t.name, 
+      description: t.description, 
+      icon: t.icon, 
+      category: t.category || "Starters", 
+      source: "hardcoded" as const, 
+      files: t.files 
+    })),
+    ...marketplaceTemplates.map(p => ({ 
+      id: p.id, 
+      name: p.name, 
+      description: p.description || "", 
+      icon: "Globe", 
+      category: "Marketplace", 
+      source: "firestore" as const, 
+      project: p 
+    }))
+  ], [publicProjects]);
+
+  const templateCategories = useMemo(() => 
+    ["All Templates", ...Array.from(new Set(allAvailableTemplates.map(t => t.category)))], 
+  [allAvailableTemplates]);
+
+  const displayedTemplates = selectedCategory === "All Templates" 
+    ? allAvailableTemplates 
+    : allAvailableTemplates.filter(t => t.category === selectedCategory);
+
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newProjectName.trim()) return;
@@ -174,7 +205,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
       }
 
       const projectSlug = newProjectName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-      const template = TEMPLATES.find(t => t.id === selectedTemplateId) || TEMPLATES[0];
+      const template = allAvailableTemplates.find(t => t.id === selectedTemplateId) || allAvailableTemplates[0];
 
       // Check if user already has a project with this exact name
       const nameCheckSnap = await getDocs(
@@ -205,18 +236,34 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
       // Create default files based on template
       const filesRef = collection(db, "projects", docRef.id, "files");
       
-      const filePromises = template.files.map(file => 
-        addDoc(filesRef, { 
-          projectId: docRef.id,
-          name: file.name, 
-          path: file.path,
-          content: file.content, 
-          language: file.language, 
-          updatedAt: serverTimestamp() 
-        })
-      );
-
-      await Promise.all(filePromises);
+      if (template.source === "hardcoded") {
+        const filePromises = template.files.map(file => 
+          addDoc(filesRef, { 
+            projectId: docRef.id,
+            name: file.name, 
+            path: file.path,
+            content: file.content, 
+            language: file.language, 
+            updatedAt: serverTimestamp() 
+          })
+        );
+        await Promise.all(filePromises);
+      } else {
+        const tplFilesSnap = await getDocs(collection(db, "projects", template.project!.id, "files"));
+        const filePromises = tplFilesSnap.docs.map(fileDoc => {
+          const fileData = fileDoc.data();
+          return addDoc(filesRef, {
+            ...fileData,
+            projectId: docRef.id,
+            updatedAt: serverTimestamp()
+          });
+        });
+        await Promise.all(filePromises);
+        
+        await updateDoc(doc(db, "projects", template.project!.id), {
+          forksCount: increment(1)
+        });
+      }
 
       // Auto-add README.md
       await addDoc(filesRef, {
@@ -1017,9 +1064,30 @@ p {
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Choose a Template</label>
-                    <div className="grid grid-cols-2 gap-4">
-                      {TEMPLATES.map((t) => {
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Choose a Template</label>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                      {templateCategories.map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setSelectedCategory(cat)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all",
+                            selectedCategory === cat 
+                              ? "bg-blue-600 text-white" 
+                              : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                          )}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                      {displayedTemplates.map((t) => {
                         const Icon = t.icon === "Globe" ? Globe : t.icon === "User" ? UserIcon : t.icon === "Code2" ? Code : FolderCode;
                         return (
                           <button
@@ -1031,14 +1099,19 @@ p {
                               selectedTemplateId === t.id ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-border-base hover:border-border-base"
                             )}
                           >
-                            <div className={cn(
-                              "w-10 h-10 rounded-xl flex items-center justify-center mb-1",
-                              selectedTemplateId === t.id ? "bg-blue-600 text-white" : "bg-white/5 text-white/40"
-                            )}>
-                              <Icon className="w-5 h-5" />
+                            <div className="flex items-center justify-between w-full mb-1">
+                              <div className={cn(
+                                "w-10 h-10 rounded-xl flex items-center justify-center",
+                                selectedTemplateId === t.id ? "bg-blue-600 text-white" : "bg-white/5 text-white/40"
+                              )}>
+                                <Icon className="w-5 h-5" />
+                              </div>
+                              {t.source === "firestore" && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">Community</span>
+                              )}
                             </div>
-                            <span className="font-bold text-sm text-white">{t.name}</span>
-                            <p className="text-[10px] text-white/40 leading-tight">{t.description}</p>
+                            <span className="font-bold text-sm text-white line-clamp-1">{t.name}</span>
+                            <p className="text-[10px] text-white/40 leading-tight line-clamp-2">{t.description}</p>
                           </button>
                         );
                       })}

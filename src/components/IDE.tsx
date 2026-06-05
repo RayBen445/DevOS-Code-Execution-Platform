@@ -124,7 +124,6 @@ export default function IDE({ projectId, onBack }: IDEProps) {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const botDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [botSuggestions, setBotSuggestions] = useState<string[]>([]);
-  const autoOpenedInitialFileRef = useRef(false);
 
   // Splitter state
   const [splitWidth, setSplitWidth] = useState(50);
@@ -168,30 +167,6 @@ export default function IDE({ projectId, onBack }: IDEProps) {
     }
   }, [activePanel, projectId]);
 
-  // If no file is selected yet, auto-open a sensible default to reduce friction.
-  useEffect(() => {
-    if (autoOpenedInitialFileRef.current) return;
-    if (activeFileId || files.length === 0) return;
-
-    const preferred = files.find((f) => {
-      const name = f.name.toLowerCase();
-      const path = f.path.toLowerCase();
-      return (
-        name === "readme.md" ||
-        name === "index.html" ||
-        name === "app.tsx" ||
-        name === "app.jsx" ||
-        path.endsWith("readme.md")
-      );
-    });
-    const fallback = [...files].sort((a, b) => a.name.localeCompare(b.name))[0];
-    const target = preferred ?? fallback;
-    if (!target) return;
-
-    autoOpenedInitialFileRef.current = true;
-    setActiveFileId(target.id);
-    setOpenFileIds((prev) => (prev.includes(target.id) ? prev : [target.id, ...prev]));
-  }, [activeFileId, files]);
 
   const scrollToBottom = () => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });

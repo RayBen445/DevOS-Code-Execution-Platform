@@ -166,7 +166,7 @@ export default function LearnDynamicLessonPage() {
               <Lock className="w-4 h-4" /> Sign in to run code
             </div>
           )}
-          {lesson.expectedOutput.length > 0 && !isHTML && (
+          {lesson.expectedOutput?.length > 0 && !isHTML && (
             <span className="text-xs text-white/25">Expected: <code className="text-white/40">{lesson.expectedOutput[0]}</code></span>
           )}
         </div>
