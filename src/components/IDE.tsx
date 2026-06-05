@@ -2029,12 +2029,12 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   );
                 })()}
 
-                <div className="flex-1 relative min-h-0">
+                <div className="flex-1 relative min-h-0 flex flex-col">
                   {project?.systemType === 'portfolio' ? (
                     <PortfolioEditor 
                       project={project} 
                       files={files} 
-                      onUpdateFile={handleUpdateFile} 
+                      onUpdateFile={handleUpdateFile}
                     />
                   ) : activeFile ? (
                     <Editor
@@ -2051,9 +2051,9 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                       project={project}
                       files={files}
                       isReadOnly={isReadOnly}
-                      onOpenFile={openFileInTab}
+                      onOpenFile={(id) => { openFileInTab(id); setMobileTab("editor"); }}
                       onCreateFile={handleCreateFile}
-                      onOpenExplorer={() => togglePanel("explorer")}
+                      onOpenExplorer={() => { togglePanel("explorer"); setMobileTab("files"); }}
                     />
                   )}
                 </div>
