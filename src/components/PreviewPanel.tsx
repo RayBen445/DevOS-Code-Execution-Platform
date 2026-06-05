@@ -71,6 +71,10 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
     return acc;
   }, {} as Record<string, string>);
 
+  if (Object.keys(projectEnv).length > 0) {
+    sandpackFiles["/.env"] = Object.entries(projectEnv).map(([k, v]) => `${k}=${v}`).join("\n");
+  }
+
   const template = getSandpackTemplate(files);
 
   return (
@@ -136,9 +140,6 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
               template={template} 
               theme="dark"
               files={sandpackFiles}
-              customSetup={{
-                environment: projectEnv,
-              }}
               options={{
                 activeFile: entryFile ? (entryFile.startsWith("/") ? entryFile : `/${entryFile}`) : undefined,
                 initMode: "user-visible"

@@ -2038,31 +2038,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 <div className="flex-1 min-h-0 relative">
                   <TerminalTabs socket={socket} onClose={() => setActivePanel(null)} cwd={(project?.systemType as string) === "v0" ? "/app" : undefined} />
                 </div>
-                {/* Command input */}
-                <form
-                  onSubmit={handleTerminalSubmit}
-                  className="flex items-center gap-2 px-4 py-2 border-t border-[#21262D] bg-surface flex-shrink-0"
-                >
-                  <span className="text-green-400 font-mono text-[11px] font-bold select-none flex-shrink-0 whitespace-nowrap">
-                    devos ▶ {project?.name || "project"} $
-                  </span>
-                  <input
-                    ref={terminalInputRef}
-                    type="text"
-                    value={terminalInput}
-                    onChange={(e) => setTerminalInput(e.target.value)}
-                    onKeyDown={handleTerminalKeyDown}
-                    disabled={isExecRunning || isRunning}
-                    placeholder={isExecRunning || isRunning ? "Running…" : ""}
-                    className="flex-1 bg-transparent outline-none font-mono text-[11px] text-white placeholder-white/20 disabled:opacity-50"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  {(isExecRunning || isRunning) && (
-                    <Loader2 className="w-3 h-3 text-white/30 animate-spin flex-shrink-0" />
-                  )}
-                </form>
-
+                {/* Terminal form removed as TerminalTabs handles input */}
                 {/* Validation errors panel — shown when there are build/type errors */}
                 {showErrors && validationResult && (
                   <ErrorPanel
