@@ -6,6 +6,14 @@ import {
   collection,
   query,
   where,
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { auth, db } from "../lib/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
+import {
+  collection,
+  query,
+  where,
   addDoc,
   serverTimestamp,
   doc,
@@ -14,6 +22,7 @@ import {
 import { getApprovedTemplates, incrementDownloads } from "../lib/templateService";
 import { deductCredits, getCredits } from "../lib/creditsService";
 import { Template, Credits } from "../types";
+import { TEMPLATES } from "../constants/templates";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -52,7 +61,23 @@ export default function TemplatePage() {
     const load = async () => {
       try {
         const data = await getApprovedTemplates();
-        setTemplates(data);
+        
+        const hardcodedTemplates: Template[] = TEMPLATES.map((t) => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          authorId: "system",
+          authorUsername: "devos",
+          authorName: "DevOS Official",
+          projectId: "",
+          files: t.files as any,
+          downloads: 1000 + Math.floor(Math.random() * 5000), // aesthetic mock downloads
+          likes: 500 + Math.floor(Math.random() * 1000),
+          tags: t.category ? [t.category.toLowerCase()] : ["starter"],
+          isOfficial: true,
+        }));
+
+        setTemplates([...hardcodedTemplates, ...data]);
       } catch (err) {
         toast.error("Failed to load templates.");
       } finally {
@@ -107,47 +132,6 @@ export default function TemplatePage() {
       const projectSlug = projectName.toLowerCase().replace(/[^a-z0-9]/g, "-");
 
       const docRef = await addDoc(collection(db, "projects"), {
-      appId: generateAppId(),
-        name: projectName,
-        description: template.description,
-        ownerId: user.uid,
-        ownerUsername: username,
-        projectSlug,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        collaborators: [],
-        isPublic: false,
-        isTemplate: false,
-        forksCount: 0,
-        views: 0,
-        deployStatus: "idle",
-        deployError: null,
-        parentTemplateId: template.id,
-      });
-
-      // Copy template files
-      const filesRef = collection(db, "projects", docRef.id, "files");
-      await Promise.all(
-        template.files.map((f) =>
-          addDoc(filesRef, {
-            projectId: docRef.id,
-            name: f.name,
-            path: f.path,
-            content: f.content,
-            language: f.language,
-            updatedAt: serverTimestamp(),
-          })
-        )
-      );
-
-      await incrementDownloads(template.id);
-
-      toast.success(`Project "${projectName}" created!`);
-      navigate("/projects");
-    } catch (err) {
-      toast.error("Failed to create project from template.");
-      console.error(err);
-    } finally {
       setUsing(null);
     }
   };

@@ -240,10 +240,10 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         const filePromises = template.files.map(file => 
           addDoc(filesRef, { 
             projectId: docRef.id,
-            name: file.name, 
-            path: file.path,
-            content: file.content, 
-            language: file.language, 
+            name: file.name || "Untitled", 
+            path: file.path || file.name || "Untitled",
+            content: file.content || "", 
+            language: file.language || "plaintext", 
             updatedAt: serverTimestamp() 
           })
         );
