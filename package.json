@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@babel/standalone": "^7.29.2",
+    "@codesandbox/sandpack-react": "^2.20.0",
     "@google/genai": "^1.29.0",
     "@huggingface/inference": "^4.13.15",
     "@monaco-editor/react": "^4.7.0",
