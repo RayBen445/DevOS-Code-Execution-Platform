@@ -195,7 +195,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   }
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  // We do not throw the error here to prevent crashing the React app on async snapshot listeners.
+  // The caller should handle the UI state (e.g. setting loading to false, showing "Not Found").
 }
 
 // Connection test
