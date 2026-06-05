@@ -124,6 +124,40 @@ export default function TemplatePage() {
       const projectSlug = projectName.toLowerCase().replace(/[^a-z0-9]/g, "-");
 
       const docRef = await addDoc(collection(db, "projects"), {
+        name: projectName,
+        projectSlug,
+        description: template.description || "",
+        ownerId: user.uid,
+        ownerUsername: username,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        collaborators: [],
+        isPublic: true,
+        isTemplate: false,
+        forksCount: 0,
+        views: 0,
+        deployUrl: `/@${username}/${projectSlug}`
+      });
+
+      const filesRef = collection(db, "projects", docRef.id, "files");
+      const filePromises = template.files.map(file => 
+        addDoc(filesRef, { 
+          projectId: docRef.id,
+          name: file.name || "Untitled", 
+          path: file.path || file.name || "Untitled",
+          content: file.content || "", 
+          language: file.language || "plaintext", 
+          updatedAt: serverTimestamp() 
+        })
+      );
+      await Promise.all(filePromises);
+
+      await incrementDownloads(template.id);
+      toast.success("Project created successfully!");
+      navigate(`/@${username}/${projectSlug}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create project from template");
+    } finally {
       setUsing(null);
     }
   };
