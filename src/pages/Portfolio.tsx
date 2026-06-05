@@ -227,12 +227,25 @@ export default function Portfolio() {
     );
   }
 
-  const mergedLinks: { platform: string, url: string }[] = [];
+  const mergedLinks: { platform: string, url: string, original?: string }[] = [];
   
   if (userSettings?.links) {
-    Object.entries(userSettings.links).forEach(([platform, url]) => {
-      if (url && typeof url === 'string') {
-        mergedLinks.push({ platform, url });
+    Object.entries(userSettings.links).forEach(([platform, username]) => {
+      if (username && typeof username === 'string') {
+        let url = username;
+        const p = platform.toLowerCase();
+        if (!url.startsWith('http')) {
+          if (p === 'github') url = `https://github.com/${username}`;
+          else if (p === 'twitter' || p === 'x') url = `https://twitter.com/${username}`;
+          else if (p === 'linkedin') url = `https://linkedin.com/in/${username}`;
+          else if (p === 'facebook') url = `https://facebook.com/${username}`;
+          else if (p === 'instagram') url = `https://instagram.com/${username}`;
+          else if (p === 'youtube') url = `https://youtube.com/@${username}`;
+          else if (p === 'dribbble') url = `https://dribbble.com/${username}`;
+          else if (p === 'whatsapp') url = `https://wa.me/${username}`;
+          else if (p === 'website') url = `https://${username}`;
+        }
+        mergedLinks.push({ platform, url, original: username });
       }
     });
   }
@@ -240,7 +253,7 @@ export default function Portfolio() {
   if (portfolioConfig?.links) {
     portfolioConfig.links.forEach((link: any) => {
       if (link.url && typeof link.url === 'string' && !mergedLinks.some(l => l.platform === link.platform)) {
-        mergedLinks.push({ platform: link.platform, url: link.url });
+        mergedLinks.push({ platform: link.platform, url: link.url, original: link.url });
       }
     });
   }

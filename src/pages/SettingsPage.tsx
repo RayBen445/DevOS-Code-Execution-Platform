@@ -448,7 +448,8 @@ function ProfileTab() {
     }
   };
 
-  const handleSave = async (silent = false) => {
+  const handleSave = async (silentParam?: boolean | React.MouseEvent) => {
+    const silent = silentParam === true;
     if (!user) return;
     if (!silent) setSaving(true);
     try {
@@ -766,31 +767,58 @@ function ProfileTab() {
         <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Social Links</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field label="GitHub" icon={<Github className="w-3.5 h-3.5" />}>
-            <input type="url" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="https://github.com/…" className={inputCls} />
+            <div className="flex bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+              <span className="pl-4 pr-1 py-3 text-white/30 text-sm bg-transparent flex items-center select-none">github.com/</span>
+              <input type="text" value={github} onChange={(e) => setGithub(e.target.value.replace(/https?:\/\/(www\.)?github\.com\//, ''))} placeholder="username" className="bg-transparent text-white text-sm py-3 pr-4 outline-none w-full" />
+            </div>
           </Field>
           <Field label="Twitter / X" icon={<Twitter className="w-3.5 h-3.5" />}>
-            <input type="url" value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="https://twitter.com/…" className={inputCls} />
+            <div className="flex bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+              <span className="pl-4 pr-1 py-3 text-white/30 text-sm bg-transparent flex items-center select-none">twitter.com/</span>
+              <input type="text" value={twitter} onChange={(e) => setTwitter(e.target.value.replace(/https?:\/\/(www\.)?(twitter|x)\.com\//, ''))} placeholder="username" className="bg-transparent text-white text-sm py-3 pr-4 outline-none w-full" />
+            </div>
           </Field>
           <Field label="LinkedIn" icon={<Linkedin className="w-3.5 h-3.5" />}>
-            <input type="url" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="https://linkedin.com/in/…" className={inputCls} />
+            <div className="flex bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+              <span className="pl-4 pr-1 py-3 text-white/30 text-sm bg-transparent flex items-center select-none">linkedin.com/in/</span>
+              <input type="text" value={linkedin} onChange={(e) => setLinkedin(e.target.value.replace(/https?:\/\/(www\.)?linkedin\.com\/in\//, ''))} placeholder="username" className="bg-transparent text-white text-sm py-3 pr-4 outline-none w-full" />
+            </div>
           </Field>
           <Field label="Facebook" icon={<Facebook className="w-3.5 h-3.5" />}>
-            <input type="url" value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="https://facebook.com/…" className={inputCls} />
+            <div className="flex bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+              <span className="pl-4 pr-1 py-3 text-white/30 text-sm bg-transparent flex items-center select-none">facebook.com/</span>
+              <input type="text" value={facebook} onChange={(e) => setFacebook(e.target.value.replace(/https?:\/\/(www\.)?facebook\.com\//, ''))} placeholder="username" className="bg-transparent text-white text-sm py-3 pr-4 outline-none w-full" />
+            </div>
           </Field>
           <Field label="Instagram" icon={<Instagram className="w-3.5 h-3.5" />}>
-            <input type="url" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="https://instagram.com/…" className={inputCls} />
+            <div className="flex bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+              <span className="pl-4 pr-1 py-3 text-white/30 text-sm bg-transparent flex items-center select-none">instagram.com/</span>
+              <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value.replace(/https?:\/\/(www\.)?instagram\.com\//, ''))} placeholder="username" className="bg-transparent text-white text-sm py-3 pr-4 outline-none w-full" />
+            </div>
           </Field>
           <Field label="YouTube" icon={<Youtube className="w-3.5 h-3.5" />}>
-            <input type="url" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/…" className={inputCls} />
+            <div className="flex bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+              <span className="pl-4 pr-1 py-3 text-white/30 text-sm bg-transparent flex items-center select-none">youtube.com/@</span>
+              <input type="text" value={youtube} onChange={(e) => setYoutube(e.target.value.replace(/https?:\/\/(www\.)?youtube\.com\/(@|c\/|channel\/)?/, ''))} placeholder="username" className="bg-transparent text-white text-sm py-3 pr-4 outline-none w-full" />
+            </div>
           </Field>
           <Field label="Dribbble" icon={<Dribbble className="w-3.5 h-3.5" />}>
-            <input type="url" value={dribbble} onChange={(e) => setDribbble(e.target.value)} placeholder="https://dribbble.com/…" className={inputCls} />
+            <div className="flex bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+              <span className="pl-4 pr-1 py-3 text-white/30 text-sm bg-transparent flex items-center select-none">dribbble.com/</span>
+              <input type="text" value={dribbble} onChange={(e) => setDribbble(e.target.value.replace(/https?:\/\/(www\.)?dribbble\.com\//, ''))} placeholder="username" className="bg-transparent text-white text-sm py-3 pr-4 outline-none w-full" />
+            </div>
           </Field>
           <Field label="Website" icon={<Globe className="w-3.5 h-3.5" />}>
-            <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://yoursite.com" className={inputCls} />
+            <div className="flex bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+              <span className="pl-4 pr-1 py-3 text-white/30 text-sm bg-transparent flex items-center select-none">https://</span>
+              <input type="text" value={website} onChange={(e) => setWebsite(e.target.value.replace(/https?:\/\//, ''))} placeholder="yoursite.com" className="bg-transparent text-white text-sm py-3 pr-4 outline-none w-full" />
+            </div>
           </Field>
           <Field label="WhatsApp" icon={<MessageCircle className="w-3.5 h-3.5" />}>
-            <input type="text" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="wa.me/1234567890" className={inputCls} />
+            <div className="flex bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+              <span className="pl-4 pr-1 py-3 text-white/30 text-sm bg-transparent flex items-center select-none">wa.me/</span>
+              <input type="text" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value.replace(/https?:\/\/(www\.)?wa\.me\//, ''))} placeholder="1234567890" className="bg-transparent text-white text-sm py-3 pr-4 outline-none w-full" />
+            </div>
           </Field>
         </div>
       </div>
