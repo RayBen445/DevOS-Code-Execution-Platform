@@ -34,7 +34,7 @@ interface DeployModalProps {
 }
 
 export default function DeployModal({ isOpen, onClose, projectName, projectId, files, onDeployed }: DeployModalProps) {
-  const [step, setStep] = useState<"select" | "entry-selection" | "deploying" | "success">("select");
+  const [step, setStep] = useState<"select" | "entry-selection" | "deploying" | "success" | "error">("select");
   const [method, setMethod] = useState<"vercel" | "internal" | "aws" | null>(null);
   const [deployedUrl, setDeployedUrl] = useState("");
   const [isCopying, setIsCopying] = useState(false);
@@ -65,6 +65,17 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       toast.error("Failed to copy URL");
     }
   };
+
+  useEffect(() => {
+    if (isOpen && step === "select") {
+      const det = detectProject(files);
+      if (det.framework === "Static" || !det.hasPackageJson) {
+        startDeployFlow("internal");
+      } else {
+        startDeployFlow("vercel");
+      }
+    }
+  }, [isOpen, step, files]);
 
   const startDeployFlow = async (deployMethod: "internal" | "vercel") => {
     setMethod(deployMethod);
@@ -143,9 +154,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       ]);
 
       if (!ok) {
-        toast.error(`Insufficient credits. Deploying costs ${CREDIT_COSTS.deploy} credits.`);
-        setStep("select");
-        return;
+        throw new Error(`Insufficient credits. Deploying costs ${CREDIT_COSTS.deploy} credits.`);
       }
 
       const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
@@ -218,18 +227,18 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
           buildCommand: det.buildCommand,
           outputDir: det.outputDir,
           status: "success",
-          url,
+          url: finalDeployUrl,
         },
       });
       emitBotEventWithToast({
         name: "deploy.triggered",
-        payload: { projectId, projectName, deployUrl: url, userId: auth.currentUser.uid },
+        payload: { projectId, projectName, deployUrl: finalDeployUrl, userId: auth.currentUser.uid },
       }).catch(() => {});
       onDeployed?.();
     } catch (error: any) {
       console.error("Deployment error:", error);
       toast.error(error.message || "Deployment failed");
-      setStep("select");
+      setStep("error");
     }
   };
 
@@ -270,54 +279,34 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
             <div className="p-8">
               {step === "select" && (
                 <motion.div 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="space-y-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="py-12 flex flex-col items-center justify-center text-center"
                 >
-                  <p className="text-white/40 text-sm mb-6 leading-relaxed">
-                    Choose where you want to host your application. We'll handle the build and deployment process automatically.
-                  </p>
-                  
-                  <button
-                    onClick={() => startDeployFlow("internal")}
-                    className="w-full p-6 rounded-2xl bg-white text-black hover:bg-white/90 transition-all flex items-center justify-between group active:scale-[0.98]"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                        <Globe className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-bold text-lg">Deploy to DevOS</div>
-                        <div className="text-xs opacity-60 font-medium">Instant static preview</div>
-                      </div>
-                    </div>
-                    <Zap className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
-                  </button>
+                  <div className="w-12 h-12 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin mb-4" />
+                  <p className="text-white/40 text-sm">Analyzing project architecture...</p>
+                </motion.div>
+              )}
 
-                  <button
-                    onClick={() => startDeployFlow("vercel" as any)}
-                    className="w-full mt-4 p-6 rounded-2xl bg-[#000000] text-white hover:bg-[#111111] border border-white/20 transition-all flex items-center justify-between group active:scale-[0.98]"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shadow-lg">
-                        <svg viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="white"/></svg>
-                      </div>
-                      <div className="text-left">
-                        <div className="font-bold text-lg text-white">Production Vercel</div>
-                        <div className="text-xs text-white/60 font-medium">Global Edge Network (Next.js/React)</div>
-                      </div>
-                    </div>
-                    <Globe className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
-                  </button>
-
-                  <div className="mt-8 p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10 text-[11px] text-white/40 leading-relaxed relative overflow-hidden group">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/20" />
-                    <p className="font-bold text-blue-400 mb-1 flex items-center gap-2">
-                      <Zap className="w-3 h-3" />
-                      Deployment Note:
-                    </p>
-                    Sandbox deployments are instant and accessible via your project subdomain. Perfect for prototypes and sharing.
+              {step === "error" && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="py-12 flex flex-col items-center justify-center text-center"
+                >
+                  <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-6">
+                    <X className="w-8 h-8 text-red-500" />
                   </div>
+                  <h3 className="text-xl font-bold mb-2">Deployment Failed</h3>
+                  <p className="text-white/40 text-sm mb-8">
+                    We encountered an error while trying to deploy your project. Please check the logs and try again.
+                  </p>
+                  <button
+                    onClick={onClose}
+                    className="px-8 py-3 bg-white/5 border border-border-base text-white rounded-xl hover:bg-white/10 transition-all font-bold"
+                  >
+                    Close
+                  </button>
                 </motion.div>
               )}
 

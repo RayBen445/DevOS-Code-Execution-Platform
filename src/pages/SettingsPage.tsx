@@ -430,9 +430,9 @@ function ProfileTab() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (silent = false) => {
     if (!user) return;
-    setSaving(true);
+    if (!silent) setSaving(true);
     try {
       const links = {
         ...(github ? { github } : {}),
@@ -447,6 +447,7 @@ function ProfileTab() {
         fullName,
         bio,
         skills,
+        availableForWork,
         avatarUrl,
         avatar: avatarUrl,
         bannerUrl,
@@ -460,6 +461,7 @@ function ProfileTab() {
         fullName,
         bio,
         skills,
+        availableForWork,
         avatarUrl,
         avatar: avatarUrl,
         bannerUrl,
@@ -471,15 +473,25 @@ function ProfileTab() {
         setDoc(doc(db, "users", user.uid), publicData, { merge: true }),
         setDoc(doc(db, "user_settings", user.uid), privateData, { merge: true }),
       ]);
-      toast.success("Profile updated successfully");
-      sendNotification({ userId: user.uid, type: "profile_updated", title: "Profile updated", message: "Your profile has been updated.", createdBy: "system" }).catch(() => {});
+      if (!silent) toast.success("Profile updated successfully");
+      if (!silent) {
+        sendNotification({ userId: user.uid, type: "profile_updated", title: "Profile updated", message: "Your profile has been updated.", createdBy: "system" }).catch(() => {});
+      }
     } catch (err: any) {
       console.error(err);
-      toast.error("Failed to save profile. Please try again.");
+      if (!silent) toast.error("Failed to save profile. Please try again.");
     } finally {
-      setSaving(false);
+      if (!silent) setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (loading || !user) return;
+    const timer = setTimeout(() => {
+      handleSave(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [fullName, bio, skills, availableForWork, birthday, github, twitter, website]);
 
   const handleAvatarUpload = async (file: File) => {
     if (!user) return;

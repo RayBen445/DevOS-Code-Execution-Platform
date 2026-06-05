@@ -1309,5 +1309,171 @@ the app switches to live backend automatically.
 `
       }
     ]
+  },
+  {
+    id: "saas-dashboard",
+    name: "SaaS Dashboard",
+    description: "A modern, responsive admin dashboard for a SaaS product with charts and tables.",
+    icon: "LayoutDashboard",
+    category: "Dashboards",
+    files: [
+      {
+        name: "index.html",
+        path: "index.html",
+        language: "html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaaS Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 text-white flex flex-col hidden md:flex">
+        <div class="p-6 text-2xl font-black text-indigo-400">AppSaaS</div>
+        <nav class="flex-1 px-4 space-y-2">
+            <a href="#" class="block px-4 py-2 bg-indigo-600 rounded-lg font-medium">Dashboard</a>
+            <a href="#" class="block px-4 py-2 hover:bg-slate-800 rounded-lg text-slate-300">Users</a>
+            <a href="#" class="block px-4 py-2 hover:bg-slate-800 rounded-lg text-slate-300">Settings</a>
+        </nav>
+    </aside>
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-y-auto">
+        <header class="bg-white border-b border-slate-200 p-6 flex justify-between items-center sticky top-0">
+            <h1 class="text-2xl font-bold">Overview</h1>
+            <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">JD</div>
+        </header>
+        <div class="p-6 space-y-6">
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-slate-500 text-sm font-medium">Total Revenue</h3>
+                    <p class="text-3xl font-bold mt-2">$24,500</p>
+                    <span class="text-green-500 text-sm font-medium">+12% from last month</span>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-slate-500 text-sm font-medium">Active Users</h3>
+                    <p class="text-3xl font-bold mt-2">1,204</p>
+                    <span class="text-green-500 text-sm font-medium">+5% from last month</span>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-slate-500 text-sm font-medium">Churn Rate</h3>
+                    <p class="text-3xl font-bold mt-2">2.4%</p>
+                    <span class="text-red-500 text-sm font-medium">+0.2% from last month</span>
+                </div>
+            </div>
+            <!-- Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h2 class="text-lg font-bold">Recent Signups</h2>
+                </div>
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 text-slate-500 text-sm">
+                        <tr><th class="p-4 font-medium">Name</th><th class="p-4 font-medium">Plan</th><th class="p-4 font-medium">Date</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td class="p-4">Alice Johnson</td><td class="p-4"><span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-bold">Pro</span></td><td class="p-4 text-slate-500">Today</td></tr>
+                        <tr><td class="p-4">Bob Smith</td><td class="p-4"><span class="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-bold">Free</span></td><td class="p-4 text-slate-500">Yesterday</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</body>
+</html>`
+      }
+    ]
+  },
+  {
+    id: "blog-starter",
+    name: "Minimal Blog",
+    description: "A clean, reading-focused blog template.",
+    icon: "BookOpen",
+    category: "Full Pages",
+    files: [
+      {
+        name: "index.html",
+        path: "index.html",
+        language: "html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Tech Blog</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,700;1,300&display=swap'); .prose { font-family: 'Merriweather', serif; line-height: 1.8; }</style>
+</head>
+<body class="bg-[#fcfaf8] text-gray-900 antialiased">
+    <header class="max-w-3xl mx-auto px-6 py-12 flex justify-between items-center">
+        <a href="#" class="text-2xl font-bold tracking-tight">John's Notes</a>
+        <nav class="space-x-4 text-sm font-medium text-gray-500">
+            <a href="#" class="hover:text-gray-900 transition">Posts</a>
+            <a href="#" class="hover:text-gray-900 transition">About</a>
+        </nav>
+    </header>
+    <main class="max-w-3xl mx-auto px-6 pb-24">
+        <article class="mb-16">
+            <p class="text-sm text-gray-400 mb-2 font-mono">June 5, 2026</p>
+            <h1 class="text-4xl font-bold mb-6 leading-tight hover:text-indigo-600 transition cursor-pointer">The Future of Web Development</h1>
+            <p class="prose text-gray-600 text-lg mb-4">Web development is moving faster than ever. In this post, we explore the rise of AI assistants and how they change our workflows.</p>
+            <a href="#" class="text-indigo-600 font-semibold hover:underline">Read more →</a>
+        </article>
+        <article class="mb-16">
+            <p class="text-sm text-gray-400 mb-2 font-mono">May 22, 2026</p>
+            <h1 class="text-4xl font-bold mb-6 leading-tight hover:text-indigo-600 transition cursor-pointer">Why I switched to Tailwind</h1>
+            <p class="prose text-gray-600 text-lg mb-4">A controversial take on utility-first CSS and why it actually makes maintaining large codebases easier.</p>
+            <a href="#" class="text-indigo-600 font-semibold hover:underline">Read more →</a>
+        </article>
+    </main>
+</body>
+</html>`
+      }
+    ]
+  },
+  {
+    id: "link-in-bio",
+    name: "Link in Bio",
+    description: "A beautiful, mobile-friendly landing page for your social links.",
+    icon: "Link",
+    category: "Full Pages",
+    files: [
+      {
+        name: "index.html",
+        path: "index.html",
+        language: "html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link in Bio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen text-white font-sans flex flex-col items-center py-20 px-4">
+    <img src="https://i.pravatar.cc/150?img=32" alt="Profile" class="w-24 h-24 rounded-full border-4 border-white/30 shadow-xl mb-4">
+    <h1 class="text-2xl font-bold mb-1">Jane Doe</h1>
+    <p class="text-white/80 mb-8 text-center max-w-xs">Software Engineer & Tech Creator. Sharing coding tips every week! ✨</p>
+    
+    <div class="w-full max-w-md space-y-4">
+        <a href="#" class="block w-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-2xl p-4 text-center font-bold text-lg transition-all hover:scale-105 shadow-lg">
+            📺 Watch my latest YouTube video
+        </a>
+        <a href="#" class="block w-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-2xl p-4 text-center font-bold text-lg transition-all hover:scale-105 shadow-lg">
+            💻 My Portfolio
+        </a>
+        <a href="#" class="block w-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-2xl p-4 text-center font-bold text-lg transition-all hover:scale-105 shadow-lg">
+            🐦 Twitter / X
+        </a>
+        <a href="#" class="block w-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-2xl p-4 text-center font-bold text-lg transition-all hover:scale-105 shadow-lg">
+            ☕ Buy me a coffee
+        </a>
+    </div>
+</body>
+</html>`
+      }
+    ]
   }
 ];
