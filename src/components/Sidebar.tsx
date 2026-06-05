@@ -383,27 +383,14 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
         return !parts.some(p => p.startsWith(".") || p === "node_modules");
       });
 
-      // Determine if there's a single common root folder
-      let commonRoot = "";
-      if (validEntries.length > 0) {
-        const firstParts = validEntries[0][0].split("/");
-        if (firstParts.length > 1) {
-          const possibleRoot = firstParts[0] + "/";
-          if (validEntries.every(([p]) => p.startsWith(possibleRoot))) {
-            commonRoot = possibleRoot;
-          }
-        }
-      }
-
       for (const [relativePath, zipEntry] of validEntries) {
         const content = await zipEntry.async("string");
-        const adjustedPath = commonRoot ? relativePath.substring(commonRoot.length) : relativePath;
-        const nameParts = adjustedPath.split("/");
+        const nameParts = relativePath.split("/");
         const name = nameParts[nameParts.length - 1];
         const ext = name.split(".").pop()?.toLowerCase() || "txt";
 
         fileEntries.push({
-          path: adjustedPath,
+          path: relativePath,
           name,
           content,
           language: languageMap[ext] || "plaintext"
@@ -482,7 +469,7 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
         });
 
         fileEntries.push({
-          path: relativePath.includes('/') ? relativePath.substring(relativePath.indexOf('/') + 1) : relativePath, // Remove top-level directory name
+          path: relativePath,
           name: file.name,
           content,
           language: languageMap[ext] || "plaintext"
@@ -603,24 +590,6 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
       for (let i = 0; i < items.length; i++) {
         const item = items[i].webkitGetAsEntry();
         if (item) await traverseFileTree(item);
-      }
-
-      // Determine if there's a single common root folder
-      let commonRoot = "";
-      if (fileEntries.length > 0) {
-        const firstParts = fileEntries[0].path.split("/");
-        if (firstParts.length > 1) {
-          const possibleRoot = firstParts[0] + "/";
-          if (fileEntries.every((entry) => entry.path.startsWith(possibleRoot))) {
-            commonRoot = possibleRoot;
-          }
-        }
-      }
-
-      if (commonRoot) {
-        for (const entry of fileEntries) {
-          entry.path = entry.path.substring(commonRoot.length);
-        }
       }
 
       const existingPaths = new Set(files.map(f => f.path));

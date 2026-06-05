@@ -21,21 +21,21 @@ interface PreviewPanelProps {
   saveKey?: number;
 }
 
-const getSandpackTemplate = (files: FileData[]): "nextjs" | "vite-react" | "react-ts" | "vanilla" | "static" => {
-  const pkgFile = files.find(f => f.name === "package.json");
-  if (pkgFile) {
+const getSandpackTemplate = (sandpackFiles: Record<string, string>): "nextjs" | "vite-react" | "react-ts" | "vanilla" | "static" => {
+  const pkgContent = sandpackFiles["/package.json"];
+  if (pkgContent) {
     try {
-      const pkg = JSON.parse(pkgFile.content);
+      const pkg = JSON.parse(pkgContent);
       if (pkg.dependencies?.next) return "nextjs";
       if (pkg.devDependencies?.vite) return "vite-react";
       if (pkg.dependencies?.react) return "react-ts";
       return "vanilla";
     } catch (e) {}
   }
-  const hasJsxTsx = files.some(f => f.name.endsWith(".tsx") || f.name.endsWith(".jsx"));
+  const hasJsxTsx = Object.keys(sandpackFiles).some(path => path.endsWith(".tsx") || path.endsWith(".jsx"));
   if (hasJsxTsx) return "react-ts";
   
-  const hasHtml = files.some(f => f.name === "index.html");
+  const hasHtml = !!sandpackFiles["/index.html"];
   if (hasHtml) return "static";
   
   return "react-ts";
@@ -67,8 +67,17 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
     if (saveKey) setSandpackKey(k => k + 1);
   }, [saveKey]);
 
+  const defaultEntry = entryFile || files.find(f => f.name === "index.html")?.path || files.find(f => f.name === "package.json")?.path || "";
+  const rootDir = defaultEntry.includes("/") ? defaultEntry.substring(0, defaultEntry.lastIndexOf("/") + 1) : "";
+
   const sandpackFiles = files.reduce((acc, f) => {
-    const path = f.path.startsWith("/") ? f.path : `/${f.path}`;
+    let path = f.path;
+    if (rootDir && path.startsWith(rootDir)) {
+      path = path.substring(rootDir.length);
+    } else if (rootDir) {
+      path = `_outside_/${path}`;
+    }
+    path = path.startsWith("/") ? path : `/${path}`;
     acc[path] = f.content;
     return acc;
   }, {} as Record<string, string>);
@@ -77,7 +86,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
     sandpackFiles["/.env"] = Object.entries(projectEnv).map(([k, v]) => `${k}=${v}`).join("\n");
   }
 
-  const template = getSandpackTemplate(files);
+  const template = getSandpackTemplate(sandpackFiles);
 
   return (
     <div className="w-full bg-card flex flex-col h-full overflow-hidden">
@@ -151,7 +160,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
               theme="dark"
               files={sandpackFiles}
               options={{
-                activeFile: entryFile ? (entryFile.startsWith("/") ? entryFile : `/${entryFile}`) : undefined,
+                activeFile: entryFile ? `/${entryFile.startsWith(rootDir) ? entryFile.substring(rootDir.length) : entryFile}` : undefined,
                 initMode: "user-visible"
               }}
               style={{ width: "100%", height: "100%" }}
