@@ -34,8 +34,8 @@ const getSandpackTemplate = (files: FileData[]): "nextjs" | "vite-react" | "reac
   const hasTsx = files.some(f => f.name.endsWith(".tsx"));
   if (hasTsx) return "react-ts";
   const hasHtml = files.some(f => f.name === "index.html");
-  if (hasHtml && !files.some(f => f.name.endsWith(".ts") || f.name.endsWith(".jsx"))) {
-    return "vanilla";
+  if (hasHtml && !files.some(f => f.name.endsWith(".ts") || f.name.endsWith(".jsx") || f.name.endsWith(".js"))) {
+    return "static";
   }
   return "react-ts";
 };
