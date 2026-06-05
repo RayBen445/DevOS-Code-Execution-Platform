@@ -29,14 +29,15 @@ const getSandpackTemplate = (files: FileData[]): "nextjs" | "vite-react" | "reac
       if (pkg.dependencies?.next) return "nextjs";
       if (pkg.devDependencies?.vite) return "vite-react";
       if (pkg.dependencies?.react) return "react-ts";
+      return "vanilla";
     } catch (e) {}
   }
-  const hasTsx = files.some(f => f.name.endsWith(".tsx"));
-  if (hasTsx) return "react-ts";
+  const hasJsxTsx = files.some(f => f.name.endsWith(".tsx") || f.name.endsWith(".jsx"));
+  if (hasJsxTsx) return "react-ts";
+  
   const hasHtml = files.some(f => f.name === "index.html");
-  if (hasHtml && !files.some(f => f.name.endsWith(".ts") || f.name.endsWith(".jsx") || f.name.endsWith(".js"))) {
-    return "static";
-  }
+  if (hasHtml) return "static";
+  
   return "react-ts";
 };
 

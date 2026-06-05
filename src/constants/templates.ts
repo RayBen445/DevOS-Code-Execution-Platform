@@ -112,6 +112,94 @@ export const TEMPLATES: ProjectTemplate[] = [
     ]
   },
   {
+    id: "vanilla-js",
+    name: "Vanilla JS Starter",
+    description: "A classic web project with separate HTML, CSS, and JavaScript files.",
+    icon: "FileCode",
+    files: [
+      {
+        name: "index.html",
+        path: "index.html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla JS Project</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Vanilla JS Starter</h1>
+        <p>Edit HTML, CSS, and JS separately!</p>
+        <button id="click-btn">Click Me</button>
+        <p id="message"></p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>`,
+        language: "html"
+      },
+      {
+        name: "styles.css",
+        path: "styles.css",
+        content: `body {
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background: #0a0a0a;
+    color: white;
+}
+
+.container {
+    text-align: center;
+    background: #111;
+    padding: 3rem;
+    border-radius: 1rem;
+    border: 1px solid #222;
+}
+
+button {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 1rem;
+}
+
+button:hover {
+    background: #2563eb;
+}
+
+#message {
+    margin-top: 1rem;
+    color: #9ca3af;
+}`,
+        language: "css"
+      },
+      {
+        name: "script.js",
+        path: "script.js",
+        content: `let clicks = 0;
+const btn = document.getElementById('click-btn');
+const msg = document.getElementById('message');
+
+btn.addEventListener('click', () => {
+    clicks++;
+    msg.textContent = \`You clicked the button \${clicks} time\${clicks === 1 ? '' : 's'}.\`;
+});`,
+        language: "javascript"
+      }
+    ]
+  },
+  {
     id: "landing-page",
     name: "Landing Page",
     description: "A modern, responsive landing page with Tailwind CSS.",
