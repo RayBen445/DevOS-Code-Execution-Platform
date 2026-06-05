@@ -260,7 +260,7 @@ renderProducts();`,
         <button id="click-btn">Click Me</button>
         <p id="message"></p>
     </div>
-    <script src="script.js"></script>
+    <script src="index.js"></script>
 </body>
 </html>`,
         language: "html"
