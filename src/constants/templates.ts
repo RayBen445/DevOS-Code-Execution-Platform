@@ -6,6 +6,7 @@ export interface ProjectTemplate {
   description: string;
   icon: string;
   category?: string;
+  tags?: string[];
   files: {
     name: string;
     path: string;
@@ -21,6 +22,7 @@ export const TEMPLATES: ProjectTemplate[] = [
     description: "A complete responsive e-commerce template with product grids, cart state, and modern UI.",
     icon: "Layout",
     category: "Full Pages",
+    tags: ["ecommerce", "shop", "tailwind"],
     files: [
       {
         name: "index.html",
@@ -123,6 +125,7 @@ renderProducts();`,
     name: "Next.js Sandbox",
     description: "A minimal Next.js app to test the terminal and build pipeline.",
     icon: "Rocket",
+    tags: ["react", "nextjs", "starter"],
     files: [
       {
         name: "package.json",
@@ -181,6 +184,7 @@ renderProducts();`,
     name: "Blank Project",
     description: "Start from scratch with a single index.html file.",
     icon: "File",
+    tags: ["blank", "html", "css"],
     files: [
       {
         name: "index.html",
@@ -220,6 +224,7 @@ renderProducts();`,
     name: "Vanilla JS Starter",
     description: "A classic web project with separate HTML, CSS, and JavaScript files.",
     icon: "FileCode",
+    tags: ["javascript", "html", "css"],
     files: [
       {
         name: "index.html",
@@ -308,6 +313,7 @@ btn.addEventListener('click', () => {
     name: "Landing Page",
     description: "A modern, responsive landing page with Tailwind CSS.",
     icon: "Globe",
+    tags: ["landing", "tailwind", "html"],
     files: [
       {
         name: "index.html",
@@ -367,6 +373,7 @@ btn.addEventListener('click', () => {
     name: "React Starter",
     description: "Simple React setup with JSX support and Babel transpilation.",
     icon: "Code2",
+    tags: ["react", "jsx", "babel"],
     files: [
       {
         name: "index.html",
@@ -442,6 +449,7 @@ root.render(<App />);`,
     name: "SaaS Dashboard Pro",
     description: "A high-quality SaaS dashboard starter with KPI cards, activity feed, and responsive navigation.",
     icon: "LayoutDashboard",
+    tags: ["dashboard", "saas", "tailwind"],
     files: [
       {
         name: "index.html",
@@ -500,6 +508,7 @@ root.render(<App />);`,
     name: "DevOS Academy — School Platform",
     description: "A full school/messaging platform: sign-up, login, file uploads, live chat, AI tutoring, email notifications, and analytics — all plugins active.",
     icon: "GraduationCap",
+    tags: ["academy", "fullstack", "devos"],
     files: [
       {
         name: "index.html",
@@ -1315,6 +1324,7 @@ the app switches to live backend automatically.
     name: "SaaS Dashboard",
     description: "A modern, responsive admin dashboard for a SaaS product with charts and tables.",
     icon: "LayoutDashboard",
+    tags: ["dashboard", "admin", "ui"],
     category: "Dashboards",
     files: [
       {
@@ -1391,6 +1401,7 @@ the app switches to live backend automatically.
     name: "Minimal Blog",
     description: "A clean, reading-focused blog template.",
     icon: "BookOpen",
+    tags: ["blog", "markdown", "content"],
     category: "Full Pages",
     files: [
       {
@@ -1438,6 +1449,7 @@ the app switches to live backend automatically.
     name: "Link in Bio",
     description: "A beautiful, mobile-friendly landing page for your social links.",
     icon: "Link",
+    tags: ["portfolio", "social", "links"],
     category: "Full Pages",
     files: [
       {
