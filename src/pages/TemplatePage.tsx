@@ -6,14 +6,6 @@ import {
   collection,
   query,
   where,
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { auth, db } from "../lib/firebase";
-import { useAuthState } from "react-firebase-hooks/auth";
-import {
-  collection,
-  query,
-  where,
   addDoc,
   serverTimestamp,
   doc,
