@@ -405,7 +405,8 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                           newLinks[index].url = e.target.value;
                           setPortfolioData({ ...portfolioData, links: newLinks });
                         }}
-                        className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-all"
+                        className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-all disabled:opacity-50"
+                            disabled={page.isSystem}
                       />
                     </div>
                   ))}
@@ -504,10 +505,10 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                               setPortfolioData({ ...portfolioData, pages: newPages });
                             }}
                             className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-all"
-                            disabled={page.slug === '/'}
+                            disabled={page.isSystem || page.slug === '/'}
                           />
                         </div>
-                        {page.slug !== '/' && (
+                        {!page.isSystem && page.slug !== '/' && (
                           <div className="flex items-end pb-1">
                             <button
                               onClick={() => {

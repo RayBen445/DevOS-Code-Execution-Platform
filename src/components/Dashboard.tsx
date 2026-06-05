@@ -12,6 +12,7 @@ import ProjectSettingsModal from "./ProjectSettingsModal";
 import ConfirmModal from "./ConfirmModal";
 import { toast } from "sonner";
 import { TEMPLATES, ProjectTemplate } from "../constants/templates";
+import premiumPortfolioTemplate from "../templates/premiumPortfolioTemplate.json";
 import { deductCredits, getCredits, CREDIT_COSTS } from "../lib/creditsService";
 import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
@@ -230,12 +231,32 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         isTemplate: false,
         forksCount: 0,
         views: 0,
-        deployUrl: `/@${settings?.username || "anonymous"}/${projectSlug}`
+        deployUrl: `/@${settings?.username || "anonymous"}/${projectSlug}`,
+        systemType: template.id === "premium-portfolio" ? "portfolio" : undefined
       });
 
       // Create default files based on template
       const filesRef = collection(db, "projects", docRef.id, "files");
       
+      
+      if (template.id === "premium-portfolio") {
+        const displayName = settings?.displayName || settings?.username || "Developer";
+        const username = settings?.username || "anonymous";
+        
+        let portfolioJsonString = JSON.stringify(premiumPortfolioTemplate, null, 2);
+        portfolioJsonString = portfolioJsonString.replace(/{{displayName}}/g, displayName);
+        portfolioJsonString = portfolioJsonString.replace(/{{username}}/g, username);
+
+        await addDoc(filesRef, {
+          projectId: docRef.id,
+          name: "portfolio.json",
+          path: "/portfolio.json",
+          content: portfolioJsonString,
+          language: "json",
+          updatedAt: serverTimestamp()
+        });
+      }
+
       if (template.source === "hardcoded") {
         const filePromises = template.files.map(file => 
           addDoc(filesRef, { 

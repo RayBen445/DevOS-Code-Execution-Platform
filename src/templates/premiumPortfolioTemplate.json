@@ -1,0 +1,37 @@
+{
+  "layout": {
+    "navbar": {
+      "brand": "{{displayName}}",
+      "links": []
+    },
+    "footer": {
+      "text": "© DevOS – All rights reserved"
+    }
+  },
+  "pages": [
+    {
+      "slug": "/",
+      "title": "Home",
+      "isSystem": true,
+      "content": "# Hello, I'm {{displayName}}\n\nWelcome to my premium portfolio. I'm a developer who loves building things."
+    },
+    {
+      "slug": "/about",
+      "title": "About",
+      "isSystem": true,
+      "content": "# About Me\n\nHi! I'm {{displayName}} (@{{username}}). \n\nI build fast, beautiful, and reliable software."
+    },
+    {
+      "slug": "/projects",
+      "title": "Projects",
+      "isSystem": true,
+      "content": "# Projects\n\nHere are some of the things I've built.\n\n- **Project 1**: A cool app\n- **Project 2**: Another cool app"
+    },
+    {
+      "slug": "/contact",
+      "title": "Contact",
+      "isSystem": true,
+      "content": "# Contact\n\nGet in touch with me!\n\n<form>\n  <input type=\"text\" placeholder=\"Name\" /><br/><br/>\n  <input type=\"email\" placeholder=\"Email\" /><br/><br/>\n  <textarea placeholder=\"Message\"></textarea><br/><br/>\n  <button type=\"submit\">Send Message</button>\n</form>"
+    }
+  ]
+}

@@ -17,6 +17,22 @@ export interface ProjectTemplate {
 
 export const TEMPLATES: ProjectTemplate[] = [
   {
+    id: "premium-portfolio",
+    name: "DevOS Premium Portfolio",
+    description: "A premium, easy-to-edit portfolio to showcase your work.",
+    icon: "User",
+    category: "Full Pages",
+    tags: ["portfolio", "markdown", "profile"],
+    files: [
+      {
+        name: "README.md",
+        path: "/README.md",
+        content: "# Premium Portfolio\n\nEdit your content visually via the editor tab.",
+        language: "markdown"
+      }
+    ]
+  },
+  {
     id: "ecommerce-store",
     name: "E-Commerce Storefront",
     description: "A complete responsive e-commerce template with product grids, cart state, and modern UI.",
