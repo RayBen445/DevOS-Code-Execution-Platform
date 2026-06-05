@@ -20,7 +20,7 @@ import {
   RotateCcw, 
   X, 
   MessageSquare 
-} from "lucide-react";
+, FileText, LayoutTemplate, Star } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
@@ -51,7 +51,7 @@ interface PortfolioEditorProps {
 }
 
 export default function PortfolioEditor({ project, files, onUpdateFile }: PortfolioEditorProps) {
-  const [activeTab, setActiveTab] = useState<"content" | "layout" | "theme">("content");
+  const [activeTab, setActiveTab] = useState<"content" | "pages" | "layout" | "theme">("content");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
@@ -72,7 +72,22 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
 
   useEffect(() => {
     try {
-      if (portfolioFile) setPortfolioData(JSON.parse(portfolioFile.content));
+      if (portfolioFile) {
+        const parsed = JSON.parse(portfolioFile.content);
+        if (!parsed.pages) {
+          parsed.pages = [
+            { id: "home", slug: "/", title: "Home", content: "# Welcome to my Portfolio\n\nI am a developer. I love coding and building awesome things." }
+          ];
+        }
+        if (!parsed.global) {
+          parsed.global = {
+            navbar: { style: 'classic', logo: 'text' },
+            footer: { text: `© ${new Date().getFullYear()} ${project.ownerUsername}`, showSocials: true },
+            layout: 'classic'
+          };
+        }
+        setPortfolioData(parsed);
+      }
       if (layoutFile) setLayoutData(JSON.parse(layoutFile.content));
       if (themeFile) setThemeData(JSON.parse(themeFile.content));
     } catch (e) {
@@ -255,7 +270,8 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
       {/* Tabs */}
       <div className="flex border-b border-border-base bg-card">
         {[
-          { id: "content", label: "Content", icon: User },
+          { id: "content", label: "General", icon: User },
+          { id: "pages", label: "Pages", icon: FileText },
           { id: "layout", label: "Layout", icon: Layout },
           { id: "theme", label: "Theme", icon: Palette }
         ].map(tab => (
@@ -433,6 +449,96 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                   >
                     + Add Project ID
                   </button>
+                </div>
+              </section>
+            </div>
+          )}
+
+          
+          {activeTab === "pages" && (
+            <div className="space-y-8">
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-blue-500" />
+                      Manage Pages
+                    </h3>
+                    <p className="text-sm text-white/40 mt-1">Create multiple pages and write content using Markdown.</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newPage = { id: `page-${Date.now()}`, slug: `/new-page-${Date.now()}`, title: "New Page", content: "# New Page\nWrite something here..." };
+                      setPortfolioData({ ...portfolioData, pages: [...portfolioData.pages, newPage] });
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all"
+                  >
+                    <Plus className="w-3 h-3" /> Add Page
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {portfolioData.pages.map((page: any, index: number) => (
+                    <div key={page.id} className="p-4 bg-white/5 border border-border-base rounded-xl space-y-4 relative group">
+                      <div className="flex gap-4">
+                        <div className="flex-1 space-y-2">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Page Title</label>
+                          <input
+                            type="text"
+                            value={page.title}
+                            onChange={(e) => {
+                              const newPages = [...portfolioData.pages];
+                              newPages[index].title = e.target.value;
+                              setPortfolioData({ ...portfolioData, pages: newPages });
+                            }}
+                            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-all"
+                          />
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">URL Slug</label>
+                          <input
+                            type="text"
+                            value={page.slug}
+                            onChange={(e) => {
+                              const newPages = [...portfolioData.pages];
+                              newPages[index].slug = e.target.value.toLowerCase().replace(/\s+/g, '-');
+                              setPortfolioData({ ...portfolioData, pages: newPages });
+                            }}
+                            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-all"
+                            disabled={page.slug === '/'}
+                          />
+                        </div>
+                        {page.slug !== '/' && (
+                          <div className="flex items-end pb-1">
+                            <button
+                              onClick={() => {
+                                const newPages = portfolioData.pages.filter((_: any, i: number) => i !== index);
+                                setPortfolioData({ ...portfolioData, pages: newPages });
+                              }}
+                              className="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center justify-between">
+                          <span>Content (Markdown)</span>
+                          <span className="text-white/20 normal-case tracking-normal">Supports GitHub Flavored Markdown</span>
+                        </label>
+                        <textarea
+                          value={page.content}
+                          onChange={(e) => {
+                            const newPages = [...portfolioData.pages];
+                            newPages[index].content = e.target.value;
+                            setPortfolioData({ ...portfolioData, pages: newPages });
+                          }}
+                          className="w-full h-64 bg-black/20 border border-border-base rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-blue-500 transition-all resize-y"
+                          placeholder="# Main Heading..."
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </section>
             </div>

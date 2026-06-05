@@ -619,16 +619,15 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       })) as FileData[];
       setFiles(fileList);
 
-      // Restore persisted active file if it still exists; otherwise fall back to first file.
+      // Restore persisted active file if it still exists; otherwise do not auto-open a file
       setActiveFileId(prev => {
         if (prev && fileList.some(f => f.id === prev)) return prev; // valid restore
-        if (fileList.length > 0) return fileList[0].id;
         return null;
       });
       setOpenFileIds(prev => {
         const validOpen = prev.filter((id) => fileList.some((f) => f.id === id));
         if (validOpen.length > 0) return validOpen;
-        return fileList.length > 0 ? [fileList[0].id] : [];
+        return [];
       });
       setLoading(false);
     }, (error) => {

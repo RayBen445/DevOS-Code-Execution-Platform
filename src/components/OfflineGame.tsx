@@ -1,6 +1,26 @@
 import React, { useState, useEffect, useRef } from "react";
-import { WifiOff, Rocket, AlertTriangle } from "lucide-react";
+import { WifiOff, Keyboard, AlertTriangle, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const WORDS = [
+  "function", "async", "await", "promise", "react", "typescript", "database",
+  "component", "tailwind", "backend", "frontend", "interface", "export",
+  "import", "default", "return", "console", "window", "document", "object",
+  "array", "string", "number", "boolean", "null", "undefined", "class",
+  "extends", "constructor", "super", "this", "yield", "debugger", "delete",
+  "typeof", "instanceof", "void", "switch", "case", "break", "continue",
+  "throw", "try", "catch", "finally", "let", "const", "var", "while", "for",
+  "if", "else", "devos", "code", "execute", "build", "compile", "deploy"
+];
+
+interface FallingWord {
+  id: number;
+  text: string;
+  x: number;
+  y: number;
+  speed: number;
+  color: string;
+}
 
 export default function OfflineGame() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -8,22 +28,21 @@ export default function OfflineGame() {
   // Game State
   const [isPlaying, setIsPlaying] = useState(false);
   const [score, setScore] = useState(0);
-  const [highScore, setHighScore] = useState(() => parseInt(localStorage.getItem("devos_offline_highscore") || "0", 10));
+  const [highScore, setHighScore] = useState(() => parseInt(localStorage.getItem("devos_offline_highscore_typing") || "0", 10));
   const [isGameOver, setIsGameOver] = useState(false);
+  const [currentInput, setCurrentInput] = useState("");
   
-  // Physics State
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>();
   
-  // Game constants
-  const GRAVITY = 0.6;
-  const JUMP_STRENGTH = -10;
-  const GAME_SPEED = 5;
-  
-  const dino = useRef({ y: 150, velocity: 0, width: 40, height: 40, isJumping: false });
-  const obstacles = useRef<{ x: number; y: number; width: number; height: number; passed: boolean }[]>([]);
+  // Mutable refs for physics
+  const words = useRef<FallingWord[]>([]);
   const scoreRef = useRef(0);
   const frameCount = useRef(0);
+  const inputRef = useRef("");
+  const spawnRate = useRef(100);
+  const baseSpeed = useRef(0.5);
+  const wordIdCounter = useRef(0);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -42,38 +61,62 @@ export default function OfflineGame() {
   }, []);
 
   const resetGame = () => {
-    dino.current = { y: 150, velocity: 0, width: 40, height: 40, isJumping: false };
-    obstacles.current = [];
+    words.current = [];
     scoreRef.current = 0;
     frameCount.current = 0;
+    inputRef.current = "";
+    spawnRate.current = 100;
+    baseSpeed.current = 0.5;
+    
     setScore(0);
+    setCurrentInput("");
     setIsGameOver(false);
     setIsPlaying(false);
   };
 
-  const jump = () => {
-    if (isGameOver) {
-      resetGame();
-      setIsPlaying(true);
-      return;
-    }
-    
-    if (!isPlaying) {
-      setIsPlaying(true);
-    }
-
-    if (!dino.current.isJumping) {
-      dino.current.velocity = JUMP_STRENGTH;
-      dino.current.isJumping = true;
-    }
+  const startGame = () => {
+    resetGame();
+    setIsPlaying(true);
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "ArrowUp") {
-        if (isOffline) {
+      if (!isOffline) return;
+
+      if (!isPlaying || isGameOver) {
+        if (e.code === "Space" || e.code === "Enter") {
           e.preventDefault();
-          jump();
+          startGame();
+        }
+        return;
+      }
+
+      // Handle typing
+      if (e.key === "Backspace") {
+        inputRef.current = inputRef.current.slice(0, -1);
+        setCurrentInput(inputRef.current);
+      } else if (e.key === "Escape") {
+        inputRef.current = "";
+        setCurrentInput(inputRef.current);
+      } else if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+        inputRef.current += e.key.toLowerCase();
+        setCurrentInput(inputRef.current);
+        
+        // Check for matches
+        const matchedIndex = words.current.findIndex(w => w.text === inputRef.current);
+        if (matchedIndex !== -1) {
+          // Explode word
+          words.current.splice(matchedIndex, 1);
+          scoreRef.current += 10;
+          setScore(scoreRef.current);
+          inputRef.current = "";
+          setCurrentInput("");
+          
+          // Increase difficulty slightly
+          if (scoreRef.current % 50 === 0) {
+            baseSpeed.current += 0.2;
+            spawnRate.current = Math.max(30, spawnRate.current - 5);
+          }
         }
       }
     };
@@ -93,83 +136,87 @@ export default function OfflineGame() {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Apply Gravity
-    dino.current.velocity += GRAVITY;
-    dino.current.y += dino.current.velocity;
-
-    // Ground collision
-    const groundY = canvas.height - 20;
-    if (dino.current.y + dino.current.height >= groundY) {
-      dino.current.y = groundY - dino.current.height;
-      dino.current.velocity = 0;
-      dino.current.isJumping = false;
-    }
-
-    // Spawn obstacles
+    // Spawn new words
     frameCount.current++;
-    if (frameCount.current % 90 === 0) {
-      // Random obstacle height
-      const height = Math.random() * 40 + 30;
-      obstacles.current.push({
-        x: canvas.width,
-        y: groundY - height,
-        width: 30,
-        height,
-        passed: false
+    if (frameCount.current % spawnRate.current === 0) {
+      const text = WORDS[Math.floor(Math.random() * WORDS.length)];
+      // calculate text width roughly
+      ctx.font = "bold 20px monospace";
+      const metrics = ctx.measureText(text);
+      const width = metrics.width;
+      
+      const x = Math.max(10, Math.random() * (canvas.width - width - 20));
+      const colors = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ec4899"];
+      
+      words.current.push({
+        id: ++wordIdCounter.current,
+        text,
+        x,
+        y: -30,
+        speed: baseSpeed.current + Math.random() * 0.5,
+        color: colors[Math.floor(Math.random() * colors.length)]
       });
     }
 
-    // Move & Draw Obstacles
-    ctx.fillStyle = "#ef4444"; // Red for bugs
-    for (let i = obstacles.current.length - 1; i >= 0; i--) {
-      const obs = obstacles.current[i];
-      obs.x -= GAME_SPEED;
+    // Draw Ground
+    const groundY = canvas.height - 40;
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(0, groundY, canvas.width, 2);
 
-      // Draw obstacle
-      ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-      
-      // Collision Detection
-      const d = dino.current;
-      if (
-        d.x! < obs.x + obs.width &&
-        d.x! + d.width > obs.x &&
-        d.y < obs.y + obs.height &&
-        d.y + d.height > obs.y
-      ) {
+    // Move & Draw Words
+    for (let i = words.current.length - 1; i >= 0; i--) {
+      const w = words.current[i];
+      w.y += w.speed;
+
+      // Check collision with ground
+      if (w.y >= groundY) {
         setIsGameOver(true);
         if (scoreRef.current > highScore) {
           setHighScore(scoreRef.current);
-          localStorage.setItem("devos_offline_highscore", scoreRef.current.toString());
+          localStorage.setItem("devos_offline_highscore_typing", scoreRef.current.toString());
         }
+        break;
       }
 
-      // Score update
-      if (obs.x + obs.width < d.x! && !obs.passed) {
-        obs.passed = true;
-        scoreRef.current += 10;
-        setScore(scoreRef.current);
-      }
-
-      // Remove off-screen obstacles
-      if (obs.x + obs.width < 0) {
-        obstacles.current.splice(i, 1);
+      // Draw word
+      ctx.font = "bold 20px monospace";
+      
+      // Check if this word is currently being typed (matches prefix)
+      const isTarget = inputRef.current.length > 0 && w.text.startsWith(inputRef.current);
+      
+      if (isTarget) {
+        // Draw typed part
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(inputRef.current, w.x, w.y);
+        
+        // Draw remaining part
+        const typedWidth = ctx.measureText(inputRef.current).width;
+        ctx.fillStyle = w.color;
+        ctx.globalAlpha = 0.5;
+        ctx.fillText(w.text.substring(inputRef.current.length), w.x + typedWidth, w.y);
+        ctx.globalAlpha = 1.0;
+        
+        // Draw indicator under the word
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(w.x, w.y + 5, typedWidth, 2);
+      } else {
+        ctx.fillStyle = w.color;
+        ctx.fillText(w.text, w.x, w.y);
       }
     }
 
-    // Draw Ground
-    ctx.fillStyle = "#334155";
-    ctx.fillRect(0, groundY, canvas.width, 20);
+    // Draw current input at the bottom
+    if (inputRef.current) {
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 24px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(inputRef.current, canvas.width / 2, canvas.height - 10);
+      ctx.textAlign = "left"; // reset
+    }
 
-    // Draw Dino (Rocket)
-    dino.current.x = 50; // Fixed horizontal position
-    ctx.fillStyle = "#3b82f6"; // Blue rocket
-    ctx.beginPath();
-    ctx.moveTo(d.x! + d.width / 2, d.y); // top tip
-    ctx.lineTo(d.x! + d.width, d.y + d.height); // bottom right
-    ctx.lineTo(d.x!, d.y + d.height); // bottom left
-    ctx.fill();
-
-    requestRef.current = requestAnimationFrame(updateGame);
+    if (!isGameOver) {
+      requestRef.current = requestAnimationFrame(updateGame);
+    }
   };
 
   useEffect(() => {
@@ -181,7 +228,7 @@ export default function OfflineGame() {
     };
   }, [isPlaying, isGameOver]);
 
-  if (!isOffline) return null;
+  if (!isOffline) return null; // Don't show anything if online
 
   return (
     <AnimatePresence>
@@ -197,48 +244,57 @@ export default function OfflineGame() {
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">You're Offline</h1>
           <p className="text-white/50 max-w-md text-center">
-            We lost connection to the DevOS servers. Don't worry, your work is saved locally.
+            Lost connection to DevOS servers. Test your typing skills while you wait!
           </p>
         </div>
 
-        <div className="mt-20 w-full max-w-3xl flex flex-col items-center">
-          <div className="flex w-full justify-between px-4 mb-4 text-white/70 font-bold">
-            <div className="text-2xl">HI {highScore.toString().padStart(5, '0')}</div>
-            <div className="text-2xl">{score.toString().padStart(5, '0')}</div>
+        <div className="mt-20 w-full max-w-4xl flex flex-col items-center">
+          <div className="flex w-full justify-between px-6 mb-4 text-white/70 font-bold">
+            <div className="flex items-center gap-2 text-2xl">
+              <Trophy className="w-6 h-6 text-yellow-500" />
+              HI {highScore.toString().padStart(5, '0')}
+            </div>
+            <div className="text-2xl text-blue-400">{score.toString().padStart(5, '0')}</div>
           </div>
           
-          <div className="relative w-full h-[300px] border-2 border-white/10 rounded-2xl bg-[#0f172a] overflow-hidden shadow-2xl" onClick={jump}>
+          <div 
+            className="relative w-full h-[400px] border-2 border-white/10 rounded-3xl bg-[#0f172a] overflow-hidden shadow-2xl" 
+            onClick={() => !isPlaying && startGame()}
+          >
             <canvas 
               ref={canvasRef}
-              width={768}
-              height={300}
+              width={896} // max-w-4xl = 896px
+              height={400}
               className="w-full h-full cursor-pointer"
             />
             
             {!isPlaying && !isGameOver && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <Rocket className="w-16 h-16 text-blue-500 mb-4 animate-bounce" />
-                <p className="text-white font-bold text-xl bg-black/50 px-6 py-2 rounded-full backdrop-blur-sm">
-                  Press SPACE to launch
+                <Keyboard className="w-20 h-20 text-blue-500 mb-6 animate-pulse" />
+                <p className="text-white font-bold text-2xl bg-black/50 px-8 py-3 rounded-2xl backdrop-blur-md border border-white/10">
+                  Type words before they crash!
                 </p>
+                <p className="text-white/50 mt-4 text-sm font-bold">Press SPACE to start</p>
               </div>
             )}
 
             {isGameOver && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none bg-black/40 backdrop-blur-[2px]">
-                <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
-                <h2 className="text-3xl font-black text-white mb-2 tracking-widest">CRASHED</h2>
-                <p className="text-white/80 font-bold bg-white/10 px-6 py-2 rounded-full mb-6">
-                  Watch out for the bugs!
-                </p>
-                <p className="text-white font-bold animate-pulse text-lg">
-                  Press SPACE to restart
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none bg-black/60 backdrop-blur-sm">
+                <AlertTriangle className="w-20 h-20 text-red-500 mb-4 animate-bounce" />
+                <h2 className="text-5xl font-black text-white mb-2 tracking-widest text-shadow-sm">CRASHED</h2>
+                <div className="bg-white/10 px-8 py-4 rounded-2xl mb-8 border border-white/20 text-center">
+                  <p className="text-white/60 uppercase tracking-widest text-xs font-bold mb-1">Final Score</p>
+                  <p className="text-4xl font-bold text-blue-400">{score}</p>
+                </div>
+                <p className="text-white font-bold animate-pulse text-xl">
+                  Press SPACE to retry
                 </p>
               </div>
             )}
           </div>
           
-          <p className="mt-6 text-white/40 text-sm">
+          <p className="mt-8 text-white/40 text-sm flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             Waiting for network to reconnect...
           </p>
         </div>

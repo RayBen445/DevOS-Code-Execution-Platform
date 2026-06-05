@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
+import AdminThemesTab from "../components/AdminThemesTab";
 import { useAuthState } from "react-firebase-hooks/auth";
 import {
   collection,
@@ -99,7 +100,7 @@ import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 import CustomSelect from "../components/CustomSelect";
 
-type Tab = "overview" | "templates" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events" | "learn";
+type Tab = "overview" | "templates" | "themes" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events" | "learn";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -2335,6 +2336,8 @@ User request: ${aiTestPrompt.trim()}`;
                 )}
 
                 {/* Templates Tab */}
+                {activeTab === "themes" && (<AdminThemesTab />)}
+
                 {activeTab === "templates" && (
                   <div className="space-y-8">
                     <div>

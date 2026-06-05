@@ -2,7 +2,7 @@
  * UI Themes — defines CSS custom-property overrides applied to :root.
  * The default "dark" theme is the existing design; all others are variants.
  */
-export type UITheme = 'system' | 'dark' | 'midnight' | 'ocean' | 'light' | 'sunset' | 'custom';
+export type UITheme = string;
 
 export interface ThemeDefinition {
   id: UITheme;
@@ -12,6 +12,8 @@ export interface ThemeDefinition {
   preview: string;
   /** CSS custom properties to inject when this theme is active */
   vars: Record<string, string>;
+  isPremium?: boolean;
+  price?: number;
 }
 
 export const THEMES: ThemeDefinition[] = [
@@ -100,6 +102,96 @@ export const THEMES: ThemeDefinition[] = [
       '--text-secondary': 'rgba(255,237,213,0.6)',
       '--accent': '#fb923c',
       '--accent-hover': '#f97316',
+    },
+  },
+  {
+    id: 'hacker',
+    label: 'Hacker',
+    description: 'Matrix-style green on black',
+    preview: '#000000',
+    isPremium: true,
+    price: 50,
+    vars: {
+      '--bg-base': '#000000',
+      '--bg-surface': '#0a0a0a',
+      '--bg-card': '#111111',
+      '--border-base': 'rgba(34,197,94,0.3)',
+      '--text-primary': '#4ade80',
+      '--text-secondary': 'rgba(74,222,128,0.7)',
+      '--accent': '#22c55e',
+      '--accent-hover': '#16a34a',
+    },
+  },
+  {
+    id: 'cyberpunk',
+    label: 'Cyberpunk',
+    description: 'Neon pink and yellow dystopia',
+    preview: '#fdfb24',
+    isPremium: true,
+    price: 100,
+    vars: {
+      '--bg-base': '#05051a',
+      '--bg-surface': '#0f0f2a',
+      '--bg-card': '#1a1a3a',
+      '--border-base': 'rgba(236,72,153,0.4)',
+      '--text-primary': '#fdfb24',
+      '--text-secondary': '#00f0ff',
+      '--accent': '#ec4899',
+      '--accent-hover': '#db2777',
+    },
+  },
+  {
+    id: 'dracula',
+    label: 'Dracula',
+    description: 'A dark theme for vampires',
+    preview: '#282a36',
+    isPremium: true,
+    price: 75,
+    vars: {
+      '--bg-base': '#282a36',
+      '--bg-surface': '#44475a',
+      '--bg-card': '#282a36',
+      '--border-base': 'rgba(98,114,164,0.5)',
+      '--text-primary': '#f8f8f2',
+      '--text-secondary': '#6272a4',
+      '--accent': '#ff79c6',
+      '--accent-hover': '#bd93f9',
+    },
+  },
+  {
+    id: 'nord',
+    label: 'Nord',
+    description: 'Arctic, north-bluish clean',
+    preview: '#2e3440',
+    isPremium: true,
+    price: 75,
+    vars: {
+      '--bg-base': '#2e3440',
+      '--bg-surface': '#3b4252',
+      '--bg-card': '#434c5e',
+      '--border-base': 'rgba(76,86,106,0.5)',
+      '--text-primary': '#d8dee9',
+      '--text-secondary': '#e5e9f0',
+      '--accent': '#88c0d0',
+      '--accent-hover': '#81a1c1',
+    },
+  },
+  {
+    id: 'synthwave',
+    label: 'Synthwave',
+    description: 'Outrun style retro neon',
+    preview: '#241b2f',
+    isPremium: true,
+    price: 100,
+    vars: {
+      '--bg-base': '#262335',
+      '--bg-surface': '#241b2f',
+      '--bg-card': '#171520',
+      '--border-base': 'rgba(255,126,219,0.3)',
+      '--text-primary': '#f92aad',
+      '--text-secondary': '#36f9f6',
+      '--accent': '#f92aad',
+      '--accent-hover': '#36f9f6',
     },
   },
 ];

@@ -21,6 +21,20 @@ export interface Lesson {
   explanation: CodePart[];
 }
 
+export interface Question {
+  id: string;
+  prompt: string;
+  options: string[];
+  correctAnswer: number;
+}
+
+export interface Exam {
+  id: string;
+  title: string;
+  description: string;
+  questions: Question[];
+}
+
 export interface Topic {
   id: string;
   title: string;
@@ -30,6 +44,7 @@ export interface Topic {
   /** Tailwind background / ring colour class for cards */
   accent: string;
   lessons: Lesson[];
+  exam?: Exam;
 }
 
 // ─── Lesson data ──────────────────────────────────────────────────────────────

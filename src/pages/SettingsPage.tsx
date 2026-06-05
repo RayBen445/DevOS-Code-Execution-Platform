@@ -1207,18 +1207,17 @@ function PreferencesTab() {
     });
   }, [user]);
 
-  const handleSave = async () => {
-    if (!user) return;
-    setSaving(true);
-    try {
-      await setDoc(doc(db, "user_settings", user.uid), { preferences: { fontSize, tabSize }, updatedAt: serverTimestamp() }, { merge: true });
-      toast.success("Preferences saved.");
-    } catch {
-      toast.error("Failed to save preferences.");
-    } finally {
-      setSaving(false);
-    }
-  };
+  useEffect(() => {
+    if (loading || !user) return;
+    const timer = setTimeout(() => {
+      setSaving(true);
+      setDoc(doc(db, "user_settings", user.uid), { preferences: { fontSize, tabSize }, updatedAt: serverTimestamp() }, { merge: true })
+        .then(() => toast.success("Preferences saved."))
+        .catch(() => toast.error("Failed to save preferences."))
+        .finally(() => setSaving(false));
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [fontSize, tabSize, loading, user]);
 
   const toggleNavButton = (id: NavOptionId) => {
     setNavButtons((prev) => {
@@ -1296,7 +1295,7 @@ function PreferencesTab() {
         {/* UI Theme Switcher */}
         <UIThemeSwitcher />
 
-        <SaveButton loading={saving} onClick={handleSave} />
+        {saving && <p className="text-xs text-blue-400 mt-4">Saving preferences...</p>}
       </div>
 
       {/* ── Top Navigation Customisation ───────────────────── */}
@@ -1451,18 +1450,17 @@ function NotificationsTab() {
     });
   }, [user]);
 
-  const handleSave = async () => {
-    if (!user) return;
-    setSaving(true);
-    try {
-      await setDoc(doc(db, "user_settings", user.uid), { notifications: { deployments, adminAnnouncements }, updatedAt: serverTimestamp() }, { merge: true });
-      toast.success("Notification preferences saved.");
-    } catch {
-      toast.error("Failed to save notifications.");
-    } finally {
-      setSaving(false);
-    }
-  };
+  useEffect(() => {
+    if (loading || !user) return;
+    const timer = setTimeout(() => {
+      setSaving(true);
+      setDoc(doc(db, "user_settings", user.uid), { notifications: { deployments, adminAnnouncements }, updatedAt: serverTimestamp() }, { merge: true })
+        .then(() => toast.success("Notification preferences saved."))
+        .catch(() => toast.error("Failed to save notifications."))
+        .finally(() => setSaving(false));
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [deployments, adminAnnouncements, loading, user]);
 
   if (loading) return <LoadingPanel />;
 
@@ -1487,7 +1485,7 @@ function NotificationsTab() {
           onChange={setAdminAnnouncements}
         />
         <div className="pt-2">
-          <SaveButton loading={saving} onClick={handleSave} />
+          {saving && <p className="text-xs text-blue-400">Saving notifications...</p>}
         </div>
       </div>
     </div>

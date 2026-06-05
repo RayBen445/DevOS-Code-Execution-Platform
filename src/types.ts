@@ -143,6 +143,7 @@ export interface UserSettings {
   availableForWork?: boolean;
   updatedAt?: any;
   isOfficial?: boolean;
+  portfolioLayout?: 'classic' | 'developer' | 'minimal' | 'bento';
 }
 
 export interface CursorPosition {
@@ -232,6 +233,7 @@ export interface UserProfile {
     twitter?: string;
     website?: string;
   };
+  unlockedThemes?: string[];
   updatedAt: any;
 }
 
@@ -908,4 +910,33 @@ export interface Branch {
   }[];
   merged?: boolean;
   mergedAt?: any;
+}
+
+// ── Portfolio System ─────────────────────────────────────────────────────────
+
+export interface PortfolioPage {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+}
+
+export interface PortfolioGlobalSettings {
+  navbar: {
+    style: 'classic' | 'minimal' | 'hidden';
+    logo: string;
+  };
+  footer: {
+    text: string;
+    showSocials: boolean;
+  };
+  layout: 'classic' | 'developer' | 'minimal' | 'bento';
+}
+
+export interface PortfolioData {
+  bio: string;
+  links: Array<{ platform: string; url: string }>;
+  featuredProjects: string[];
+  pages?: PortfolioPage[];
+  global?: PortfolioGlobalSettings;
 }
