@@ -213,6 +213,7 @@ export default function Editor({ file, onChange, projectId, readOnly, onCursorCh
       <div className="flex-1 relative min-h-0">
         <MonacoEditor
           height="100%"
+          path={file.id}
           language={file.language}
           value={file.content}
           onChange={(value) => onChange(value || "")}
@@ -225,7 +226,7 @@ export default function Editor({ file, onChange, projectId, readOnly, onCursorCh
             roundedSelection: true,
             scrollBeyondLastLine: false,
             readOnly: readOnly || false,
-            automaticLayout: false,
+            automaticLayout: true,
             padding: { top: 16, bottom: 16 },
             cursorBlinking: "smooth",
             cursorSmoothCaretAnimation: "on",
