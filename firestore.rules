@@ -90,7 +90,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role', 'status', 'birthday', 'links', 'skills', 'dailyStreak', 'monthlyStreak', 'lastActiveDate', 'lastActiveMonth', 'activeDaysThisMonth', 'companyName', 'verified', 'logo', 'description'];
+      let allowedFields = ['uid', 'email', 'username', 'displayName', 'fullName', 'bio', 'avatarUrl', 'avatar', 'updatedAt', 'role', 'status', 'birthday', 'links', 'skills', 'dailyStreak', 'monthlyStreak', 'lastActiveDate', 'lastActiveMonth', 'activeDaysThisMonth', 'companyName', 'verified', 'logo', 'description', 'subdomain'];
       return data.keys().hasOnly(allowedFields) &&
              data.uid is string && data.uid == request.auth.uid &&
              data.email is string &&
@@ -103,6 +103,7 @@ service cloud.firestore {
              (!('logo' in data) || (data.logo is string && data.logo.size() <= 1000)) &&
              (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
              (!('birthday' in data) || data.birthday is string) &&
+             (!('subdomain' in data) || data.subdomain is string) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp) &&
              (!('role' in data) || data.role in ['user', 'admin', 'company']) &&
              // Owners may only self-deactivate or restore to active; admin sets ban/suspend via a separate rule
