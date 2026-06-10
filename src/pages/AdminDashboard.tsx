@@ -547,56 +547,38 @@ export default function AdminDashboard() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showAdminNotifPanel]);
 
-    const loadData = async () => {
-    setLoading(true);
-    try {
-      const [usersSnap, pending, allTpl, usersCountSnap, projectsCountSnap] = await Promise.all([
-        getDocs(query(collection(db, "users"), limit(100))),
-        getPendingTemplates(),
-        getAllTemplates(),
-        getCountFromServer(collection(db, "users")),
-        getCountFromServer(collection(db, "projects"))
-      ]);
-
-      setTotalUsers(usersCountSnap.data().count);
-      setTotalProjects(projectsCountSnap.data().count);
-      setTotalTemplates(allTpl.filter((t) => t.isApproved).length);
-      setPendingTemplates(pending);
-      setAllTemplates(allTpl);
-
-      // Load users with credits
-      const usersData = usersSnap.docs.map((d) => d.data() as UserProfile);
-      const usersWithCredits: UserWithCredits[] = await Promise.all(
-        usersData.map(async (u) => {
-          try {
-            const [cSnap, projectsQuerySnap] = await Promise.all([
-              getDoc(doc(db, "user_credits", u.uid)),
-              getDocs(query(
-                collection(db, "projects"),
-                where("ownerId", "==", u.uid)
-              ))
-            ]);
-            
-            const credits = cSnap.exists() ? (cSnap.data() as Credits) : undefined;
-            const pCount = projectsQuerySnap.size;
-            const hasPortfolio = projectsQuerySnap.docs.some(d => {
-              const data = d.data();
-              return data.isSystem === true && data.systemType === "portfolio";
-            });
-            return { ...u, credits, projectCount: pCount, hasPortfolio };
-          } catch {
-            return u;
-          }
-        })
-      );
+      const loadData = async () => {};
+  useEffect(() => {
+    if (!isAdmin) return;
+    const unsubs = [];
+    unsubs.push(onSnapshot(collection(db, 'users'), async (snap) => {
+      setTotalUsers(snap.size);
+      const usersData = snap.docs.map(d => d.data());
+      const usersWithCredits = await Promise.all(usersData.map(async u => {
+        try {
+          const [cSnap, projectsQuerySnap] = await Promise.all([
+            getDoc(doc(db, 'user_credits', u.uid)),
+            getDocs(query(collection(db, 'projects'), where('ownerId', '==', u.uid)))
+          ]);
+          const credits = cSnap.exists() ? cSnap.data() : undefined;
+          const pCount = projectsQuerySnap.size;
+          const hasPortfolio = projectsQuerySnap.docs.some(d => d.data().systemType === 'portfolio');
+          return { ...u, credits, projectCount: pCount, hasPortfolio };
+        } catch { return u; }
+      }));
       setUsers(usersWithCredits);
-    } catch (err) {
-      toast.error("Failed to load admin data.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    }));
+    unsubs.push(onSnapshot(collection(db, 'projects'), (snap) => {
+      setTotalProjects(snap.size);
+    }));
+    unsubs.push(onSnapshot(collection(db, 'templates'), (snap) => {
+      const allTpl = snap.docs.map(d => ({id: d.id, ...d.data()}));
+      setAllTemplates(allTpl);
+      setPendingTemplates(allTpl.filter(t => !t.isApproved));
+      setTotalTemplates(allTpl.filter(t => t.isApproved).length);
+    }));
+    return () => unsubs.forEach(u => u());
+  }, [isAdmin]);
 
   const handleApprove = async (templateId: string) => {
     setModerating(templateId);

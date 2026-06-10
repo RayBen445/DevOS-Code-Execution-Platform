@@ -1710,7 +1710,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
             >
               {/* Files */}
               {mobileTab === "files" && (
-                <div className="h-full overflow-y-auto">
+                <div className="h-full">
                   <Sidebar
                     files={files}
                     activeFileId={activeFileId}

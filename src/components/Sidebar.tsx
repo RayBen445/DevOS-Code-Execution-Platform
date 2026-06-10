@@ -779,8 +779,8 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
     <>
     <div 
       className={cn(
-        "w-64 border-r border-border-base flex flex-col relative transition-all duration-200",
-        isDragOver ? "bg-blue-500/10 border-blue-500 shadow-[inset_0_0_20px_rgba(59,130,246,0.2)]" : "bg-card/80 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+        "w-full md:w-64 h-full border-r border-border-base flex flex-col relative transition-all duration-200",
+        isDragOver ? "bg-blue-500/10 border-blue-500 shadow-[inset_0_0_20px_rgba(59,130,246,0.2)]" : "bg-card md:bg-card/80 md:backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

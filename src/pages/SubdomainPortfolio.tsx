@@ -4,7 +4,8 @@ import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/
 import { Project, UserSettings, PortfolioData, PortfolioPage } from "../types";
 import {
   Globe, Github, Zap, AlertCircle, BadgeCheck, ArrowUpRight,
-  Share2, Check, Eye, GitFork, Twitter, Linkedin, ExternalLink, Mail, MapPin, Briefcase
+  Share2, Check, Eye, GitFork, Twitter, Linkedin, ExternalLink, Mail, MapPin, Briefcase,
+  Menu, X
 } from "lucide-react";
 import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
@@ -95,6 +96,7 @@ export default function SubdomainPortfolio({ username }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const urlParams = new URLSearchParams(window.location.search);
   const activePageSlug = urlParams.get("page") || "/";
@@ -238,7 +240,15 @@ export default function SubdomainPortfolio({ username }: Props) {
     const layout = portfolioData.global?.layout || 'classic';
     const pages = portfolioData.pages;
     const activePage = pages.find(p => p.slug === activePageSlug) || pages[0];
-    const markdownHtml = marked.parse(activePage.content || "");
+    
+    let mdContent = activePage.content || "";
+    mdContent = mdContent
+      .replace(/{{displayName}}/g, displayName)
+      .replace(/{{username}}/g, username)
+      .replace(/{{bio}}/g, userSettings.bio || "")
+      .replace(/{{email}}/g, links.email || "");
+      
+    const markdownHtml = marked.parse(mdContent);
 
     return (
       <div className={`min-h-screen text-white flex flex-col ${layout === 'minimal' ? 'bg-[#0a0a0a]' : 'bg-base'}`}>
@@ -246,11 +256,13 @@ export default function SubdomainPortfolio({ username }: Props) {
         {portfolioData.global?.navbar?.style !== 'hidden' && (
           <nav className="sticky top-0 z-50 bg-base/80 backdrop-blur-xl border-b border-border-base">
             <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-              <a href="?page=/" className="font-bold text-lg flex items-center gap-2">
+              <a href="?page=/" className="font-bold text-lg flex items-center gap-2 relative z-50">
                 <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full border border-border-base" />
                 {portfolioData.global?.navbar?.logo === 'text' ? displayName : <Zap className="w-5 h-5 text-blue-500" />}
               </a>
-              <div className="flex items-center gap-6">
+              
+              {/* Desktop Nav */}
+              <div className="hidden md:flex items-center gap-6">
                 {pages.map(p => (
                   <a 
                     key={p.id} 
@@ -264,7 +276,41 @@ export default function SubdomainPortfolio({ username }: Props) {
                   </a>
                 ))}
               </div>
+
+              {/* Mobile Hamburger Toggle */}
+              <button 
+                className="md:hidden p-2 -mr-2 text-white/70 hover:text-white relative z-50"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              >
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
+
+            {/* Mobile Nav Menu */}
+            <AnimatePresence>
+              {isMobileMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="absolute top-16 left-0 right-0 bg-base border-b border-border-base p-4 flex flex-col gap-4 shadow-2xl md:hidden z-40"
+                >
+                  {pages.map(p => (
+                    <a 
+                      key={p.id} 
+                      href={`?page=${p.slug}`}
+                      className={cn(
+                        "text-lg font-bold px-4 py-3 rounded-xl transition-all",
+                        activePageSlug === p.slug ? "bg-white/10 text-white" : "text-white/50 hover:bg-white/5"
+                      )}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {p.title}
+                    </a>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </nav>
         )}
 
