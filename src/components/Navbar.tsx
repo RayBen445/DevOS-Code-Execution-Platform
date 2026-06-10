@@ -663,7 +663,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-0 right-0 h-full w-72 bg-base/95 backdrop-blur-3xl border-l border-border-base z-50 flex flex-col md:hidden shadow-2xl"
+              className="fixed top-0 right-0 h-full w-72 bg-surface border-l border-border-base z-50 flex flex-col md:hidden shadow-2xl"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
                 <div className="flex items-center gap-2">

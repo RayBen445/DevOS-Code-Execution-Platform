@@ -423,6 +423,7 @@ export default function AdminDashboard() {
       if (role === "admin") {
         setIsAdmin(true);
         loadData();
+        setLoading(false);
       } else {
         setIsAdmin(false);
         setLoading(false);

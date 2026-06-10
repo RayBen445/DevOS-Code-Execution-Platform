@@ -122,23 +122,28 @@ export default function ThemeStudio() {
     }
   };
 
+  const [mobileTab, setMobileTab] = useState<"editor" | "preview">("editor");
+
   return (
     <div className="min-h-screen bg-base text-primary flex flex-col font-sans transition-colors duration-300">
       <Navbar />
       
-      <main className="flex-1 flex max-w-[1600px] mx-auto w-full p-4 md:p-8 gap-8 overflow-hidden h-[calc(100vh-64px)]">
+      <main className="flex-1 flex flex-col md:flex-row max-w-[1600px] mx-auto w-full p-2 md:p-8 gap-4 md:gap-8 overflow-hidden h-[calc(100vh-64px)] relative pb-16 md:pb-8">
         
         {/* Left Sidebar: Theme Panel */}
-        <div className="w-[380px] shrink-0 flex flex-col bg-surface border border-border-base rounded-3xl shadow-xl overflow-hidden h-full">
-          <div className="p-6 border-b border-border-base bg-surface shrink-0">
-            <h1 className="text-2xl font-black mb-1 flex items-center gap-2">
-              <Palette className="w-6 h-6 text-accent" />
+        <div className={cn(
+          "w-full md:w-[380px] shrink-0 flex flex-col bg-surface border border-border-base rounded-2xl md:rounded-3xl shadow-xl overflow-hidden h-full",
+          mobileTab === "editor" ? "flex" : "hidden md:flex"
+        )}>
+          <div className="p-4 md:p-6 border-b border-border-base bg-surface shrink-0">
+            <h1 className="text-xl md:text-2xl font-black mb-1 flex items-center gap-2">
+              <Palette className="w-5 h-5 md:w-6 md:h-6 text-accent" />
               Theme Studio
             </h1>
             <p className="text-secondary text-xs">Create, customize and share premium themes</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 md:space-y-8 no-scrollbar">
             {/* Colors Section */}
             <section className="space-y-4">
               <h3 className="text-sm font-bold text-secondary uppercase tracking-wider">Colors</h3>
@@ -247,7 +252,10 @@ export default function ThemeStudio() {
         </div>
 
         {/* Right Area: Live Preview */}
-        <div className="flex-1 flex flex-col h-full bg-base rounded-3xl border border-border-base overflow-hidden shadow-2xl relative">
+        <div className={cn(
+          "flex-1 flex flex-col h-full bg-base rounded-2xl md:rounded-3xl border border-border-base overflow-hidden shadow-2xl relative",
+          mobileTab === "preview" ? "flex" : "hidden md:flex"
+        )}>
           {/* Top Preview Tabs */}
           <div className="h-14 bg-surface border-b border-border-base flex items-center justify-center gap-2 px-6 shrink-0 relative z-10">
             {[
@@ -392,6 +400,18 @@ export default function ThemeStudio() {
               )}
             </AnimatePresence>
           </div>
+        </div>
+
+        {/* Mobile Bottom Nav */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface border-t border-border-base flex items-center justify-around z-50 px-4 pb-safe">
+          <button onClick={() => setMobileTab("editor")} className={cn("flex flex-col items-center gap-1 p-2 rounded-xl flex-1", mobileTab === "editor" ? "text-accent bg-accent/10" : "text-secondary hover:text-primary")}>
+            <Palette className="w-5 h-5"/>
+            <span className="text-[10px] font-bold">Editor</span>
+          </button>
+          <button onClick={() => setMobileTab("preview")} className={cn("flex flex-col items-center gap-1 p-2 rounded-xl flex-1", mobileTab === "preview" ? "text-accent bg-accent/10" : "text-secondary hover:text-primary")}>
+            <LayoutDashboard className="w-5 h-5"/>
+            <span className="text-[10px] font-bold">Preview</span>
+          </button>
         </div>
       </main>
 
