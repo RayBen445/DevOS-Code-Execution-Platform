@@ -307,6 +307,7 @@ export interface FeedPost {
   communityName?: string;
   communitySlug?: string;
   mentions?: string[]; // usernames @mentioned in the post
+  attachments?: string[]; // uploaded image URLs
   // Repost fields
   originalPostId?: string;
   originalPost?: Omit<FeedPost, 'originalPost'>; // embedded snapshot for display

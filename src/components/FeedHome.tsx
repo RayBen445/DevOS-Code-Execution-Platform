@@ -83,6 +83,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const [postText, setPostText] = useState("");
   const [postType, setPostType] = useState<FeedPost["type"]>("update");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [attachments, setAttachments] = useState<string[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
   const [deleteConfirmPost, setDeleteConfirmPost] = useState<FeedPost | null>(null);
@@ -687,7 +688,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       {user && (
         <PostComposerModal
           open={showComposer}
-          onClose={() => { setShowComposer(false); setPostText(""); setSelectedProjectId(""); }}
+          onClose={() => { setShowComposer(false); setPostText(""); setSelectedProjectId(""); setAttachments([]); }}
           avatarUrl={resolveAvatar(settings?.avatarUrl || user.photoURL)}
           displayName={settings?.displayName || user.displayName || "You"}
           userId={user.uid}
@@ -1190,6 +1191,15 @@ function FeedItem({
       {post.content && (
         <div className="mb-3">
           <MarkdownContent text={post.content} className="text-sm" />
+        </div>
+      )}
+
+      {/* Attached Images */}
+      {post.attachments && post.attachments.length > 0 && (
+        <div className={`grid gap-2 mb-3 ${post.attachments.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {post.attachments.map((url, i) => (
+            <img key={i} src={url} alt="attachment" className="w-full rounded-xl border border-border-base object-cover max-h-80" referrerPolicy="no-referrer" />
+          ))}
         </div>
       )}
 

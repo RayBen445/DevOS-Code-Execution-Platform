@@ -65,6 +65,7 @@ export async function createFeedPost(params: {
   communityName?: string;
   communitySlug?: string;
   mentions?: string[]; // array of @mentioned usernames
+  attachments?: string[]; // array of image URLs
   isOfficial?: boolean;
 }): Promise<string> {
   const docRef = await addDoc(collection(db, "feed"), {
@@ -80,6 +81,7 @@ export async function createFeedPost(params: {
     ...(params.communityName ? { communityName: params.communityName } : {}),
     ...(params.communitySlug ? { communitySlug: params.communitySlug } : {}),
     ...(params.mentions?.length ? { mentions: params.mentions } : {}),
+    ...(params.attachments?.length ? { attachments: params.attachments } : {}),
     ...(params.isOfficial ? { isOfficial: true } : {}),
     createdAt: serverTimestamp(),
     likes: 0,
@@ -138,6 +140,7 @@ export async function createAdminPost(params: {
   content: string;
   type: "announcement" | "update" | "feature";
   createdBy: string;
+  attachments?: string[];
 }): Promise<string> {
   const docRef = await addDoc(collection(db, "feed"), {
     userId: "admin",
@@ -146,6 +149,7 @@ export async function createAdminPost(params: {
     avatarUrl: SYSTEM_AVATAR,
     content: params.content,
     type: params.type,
+    ...(params.attachments?.length ? { attachments: params.attachments } : {}),
     createdAt: serverTimestamp(),
     likes: 0,
     likedBy: [],

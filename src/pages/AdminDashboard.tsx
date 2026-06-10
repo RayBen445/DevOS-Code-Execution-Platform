@@ -94,6 +94,12 @@ import {
   Bot,
   Sparkles,
   BookOpen,
+  Bold,
+  Italic,
+  Code2,
+  Quote,
+  List,
+  ImageDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, generateAppId } from '../lib/utils';
@@ -189,7 +195,9 @@ export default function AdminDashboard() {
 
   // Admin posts state
   const [postContent, setPostContent] = useState("");
-  const [postType, setPostType] = useState<"announcement" | "update" | "feature">("announcement");
+  const [postType, setPostType] = useState<"announcement" | "update" | "event">("announcement");
+  const [adminPostAttachments, setAdminPostAttachments] = useState<string[]>([]);
+  const adminPostTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [publishingPost, setPublishingPost] = useState(false);
 
   // Reserved usernames state
@@ -548,27 +556,32 @@ export default function AdminDashboard() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showAdminNotifPanel]);
 
-      const loadData = async () => {};
   useEffect(() => {
     if (!isAdmin) return;
-    const unsubs = [];
+    const unsubs: any[] = [];
+    
+    // Load users
     unsubs.push(onSnapshot(collection(db, 'users'), async (snap) => {
       setTotalUsers(snap.size);
       const usersData = snap.docs.map(d => d.data());
-      // Simplified to prevent quota limits
       const simplifiedUsers = usersData.map(u => ({ ...u, credits: undefined, projectCount: 0, hasPortfolio: false }));
-      setUsers(simplifiedUsers);
+      setUsers(simplifiedUsers as any[]);
     }));
-    unsubs.push(onSnapshot(collection(db, 'projects'), (snap) => {
-      setTotalProjects(snap.size);
-    }));
+
+    // Fetch total projects count once instead of real-time to avoid permission issues and huge reads
+    import("firebase/firestore").then(({ getCountFromServer }) => {
+      getCountFromServer(collection(db, 'projects')).then((snap) => {
+        setTotalProjects(snap.data().count);
+      }).catch(console.error);
+    });
+
     unsubs.push(onSnapshot(collection(db, 'templates'), (snap) => {
       const allTpl = snap.docs.map(d => ({id: d.id, ...d.data()}));
-      setAllTemplates(allTpl);
-      setPendingTemplates(allTpl.filter(t => !t.isApproved));
+      setAllTemplates(allTpl as any[]);
+      setPendingTemplates(allTpl.filter(t => !t.isApproved) as any[]);
       setTotalTemplates(allTpl.filter(t => t.isApproved).length);
     }));
-    return () => unsubs.forEach(u => u());
+    return () => unsubs.forEach(u => typeof u === 'function' && u());
   }, [isAdmin]);
 
   const handleApprove = async (templateId: string) => {
@@ -700,12 +713,14 @@ export default function AdminDashboard() {
       await createAdminPost({
         content: postContent.trim(),
         type: postType,
+        attachments: adminPostAttachments,
         createdBy: user.uid,
       });
       toast.success("Post published to feed!");
       setPostContent("");
-    } catch {
-      toast.error("Failed to publish post.");
+      setAdminPostAttachments([]);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to publish post");
     } finally {
       setPublishingPost(false);
     }
@@ -2608,134 +2623,134 @@ User request: ${aiTestPrompt.trim()}`;
                     <div className="space-y-2">
                       {users.map((u) => (
                         <div key={u.uid} className="rounded-2xl bg-surface border border-border-base">
-                          <div className="p-4 flex items-center gap-3">
-                          <Avatar src={u.avatarUrl} displayName={u.displayName} size="md" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-bold text-white text-sm truncate">{u.displayName}</p>
-                              {u.role === "admin" && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-red-500/20 text-red-400 text-[10px] font-bold uppercase flex-shrink-0">Admin</span>
-                              )}
+                          <div className="p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 min-w-0 w-full xl:w-auto flex-1">
+                              <Avatar src={u.avatarUrl} displayName={u.displayName} size="md" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-bold text-white text-sm truncate">{u.displayName}</p>
+                                  {u.role === "admin" && (
+                                    <span className="px-1.5 py-0.5 rounded-md bg-red-500/20 text-red-400 text-[10px] font-bold uppercase flex-shrink-0">Admin</span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-white/40 truncate">@{u.username} · {u.email}</p>
+                              </div>
                             </div>
-                            <p className="text-xs text-white/40 truncate">@{u.username} · {u.email}</p>
-                          </div>
-                          <div className="text-right text-xs text-white/40 shrink-0 hidden sm:block">
-                            <p>{u.projectCount || 0} projects</p>
-                            <p className="flex items-center gap-1 justify-end text-yellow-400/70">
-                              <Zap className="w-3 h-3" />
-                              {u.credits ? `${u.credits.daily + u.credits.monthly}` : "—"}
-                            </p>
-                          </div>
-                          {/* Role controls */}
-                          <div className="shrink-0 ml-2">
-                            {u.role === "admin" ? (
-                              <button
-                                onClick={() => handleUpdateRole(u.uid, "user")}
-                                disabled={updatingRole === u.uid}
-                                title="Demote to user"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-xs font-bold disabled:opacity-50"
-                              >
-                                {updatingRole === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5" />}
-                                <span className="hidden sm:inline">Demote</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleUpdateRole(u.uid, "admin")}
-                                disabled={updatingRole === u.uid}
-                                title="Promote to admin"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all text-xs font-bold disabled:opacity-50"
-                              >
-                                {updatingRole === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
-                                <span className="hidden sm:inline">Promote</span>
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Moderation controls */}
-                          <div className="shrink-0 flex items-center gap-1 ml-1">
-                            {u.status === "banned" || u.status === "suspended" ? (
-                              <button
-                                onClick={() => setUserActionConfirm({ uid: u.uid, action: "reinstate" })}
-                                disabled={moderatingUser === u.uid}
-                                title="Reinstate user"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all text-xs font-bold disabled:opacity-50"
-                              >
-                                {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                                <span className="hidden sm:inline">Reinstate</span>
-                              </button>
-                            ) : (
-                              <>
+                            
+                            {/* Action Buttons Container */}
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              <div className="text-right text-xs text-white/40 hidden sm:block mr-2">
+                                <p className="flex items-center gap-1 justify-end">
+                                  <span className="font-bold">{u.projectCount || 0}</span> projects
+                                </p>
+                                <p className="flex items-center gap-1 justify-end text-yellow-400/70">
+                                  <Zap className="w-3 h-3" />
+                                  {u.credits ? `${u.credits.daily + u.credits.monthly}` : "—"}
+                                </p>
+                              </div>
+                              
+                              {/* Role controls */}
+                              {u.role === "admin" ? (
                                 <button
-                                  onClick={() => setUserActionConfirm({ uid: u.uid, action: "suspend" })}
-                                  disabled={moderatingUser === u.uid || u.uid === user?.uid}
-                                  title="Suspend user"
-                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-all text-xs font-bold disabled:opacity-50"
-                                >
-                                  {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
-                                  <span className="hidden sm:inline">Suspend</span>
-                                </button>
-                                <button
-                                  onClick={() => setUserActionConfirm({ uid: u.uid, action: "ban" })}
-                                  disabled={moderatingUser === u.uid || u.uid === user?.uid}
-                                  title="Ban user"
+                                  onClick={() => handleUpdateRole(u.uid, "user")}
+                                  disabled={updatingRole === u.uid}
+                                  title="Demote to user"
                                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-xs font-bold disabled:opacity-50"
                                 >
-                                  {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
-                                  <span className="hidden sm:inline">Ban</span>
+                                  {updatingRole === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Demote</span>
                                 </button>
-                              </>
-                            )}
-                          </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleUpdateRole(u.uid, "admin")}
+                                  disabled={updatingRole === u.uid}
+                                  title="Promote to admin"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                >
+                                  {updatingRole === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Promote</span>
+                                </button>
+                              )}
 
-                          {/* Change Username button */}
-                          <div className="shrink-0 ml-1">
-                            <button
-                              onClick={() => {
-                                setUsernameEditUid(u.uid);
-                                setUsernameEditValue(u.username);
-                              }}
-                              title="Change username"
-                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-xs font-bold"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">Rename</span>
-                            </button>
-                          </div>
-                          {/* Official toggle */}
-                          <div className="shrink-0 ml-1">
-                            <button
-                              onClick={() => handleToggleOfficial(u.uid, !!u.isOfficial)}
-                              disabled={togglingOfficial === u.uid}
-                              title={u.isOfficial ? "Remove official status" : "Mark as official"}
-                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all text-xs font-bold disabled:opacity-50 ${
-                                u.isOfficial
-                                  ? "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30"
-                                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
-                              }`}
-                            >
-                              {togglingOfficial === u.uid
-                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                : <BadgeCheck className="w-3.5 h-3.5" />}
-                              <span className="hidden sm:inline">{u.isOfficial ? "Official ✓" : "Official"}</span>
-                            </button>
-                          </div>
+                              {/* Moderation controls */}
+                              {u.status === "banned" || u.status === "suspended" ? (
+                                <button
+                                  onClick={() => setUserActionConfirm({ uid: u.uid, action: "reinstate" })}
+                                  disabled={moderatingUser === u.uid}
+                                  title="Reinstate user"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                >
+                                  {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Reinstate</span>
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => setUserActionConfirm({ uid: u.uid, action: "suspend" })}
+                                    disabled={moderatingUser === u.uid || u.uid === user?.uid}
+                                    title="Suspend user"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                  >
+                                    {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
+                                    <span className="hidden sm:inline">Suspend</span>
+                                  </button>
+                                  <button
+                                    onClick={() => setUserActionConfirm({ uid: u.uid, action: "ban" })}
+                                    disabled={moderatingUser === u.uid || u.uid === user?.uid}
+                                    title="Ban user"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                  >
+                                    {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+                                    <span className="hidden sm:inline">Ban</span>
+                                  </button>
+                                </>
+                              )}
 
-                          {/* Create Portfolio button — only shown when user has no portfolio */}
-                          {!u.hasPortfolio && (
-                            <div className="shrink-0 ml-1">
+                              {/* Change Username button */}
                               <button
-                                onClick={() => handleCreatePortfolio(u.uid, u.username)}
-                                disabled={creatingPortfolio === u.uid}
-                                title="Create portfolio for this user"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                onClick={() => {
+                                  setUsernameEditUid(u.uid);
+                                  setUsernameEditValue(u.username);
+                                }}
+                                title="Change username"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-xs font-bold"
                               >
-                                {creatingPortfolio === u.uid
-                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  : <Plus className="w-3.5 h-3.5" />}
-                                <span className="hidden sm:inline">Portfolio</span>
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Rename</span>
                               </button>
+
+                              {/* Official toggle */}
+                              <button
+                                onClick={() => handleToggleOfficial(u.uid, !!u.isOfficial)}
+                                disabled={togglingOfficial === u.uid}
+                                title={u.isOfficial ? "Remove official status" : "Mark as official"}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all text-xs font-bold disabled:opacity-50 ${
+                                  u.isOfficial
+                                    ? "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30"
+                                    : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                                }`}
+                              >
+                                {togglingOfficial === u.uid
+                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  : <BadgeCheck className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">{u.isOfficial ? "Official ✓" : "Official"}</span>
+                              </button>
+
+                              {/* Create Portfolio button */}
+                              {!u.hasPortfolio && (
+                                <button
+                                  onClick={() => handleCreatePortfolio(u.uid, u.username)}
+                                  disabled={creatingPortfolio === u.uid}
+                                  title="Create portfolio for this user"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                >
+                                  {creatingPortfolio === u.uid
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    : <Plus className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Portfolio</span>
+                                </button>
+                              )}
                             </div>
-                          )}
                           </div>
 
                           {/* Inline username editor */}
@@ -3342,7 +3357,87 @@ User request: ${aiTestPrompt.trim()}`;
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Content</label>
-                          <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} rows={5} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all resize-none" required placeholder="Write your official announcement here..." />
+                          <div className="bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+                            {/* Toolbar */}
+                            <div className="flex items-center gap-0.5 border-b border-white/[0.06] p-2 bg-black/20">
+                              {([
+                                { icon: Bold,   title: "Bold",        wrap: ["**", "**"],    placeholder: "bold text" },
+                                { icon: Italic, title: "Italic",      wrap: ["*", "*"],      placeholder: "italic text" },
+                                { icon: Code2,  title: "Inline code", wrap: ["`", "`"],      placeholder: "code" },
+                                { icon: Link2,   title: "Link",        wrap: ["[", "](url)"], placeholder: "link text" },
+                                { icon: List,   title: "List item",   wrap: ["- ", ""],      placeholder: "item" },
+                                { icon: Quote,  title: "Blockquote",  wrap: ["> ", ""],      placeholder: "quote" },
+                              ] as const).map(({ icon: Icon, title, wrap, placeholder }) => (
+                                <button
+                                  key={title}
+                                  type="button"
+                                  title={title}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    const el = adminPostTextareaRef.current;
+                                    if (!el) return;
+                                    const start = el.selectionStart ?? 0;
+                                    const end = el.selectionEnd ?? 0;
+                                    const selected = postContent.slice(start, end) || placeholder;
+                                    const before = postContent.slice(0, start);
+                                    const after = postContent.slice(end);
+                                    setPostContent(before + wrap[0] + selected + wrap[1] + after);
+                                    requestAnimationFrame(() => {
+                                      el.focus();
+                                      const cursor = start + wrap[0].length + selected.length + wrap[1].length;
+                                      el.setSelectionRange(cursor, cursor);
+                                    });
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                                >
+                                  <Icon className="w-3.5 h-3.5" />
+                                </button>
+                              ))}
+                              <div className="w-px h-4 bg-white/10 mx-2" />
+                              <label className="p-1.5 rounded-lg hover:bg-white/10 text-blue-400 hover:text-blue-300 transition-colors cursor-pointer" title="Attach Image">
+                                <ImageDown className="w-3.5 h-3.5" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    if (!e.target.files?.length) return;
+                                    const files = Array.from(e.target.files);
+                                    toast.loading("Uploading image(s)...", { id: "admin-upload" });
+                                    try {
+                                      const { uploadImage } = await import("../lib/storageService");
+                                      const newAttachments = await Promise.all(
+                                        files.map(f => uploadImage(f, `feed/${Date.now()}_${f.name}`))
+                                      );
+                                      setAdminPostAttachments(prev => [...prev, ...newAttachments]);
+                                      toast.success("Image(s) attached!", { id: "admin-upload" });
+                                    } catch (err) {
+                                      toast.error("Failed to upload image(s)", { id: "admin-upload" });
+                                    }
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            <textarea ref={adminPostTextareaRef} value={postContent} onChange={(e) => setPostContent(e.target.value)} rows={5} className="w-full bg-transparent px-4 py-3 text-white focus:outline-none resize-none" required placeholder="Write your official announcement here... (Markdown supported)" />
+                            {adminPostAttachments.length > 0 && (
+                              <div className="flex flex-wrap gap-2 p-3 border-t border-white/[0.06] bg-black/20">
+                                {adminPostAttachments.map((url, i) => (
+                                  <div key={i} className="relative group">
+                                    <img src={url} className="w-16 h-16 object-cover rounded-lg border border-border-base" alt="attachment" />
+                                    <button
+                                      type="button"
+                                      onClick={() => setAdminPostAttachments(adminPostAttachments.filter((_, idx) => idx !== i))}
+                                      className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <button type="submit" disabled={publishingPost} className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all">

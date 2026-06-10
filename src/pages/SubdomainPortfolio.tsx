@@ -3,7 +3,7 @@ import { db } from "../lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { Project, UserSettings, PortfolioData } from "../types";
 import {
-  Zap, Github, Twitter, Linkedin, Check, Menu, X, AlertCircle
+  Zap, Github, Twitter, Linkedin, Check, Menu, X, AlertCircle, Code2
 } from "lucide-react";
 import { resolveAvatar } from "../lib/avatars";
 import { useSEO } from "../hooks/useSEO";
@@ -377,10 +377,33 @@ export default function SubdomainPortfolio({ username }: Props) {
 
   // Fallback if no pages created yet
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center text-[var(--text-primary)]">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold mb-2">Portfolio Empty</h1>
-        <p className="opacity-50">This user hasn't published any pages yet.</p>
+    <div className="min-h-screen flex items-center justify-center font-sans" style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+      <div className="max-w-md w-full px-6 py-12 text-center bg-[var(--bg-surface)] border border-[var(--border-base)] rounded-3xl shadow-xl">
+        <img src={avatarUrl} alt={displayName} className="w-24 h-24 rounded-2xl mx-auto mb-6 object-cover border-2 border-[var(--border-base)] shadow-lg" />
+        <h1 className="text-3xl font-black mb-2 tracking-tight">{displayName}</h1>
+        <p className="text-[var(--text-primary)] opacity-60 mb-8">{userSettings.bio || "Software Developer"}</p>
+        
+        <div className="bg-[var(--bg-base)] border border-[var(--border-base)] rounded-2xl p-6 mb-8 shadow-inner">
+          <Code2 className="w-8 h-8 opacity-20 mx-auto mb-3" />
+          <h2 className="text-lg font-bold mb-1">Coming Soon</h2>
+          <p className="text-sm opacity-60">This portfolio is currently under construction.</p>
+        </div>
+
+        {links && links.length > 0 && (
+          <div className="flex justify-center gap-4">
+            {links.map((link: any, i: number) => {
+              let Icon = Zap;
+              if (link.platform === 'github') Icon = Github;
+              if (link.platform === 'twitter') Icon = Twitter;
+              if (link.platform === 'linkedin') Icon = Linkedin;
+              return (
+                <a key={i} href={link.url} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full border border-[var(--border-base)] flex items-center justify-center hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] transition-all shadow-sm">
+                  <Icon className="w-5 h-5" />
+                </a>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

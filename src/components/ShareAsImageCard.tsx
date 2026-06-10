@@ -10,22 +10,37 @@ type ExportStyle = "default" | "gradient" | "minimal" | "premium" | "hacker";
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
 
-const STYLE_MAP: Record<ExportStyle, { bg: string; cardBg: string; border: string }> = {
+const STYLE_MAP: Record<ExportStyle, { bg: string; cardBg: string; border: string; glow: string }> = {
   default: {
-    bg: "radial-gradient(circle at 20% 20%, #1f2937 0%, transparent 45%), radial-gradient(circle at 80% 80%, #111827 0%, transparent 45%), #0b0f17",
-    cardBg: "rgba(12,17,26,0.85)",
+    bg: "radial-gradient(circle at top left, rgba(59,130,246,0.3) 0%, transparent 50%), radial-gradient(circle at bottom right, rgba(139,92,246,0.3) 0%, transparent 50%), #06070a",
+    cardBg: "rgba(14, 17, 23, 0.4)",
     border: "1px solid rgba(255,255,255,0.05)",
+    glow: "0 8px 32px 0 rgba(0,0,0,0.37)"
   },
   gradient: {
-    bg: "linear-gradient(135deg,#0b1020,#1e1b4b,#0f172a)",
-    cardBg: "rgba(15,18,33,0.82)",
-    border: "1px solid rgba(99,102,241,0.3)",
+    bg: "linear-gradient(135deg, #0b1020 0%, #1e1b4b 50%, #0f172a 100%)",
+    cardBg: "rgba(255, 255, 255, 0.03)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    glow: "0 8px 32px 0 rgba(0,0,0,0.37)"
+  },
+  premium: {
+    bg: "radial-gradient(ellipse at center, #1a2035 0%, #06070a 100%)",
+    cardBg: "linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01))",
+    border: "1px solid rgba(255,255,255,0.1)",
+    glow: "0 8px 32px 0 rgba(0,0,0,0.5)"
   },
   minimal: {
-    bg: "#0b0f17",
-    cardBg: "#111827",
-    border: "1px solid rgba(255,255,255,0.08)",
+    bg: "#06070A",
+    cardBg: "#0E1117",
+    border: "1px solid rgba(255,255,255,0.04)",
+    glow: "none"
   },
+  hacker: {
+    bg: "#000000",
+    cardBg: "rgba(0,255,0,0.02)",
+    border: "1px solid rgba(0,255,0,0.2)",
+    glow: "0 0 20px rgba(0,255,0,0.1)"
+  }
 };
 
 function clampText(text: string, max = 200): string {
@@ -96,12 +111,15 @@ function ExportShell({
         style={{
           width: "100%",
           height: "100%",
-          padding: 40,
+          padding: 60,
           background: style.cardBg,
           border: style.border,
+          boxShadow: style.glow,
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
         }}
       >
         {children}
@@ -135,10 +153,9 @@ function Avatar({ src, name }: { src?: string | null; name?: string | null }) {
 
 function Branding() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "flex-end", opacity: 0.6 }}>
-      <div style={{ width: 18, height: 18, borderRadius: 6, background: "linear-gradient(135deg,#3b82f6,#8b5cf6)" }} />
-      <span style={{ fontSize: 16, fontWeight: 700 }}>DevOS</span>
-      <span style={{ fontSize: 14, color: "#9CA3AF" }}>devos.zone.id</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end", opacity: 0.8 }}>
+      <div style={{ width: 24, height: 24, borderRadius: 8, background: "linear-gradient(135deg, #60A5FA, #8B5CF6)", boxShadow: "0 2px 10px rgba(139,92,246,0.4)" }} />
+      <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>DevOS</span>
     </div>
   );
 }

@@ -69,16 +69,85 @@ export default function ThemeStudio() {
     toast.success("Theme JSON copied to clipboard!");
   };
 
-  const handleImport = () => {
-    const val = prompt("Paste your Theme JSON here:");
-    if (!val) return;
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importInput, setImportInput] = useState("");
+
+  const parseThemeInput = (input: string) => {
+    let extracted: Record<string, string> = {};
+
+    // Try JSON
     try {
-      const parsed = JSON.parse(val);
-      setLocalCustom({ ...localCustom, ...parsed });
-      toast.success("Theme imported successfully!");
-    } catch(e) {
-      toast.error("Invalid JSON format");
+      const parsed = JSON.parse(input);
+      if (typeof parsed === 'object' && parsed !== null) {
+        Object.entries(parsed).forEach(([k, v]) => {
+          if (typeof v === 'string') {
+            const kebab = k.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+            const cssVar = kebab.startsWith('--') ? kebab : `--${kebab}`;
+            extracted[cssVar] = v;
+          }
+        });
+        return extracted;
+      }
+    } catch (e) {}
+
+    // Try Markdown
+    const lines = input.split('\n');
+    lines.forEach(line => {
+      if (line.includes('|')) {
+        const parts = line.split('|').map(s => s.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          const key = parts[0];
+          let val = parts[1];
+          val = val.replace(/^`+/, '').replace(/`+$/, '');
+          if (key.toLowerCase() === 'token' || key.includes('---')) return;
+          const kebab = key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+          const cssVar = kebab.startsWith('--') ? kebab : `--${kebab}`;
+          extracted[cssVar] = val;
+        }
+      }
+    });
+
+    return Object.keys(extracted).length > 0 ? extracted : null;
+  };
+
+  const handleApplyImport = () => {
+    const parsed = parseThemeInput(importInput);
+    if (!parsed) {
+      toast.error("Could not parse valid theme tokens from input");
+      return;
     }
+    
+    // Filter and map to allowed keys if needed, or just merge
+    const mapped: Record<string, string> = {};
+    const allowedKeys = [
+      '--bg-base', '--bg-surface', '--bg-card', '--border-base',
+      '--text-primary', '--text-secondary', '--accent', '--accent-hover',
+      '--radius-md', '--shadow-md', '--blur-md', '--font-sans'
+    ];
+    
+    // Some basic mappings in case they use slightly different names
+    Object.entries(parsed).forEach(([k, v]) => {
+      let finalKey = k;
+      if (allowedKeys.includes(finalKey)) {
+        mapped[finalKey] = v;
+      } else {
+        // loose matching
+        const searchKey = finalKey.replace('--', '');
+        const match = allowedKeys.find(a => a.includes(searchKey));
+        if (match) mapped[match] = v;
+      }
+    });
+
+    if (Object.keys(mapped).length === 0) {
+       // if no strict matches, just merge everything to let them be flexible
+       setLocalCustom(prev => ({ ...prev, ...parsed }));
+    } else {
+       setLocalCustom(prev => ({ ...prev, ...mapped }));
+    }
+    
+    toast.success("Theme imported successfully!");
+    setIsImportModalOpen(false);
+    setImportInput("");
   };
 
   const handlePublish = async () => {
@@ -241,8 +310,8 @@ export default function ThemeStudio() {
 
           <div className="p-4 border-t border-border-base bg-surface shrink-0 flex flex-col gap-2">
             <div className="flex gap-2">
-              <button onClick={handleImport} className="flex-1 py-2 bg-base border border-border-base rounded-xl text-xs font-bold hover:bg-white/5 transition-all text-secondary">Import JSON</button>
-              <button onClick={handleExport} className="flex-1 py-2 bg-base border border-border-base rounded-xl text-xs font-bold hover:bg-white/5 transition-all text-secondary">Export JSON</button>
+              <button onClick={() => setIsImportModalOpen(true)} className="flex-1 py-2 bg-base border border-border-base rounded-xl text-xs font-bold hover:bg-white/5 transition-all text-secondary flex items-center justify-center gap-2"><Download className="w-3.5 h-3.5" /> Import</button>
+              <button onClick={handleExport} className="flex-1 py-2 bg-base border border-border-base rounded-xl text-xs font-bold hover:bg-white/5 transition-all text-secondary flex items-center justify-center gap-2"><Upload className="w-3.5 h-3.5" /> Export</button>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setIsPublishModalOpen(true)} className="flex-1 py-3 bg-base border border-border-base rounded-xl text-sm font-bold hover:bg-white/5 transition-all flex justify-center items-center gap-2"><Share className="w-4 h-4"/> Publish Theme</button>
@@ -414,6 +483,54 @@ export default function ThemeStudio() {
           </button>
         </div>
       </main>
+
+      {/* Import Modal */}
+      <AnimatePresence>
+        {isImportModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full max-w-2xl bg-base border border-border-base rounded-3xl p-8 shadow-2xl flex flex-col max-h-[90vh]">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-black mb-1">Import Theme</h2>
+                  <p className="text-sm text-secondary">Paste a JSON object or a Markdown table.</p>
+                </div>
+                <button onClick={() => setIsImportModalOpen(false)} className="p-2 rounded-xl hover:bg-white/5 text-secondary hover:text-primary transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-hidden flex flex-col min-h-[300px] mb-6 relative group">
+                <textarea 
+                  value={importInput}
+                  onChange={(e) => setImportInput(e.target.value)}
+                  className="w-full flex-1 bg-surface border border-border-base rounded-2xl p-6 font-mono text-sm focus:outline-none focus:border-accent text-primary resize-none shadow-inner"
+                  placeholder={`{\n  "bgBase": "#050816",\n  "textPrimary": "#F8FAFC"\n}\n\nOR\n\n| Token | Value |\n| bg-base | #06070A |`}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between mt-auto pt-4 border-t border-border-base">
+                <div className="text-xs text-secondary font-medium">
+                  {importInput.trim().length > 0 ? (
+                    parseThemeInput(importInput) 
+                      ? <span className="text-emerald-400 flex items-center gap-1"><Check className="w-3 h-3" /> Valid format detected</span>
+                      : <span className="text-red-400 flex items-center gap-1"><ShieldAlert className="w-3 h-3" /> Invalid format</span>
+                  ) : "Supports JSON & Markdown"}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setIsImportModalOpen(false)} className="px-5 py-2.5 text-sm font-bold text-secondary hover:text-primary transition-colors">Cancel</button>
+                  <button 
+                    onClick={handleApplyImport} 
+                    disabled={!importInput.trim() || !parseThemeInput(importInput)}
+                    className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-bold hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <Check className="w-4 h-4" /> Apply Theme
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Publish Modal */}
       <AnimatePresence>
