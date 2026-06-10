@@ -421,6 +421,10 @@ export default function AdminDashboard() {
   const [newProjectOfficial, setNewProjectOfficial] = useState(true);
   const [creatingAdminProject, setCreatingAdminProject] = useState(false);
 
+  const loadData = async () => {
+    // Data is loaded via individual useEffect hooks or specific load functions
+  };
+
   useEffect(() => {
     if (!user) return;
     const checkAdmin = async () => {
