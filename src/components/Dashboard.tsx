@@ -938,7 +938,7 @@ p {
             Quick Start
           </button>
           <button
-            onClick={() => navigate("/templates")}
+            onClick={() => navigate("/marketplace")}
             className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-border-base text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
           >
             <Layout className="w-4 h-4 text-purple-400" />
@@ -1343,7 +1343,7 @@ p {
                   Create Project
                 </button>
                 <button
-                  onClick={() => navigate("/templates")}
+                  onClick={() => navigate("/marketplace")}
                   className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-border-base text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
                 >
                   <Layout className="w-4 h-4 text-purple-400" />

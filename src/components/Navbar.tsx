@@ -165,7 +165,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               Explore
             </Link>
             <Link
-              to="/templates"
+              to="/marketplace"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"
             >
               <Layout className="w-4 h-4" />
@@ -752,7 +752,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   Organizations
                 </Link>
                 <Link
-                  to="/templates"
+                  to="/marketplace"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
                 >

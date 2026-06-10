@@ -12,6 +12,9 @@
   --color-text-secondary: var(--text-secondary);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --radius-md: var(--radius-md);
+  --shadow-md: var(--shadow-md);
+  --blur-md: var(--blur-md);
 }
 
 /* ── Full-height baseline for the app shell ─────────────────────────────────── */
@@ -45,6 +48,9 @@ body {
   --text-secondary: rgba(255,255,255,0.5);
   --accent:         #3b82f6;
   --accent-hover:   #2563eb;
+  --radius-md:      0.75rem;
+  --shadow-md:      0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --blur-md:        12px;
 }
 
 [data-theme="midnight"] {

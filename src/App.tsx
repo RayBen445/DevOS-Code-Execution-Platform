@@ -19,7 +19,7 @@ import AcceptableUsePage from "./pages/AcceptableUsePage";
 import CopyrightPage from "./pages/CopyrightPage";
 import ProjectPreview from "./pages/ProjectPreview";
 import ProjectView from "./pages/ProjectView";
-import TemplatePage from "./pages/TemplatePage";
+import MarketplacePage from "./pages/MarketplacePage";
 import TemplatePreviewPage from "./pages/TemplatePreviewPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import StatusPage from "./pages/StatusPage";
@@ -351,7 +351,7 @@ export default function App() {
           p: "/projects",
           e: "/explore",
           d: "/communities",
-          t: "/templates",
+          t: "/marketplace",
           l: "/learn",
           ",": "/settings",
         };
@@ -516,7 +516,8 @@ export default function App() {
             <Route path="/cookies" element={<CookiePolicyPage />} />
             <Route path="/acceptable-use" element={<AcceptableUsePage />} />
             <Route path="/copyright" element={<CopyrightPage />} />
-            <Route path="/templates" element={withPageMaintenance("/templates", <TemplatePage />)} />
+            <Route path="/marketplace" element={withPageMaintenance("/marketplace", <MarketplacePage />)} />
+            <Route path="/templates" element={<Navigate to="/marketplace" replace />} />
             <Route path="/templates/:templateId" element={withPageMaintenance("/templates", <TemplatePreviewPage />)} />
             <Route path="/project/:projectId" element={withPageMaintenance("/project", <ProjectView />)} />
             <Route path="/admin" element={<AdminDashboard />} />

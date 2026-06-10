@@ -15,6 +15,9 @@ import { getApprovedTemplates, incrementDownloads } from "../lib/templateService
 import { deductCredits, getCredits } from "../lib/creditsService";
 import { Template, Credits } from "../types";
 import { TEMPLATES } from "../constants/templates";
+import { getCommunityThemes, CommunityTheme, toggleThemeLike, incrementThemeInstalls } from "../lib/themeService";
+import { Palette } from "lucide-react";
+import { useUITheme } from "../hooks/useUITheme";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -39,7 +42,7 @@ import MobileBottomNav from "../components/MobileBottomNav";
 const ALL_CATEGORY = "All";
 const CATEGORIES = [ALL_CATEGORY, "React", "Vue", "HTML/CSS", "Node.js", "Python", "Next.js", "Landing Page", "Dashboard", "Other"];
 
-export default function TemplatePage() {
+export default function MarketplacePage() {
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -48,11 +51,16 @@ export default function TemplatePage() {
   const [using, setUsing] = useState<string | null>(null);
   const [credits, setCredits] = useState<Credits | null>(null);
   const [activeCategory, setActiveCategory] = useState(ALL_CATEGORY);
+  const [activeTab, setActiveTab] = useState<"templates" | "themes">("templates");
+  const [communityThemes, setCommunityThemes] = useState<CommunityTheme[]>([]);
+  const { setCustomTheme, changeTheme } = useUITheme();
 
   useEffect(() => {
     const load = async () => {
       try {
         const data = await getApprovedTemplates();
+        const themesData = await getCommunityThemes();
+        setCommunityThemes(themesData);
         
         const hardcodedTemplates: Template[] = TEMPLATES.map((t) => ({
           id: t.id,
@@ -251,58 +259,39 @@ export default function TemplatePage() {
       <Navbar />
       <div className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-10 pb-16 md:pb-10">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors w-fit"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-white">Template Marketplace</h1>
-            <p className="text-white/40 mt-1">Start fast with community-built and verified templates</p>
+        <div className="text-center max-w-3xl mx-auto space-y-6 mb-12">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 text-blue-400 text-sm font-bold border border-blue-500/20">
+              <Star className="w-4 h-4" /> The Unified Ecosystem
+            </motion.div>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-tight">
+              DevOS <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Marketplace</span>
+            </h1>
+            <p className="text-xl text-white/60">
+              Discover official templates, premium themes, and community creations to supercharge your workflow.
+            </p>
           </div>
-          {user && totalCredits !== null && (
-            <div className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl w-fit">
-              <Zap className="w-4 h-4 text-yellow-400" />
-              <span className="text-yellow-300 font-bold text-sm">{totalCredits} credits</span>
-              <span className="text-white/30 text-xs">(5 per project)</span>
-            </div>
-          )}
-        </div>
-
-        {/* Search + category filter */}
-        <div className="space-y-4 mb-8">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-            <input
-              type="text"
-              placeholder="Search templates…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white/5 border border-border-base rounded-2xl pl-12 pr-6 py-4 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 transition-all"
-            />
-          </div>
-          {/* Category chips — horizontally scrollable on mobile */}
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {CATEGORIES.map((cat) => (
+          
+          <div className="flex justify-center mb-12">
+            <div className="flex bg-surface border border-border-base rounded-2xl p-1">
               <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0",
-                  activeCategory === cat
-                    ? "bg-blue-600 text-white"
-                    : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10"
-                )}
+                onClick={() => setActiveTab("templates")}
+                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === "templates" ? "bg-blue-600 text-white" : "text-white/60 hover:text-white"}`}
               >
-                {cat}
+                Templates
               </button>
-            ))}
+              <button
+                onClick={() => setActiveTab("themes")}
+                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === "themes" ? "bg-purple-600 text-white" : "text-white/60 hover:text-white"}`}
+              >
+                Themes
+              </button>
+            </div>
           </div>
-        </div>
 
-        {loading ? (
+        
+        {activeTab === "templates" && (
+          <>
+            {loading ? (
           <div className="flex items-center justify-center py-32">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           </div>
@@ -380,9 +369,95 @@ export default function TemplatePage() {
             )}
           </div>
         )}
-      </div>
+      
+          </>
+        )}
+
+        {activeTab === "themes" && (
+          <div className="space-y-12">
+            <section>
+              <h2 className="text-2xl font-black mb-6 flex items-center gap-2"><Star className="w-6 h-6 text-yellow-500"/> Official Premium Themes</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="p-6 bg-surface border border-border-base rounded-3xl flex flex-col items-center justify-center text-center h-48 border-dashed">
+                  <Palette className="w-8 h-8 text-white/20 mb-2"/>
+                  <p className="text-white/40 text-sm">Official themes are available in the Theme Studio.</p>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-black mb-6 flex items-center gap-2"><TrendingUp className="w-6 h-6 text-purple-500"/> Community Gallery</h2>
+              {communityThemes.filter(t => t.name.toLowerCase().includes(search.toLowerCase()) || t.description?.toLowerCase().includes(search.toLowerCase())).length === 0 ? (
+                <div className="text-center py-20 bg-surface border border-border-base rounded-3xl border-dashed">
+                  <p className="text-white/60">No themes found matching your search.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {communityThemes
+                    .filter(t => t.name.toLowerCase().includes(search.toLowerCase()) || t.description?.toLowerCase().includes(search.toLowerCase()))
+                    .map(theme => (
+                    <div key={theme.id} className="group bg-surface border border-border-base rounded-3xl overflow-hidden hover:border-purple-500/50 transition-all shadow-xl hover:shadow-purple-500/10 flex flex-col">
+                      {/* Theme Preview */}
+                      <div className="h-40 relative p-4 flex flex-col justify-between" style={{ background: theme.vars['--bg-base'] || '#000', color: theme.vars['--text-primary'] || '#fff' }}>
+                        <div className="flex justify-between items-start">
+                          <div className="w-1/2 space-y-2">
+                            <div className="h-3 w-3/4 rounded" style={{ background: theme.vars['--bg-surface'] || '#111' }} />
+                            <div className="h-2 w-1/2 rounded opacity-50" style={{ background: theme.vars['--text-secondary'] || '#888' }} />
+                          </div>
+                          <div className="px-2 py-1 rounded text-[10px] font-bold" style={{ background: theme.vars['--accent'] || '#3b82f6', color: '#fff' }}>Preview</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="h-8 w-8 rounded-full" style={{ background: theme.vars['--bg-surface'] || '#111' }} />
+                          <div className="h-8 flex-1 rounded-lg" style={{ background: theme.vars['--bg-card'] || '#222' }} />
+                        </div>
+                      </div>
+                      
+                      {/* Details */}
+                      <div className="p-6 flex-1 flex flex-col">
+                        <h3 className="text-lg font-bold mb-1 truncate">{theme.name}</h3>
+                        <p className="text-sm text-white/50 mb-4 line-clamp-2 min-h-[40px]">{theme.description}</p>
+                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-border-base">
+                          <div className="flex items-center gap-2 text-xs text-white/40">
+                            <UserIcon className="w-3 h-3" /> @{theme.authorUsername}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button 
+                              onClick={async () => {
+                                if(!user) { toast.error("Sign in to like"); return; }
+                                const liked = theme.likedBy?.includes(user.uid);
+                                await toggleThemeLike(theme.id, user.uid, liked);
+                                setCommunityThemes(prev => prev.map(t => t.id === theme.id ? { ...t, likes: liked ? t.likes - 1 : t.likes + 1, likedBy: liked ? t.likedBy.filter(id => id !== user.uid) : [...(t.likedBy || []), user.uid] } : t));
+                              }}
+                              className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${theme.likedBy?.includes(user?.uid || '') ? 'text-red-400' : 'text-white/40 hover:text-white'}`}
+                            >
+                              <Heart className={`w-4 h-4 ${theme.likedBy?.includes(user?.uid || '') ? 'fill-current' : ''}`} />
+                              {theme.likes || 0}
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                setCustomTheme(theme.vars);
+                                changeTheme('custom');
+                                toast.success("Theme Applied!");
+                                await incrementThemeInstalls(theme.id);
+                              }}
+                              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-colors"
+                            >
+                              Install
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+</div>
       <Footer />
       <MobileBottomNav />
     </div>
   );
 }
+
