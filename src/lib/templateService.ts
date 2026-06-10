@@ -78,9 +78,15 @@ export const rejectTemplate = async (templateId: string): Promise<void> => {
 };
 
 export const incrementDownloads = async (templateId: string): Promise<void> => {
-  await updateDoc(doc(db, "templates", templateId), {
-    downloads: increment(1),
-  });
+  try {
+    const docRef = doc(db, "templates", templateId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      await updateDoc(docRef, { downloads: increment(1) });
+    }
+  } catch (e) {
+    console.error("Failed to increment downloads:", e);
+  }
 };
 
 export const toggleLike = async (templateId: string, liked: boolean): Promise<void> => {

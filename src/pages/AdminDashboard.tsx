@@ -554,19 +554,9 @@ export default function AdminDashboard() {
     unsubs.push(onSnapshot(collection(db, 'users'), async (snap) => {
       setTotalUsers(snap.size);
       const usersData = snap.docs.map(d => d.data());
-      const usersWithCredits = await Promise.all(usersData.map(async u => {
-        try {
-          const [cSnap, projectsQuerySnap] = await Promise.all([
-            getDoc(doc(db, 'user_credits', u.uid)),
-            getDocs(query(collection(db, 'projects'), where('ownerId', '==', u.uid)))
-          ]);
-          const credits = cSnap.exists() ? cSnap.data() : undefined;
-          const pCount = projectsQuerySnap.size;
-          const hasPortfolio = projectsQuerySnap.docs.some(d => d.data().systemType === 'portfolio');
-          return { ...u, credits, projectCount: pCount, hasPortfolio };
-        } catch { return u; }
-      }));
-      setUsers(usersWithCredits);
+      // Simplified to prevent quota limits
+      const simplifiedUsers = usersData.map(u => ({ ...u, credits: undefined, projectCount: 0, hasPortfolio: false }));
+      setUsers(simplifiedUsers);
     }));
     unsubs.push(onSnapshot(collection(db, 'projects'), (snap) => {
       setTotalProjects(snap.size);

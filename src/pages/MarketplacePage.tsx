@@ -14,7 +14,6 @@ import {
 import { getApprovedTemplates, incrementDownloads } from "../lib/templateService";
 import { deductCredits, getCredits } from "../lib/creditsService";
 import { Template, Credits } from "../types";
-import { TEMPLATES } from "../constants/templates";
 import { getCommunityThemes, CommunityTheme, toggleThemeLike, incrementThemeInstalls } from "../lib/themeService";
 import { Palette } from "lucide-react";
 import { useUITheme } from "../hooks/useUITheme";
@@ -62,22 +61,7 @@ export default function MarketplacePage() {
         const themesData = await getCommunityThemes();
         setCommunityThemes(themesData);
         
-        const hardcodedTemplates: Template[] = TEMPLATES.map((t) => ({
-          id: t.id,
-          name: t.name,
-          description: t.description,
-          authorId: "system",
-          authorUsername: "devos",
-          authorName: "DevOS Official",
-          projectId: "",
-          files: t.files as any,
-          downloads: 1000 + Math.floor(Math.random() * 5000), // aesthetic mock downloads
-          likes: 500 + Math.floor(Math.random() * 1000),
-          tags: t.category ? [t.category.toLowerCase()] : ["starter"],
-          isOfficial: true,
-        }));
-
-        setTemplates([...hardcodedTemplates, ...data]);
+        setTemplates(data);
       } catch (err) {
         toast.error("Failed to load templates.");
       } finally {
