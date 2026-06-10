@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check } from "lucide-react";
+import { Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime, toValidDate, generateAppId } from '../lib/utils';
@@ -62,6 +62,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [groupPopoverProjectId, setGroupPopoverProjectId] = useState<string | null>(null);
   const [newGroupName, setNewGroupName] = useState("");
   const [savingGroup, setSavingGroup] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Debounced project name uniqueness check
   useEffect(() => {
@@ -618,14 +619,20 @@ p {
     }
   };
 
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery.trim()) return projects;
+    const lowerQuery = searchQuery.toLowerCase();
+    return projects.filter(p => p.name.toLowerCase().includes(lowerQuery) || p.description?.toLowerCase().includes(lowerQuery));
+  }, [projects, searchQuery]);
+
   // Collect all unique group names from the user's projects
   const allGroupNames = useMemo(() => {
     const names = new Set<string>();
-    for (const p of projects) {
+    for (const p of filteredProjects) {
       if (p.group) names.add(p.group);
     }
     return Array.from(names).sort();
-  }, [projects]);
+  }, [filteredProjects]);
 
   // Compute groups for "My Projects" tab:
   //   - user-defined group  → one section per group (sorted alphabetically)
@@ -633,7 +640,7 @@ p {
   const { groupedMap, ungroupedProjects } = useMemo(() => {
     const grouped: Record<string, Project[]> = {};
     const ungrouped: Project[] = [];
-    for (const p of projects) {
+    for (const p of filteredProjects) {
       if (p.group) {
         if (!grouped[p.group]) grouped[p.group] = [];
         grouped[p.group].push(p);
@@ -642,7 +649,7 @@ p {
       }
     }
     return { groupedMap: grouped, ungroupedProjects: ungrouped };
-  }, [projects]);
+  }, [filteredProjects]);
 
   // ── Card renderer (used in every group section) ────────────────────────────
   const renderCard = (project: Project, animIdx: number) => {
@@ -1205,31 +1212,43 @@ p {
         );
       })()}
 
-      <div className="flex gap-8 mb-8 border-b border-border-base">
-        <button
-          onClick={() => setActiveTab("my-projects")}
-          className={cn(
-            "pb-4 text-sm font-bold uppercase tracking-widest transition-all relative",
-            activeTab === "my-projects" ? "text-white" : "text-white/20 hover:text-white/40"
-          )}
-        >
-          {isOrgWorkspace ? "Org Projects" : "My Projects"}
-          {activeTab === "my-projects" && (
-            <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab("public-projects")}
-          className={cn(
-            "pb-4 text-sm font-bold uppercase tracking-widest transition-all relative",
-            activeTab === "public-projects" ? "text-white" : "text-white/20 hover:text-white/40"
-          )}
-        >
-          Explore Public
-          {activeTab === "public-projects" && (
-            <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-          )}
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b border-border-base pb-4">
+        <div className="flex gap-8">
+          <button
+            onClick={() => setActiveTab("my-projects")}
+            className={cn(
+              "text-sm font-bold uppercase tracking-widest transition-all relative",
+              activeTab === "my-projects" ? "text-white" : "text-white/20 hover:text-white/40"
+            )}
+          >
+            {isOrgWorkspace ? "Org Projects" : "My Projects"}
+            {activeTab === "my-projects" && (
+              <motion.div layoutId="activeTab" className="absolute -bottom-[18px] left-0 right-0 h-0.5 bg-blue-600" />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("public-projects")}
+            className={cn(
+              "text-sm font-bold uppercase tracking-widest transition-all relative",
+              activeTab === "public-projects" ? "text-white" : "text-white/20 hover:text-white/40"
+            )}
+          >
+            Explore Public
+            {activeTab === "public-projects" && (
+              <motion.div layoutId="activeTab" className="absolute -bottom-[18px] left-0 right-0 h-0.5 bg-blue-600" />
+            )}
+          </button>
+        </div>
+        <div className="relative w-full sm:w-auto mt-2 sm:mt-0">
+          <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-64 pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-500/50 transition-all"
+          />
+        </div>
       </div>
 
       {/* ─── My Projects: Grouped Sections ─── */}
@@ -1339,8 +1358,10 @@ p {
       {/* ─── Explore Public: Flat Grid ─── */}
       {activeTab === "public-projects" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {publicProjects.map((project, idx) => renderCard(project, idx))}
-          {publicProjects.length === 0 && !isCreating && (
+          {publicProjects
+            .filter(p => !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+            .map((project, idx) => renderCard(project, idx))}
+          {publicProjects.filter(p => !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && !isCreating && (
             <div className="col-span-full py-20 text-center rounded-3xl border-2 border-dashed border-border-base">
               <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-4" />
               <p className="text-white/40 font-medium mb-6">No public projects found.</p>
