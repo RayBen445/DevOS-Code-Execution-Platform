@@ -179,14 +179,14 @@ export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
                   variants={fadeUp}
                   className="text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.88] mb-8"
                 >
-                  The unified platform{" "}
+                  DevOS: The unified platform{" "}
                   <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-300 bg-clip-text text-transparent">
                     for modern developers.
                   </span>
                 </motion.h1>
 
                 <motion.p variants={fadeUp} className="text-lg md:text-xl text-white/50 mb-12 max-w-2xl leading-relaxed">
-                  DevOS is a powerful cloud-based developer platform designed to help you build, deploy, and showcase web applications instantly. Everything you need is right in your browser.
+                  DevOS is a powerful cloud-based developer platform. Our purpose is to provide an integrated environment where developers can write, execute, build, deploy, and showcase web applications instantly directly from the browser.
                 </motion.p>
 
                 <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mb-12">
