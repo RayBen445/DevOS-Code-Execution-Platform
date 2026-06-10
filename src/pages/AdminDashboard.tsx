@@ -18,6 +18,7 @@ import {
   where,
   orderBy,
   onSnapshot,
+  getCountFromServer,
 } from "firebase/firestore";
 import { approveTemplate, rejectTemplate, getPendingTemplates, getAllTemplates, createOfficialTemplate, deleteTemplateById, updateTemplateFiles } from "../lib/templateService";
 import { getAllEvents, setEventStatus, deleteEvent as deleteEventDoc, createEvent, getEventRegistrations } from "../lib/eventsService";
@@ -546,18 +547,19 @@ export default function AdminDashboard() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showAdminNotifPanel]);
 
-  const loadData = async () => {
+    const loadData = async () => {
     setLoading(true);
     try {
-      const [usersSnap, projectsSnap, pending, allTpl] = await Promise.all([
-        getDocs(collection(db, "users")),
-        getDocs(collection(db, "projects")),
+      const [usersSnap, pending, allTpl, usersCountSnap, projectsCountSnap] = await Promise.all([
+        getDocs(query(collection(db, "users"), limit(100))),
         getPendingTemplates(),
         getAllTemplates(),
+        getCountFromServer(collection(db, "users")),
+        getCountFromServer(collection(db, "projects"))
       ]);
 
-      setTotalUsers(usersSnap.size);
-      setTotalProjects(projectsSnap.size);
+      setTotalUsers(usersCountSnap.data().count);
+      setTotalProjects(projectsCountSnap.data().count);
       setTotalTemplates(allTpl.filter((t) => t.isApproved).length);
       setPendingTemplates(pending);
       setAllTemplates(allTpl);
@@ -567,21 +569,21 @@ export default function AdminDashboard() {
       const usersWithCredits: UserWithCredits[] = await Promise.all(
         usersData.map(async (u) => {
           try {
-            const [cSnap, portfolioSnap] = await Promise.all([
+            const [cSnap, projectsQuerySnap] = await Promise.all([
               getDoc(doc(db, "user_credits", u.uid)),
               getDocs(query(
                 collection(db, "projects"),
-                where("ownerId", "==", u.uid),
-                where("isSystem", "==", true),
-                where("systemType", "==", "portfolio"),
-                limit(1)
-              )),
+                where("ownerId", "==", u.uid)
+              ))
             ]);
+            
             const credits = cSnap.exists() ? (cSnap.data() as Credits) : undefined;
-            const pCount = projectsSnap.docs.filter(
-              (p) => p.data().ownerId === u.uid
-            ).length;
-            return { ...u, credits, projectCount: pCount, hasPortfolio: !portfolioSnap.empty };
+            const pCount = projectsQuerySnap.size;
+            const hasPortfolio = projectsQuerySnap.docs.some(d => {
+              const data = d.data();
+              return data.isSystem === true && data.systemType === "portfolio";
+            });
+            return { ...u, credits, projectCount: pCount, hasPortfolio };
           } catch {
             return u;
           }

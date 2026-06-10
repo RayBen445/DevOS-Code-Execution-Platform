@@ -72,9 +72,30 @@ export default function Editor({ file, onChange, projectId, readOnly, onCursorCh
     });
 
     observer.observe(containerRef.current);
+    
+    const handleResize = () => {
+      if (editorRef.current) {
+        requestAnimationFrame(() => {
+          if (editorRef.current) editorRef.current.layout();
+        });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    
+    // Force layout a few times after mount to ensure Monaco catches the right size
+    let frames = 0;
+    const forceLayout = () => {
+      if (editorRef.current) editorRef.current.layout();
+      if (frames < 5) {
+        frames++;
+        setTimeout(forceLayout, 100);
+      }
+    };
+    forceLayout();
 
     return () => {
       observer.disconnect();
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
