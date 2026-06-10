@@ -86,12 +86,12 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
     sandpackFiles["/.env"] = Object.entries(projectEnv).map(([k, v]) => `${k}=${v}`).join("\n");
   }
 
+  const template = getSandpackTemplate(sandpackFiles);
+
   // Prevent Sandpack's default vanilla index.js from throwing when there is no #app div
   if (template === "vanilla" && !sandpackFiles["/index.js"]) {
     sandpackFiles["/index.js"] = "";
   }
-
-  const template = getSandpackTemplate(sandpackFiles);
 
   return (
     <div className="w-full bg-card flex flex-col h-full overflow-hidden">
