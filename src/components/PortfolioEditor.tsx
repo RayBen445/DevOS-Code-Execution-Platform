@@ -281,7 +281,8 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
     <>
     <div className="h-full flex flex-col bg-base">
       {/* Tabs */}
-      <div className="flex border-b border-border-base bg-card">
+      <div className="flex flex-col md:flex-row border-b border-border-base bg-card">
+        <div className="flex overflow-x-auto no-scrollbar border-b md:border-b-0 border-border-base w-full md:w-auto shrink-0">
         {[
           { id: "content", label: "General", icon: User },
           { id: "pages", label: "Pages", icon: FileText },
@@ -292,7 +293,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all relative",
+              "flex items-center gap-2 px-4 md:px-6 py-3 text-sm font-bold transition-all relative whitespace-nowrap",
               activeTab === tab.id ? "text-white" : "text-white/40 hover:text-white/60"
             )}
           >
@@ -303,7 +304,8 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
             )}
           </button>
         ))}
-        <div className="ml-auto flex items-center px-4 gap-3">
+        </div>
+        <div className="md:ml-auto flex flex-wrap items-center p-3 md:p-0 md:px-4 gap-2 md:gap-3">
           {/* Status Indicator */}
           <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-border-base">
             {project.deployStatus === 'building' ? (
