@@ -1900,6 +1900,7 @@ User request: ${aiTestPrompt.trim()}`;
       icon: <Layout className="w-4 h-4" />,
       badge: pendingTemplates.length || undefined,
     },
+    { id: "themes", label: "Themes", icon: <Palette className="w-4 h-4" /> },
     { id: "users", label: "Users", icon: <Users className="w-4 h-4" />, badge: pendingUsernameRequestCount || undefined },
     { id: "credits", label: "Credits", icon: <Zap className="w-4 h-4" /> },
     { id: "polls", label: "Polls", icon: <Vote className="w-4 h-4" /> },
