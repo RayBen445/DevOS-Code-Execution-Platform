@@ -568,8 +568,22 @@ export default function AdminDashboard() {
     unsubs.push(onSnapshot(collection(db, 'users'), async (snap) => {
       setTotalUsers(snap.size);
       const usersData = snap.docs.map(d => d.data());
-      const simplifiedUsers = usersData.map(u => ({ ...u, credits: undefined, projectCount: 0, hasPortfolio: false }));
-      setUsers(simplifiedUsers as any[]);
+      const usersWithDetails = await Promise.all(usersData.map(async (u: any) => {
+        let projectCount = 0;
+        let hasPortfolio = false;
+        let credits;
+        try {
+          const pSnap = await getDocs(query(collection(db, 'projects'), where('ownerId', '==', u.uid)));
+          projectCount = pSnap.size;
+          hasPortfolio = pSnap.docs.some(d => d.data().systemType === 'portfolio');
+        } catch (e) { }
+        try {
+          const cSnap = await getDoc(doc(db, 'user_credits', u.uid));
+          if (cSnap.exists()) credits = cSnap.data();
+        } catch (e) {}
+        return { ...u, projectCount, hasPortfolio, credits };
+      }));
+      setUsers(usersWithDetails as any[]);
     }));
 
     // Fetch total projects count once instead of real-time to avoid permission issues and huge reads
