@@ -36,6 +36,11 @@ service cloud.firestore {
     //
     // ===============================================================
 
+    // Global Admin Override
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
     // Helper Functions
     function isAuthenticated() {
       return request.auth != null;
@@ -870,6 +875,19 @@ service cloud.firestore {
     // We still declare the match to make the intent explicit.
     match /plugin_data/{projectId}/{document=**} {
       allow read, write: if false;
+    }
+
+    // ── Themes & Community Themes ──────────────────────────────────────────────
+    match /themes/{themeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /community_themes/{themeId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      // Only the author or admin can update/delete their theme
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.authorId == request.auth.uid);
     }
   }
 }
