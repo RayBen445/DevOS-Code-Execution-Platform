@@ -3,6 +3,7 @@ import html2canvas from "html2canvas";
 import { FeedPost, Project } from "../types";
 import { resolveAvatar } from "../lib/avatars";
 import { formatRelativeTime } from "../lib/utils";
+import { toast } from "sonner";
 
 type ExportStyle = "default" | "gradient" | "minimal" | "premium" | "hacker";
 
@@ -54,7 +55,6 @@ export function useShareAsImage(
       link.href = canvas.toDataURL("image/png");
       link.click();
     } catch {
-      const { toast } = await import("sonner");
       toast.error("Could not generate image. Try again.");
     } finally {
       setCapturing(false);

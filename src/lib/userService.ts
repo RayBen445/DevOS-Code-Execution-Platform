@@ -87,7 +87,7 @@ export const registerUserProfile = async (
       if (rewarded) {
         // toast is not available here; caller can react to the promise resolving
       }
-    } catch (_) {
+    } catch (err) {
       // referral processing is best-effort
     }
     sessionStorage.removeItem("devos_pending_ref");
@@ -154,7 +154,7 @@ export const initializeUser = async (user: any) => {
     if (pendingRef) {
       try {
         await processReferral(pendingRef, user.uid);
-      } catch (_) {
+      } catch (err) {
         // best-effort
       }
       sessionStorage.removeItem("devos_pending_ref");
@@ -187,7 +187,7 @@ export const initializeUser = async (user: any) => {
     // Initialize credits if missing
     try {
       await initializeCredits(user.uid);
-    } catch (_) {
+    } catch (err) {
       // credits may already exist, ignore
     }
     // Even if settings exist, check if portfolio project exists
