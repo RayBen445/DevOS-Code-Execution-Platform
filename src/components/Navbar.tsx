@@ -144,8 +144,8 @@ export default function Navbar({ onSignIn }: NavbarProps) {
     <nav className="h-14 border-b border-border-base bg-base/70 supports-[backdrop-filter]:bg-base/55 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.35)] flex items-center justify-between px-4 md:px-6 sticky top-0 z-50">
       <div className="flex items-center gap-4">
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/25 transition-transform group-hover:scale-105">
-            <DevosLogo className="w-5 h-5 text-white" interactive={true} />
+          <div className="flex items-center justify-center transition-transform group-hover:scale-105">
+            <DevosLogo className="w-8 h-8" interactive={true} />
           </div>
           <span className="font-black text-lg tracking-tight text-white">{PRODUCT_NAV_LABEL}</span>
         </Link>
