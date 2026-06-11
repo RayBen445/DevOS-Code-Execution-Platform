@@ -110,7 +110,9 @@ export const initializeUser = async (user: any) => {
 
   if (!settingsSnap.exists()) {
     // Create initial settings
-    const username = user.email?.split("@")[0] || `user_${user.uid.slice(0, 5)}`;
+    const emailPrefix = user.email?.split("@")[0]?.toLowerCase() || `user_${user.uid.slice(0, 5).toLowerCase()}`;
+    const sanitizedPrefix = emailPrefix.replace(/[^a-z0-9_-]/g, "");
+    const username = sanitizedPrefix || `user_${user.uid.slice(0, 5).toLowerCase()}`;
     const isAdmin = user.email === ADMIN_EMAIL;
     const avatar = user.photoURL || DEFAULT_USER_AVATAR;
     

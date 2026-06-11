@@ -519,11 +519,6 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
     { id: "editor" as MobileTabId, icon: Code2, label: "Editor" },
     { id: "files" as MobileTabId, icon: Files, label: "Files" },
     { id: "preview" as MobileTabId, icon: Eye, label: "Preview" },
-    ...(isOrgProject ? [{ id: "collaborators" as MobileTabId, icon: Users, label: "Team" }] : []),
-    { id: "git" as MobileTabId, icon: GitBranch, label: "Git" },
-    { id: "terminal" as MobileTabId, icon: Terminal, label: "Term" },
-    { id: "deployments" as MobileTabId, icon: Rocket, label: "Deploy" },
-    { id: "settings" as MobileTabId, icon: Settings, label: "More" },
   ];
 
   // Swipe handler: horizontal swipe ≥ 60px switches to adjacent tab
@@ -1670,12 +1665,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
           <div className="hidden md:flex w-12 border-r border-[#21262D] bg-surface flex-col items-center py-3 gap-1 flex-shrink-0">
             {[
               { id: "explorer" as PanelType, icon: Files, label: "Explorer" },
-              { id: "git" as PanelType, icon: GitBranch, label: "Source Control" },
-              { id: "terminal" as PanelType, icon: Terminal, label: "Terminal" },
               { id: "preview" as PanelType, icon: Eye, label: "Preview" },
-              { id: "deployments" as PanelType, icon: Rocket, label: "Deploy" },
-              ...(isOrgProject ? [{ id: "collaborators" as PanelType, icon: Users, label: "Collaborators" }] : []),
-              { id: "settings" as PanelType, icon: Settings, label: "Settings" },
             ].map(({ id, icon: Icon, label }) => (
               <button
                 key={id}
