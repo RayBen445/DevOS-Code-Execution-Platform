@@ -200,7 +200,7 @@ export default function Portfolio() {
 
 
   if (loading) {
-    return <PremiumLoader fullScreen message="LOADING PORTFOLIO" />;
+    return <PremiumLoader fullScreen mode="lightweight" message="LOADING PORTFOLIO" />;
   }
 
   if (error || !userSettings) {
