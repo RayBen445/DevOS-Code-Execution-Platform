@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
 import AdminThemesTab from "../components/AdminThemesTab";
+import KoraChatWidget from "../components/KoraChatWidget";
 import { useAuthState } from "react-firebase-hooks/auth";
 import {
   collection,
@@ -108,7 +109,7 @@ import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 import CustomSelect from "../components/CustomSelect";
 
-type Tab = "overview" | "templates" | "themes" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events" | "learn";
+type Tab = "overview" | "templates" | "themes" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events" | "learn" | "kora";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -4673,7 +4674,22 @@ User request: ${aiTestPrompt.trim()}`;
                 )}
 
                 {/* Learn Tab */}
-                {activeTab === "learn" && (
+                {activeTab === "kora" && (
+          <div className="space-y-6" style={{ height: "calc(100vh - 200px)" }}>
+            <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 h-full flex flex-col">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Bot className="w-6 h-6 text-blue-400" />
+                KORA AI Assistant
+              </h3>
+              <p className="text-gray-400 mb-6 text-sm">Access the live KORA Backend API directly from the dashboard.</p>
+              <div className="flex-1 min-h-0">
+                <KoraChatWidget />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "learn" && (
                   <div className="space-y-6">
                     {/* Header */}
                     <div className="flex items-center justify-between flex-wrap gap-3">
