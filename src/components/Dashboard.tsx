@@ -622,9 +622,9 @@ p {
   const handleTogglePin = async (e: React.MouseEvent, project: Project) => {
     e.stopPropagation();
     try {
-      // If it's a portfolio project, we don't allow unpinning it
-      if (project.systemType === "portfolio") {
-        toast.info("Portfolio project is pinned by default");
+      // If it's a system portfolio project, we don't allow unpinning it
+      if (project.systemType === "portfolio" && project.isSystem) {
+        toast.info("Your primary portfolio project is pinned by default");
         return;
       }
       await updateDoc(doc(db, "projects", project.id), {
@@ -661,7 +661,7 @@ p {
     const grouped: Record<string, Project[]> = {};
     const ungrouped: Project[] = [];
     for (const p of filteredProjects) {
-      if (p.isPinned || p.systemType === "portfolio") {
+      if (p.isPinned || (p.systemType === "portfolio" && p.isSystem)) {
         pinned.push(p);
       } else if (p.group) {
         if (!grouped[p.group]) grouped[p.group] = [];
@@ -871,11 +871,11 @@ p {
                 onClick={(e) => handleTogglePin(e, project)}
                 className={cn(
                   "flex items-center justify-center px-3 py-2 rounded-lg transition-all",
-                  project.isPinned || project.systemType === 'portfolio'
+                  project.isPinned || (project.systemType === 'portfolio' && project.isSystem)
                     ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
                     : "bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"
                 )}
-                title={project.isPinned || project.systemType === 'portfolio' ? "Unpin project" : "Pin project"}
+                title={project.isPinned || (project.systemType === 'portfolio' && project.isSystem) ? "Unpin project" : "Pin project"}
               >
                 <Pin className="w-3.5 h-3.5" />
               </button>
