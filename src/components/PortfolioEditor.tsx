@@ -67,6 +67,18 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreVersionConfirm, setRestoreVersionConfirm] = useState<ProjectVersion | null>(null);
 
+  const isDirty = React.useMemo(() => {
+    if (!portfolioData || !layoutData || !themeData) return false;
+    if (!portfolioFile || !layoutFile || !themeFile) return false;
+    try {
+      return JSON.stringify(portfolioData) !== JSON.stringify(JSON.parse(portfolioFile.content)) ||
+             JSON.stringify(layoutData) !== JSON.stringify(JSON.parse(layoutFile.content)) ||
+             JSON.stringify(themeData) !== JSON.stringify(JSON.parse(themeFile.content));
+    } catch {
+      return true;
+    }
+  }, [portfolioData, layoutData, themeData, portfolioFile, layoutFile, themeFile]);
+
   // Find files
   const portfolioFile = files.find(f => f.name === "portfolio.json");
   const layoutFile = files.find(f => f.name === "layout.json");
