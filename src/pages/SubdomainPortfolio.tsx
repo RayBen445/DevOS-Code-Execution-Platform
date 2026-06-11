@@ -331,13 +331,38 @@ export default function SubdomainPortfolio({ username }: Props) {
             </motion.div>
           )}
 
-          {/* Render Markdown Content */}
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-            className="prose prose-lg max-w-none prose-headings:font-bold prose-a:text-[var(--accent)] prose-a:no-underline hover:prose-a:underline"
-            style={{ color: 'var(--text-primary)' }}
-            dangerouslySetInnerHTML={{ __html: markdownHtml }}
-          />
+          {/* Render Content based on Language */}
+          {activePage.language === 'html' || activePage.language === 'css' || activePage.language === 'javascript' ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="w-full min-h-[600px] mt-4">
+               <iframe
+                  title="portfolio-custom-code"
+                  className="w-full h-[80vh] border-none rounded-xl bg-white shadow-lg"
+                  sandbox="allow-scripts allow-same-origin"
+                  srcDoc={`
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <style>
+                          body { margin: 0; font-family: system-ui, sans-serif; padding: 2rem; color: #333; }
+                          ${activePage.language === 'css' ? activePage.content : ''}
+                        </style>
+                        ${activePage.language === 'javascript' ? `<script>${activePage.content}</script>` : ''}
+                      </head>
+                      <body>
+                        ${activePage.language === 'html' ? activePage.content : ''}
+                      </body>
+                    </html>
+                  `}
+                />
+            </motion.div>
+          ) : (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+              className="prose prose-lg max-w-none prose-headings:font-bold prose-a:text-[var(--accent)] prose-a:no-underline hover:prose-a:underline"
+              style={{ color: 'var(--text-primary)' }}
+              dangerouslySetInnerHTML={{ __html: markdownHtml }}
+            />
+          )}
 
           {activePageSlug === '/contact' && portfolioId && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>

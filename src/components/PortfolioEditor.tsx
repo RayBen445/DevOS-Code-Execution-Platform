@@ -19,9 +19,11 @@ import {
   History, 
   RotateCcw, 
   X, 
-  MessageSquare 
+  MessageSquare, Settings, SidebarClose, SidebarOpen, FileCode, SplitSquareHorizontal, Code2 
 , FileText, LayoutTemplate, Star } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import Editor from "@monaco-editor/react";
+import { marked } from "marked";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
 import { db } from "../lib/firebase";
@@ -52,6 +54,11 @@ interface PortfolioEditorProps {
 
 export default function PortfolioEditor({ project, files, onUpdateFile }: PortfolioEditorProps) {
   const [activeTab, setActiveTab] = useState<"content" | "pages" | "layout" | "theme">("content");
+  const [editorMode, setEditorMode] = useState<"legacy" | "pro">("pro");
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [pageViewMode, setPageViewMode] = useState<"editor" | "preview" | "split">("editor");
+  const [showPageSettings, setShowPageSettings] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
@@ -89,6 +96,9 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
         if (!parsed.links) parsed.links = [];
         if (!parsed.featuredProjects) parsed.featuredProjects = [];
         setPortfolioData(parsed);
+        if (parsed.pages && parsed.pages.length > 0) {
+          setSelectedPageId(prev => prev || parsed.pages[0].id);
+        }
       }
       if (layoutFile) {
         const parsed = JSON.parse(layoutFile.content);
@@ -472,27 +482,44 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
 
           
           {activeTab === "pages" && (
-            <div className="space-y-8">
-              <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-blue-500" />
-                      Manage Pages
-                    </h3>
-                    <p className="text-sm text-white/40 mt-1">Create multiple pages and write content using Markdown.</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-500" />
+                    Manage Pages
+                  </h3>
+                  <div className="flex items-center bg-white/5 rounded-lg p-1 border border-border-base">
+                    <button
+                      onClick={() => setEditorMode("pro")}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${editorMode === "pro" ? "bg-blue-600 text-white" : "text-white/40 hover:text-white"}`}
+                    >
+                      Pro Editor
+                    </button>
+                    <button
+                      onClick={() => setEditorMode("legacy")}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${editorMode === "legacy" ? "bg-blue-600 text-white" : "text-white/40 hover:text-white"}`}
+                    >
+                      Legacy
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      const newPage = { id: `page-${Date.now()}`, slug: `/new-page-${Date.now()}`, title: "New Page", content: "# New Page\nWrite something here..." };
-                      setPortfolioData({ ...portfolioData, pages: [...portfolioData.pages, newPage] });
-                    }}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all"
-                  >
-                    <Plus className="w-3 h-3" /> Add Page
-                  </button>
                 </div>
-                <div className="space-y-4">
+              </div>
+
+              {editorMode === "legacy" ? (
+                // --- LEGACY MODE ---
+                <div className="space-y-4 mt-8">
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => {
+                        const newPage = { id: `page-${Date.now()}`, slug: `/new-page-${Date.now()}`, title: "New Page", content: "# New Page\nWrite something here..." };
+                        setPortfolioData({ ...portfolioData, pages: [...portfolioData.pages, newPage] });
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all"
+                    >
+                      <Plus className="w-3 h-3" /> Add Page
+                    </button>
+                  </div>
                   {(portfolioData.pages || []).map((page: any, index: number) => (
                     <div key={page.id} className="p-4 bg-white/5 border border-border-base rounded-xl space-y-4 relative group">
                       <div className="flex gap-4">
@@ -556,7 +583,219 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
                     </div>
                   ))}
                 </div>
-              </section>
+              ) : (
+                // --- PRO MODE ---
+                <div className="flex h-[600px] border border-border-base rounded-xl overflow-hidden bg-base mt-4">
+                  {/* Sidebar */}
+                  {sidebarOpen && (
+                    <div className="w-64 border-r border-border-base flex flex-col bg-card shrink-0">
+                      <div className="p-3 border-b border-border-base flex items-center justify-between">
+                        <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Pages</span>
+                        <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-white/10 rounded text-white/40">
+                          <SidebarClose className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                        {(portfolioData.pages || []).map((page: any) => (
+                          <button
+                            key={page.id}
+                            onClick={() => setSelectedPageId(page.id)}
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${selectedPageId === page.id ? 'bg-blue-600/20 text-blue-400 font-bold' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                          >
+                            <span className="w-4 text-center">{page.icon || (page.language === 'html' ? '🌐' : '📄')}</span>
+                            <span className="truncate flex-1 text-left">{page.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="p-3 border-t border-border-base">
+                        <button
+                          onClick={() => {
+                            const newPage = { 
+                              id: `page-${Date.now()}`, 
+                              slug: `/new-page-${Date.now()}`, 
+                              title: "New Page", 
+                              language: "markdown",
+                              content: "# Welcome\n\nIntroduce yourself." 
+                            };
+                            setPortfolioData({ ...portfolioData, pages: [...portfolioData.pages, newPage] });
+                            setSelectedPageId(newPage.id);
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-2 bg-white/5 hover:bg-white/10 border border-border-base rounded-lg text-xs font-bold text-white transition-all"
+                        >
+                          <Plus className="w-3 h-3" /> New Page
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Editor Area */}
+                  <div className="flex-1 flex flex-col min-w-0">
+                    {/* Header */}
+                    <div className="h-14 border-b border-border-base bg-card flex items-center justify-between px-4 shrink-0 overflow-x-auto">
+                      <div className="flex items-center gap-3">
+                        {!sidebarOpen && (
+                          <button onClick={() => setSidebarOpen(true)} className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 transition-colors">
+                            <SidebarOpen className="w-4 h-4" />
+                          </button>
+                        )}
+                        {(() => {
+                          const activePage = portfolioData.pages.find((p: any) => p.id === selectedPageId);
+                          if (!activePage) return null;
+                          return (
+                            <>
+                              <input
+                                type="text"
+                                value={activePage.icon || ""}
+                                onChange={(e) => {
+                                  const newPages = [...portfolioData.pages];
+                                  const idx = newPages.findIndex(p => p.id === selectedPageId);
+                                  newPages[idx].icon = e.target.value;
+                                  setPortfolioData({ ...portfolioData, pages: newPages });
+                                }}
+                                placeholder="📄"
+                                className="w-8 h-8 bg-black/20 border border-border-base rounded-lg text-center text-sm focus:border-blue-500 outline-none"
+                              />
+                              <input
+                                type="text"
+                                value={activePage.title}
+                                onChange={(e) => {
+                                  const newPages = [...portfolioData.pages];
+                                  const idx = newPages.findIndex(p => p.id === selectedPageId);
+                                  newPages[idx].title = e.target.value;
+                                  setPortfolioData({ ...portfolioData, pages: newPages });
+                                }}
+                                className="bg-transparent text-sm font-bold text-white focus:outline-none w-32 border-b border-transparent focus:border-blue-500"
+                              />
+                              <span className="text-white/20">/</span>
+                              <input
+                                type="text"
+                                value={activePage.slug}
+                                onChange={(e) => {
+                                  const newPages = [...portfolioData.pages];
+                                  const idx = newPages.findIndex(p => p.id === selectedPageId);
+                                  newPages[idx].slug = e.target.value.toLowerCase().replace(/\s+/g, '-');
+                                  setPortfolioData({ ...portfolioData, pages: newPages });
+                                }}
+                                disabled={activePage.isSystem || activePage.slug === '/'}
+                                className="bg-transparent text-xs text-white/60 font-mono focus:outline-none w-32 border-b border-transparent focus:border-blue-500"
+                              />
+                            </>
+                          );
+                        })()}
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const activePage = portfolioData.pages.find((p: any) => p.id === selectedPageId);
+                          if (!activePage) return null;
+                          return (
+                            <CustomSelect
+                              value={activePage.language || "markdown"}
+                              onChange={(v) => {
+                                const newPages = [...portfolioData.pages];
+                                const idx = newPages.findIndex(p => p.id === selectedPageId);
+                                newPages[idx].language = v;
+                                setPortfolioData({ ...portfolioData, pages: newPages });
+                              }}
+                              options={[
+                                { value: "markdown", label: "Markdown" },
+                                { value: "html", label: "HTML" },
+                                { value: "css", label: "CSS" },
+                                { value: "javascript", label: "JavaScript" },
+                              ]}
+                            />
+                          );
+                        })()}
+                        <div className="h-6 w-px bg-border-base mx-1" />
+                        <div className="flex items-center bg-black/20 rounded-lg p-1 border border-border-base">
+                          <button onClick={() => setPageViewMode("editor")} className={`p-1.5 rounded-md transition-all ${pageViewMode === "editor" ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`} title="Editor">
+                            <Code2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setPageViewMode("split")} className={`p-1.5 rounded-md transition-all ${pageViewMode === "split" ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`} title="Split View">
+                            <SplitSquareHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setPageViewMode("preview")} className={`p-1.5 rounded-md transition-all ${pageViewMode === "preview" ? "bg-white/10 text-white" : "text-white/40 hover:text-white"}`} title="Preview">
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <button onClick={() => setShowPageSettings(true)} className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 transition-colors ml-1">
+                          <Settings className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Editor / Preview Body */}
+                    {(() => {
+                      const activePage = portfolioData.pages.find((p: any) => p.id === selectedPageId);
+                      if (!activePage) return <div className="flex-1 flex items-center justify-center text-white/20">Select a page</div>;
+                      
+                      const showEditor = pageViewMode === "editor" || pageViewMode === "split";
+                      const showPreview = pageViewMode === "preview" || pageViewMode === "split";
+                      
+                      const handleEditorChange = (value: string | undefined) => {
+                        const newPages = [...portfolioData.pages];
+                        const idx = newPages.findIndex(p => p.id === selectedPageId);
+                        newPages[idx].content = value || "";
+                        setPortfolioData({ ...portfolioData, pages: newPages });
+                      };
+
+                      return (
+                        <div className="flex-1 flex overflow-hidden">
+                          {showEditor && (
+                            <div className={`flex-1 ${showPreview ? 'border-r border-border-base' : ''}`}>
+                              <Editor
+                                height="100%"
+                                language={activePage.language || 'markdown'}
+                                theme="vs-dark"
+                                value={activePage.content}
+                                onChange={handleEditorChange}
+                                options={{
+                                  minimap: { enabled: false },
+                                  fontSize: 14,
+                                  wordWrap: "on",
+                                  padding: { top: 16 },
+                                  scrollBeyondLastLine: false,
+                                }}
+                              />
+                            </div>
+                          )}
+                          {showPreview && (
+                            <div className="flex-1 bg-white overflow-y-auto relative">
+                              {activePage.language === 'html' || activePage.language === 'css' || activePage.language === 'javascript' ? (
+                                <iframe
+                                  title="preview"
+                                  className="w-full h-full border-none"
+                                  srcDoc={`
+                                    <!DOCTYPE html>
+                                    <html>
+                                      <head>
+                                        <style>
+                                          body { margin: 0; font-family: system-ui, sans-serif; padding: 2rem; color: #333; }
+                                          ${activePage.language === 'css' ? activePage.content : ''}
+                                        </style>
+                                        ${activePage.language === 'javascript' ? `<script>${activePage.content}</script>` : ''}
+                                      </head>
+                                      <body>
+                                        ${activePage.language === 'html' ? activePage.content : '<div style="color:#888; text-align:center; margin-top:20%">HTML preview</div>'}
+                                      </body>
+                                    </html>
+                                  `}
+                                />
+                              ) : (
+                                <div 
+                                  className="prose prose-invert max-w-none p-8 text-black"
+                                  style={{ color: '#000' }}
+                                  dangerouslySetInnerHTML={{ __html: marked.parse(activePage.content) as string }} 
+                                />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
