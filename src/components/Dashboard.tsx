@@ -1007,6 +1007,7 @@ p {
           >
             <Plus className="w-5 h-5" />
             New Project
+            <span className="px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest ml-1 shadow-[0_0_10px_rgba(37,99,235,0.5)]">Beta</span>
           </button>
           <button
             onClick={() => setShowCreateOrg(true)}
