@@ -315,6 +315,7 @@ export default function AdminThemesTab() {
 
       {deleteConfirm && (
         <ConfirmModal
+          open={true}
           title="Delete Theme"
           description="Are you sure you want to delete this theme? Users who have this theme applied will fallback to default."
           confirmLabel="Delete Theme"

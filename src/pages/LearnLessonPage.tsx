@@ -321,7 +321,7 @@ export default function LearnLessonPage() {
                         content: code,
                         language: lesson.language,
                         projectId: "lesson",
-                        updatedAt: new Date(),
+                        updatedAt: new Date().toISOString(),
                       }}
                       onChange={setCode}
                       showToolbar={false}

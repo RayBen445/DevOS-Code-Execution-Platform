@@ -7,6 +7,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { cn } from "../lib/utils";
 import JSZip from "jszip";
 import ConfirmModal from "./ConfirmModal";
+import { toast } from "sonner";
 
 interface SidebarProps {
   files: FileData[];
@@ -14,6 +15,7 @@ interface SidebarProps {
   onSelectFile: (id: string) => void;
   projectId: string;
   readOnly?: boolean;
+  isPortfolio?: boolean;
 }
 
 interface SidebarProps {
@@ -22,6 +24,7 @@ interface SidebarProps {
   onSelectFile: (id: string) => void;
   projectId: string;
   readOnly?: boolean;
+  isPortfolio?: boolean;
 }
 
 interface FileTreeItem {
@@ -33,7 +36,7 @@ interface FileTreeItem {
   file?: FileData;
 }
 
-export default function Sidebar({ files, activeFileId, onSelectFile, projectId, readOnly }: SidebarProps) {
+export default function Sidebar({ files, activeFileId, onSelectFile, projectId, readOnly, isPortfolio }: SidebarProps) {
   const [isCreating, setIsCreating] = useState<{ type: 'file' | 'folder', parentPath: string } | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['']));
   const [isUploading, setIsUploading] = useState(false);
@@ -137,6 +140,10 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
     }
 
     const extension = newFileName.split(".").pop() || "txt";
+    if (isPortfolio && !['html', 'css', 'js', 'json'].includes(extension.toLowerCase())) {
+      toast.error("Portfolio projects only support HTML, CSS, JS, and JSON files.");
+      return;
+    }
     const languageMap: Record<string, string> = {
       js: "javascript",
       ts: "typescript",
@@ -194,6 +201,10 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
 
     try {
       const extension = editingFileName.split(".").pop() || "txt";
+      if (isPortfolio && !['html', 'css', 'js', 'json'].includes(extension.toLowerCase())) {
+        toast.error("Portfolio projects only support HTML, CSS, JS, and JSON files.");
+        return;
+      }
       const languageMap: Record<string, string> = {
         js: "javascript",
         ts: "typescript",
@@ -383,11 +394,20 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
         return !parts.some(p => p.startsWith(".") || p === "node_modules");
       });
 
+      const fileEntries: any[] = [];
+
       for (const [relativePath, zipEntry] of validEntries) {
         const content = await zipEntry.async("string");
         const nameParts = relativePath.split("/");
         const name = nameParts[nameParts.length - 1];
         const ext = name.split(".").pop()?.toLowerCase() || "txt";
+
+        if (isPortfolio && !['html', 'css', 'js', 'json'].includes(ext)) {
+          toast.error("Portfolio projects only support HTML, CSS, JS, and JSON files.");
+          setZipStatus("");
+          setIsZipUploading(false);
+          return;
+        }
 
         fileEntries.push({
           path: relativePath,

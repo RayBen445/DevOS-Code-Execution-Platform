@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "./lib/firebase";
 import { initializeUser, updateStreak } from "./lib/userService";
-import { ensureDevTeamOrg } from "./lib/orgService";
 import { getMaintenanceConfig, MaintenanceConfig } from "./lib/creditsService";
 import { useUITheme } from "./hooks/useUITheme";
 import Navbar from "./components/Navbar";
 import Dashboard from "./components/Dashboard";
 import IDE from "./components/IDE";
+import PortfolioIDE from "./components/PortfolioIDE";
 import Login from "./components/Login";
 import Home from "./components/Home";
 import Footer from "./components/Footer";
@@ -162,6 +162,39 @@ function LegacyProjectRedirect() {
 function CommunitySlugRedirect({ chat = false }: { chat?: boolean }) {
   const { slug } = useParams<{ slug: string }>();
   return <Navigate to={`/c/${slug}${chat ? "/chat" : ""}`} replace />;
+}
+
+
+function ProjectIDEWrapper({ projectId, onBack }: { projectId: string; onBack?: () => void }) {
+  const [systemType, setSystemType] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let unsubscribe: () => void;
+    
+    const projectRef = doc(db, "projects", projectId);
+    unsubscribe = onSnapshot(projectRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setSystemType(docSnap.data().systemType || 'react');
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching project systemType:", error);
+      setLoading(false);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [projectId]);
+
+  if (loading) return <PremiumLoader />;
+
+  if (systemType === "portfolio") {
+    return <PortfolioIDE projectId={projectId} onBack={onBack} />;
+  }
+  
+  return <IDE projectId={projectId} onBack={onBack} />;
 }
 
 export default function App() {
@@ -478,7 +511,7 @@ export default function App() {
 
   // Projects / Dashboard view (accessible at /projects)
   const DashboardView = selectedProjectId ? (
-    <IDE projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
+    <ProjectIDEWrapper projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
   ) : (
     <div className="min-h-screen bg-base text-white flex flex-col">
       <Navbar />
@@ -581,7 +614,7 @@ export default function App() {
                     </AnimatePresence>
                   </>
                 ) : selectedProjectId ? (
-                  <IDE projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
+                  <ProjectIDEWrapper projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
                 ) : (
                   <FeedHome
                     onOpenProject={setSelectedProjectId}

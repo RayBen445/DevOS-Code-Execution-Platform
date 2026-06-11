@@ -100,6 +100,7 @@ import {
   Quote,
   List,
   ImageDown,
+  Palette,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, generateAppId } from '../lib/utils';
@@ -195,7 +196,7 @@ export default function AdminDashboard() {
 
   // Admin posts state
   const [postContent, setPostContent] = useState("");
-  const [postType, setPostType] = useState<"announcement" | "update" | "event">("announcement");
+  const [postType, setPostType] = useState<"announcement" | "update" | "feature">("announcement");
   const [adminPostAttachments, setAdminPostAttachments] = useState<string[]>([]);
   const adminPostTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [publishingPost, setPublishingPost] = useState(false);
@@ -596,8 +597,8 @@ export default function AdminDashboard() {
     unsubs.push(onSnapshot(collection(db, 'templates'), (snap) => {
       const allTpl = snap.docs.map(d => ({id: d.id, ...d.data()}));
       setAllTemplates(allTpl as any[]);
-      setPendingTemplates(allTpl.filter(t => !t.isApproved) as any[]);
-      setTotalTemplates(allTpl.filter(t => t.isApproved).length);
+      setPendingTemplates(allTpl.filter(t => !(t as any).isApproved) as any[]);
+      setTotalTemplates(allTpl.filter(t => (t as any).isApproved).length);
     }));
     return () => unsubs.forEach(u => typeof u === 'function' && u());
   }, [isAdmin]);
@@ -730,7 +731,7 @@ export default function AdminDashboard() {
     try {
       await createAdminPost({
         content: postContent.trim(),
-        type: postType,
+        type: postType as "update" | "feature" | "announcement",
         attachments: adminPostAttachments,
         createdBy: user.uid,
       });

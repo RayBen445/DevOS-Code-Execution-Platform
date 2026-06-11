@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useUITheme } from "../hooks/useUITheme";
 import { THEMES } from "../lib/themes";
 import { cn } from "../lib/utils";
-import { Check, Settings, Palette, Save, Terminal, Share, Upload, Download, Smartphone, LayoutDashboard, Code2, ShieldAlert } from "lucide-react";
+import { Check, Settings, Palette, Save, Terminal, Share, Upload, Download, Smartphone, LayoutDashboard, Code2, ShieldAlert, X } from "lucide-react";
 import Navbar from "./Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import { publishCommunityTheme, createDbTheme } from "../lib/themeService";

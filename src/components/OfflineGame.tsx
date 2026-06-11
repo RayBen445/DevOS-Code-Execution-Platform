@@ -33,7 +33,7 @@ export default function OfflineGame() {
   const [currentInput, setCurrentInput] = useState("");
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number>(0);
   
   // Mutable refs for physics
   const words = useRef<FallingWord[]>([]);
@@ -51,11 +51,11 @@ export default function OfflineGame() {
       resetGame();
     };
 
-    window.addEventListener("online", () => handleOnline(new Event("online")));
+    window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener("online", () => handleOnline(new Event("online")));
+      window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
