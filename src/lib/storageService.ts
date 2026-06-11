@@ -39,35 +39,39 @@ export interface UploadOptions {
  */
 export async function uploadImage(
   file: File | Blob,
-  path: string,
+  path: string, // Ignored now
   opts: UploadOptions = {}
 ): Promise<string> {
   let finalFile = file;
 
-  // Compress image if it's an image file and compression is not skipped
-  if (!opts.skipCompression && file.type.startsWith("image/") && file instanceof File) {
+  // Force compression to stay well under Firestore 1MB limits (Base64 adds ~33% overhead)
+  if (file.type.startsWith("image/") && file instanceof File) {
     try {
       const options = {
-        maxSizeMB: 1, // Max 1MB
-        maxWidthOrHeight: 1920,
+        maxSizeMB: 0.1, // Max 100KB to be absolutely safe
+        maxWidthOrHeight: 800,
         useWebWorker: true,
       };
       finalFile = await imageCompression(file, options);
-      console.log(`Compressed image from ${(file.size / 1024).toFixed(2)}KB to ${(finalFile.size / 1024).toFixed(2)}KB`);
+      console.log(`Compressed image to ${(finalFile.size / 1024).toFixed(2)}KB for base64 storage`);
     } catch (err) {
       console.warn("Image compression failed, using original file:", err);
     }
   }
 
-  if (isSupabaseReady && supabase) {
-    try {
-      return await uploadToSupabase(finalFile, path);
-    } catch (supabaseErr) {
-      // Supabase RLS or network error — fall back to Firebase Storage automatically.
-      console.warn("[storageService] Supabase upload failed, falling back to Firebase Storage:", supabaseErr);
-    }
+  if (opts.onProgress) {
+    opts.onProgress(50); // Simulate progress
   }
-  return uploadToFirebase(finalFile, path, opts);
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (opts.onProgress) opts.onProgress(100);
+      resolve(reader.result as string);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(finalFile);
+  });
 }
 
 // ── Supabase ─────────────────────────────────────────────────────────────────
