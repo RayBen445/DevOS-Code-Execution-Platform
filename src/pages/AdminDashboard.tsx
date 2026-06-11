@@ -1919,6 +1919,7 @@ User request: ${aiTestPrompt.trim()}`;
     { id: "projects", label: "Projects", icon: <FolderPlus className="w-4 h-4" /> },
     { id: "events", label: "Events", icon: <Calendar className="w-4 h-4" /> },
     { id: "learn", label: "Learn", icon: <BookOpen className="w-4 h-4" /> },
+    { id: "kora", label: "KORA AI", icon: <Bot className="w-4 h-4" /> },
     { id: "site", label: "Site Settings", icon: <Globe className="w-4 h-4" /> },
   ];
 
