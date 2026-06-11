@@ -173,7 +173,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
   };
 
   useEffect(() => {
-    if false {
+    if (false) {
       scrollToBottom();
       terminalInputRef.current?.focus();
       if (!terminalInitialized) {
