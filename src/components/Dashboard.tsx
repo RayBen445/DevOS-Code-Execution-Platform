@@ -50,6 +50,54 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [publicProjects, setPublicProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<"my-projects" | "public-projects">("my-projects");
+
+  // One-time cleanup for duplicate system portfolios
+  useEffect(() => {
+    if (!user || projects.length === 0) return;
+    const cleanup = async () => {
+      const portfolios = projects.filter(p => p.systemType === "portfolio");
+      if (portfolios.length <= 1) return; // Nothing to clean up
+      
+      // Sort by updatedAt descending
+      const sorted = [...portfolios].sort((a, b) => {
+        const aTime = a.updatedAt ? (a.updatedAt as any).toMillis() : 0;
+        const bTime = b.updatedAt ? (b.updatedAt as any).toMillis() : 0;
+        return bTime - aTime;
+      });
+
+      const batch = writeBatch(db);
+      let changes = false;
+
+      // Keep the most recent one as isSystem = true, downgrade the rest
+      for (let i = 0; i < sorted.length; i++) {
+        const p = sorted[i];
+        if (i === 0) {
+          if (!p.isSystem) {
+            batch.update(doc(db, "projects", p.id), { isSystem: true });
+            changes = true;
+          }
+        } else {
+          if (p.isSystem || p.isPinned) {
+            batch.update(doc(db, "projects", p.id), { 
+              isSystem: false,
+              isPinned: false
+            });
+            changes = true;
+          }
+        }
+      }
+
+      if (changes) {
+        try {
+          await batch.commit();
+          console.log("Cleaned up duplicate system portfolios.");
+        } catch (e) {
+          console.error("Cleanup failed:", e);
+        }
+      }
+    };
+    cleanup();
+  }, [user, projects]);
   const [publishTemplateProject, setPublishTemplateProject] = useState<Project | null>(null);
   const [settingsProject, setSettingsProject] = useState<Project | null>(null);
   // Confirm modals
