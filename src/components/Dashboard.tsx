@@ -708,12 +708,12 @@ p {
               {project.isTemplate && (
                 <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider">Template</span>
               )}
-              {project.systemType === 'portfolio' && (
-                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">Portfolio</span>
+              {project.systemType === 'portfolio' && project.isSystem && (
+                <span className="px-2 py-0.5 rounded-md bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(59,130,246,0.5)]">Official Portfolio</span>
               )}
             </div>
           </div>
-          <h3 className="text-base font-bold text-white mb-1">{project.name}</h3>
+          <h3 className={cn("text-base font-bold mb-1", project.systemType === 'portfolio' && project.isSystem ? "text-blue-100" : "text-white")}>{project.name}</h3>
           {project.description && (
             <p className="text-xs text-white/40 mb-3 line-clamp-2 leading-relaxed">{project.description}</p>
           )}
