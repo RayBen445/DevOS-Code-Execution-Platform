@@ -51,11 +51,11 @@ export default function OfflineGame() {
       resetGame();
     };
 
-    window.addEventListener("online", handleOnline);
+    window.addEventListener("online", () => handleOnline(new Event("online")));
     window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("online", () => handleOnline(new Event("online")));
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
