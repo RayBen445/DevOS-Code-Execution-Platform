@@ -58,6 +58,7 @@ export interface Project {
   forkedFromTitle?: string;  // display title of the source project
   /** ID of the currently active deployment (used for instant rollback) */
   activeDeploymentId?: string | null;
+  isPinned?: boolean;
 }
 
 export interface ProjectVersion {

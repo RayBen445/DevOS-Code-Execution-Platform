@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check, Search } from "lucide-react";
+import { Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check, Search, Pin, PinOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime, toValidDate, generateAppId } from '../lib/utils';
@@ -619,6 +619,24 @@ p {
     }
   };
 
+  const handleTogglePin = async (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation();
+    try {
+      // If it's a portfolio project, we don't allow unpinning it
+      if (project.systemType === "portfolio") {
+        toast.info("Portfolio project is pinned by default");
+        return;
+      }
+      await updateDoc(doc(db, "projects", project.id), {
+        isPinned: !project.isPinned,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success(project.isPinned ? "Project unpinned" : "Project pinned");
+    } catch {
+      toast.error("Failed to pin/unpin project");
+    }
+  };
+
   const filteredProjects = useMemo(() => {
     if (!searchQuery.trim()) return projects;
     const lowerQuery = searchQuery.toLowerCase();
@@ -635,20 +653,24 @@ p {
   }, [filteredProjects]);
 
   // Compute groups for "My Projects" tab:
+  //   - pinned              → Pinned section at top
   //   - user-defined group  → one section per group (sorted alphabetically)
   //   - no group            → "Ungrouped" section at bottom
-  const { groupedMap, ungroupedProjects } = useMemo(() => {
+  const { pinnedProjects, groupedMap, ungroupedProjects } = useMemo(() => {
+    const pinned: Project[] = [];
     const grouped: Record<string, Project[]> = {};
     const ungrouped: Project[] = [];
     for (const p of filteredProjects) {
-      if (p.group) {
+      if (p.isPinned || p.systemType === "portfolio") {
+        pinned.push(p);
+      } else if (p.group) {
         if (!grouped[p.group]) grouped[p.group] = [];
         grouped[p.group].push(p);
       } else {
         ungrouped.push(p);
       }
     }
-    return { groupedMap: grouped, ungroupedProjects: ungrouped };
+    return { pinnedProjects: pinned, groupedMap: grouped, ungroupedProjects: ungrouped };
   }, [filteredProjects]);
 
   // ── Card renderer (used in every group section) ────────────────────────────
@@ -685,6 +707,9 @@ p {
               )}
               {project.isTemplate && (
                 <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-wider">Template</span>
+              )}
+              {project.systemType === 'portfolio' && (
+                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">Portfolio</span>
               )}
             </div>
           </div>
@@ -841,6 +866,19 @@ p {
                     )}
                   </AnimatePresence>
                 </div>
+              {/* ── Pin Button ── */}
+              <button
+                onClick={(e) => handleTogglePin(e, project)}
+                className={cn(
+                  "flex items-center justify-center px-3 py-2 rounded-lg transition-all",
+                  project.isPinned || project.systemType === 'portfolio'
+                    ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                    : "bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"
+                )}
+                title={project.isPinned || project.systemType === 'portfolio' ? "Unpin project" : "Pin project"}
+              >
+                <Pin className="w-3.5 h-3.5" />
+              </button>
               <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
               {project.isDeletable !== false && (
                 <button
