@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Settings, Github, Send, Loader2, CheckCircle, XCircle, MessageSquare, Trash2, AlertTriangle, Globe, Lock, Eye, EyeOff, Plus, X } from "lucide-react";
 import { db, auth } from "../lib/firebase";
+import { toast } from "sonner";
 import { doc, getDoc, deleteDoc, collection, getDocs, writeBatch, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { FileData, Project } from "../types";
@@ -173,7 +174,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
       }
     } catch (error) {
       console.error("Error deleting project:", error);
-      alert("Failed to delete project. Please try again.");
+      toast.error("Failed to delete project. Please try again.");
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);

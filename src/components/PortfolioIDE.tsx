@@ -38,7 +38,7 @@ interface IDEProps {
   onBack: () => void;
 }
 
-type PanelType = "explorer" | "git" | "terminal" | "preview" | "deployments" | "settings" | "collaborators" | null;
+type PanelType = "explorer" | "preview" | null;
 
 interface LogEntry {
   type: "system" | "success" | "error" | "info" | "output" | "warning";
@@ -98,7 +98,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
   const [showErrors, setShowErrors] = useState(false);
 
   // Mobile top-nav state (replaces slide-in drawer)
-  type MobileTabId = "editor" | "files" | "preview" | "git" | "terminal" | "deployments" | "settings" | "collaborators";
+  type MobileTabId = "editor" | "files" | "preview";
   const [mobileTab, setMobileTab] = useState<MobileTabId>("editor");
   const touchStartX = useRef<number>(0);
 
