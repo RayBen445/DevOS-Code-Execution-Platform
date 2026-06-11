@@ -926,7 +926,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
     const hash = await hashFiles(files);
     const short = shortHash(hash);
 
-    setActivePanel("terminal");
+    
     addLog("system", `devos ▶ ${project.name} $ deploy --branch ${branch}`);
     addLog("info", `Detected: ${det.framework}`);
     addLog("info", `Commit: ${short}`);
@@ -1013,7 +1013,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
     const det = detection ?? detectProject(files);
 
     setIsRunning(true);
-    setActivePanel("terminal");
+    
     addLog("system", `devos ▶ ${project?.name || "project"} $ run`);
     if (det.framework !== "Unknown") {
       addLog("info", `⚡ Framework: ${det.framework}`);
@@ -1755,27 +1755,13 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
               )}
 
               {/* Git */}
-              {mobileTab === "git" && (
-                <div className="h-full overflow-y-auto">
-                  <GitPanel projectId={projectId} files={files} />
-                </div>
-              )}
+              
 
               {/* Terminal — full-height on mobile */}
-              {mobileTab === "terminal" && (
-                <div className="h-full flex flex-col bg-surface">
-                  <div className="flex-1 min-h-0 relative">
-                    <TerminalTabs socket={socket} onClose={() => setMobileTab("files")} cwd={(project?.systemType as string) === "v0" ? "/app" : undefined} />
-                  </div>
-                </div>
-              )}
+              
 
               {/* Settings */}
-              {mobileTab === "settings" && (
-                <div className="h-full overflow-y-auto">
-                  <SettingsPanel projectId={projectId} project={project} files={files} onDelete={onBack} />
-                </div>
-              )}
+              
 
               {/* Deployments */}
               {mobileTab === "deployments" && canDeploy && (
@@ -1824,23 +1810,10 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
               )}
 
               {/* Git Panel — hidden on mobile, hidden in focus mode */}
-              {activePanel === "git" && !isFocusMode && (
-                <div className="hidden md:flex w-80 border-r border-border-base">
-                  <GitPanel projectId={projectId} files={files} />
-                </div>
-              )}
+              
 
               {/* Settings Panel — hidden on mobile, hidden in focus mode */}
-              {activePanel === "settings" && !isFocusMode && (
-                <div className="hidden md:flex">
-                  <SettingsPanel 
-                    projectId={projectId} 
-                    project={project} 
-                    files={files} 
-                    onDelete={onBack}
-                  />
-                </div>
-              )}
+              
 
               {/* Collaborators Panel — org projects only, hidden on mobile */}
               {activePanel === "collaborators" && !isFocusMode && isOrgProject && (
@@ -1850,21 +1823,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
               )}
 
               {/* Deployments Panel — shows history, rollback, branch deployments */}
-              {activePanel === "settings" && !isFocusMode && canDeploy && (
-                <div className="hidden md:flex w-80 border-r border-border-base flex-col overflow-y-auto">
-                  <div className="p-4 border-b border-border-base">
-                    <h3 className="text-xs font-bold text-white/60 uppercase tracking-wider">Deployments</h3>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-3">
-                    <DeploymentDashboard
-                      projectId={projectId}
-                      userId={user?.uid ?? ""}
-                      activeDeploymentId={project?.activeDeploymentId}
-                      canManage={canDeploy}
-                    />
-                  </div>
-                </div>
-              )}
+              
 
               {/* Editor Area */}
               <main
