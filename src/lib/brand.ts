@@ -2,8 +2,8 @@ export const COMPANY_NAME = "KONTYRA";
 export const COMPANY_DOMAIN = "kontyra.name.ng";
 
 export const PRODUCT_NAME = "DevOS";
-export const PRODUCT_BRAND_NAME = `${PRODUCT_NAME} by ${COMPANY_NAME}`;
-export const PRODUCT_NAV_LABEL = `${COMPANY_NAME} / ${PRODUCT_NAME}`;
+export const PRODUCT_BRAND_NAME = PRODUCT_NAME;
+export const PRODUCT_NAV_LABEL = PRODUCT_NAME;
 export const PRODUCT_DESCRIPTION =
   `${PRODUCT_BRAND_NAME} is a cloud-based developer platform for building, deploying, and showcasing projects instantly.`;
 
