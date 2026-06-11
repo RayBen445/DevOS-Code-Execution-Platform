@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "./lib/firebase";
 import { initializeUser, updateStreak } from "./lib/userService";
-import { ensureDevTeamOrg } from "./lib/orgService";
 import { getMaintenanceConfig, MaintenanceConfig } from "./lib/creditsService";
 import { useUITheme } from "./hooks/useUITheme";
 import Navbar from "./components/Navbar";
@@ -85,7 +84,6 @@ function RouteTracker({ user }: { user: any }) {
 
   // Persist route on every change (skip excluded paths)
   useEffect(() => {
-    ensureDevTeamOrg().catch(console.error);
     const path = location.pathname + location.search;
     const isExcluded = EXCLUDED_ROUTES.some((p) => path.startsWith(p));
     if (!isExcluded) {
