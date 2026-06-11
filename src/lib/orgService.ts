@@ -344,3 +344,25 @@ export async function batchAddAllUsersToOrg(orgId: string): Promise<void> {
   }
   await updateDoc(doc(db, "organizations", orgId), { memberCount: toAdd.length + existing.size });
 }
+
+/** Ensure dev-team org exists */
+export async function ensureDevTeamOrg(): Promise<void> {
+  const q = query(collection(db, "organizations"), where("slug", "==", "dev-team"));
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    await addDoc(collection(db, "organizations"), {
+      name: "Dev Team",
+      slug: "dev-team",
+      description: "The official DevOS development team organization.",
+      avatar: "",
+      isPublic: true,
+      isOfficial: true,
+      chatEnabled: true,
+      voiceCallsEnabled: true,
+      createdBy: "system",
+      memberCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+}

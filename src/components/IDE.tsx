@@ -11,7 +11,7 @@ import DeployModal from "./DeployModal";
 import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
-import PortfolioEditor from "./PortfolioEditor";
+
 
 import { FileData, Project, OrgMember, OrgMemberRole, PresenceUser, ActivityItem, DetectionResult, BuildJob } from "../types";
 import { cn, generateAppId } from '../lib/utils';
@@ -1403,7 +1403,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           </button>
           <div className="flex items-center gap-2 min-w-0">
             {/* ── GitHub-style breadcrumb ── */}
-            {project?.systemType !== 'portfolio' && (
+            {(
               <nav
                 aria-label="breadcrumb"
                 className="flex items-center gap-1 min-w-0 text-xs"
@@ -1545,7 +1545,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               Realtime disabled
             </span>
           )}
-          {project?.systemType !== 'portfolio' && (
+          {(
             <>
               <button 
                 onClick={handleRun}
@@ -1623,7 +1623,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
             </>
           )}
           {/* Focus mode toggle — only for non-portfolio and desktop */}
-          {project?.systemType !== 'portfolio' && (
+          {(
             <button
               onClick={toggleFocusMode}
               title={isFocusMode ? "Exit Focus Mode" : "Focus Mode"}
@@ -1636,7 +1636,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
       </header>
 
       {/* ── Mobile top navigation bar (replaces slide-in drawer) ───────────── */}
-      {project?.systemType !== 'portfolio' && !isFocusMode && (
+      {!isFocusMode && (
         <nav className="md:hidden flex-shrink-0 bg-base border-b border-[#21262D] overflow-x-auto">
           <div className="flex items-stretch min-w-max">
             {mobileNavTabs.map(({ id, icon: Icon, label }) => (
@@ -1665,7 +1665,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
       <div className="flex-1 flex overflow-hidden relative">
         {/* Sidebar icon tabs — desktop only, hidden in focus mode */}
-        {project?.systemType !== 'portfolio' && !isFocusMode && (
+        {!isFocusMode && (
           <div className="hidden md:flex w-12 border-r border-[#21262D] bg-surface flex-col items-center py-3 gap-1 flex-shrink-0">
             {[
               { id: "explorer" as PanelType, icon: Files, label: "Explorer" },
@@ -1697,7 +1697,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
         {/* Lightweight absolute overlay — only appears on mobile when not in editor mode.
             The editor underneath stays mounted (no unmount/remount cost). */}
         <AnimatePresence>
-          {mobileTab !== "editor" && project?.systemType !== 'portfolio' && (
+          {mobileTab !== "editor" && (
             <motion.div
               key={mobileTab}
               initial={{ opacity: 0 }}
@@ -1810,7 +1810,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           )}>
             <div className="flex-1 flex overflow-hidden">
               {/* Explorer Panel — desktop only, hidden in focus mode */}
-              {project?.systemType !== 'portfolio' && activePanel === "explorer" && !isFocusMode && (
+              {activePanel === "explorer" && !isFocusMode && (
                 <div className="hidden md:flex">
                   <Sidebar
                     files={files}
@@ -1823,14 +1823,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               )}
 
               {/* Git Panel — hidden on mobile, hidden in focus mode */}
-              {project?.systemType !== 'portfolio' && activePanel === "git" && !isFocusMode && (
+              {activePanel === "git" && !isFocusMode && (
                 <div className="hidden md:flex w-80 border-r border-border-base">
                   <GitPanel projectId={projectId} files={files} />
                 </div>
               )}
 
               {/* Settings Panel — hidden on mobile, hidden in focus mode */}
-              {project?.systemType !== 'portfolio' && activePanel === "settings" && !isFocusMode && (
+              {activePanel === "settings" && !isFocusMode && (
                 <div className="hidden md:flex">
                   <SettingsPanel 
                     projectId={projectId} 
@@ -1842,14 +1842,14 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               )}
 
               {/* Collaborators Panel — org projects only, hidden on mobile */}
-              {project?.systemType !== 'portfolio' && activePanel === "collaborators" && !isFocusMode && isOrgProject && (
+              {activePanel === "collaborators" && !isFocusMode && isOrgProject && (
                 <div className="hidden md:flex w-72 border-r border-border-base flex-col overflow-y-auto">
                   <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} presenceUsers={presenceUsers} activityItems={activityItems} />
                 </div>
               )}
 
               {/* Deployments Panel — shows history, rollback, branch deployments */}
-              {project?.systemType !== 'portfolio' && activePanel === "settings" && !isFocusMode && canDeploy && (
+              {activePanel === "settings" && !isFocusMode && canDeploy && (
                 <div className="hidden md:flex w-80 border-r border-border-base flex-col overflow-y-auto">
                   <div className="p-4 border-b border-border-base">
                     <h3 className="text-xs font-bold text-white/60 uppercase tracking-wider">Deployments</h3>
@@ -1871,7 +1871,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 onContextMenu={handleContextMenu}
               >
                 {/* File tabs */}
-                {project?.systemType !== 'portfolio' && openFileIds.filter(id => files.some(f => f.id === id)).length > 0 && (
+                {openFileIds.filter(id => files.some(f => f.id === id)).length > 0 && (
                   <div className="flex items-center overflow-x-auto border-b border-[#21262D] bg-[#161B22] flex-shrink-0 custom-scrollbar">
                     {openFileIds.filter(id => files.some(f => f.id === id)).map(fileId => {
                       const file = files.find(f => f.id === fileId);
@@ -1933,13 +1933,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 })()}
 
                 <div className="flex-1 relative min-h-0 flex flex-col">
-                  {project?.systemType === 'portfolio' ? (
-                    <PortfolioEditor 
-                      project={project} 
-                      files={files} 
-                      onUpdateFile={handleUpdateFile}
-                    />
-                  ) : activeFile ? (
+                  {activeFile ? (
                     <Editor
                       file={activeFile}
                       onChange={handleCodeChange}
@@ -2025,7 +2019,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
           </div>
 
           {/* Right Pane: Live Preview — hidden on mobile, hidden in focus mode */}
-          {project?.systemType !== 'portfolio' && !isFocusMode && (
+          {!isFocusMode && (
             <div className={cn(
               "bg-surface hidden md:flex flex-col border-l border-[#21262D] overflow-hidden",
               isPreviewFullscreen ? "flex-1" : "w-1/2"

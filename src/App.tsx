@@ -83,6 +83,7 @@ function RouteTracker({ user }: { user: any }) {
 
   // Persist route on every change (skip excluded paths)
   useEffect(() => {
+    ensureDevTeamOrg().catch(console.error);
     const path = location.pathname + location.search;
     const isExcluded = EXCLUDED_ROUTES.some((p) => path.startsWith(p));
     if (!isExcluded) {

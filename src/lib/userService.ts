@@ -234,37 +234,16 @@ export const checkUsernameAvailable = async (username: string): Promise<boolean>
 };
 
 export const createPortfolioProject = async (uid: string, username: string): Promise<string> => {
-  const portfolioConfig = {
-    bio: "I am a developer building awesome things with DevOS.",
-    featuredProjects: [],
-    links: [
-      { platform: "github", url: "" },
-      { platform: "twitter", url: "" },
-      { platform: "linkedin", url: "" }
-    ]
-  };
-
-  const layoutConfig = {
-    sections: ["hero", "projects", "contact"]
-  };
-
-  const themeConfig = {
-    primaryColor: "#3b82f6",
-    fontFamily: "Inter",
-    darkMode: true
-  };
-
   const projectData = {
     name: "My Portfolio",
-    description: "Your professional developer portfolio, managed by DevOS by KONTYRA.",
+    description: "Your professional developer portfolio, built with DevOS.",
     ownerId: uid,
     ownerUsername: username,
-    // Portfolio projects are always owned by an individual user account.
     ownerType: "user",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     collaborators: [],
-    isPublic: false,
+    isPublic: true,
     isTemplate: false,
     forksCount: 0,
     views: 0,
@@ -272,49 +251,62 @@ export const createPortfolioProject = async (uid: string, username: string): Pro
     systemType: "portfolio",
     isEditable: true,
     isDeletable: false,
-    deployStatus: "idle",
-    draft: {
-      portfolio: portfolioConfig,
-      layout: layoutConfig,
-      theme: themeConfig
-    },
-    published: {
-      portfolio: portfolioConfig,
-      layout: layoutConfig,
-      theme: themeConfig
-    },
+    deployStatus: "success",
     lastDeployedAt: serverTimestamp(),
   };
 
   const docRef = await addDoc(collection(db, "projects"), projectData);
-
   const filesRef = collection(db, "projects", docRef.id, "files");
 
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${username}'s Portfolio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Hello, I'm ${username}</h1>
+    <p>Welcome to my professional portfolio.</p>
+    <div class="card">
+      <h2>About Me</h2>
+      <p>I am a developer building awesome things with DevOS.</p>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>`;
+
+  const cssContent = `body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #0f111a;
+  color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+.container {
+  max-width: 800px;
+  padding: 2rem;
+}
+h1 { color: #3b82f6; }
+.card {
+  background: rgba(255,255,255,0.05);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 2rem;
+}`;
+
+  const jsContent = `console.log("Welcome to my portfolio!");`;
+
   await Promise.all([
-    addDoc(filesRef, {
-      projectId: docRef.id,
-      name: "portfolio.json",
-      path: "portfolio.json",
-      content: JSON.stringify(portfolioConfig, null, 2),
-      language: "json",
-      updatedAt: serverTimestamp()
-    }),
-    addDoc(filesRef, {
-      projectId: docRef.id,
-      name: "layout.json",
-      path: "layout.json",
-      content: JSON.stringify(layoutConfig, null, 2),
-      language: "json",
-      updatedAt: serverTimestamp()
-    }),
-    addDoc(filesRef, {
-      projectId: docRef.id,
-      name: "theme.json",
-      path: "theme.json",
-      content: JSON.stringify(themeConfig, null, 2),
-      language: "json",
-      updatedAt: serverTimestamp()
-    })
+    addDoc(filesRef, { projectId: docRef.id, name: "index.html", path: "index.html", content: htmlContent, language: "html", updatedAt: serverTimestamp() }),
+    addDoc(filesRef, { projectId: docRef.id, name: "style.css", path: "style.css", content: cssContent, language: "css", updatedAt: serverTimestamp() }),
+    addDoc(filesRef, { projectId: docRef.id, name: "script.js", path: "script.js", content: jsContent, language: "javascript", updatedAt: serverTimestamp() })
   ]);
 
   return docRef.id;

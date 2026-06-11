@@ -915,18 +915,19 @@ p {
                   </AnimatePresence>
                 </div>
               {/* ── Pin Button ── */}
-              <button
-                onClick={(e) => handleTogglePin(e, project)}
-                className={cn(
-                  "flex items-center justify-center px-3 py-2 rounded-lg transition-all",
-                  project.isPinned || (project.systemType === 'portfolio' && project.isSystem)
-                    ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                    : "bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"
-                )}
-                title={project.isPinned || (project.systemType === 'portfolio' && project.isSystem) ? "Unpin project" : "Pin project"}
-              >
-                <Pin className="w-3.5 h-3.5" />
-              </button>
+              {!(project.systemType === 'portfolio' && project.isSystem) && (
+                <button
+                  onClick={(e) => handleTogglePin(e, project)}
+                  className={`p-2 rounded-xl transition-all ${
+                    project.isPinned
+                      ? "bg-amber-500/20 text-amber-500 hover:bg-amber-500/30"
+                      : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"
+                  }`}
+                  title={project.isPinned ? "Unpin project" : "Pin project"}
+                >
+                  <Pin className="w-3.5 h-3.5" />
+                </button>
+              )}
               <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
               {project.isDeletable !== false && (
                 <button
