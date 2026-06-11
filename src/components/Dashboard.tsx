@@ -1292,6 +1292,40 @@ p {
       {/* ─── My Projects: Grouped Sections ─── */}
       {activeTab === "my-projects" && (
         <div className="space-y-8">
+          {/* Pinned Projects */}
+          {pinnedProjects.length > 0 && (
+            <div>
+              <button
+                onClick={() => toggleGroupCollapse("__pinned__")}
+                className="w-full flex items-center justify-between mb-4 group"
+              >
+                <div className="flex items-center gap-2">
+                  <Pin className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-bold text-amber-500 uppercase tracking-widest">Pinned Projects</span>
+                  <span className="px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold">
+                    {pinnedProjects.length}
+                  </span>
+                </div>
+                <ChevronDown className={cn("w-4 h-4 text-white/20 transition-transform", collapsedGroups.has("__pinned__") && "-rotate-90")} />
+              </button>
+              <AnimatePresence initial={false}>
+                {!collapsedGroups.has("__pinned__") && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {pinnedProjects.map((p, i) => renderCard(p, i))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
           {/* User-defined named groups */}
           {allGroupNames.map((groupName, gi) => {
             const groupProjects = groupedMap[groupName] ?? [];
