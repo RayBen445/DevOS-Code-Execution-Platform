@@ -5,7 +5,35 @@ import { cn } from "../lib/utils";
 
 const DEFAULT_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif";
 
-export 
+export interface ImageUploadProps {
+  /** Current image URL shown as the preview. */
+  value?: string;
+  /** Called with the validated File when a file is picked or dropped. */
+  onFile: (file: File) => void;
+  /** Called when the remove button is clicked (only shown when `value` is set). */
+  onRemove?: () => void;
+  /** Show a loading spinner + optional progress bar. */
+  uploading?: boolean;
+  /** Upload progress 0–100. Only rendered when `uploading` is true. */
+  progress?: number;
+  /** MIME type filter passed to the file input. Defaults to common image types. */
+  accept?: string;
+  /** Maximum file size in MB before showing an error. Defaults to 5. */
+  maxSizeMB?: number;
+  disabled?: boolean;
+  /**
+   * Visual variant:
+   *  - "circle"  — round avatar (≈80 px, used in profile modal)
+   *  - "square"  — square with rounded corners (96 px, used in settings page)
+   *  - "banner"  — full-width landscape rectangle (used for event/community banners)
+   */
+  shape?: "circle" | "square" | "banner";
+  /** Placeholder label shown in the drop zone. */
+  label?: string;
+  /** Small hint shown below the label (banner shape only). */
+  hint?: string;
+  className?: string;
+}
 
 /**
  * Universal image upload zone.

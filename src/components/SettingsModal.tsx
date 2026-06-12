@@ -56,10 +56,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         setBio(data.bio || "");
         setAvatarUrl(data.avatar || data.avatarUrl || auth.currentUser.photoURL || "");
         setAvatar(data.avatar || data.avatarUrl || "");
+        if (data.catboxUserhash) setCatboxUserhash(data.catboxUserhash);
+        if (data.bannerUrl) setBannerUrl(data.bannerUrl);
       } else if (settingsDoc.exists()) {
-          const settingsData = settingsDoc.data();
-          if (settingsData.catboxUserhash) setCatboxUserhash(settingsData.catboxUserhash);
-          if (settingsData.bannerUrl) setBannerUrl(settingsData.bannerUrl);
+        const settingsData = settingsDoc.data();
+        if (settingsData.catboxUserhash) setCatboxUserhash(settingsData.catboxUserhash);
+        if (settingsData.bannerUrl) setBannerUrl(settingsData.bannerUrl);
         const data = settingsDoc.data();
         setUsername(data.username || "");
         setDisplayName(data.displayName || auth.currentUser.displayName || "");
@@ -91,6 +93,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         bio,
         avatar: avatarUrl,
         avatarUrl,
+        catboxUserhash,
+        bannerUrl,
         updatedAt: serverTimestamp(),
       };
 
@@ -120,6 +124,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       const path = avatarPath(auth.currentUser.uid, file);
       const secureUrl = await uploadImage(file, path, {
+        catboxUserhash,
         onProgress: (pct) => setUploadProgress(pct),
       });
       setUploadProgress(100);
@@ -229,6 +234,42 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         value={username}
                         onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""))}
                         placeholder="johndoe"
+                        className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                        Profile Banner
+                      </label>
+                      <div className="flex items-center gap-4">
+                        {bannerUrl && (
+                          <div className="w-full h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                            <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <ImageUpload
+                          onFile={async (file) => {
+                            const url = await uploadImage(file, "banner", { catboxUserhash });
+                            setBannerUrl(url);
+                          }}
+                          accept="image/*"
+                          label={bannerUrl ? "Change Banner" : "Upload Banner"}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                        Catbox Userhash
+                      </label>
+                      <input
+                        type="password"
+                        value={catboxUserhash}
+                        onChange={(e) => setCatboxUserhash(e.target.value)}
+                        placeholder="Optional Catbox.moe userhash"
                         className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
                       />
                     </div>
