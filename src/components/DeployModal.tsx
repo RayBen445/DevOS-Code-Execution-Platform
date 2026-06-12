@@ -190,7 +190,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
         finalDeployUrl = data.url;
       } else {
         const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
-        if (projectData?.systemType === "portfolio") {
+        if (projectData?.systemType === "portfolio" || projectName.toLowerCase().includes("portfolio")) {
           finalDeployUrl = buildPortfolioUrl(username);
         } else {
           finalDeployUrl = buildProjectUrl(username, projectSlug);

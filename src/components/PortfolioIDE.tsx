@@ -7,6 +7,7 @@ import Sidebar from "./Sidebar";
 import GitPanel from "./GitPanel";
 import PreviewPanel from "./PreviewPanel";
 import SettingsPanel from "./SettingsPanel";
+import PortfolioMessages from "./PortfolioMessages";
 import DeployModal from "./DeployModal";
 import Editor from "./Editor";
 import Navbar from "./Navbar";
