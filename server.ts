@@ -24,6 +24,66 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
+
+
+// ---------------------------------------------------------------------------
+// Firebase Admin – initialised once at module level so every serverless
+// invocation (Vercel) reuses the same initialised instance.
+// ---------------------------------------------------------------------------
+let firebaseProjectId: string | undefined = process.env.FIREBASE_PROJECT_ID;
+let firebaseApiKey: string | undefined = process.env.FIREBASE_API_KEY;
+let firebaseDatabaseId: string | undefined = process.env.FIREBASE_DATABASE_ID;
+const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
+if (!firebaseProjectId || !firebaseApiKey || !firebaseDatabaseId) {
+  try {
+    const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
+    firebaseProjectId = firebaseProjectId || firebaseConfig.projectId;
+    firebaseApiKey = firebaseApiKey || firebaseConfig.apiKey;
+    firebaseDatabaseId = firebaseDatabaseId || firebaseConfig.firestoreDatabaseId;
+  } catch {
+    // Config file absent in production; FIREBASE_PROJECT_ID must be set
+  }
+}
+
+const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+const allowApplicationDefaultCredential =
+  process.env.FIREBASE_USE_APPLICATION_DEFAULT === "true" ||
+  !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+let adminCredential: admin.credential.Credential;
+if (serviceAccountJson) {
+  try {
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    adminCredential = admin.credential.cert(serviceAccount);
+  } catch {
+    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON; falling back to applicationDefault");
+    adminCredential = admin.credential.applicationDefault();
+  }
+} else if (process.env.VERCEL && !allowApplicationDefaultCredential) {
+  throw new Error(
+    "Firebase credentials not configured for Vercel deployment. Set FIREBASE_SERVICE_ACCOUNT_JSON, or set FIREBASE_USE_APPLICATION_DEFAULT=true / GOOGLE_APPLICATION_CREDENTIALS."
+  );
+} else {
+  adminCredential = admin.credential.applicationDefault();
+}
+
+// Guard against double-initialisation (warm Vercel instances reuse the module)
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: adminCredential,
+    projectId: firebaseProjectId,
+  });
+}
+
+const db = firebaseDatabaseId
+  ? getFirestore(admin.app(), firebaseDatabaseId)
+  : getFirestore(admin.app());
+
+// ---------------------------------------------------------------------------
+// Express app – module-level so Vercel can import and invoke it directly.
+// ---------------------------------------------------------------------------
+const app = express();
+
 // ---------------------------------------------------------------------------
 // Portfolio Contact Form API
 // ---------------------------------------------------------------------------
@@ -88,63 +148,6 @@ app.post("/api/portfolio/:projectId/contact", async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// Firebase Admin – initialised once at module level so every serverless
-// invocation (Vercel) reuses the same initialised instance.
-// ---------------------------------------------------------------------------
-let firebaseProjectId: string | undefined = process.env.FIREBASE_PROJECT_ID;
-let firebaseApiKey: string | undefined = process.env.FIREBASE_API_KEY;
-let firebaseDatabaseId: string | undefined = process.env.FIREBASE_DATABASE_ID;
-const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
-if (!firebaseProjectId || !firebaseApiKey || !firebaseDatabaseId) {
-  try {
-    const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
-    firebaseProjectId = firebaseProjectId || firebaseConfig.projectId;
-    firebaseApiKey = firebaseApiKey || firebaseConfig.apiKey;
-    firebaseDatabaseId = firebaseDatabaseId || firebaseConfig.firestoreDatabaseId;
-  } catch {
-    // Config file absent in production; FIREBASE_PROJECT_ID must be set
-  }
-}
-
-const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
-const allowApplicationDefaultCredential =
-  process.env.FIREBASE_USE_APPLICATION_DEFAULT === "true" ||
-  !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
-
-let adminCredential: admin.credential.Credential;
-if (serviceAccountJson) {
-  try {
-    const serviceAccount = JSON.parse(serviceAccountJson);
-    adminCredential = admin.credential.cert(serviceAccount);
-  } catch {
-    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON; falling back to applicationDefault");
-    adminCredential = admin.credential.applicationDefault();
-  }
-} else if (process.env.VERCEL && !allowApplicationDefaultCredential) {
-  throw new Error(
-    "Firebase credentials not configured for Vercel deployment. Set FIREBASE_SERVICE_ACCOUNT_JSON, or set FIREBASE_USE_APPLICATION_DEFAULT=true / GOOGLE_APPLICATION_CREDENTIALS."
-  );
-} else {
-  adminCredential = admin.credential.applicationDefault();
-}
-
-// Guard against double-initialisation (warm Vercel instances reuse the module)
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: adminCredential,
-    projectId: firebaseProjectId,
-  });
-}
-
-const db = firebaseDatabaseId
-  ? getFirestore(admin.app(), firebaseDatabaseId)
-  : getFirestore(admin.app());
-
-// ---------------------------------------------------------------------------
-// Express app – module-level so Vercel can import and invoke it directly.
-// ---------------------------------------------------------------------------
-const app = express();
 const trustProxySetting = process.env.EXPRESS_TRUST_PROXY?.trim();
 const trustProxyHopCount = trustProxySetting ? Number(trustProxySetting) : Number.NaN;
 if (trustProxySetting === "true") {
