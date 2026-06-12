@@ -3,7 +3,6 @@ import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { Mail, MailOpen, Trash2, Clock, Inbox, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Message {
@@ -13,6 +12,16 @@ interface Message {
   message: string;
   read: boolean;
   createdAt: any;
+}
+
+function formatTimeAgo(timestamp: number) {
+  const diff = Date.now() - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return \`\${minutes}m ago\`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return \`\${hours}h ago\`;
+  return new Date(timestamp).toLocaleDateString();
 }
 
 export default function PortfolioMessages({ projectId, onClose }: { projectId: string; onClose: () => void }) {
@@ -99,7 +108,7 @@ export default function PortfolioMessages({ projectId, onClose }: { projectId: s
                   <div className="flex items-center gap-1 text-[10px] text-white/40">
                     <Clock className="w-3 h-3" />
                     <span>
-                      {msg.createdAt?.toMillis ? formatDistanceToNow(msg.createdAt.toMillis(), { addSuffix: true }) : 'Just now'}
+                      {msg.createdAt?.toMillis ? formatTimeAgo(msg.createdAt.toMillis()) : 'Just now'}
                     </span>
                   </div>
                   <div className="flex gap-2">
