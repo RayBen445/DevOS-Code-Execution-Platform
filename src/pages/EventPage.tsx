@@ -14,6 +14,7 @@ import { Event, EventSpeaker, Speaker, EventRegistration } from "../types";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
+import { VUXEventWidget } from "../components/vux-sdk/VUXEventWidget";
 import { useSEO } from "../hooks/useSEO";
 import {
   Calendar,
