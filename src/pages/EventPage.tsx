@@ -325,7 +325,7 @@ export default function EventPage() {
 
           {/* Sidebar */}           <div className="lg:w-80 shrink-0">
             <VUXEventWidget 
-              apiKey="vux_0b11890c6cab13f4c37069002b8b76b6436e675c909155ae" 
+              apiKey={import.meta.env.VITE_VUX_API_KEY || ""} 
               eventId={event.id}
               currentUser={user ? { name: user.displayName || "User", email: user.email || "" } : undefined}
             />
