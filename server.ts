@@ -2213,6 +2213,29 @@ app.post("/api/build-job", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+
+// VUX Webhook Support
+// ---------------------------------------------------------------------------
+app.post("/api/vux-webhook", async (req, res) => {
+  // Extract the webhook secret to verify the request is genuinely from VUX Engine
+  const authHeader = req.headers.authorization;
+  const expectedSecret = process.env.VUX_WEBHOOK_SECRET;
+
+  if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+    return res.status(401).json({ error: "Invalid webhook secret" });
+  }
+
+  const payload = req.body;
+  
+  // Here we can process the incoming ticket.issued events from the VUX Engine
+  // For example: if (payload.event === "ticket.issued") { ... update Firestore ... }
+  
+  emitLog("info", `Received VUX Webhook for event: ${payload.event || 'unknown'}`);
+
+  // Acknowledge receipt to the VUX engine
+  return res.status(200).json({ received: true });
+});
+
 // External Deployment API (Vercel)
 // ---------------------------------------------------------------------------
 app.post("/api/deploy/vercel", express.json({ limit: "50mb" }), async (req, res) => {
