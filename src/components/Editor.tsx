@@ -133,6 +133,16 @@ export default function Editor({ file, onChange, projectId, readOnly, onCursorCh
     editorRef.current?.updateOptions({ wordWrap: wordWrap ? "on" : "off" });
   }, [wordWrap]);
 
+  // Sync content on file switch to ensure stale cached models are updated
+  useEffect(() => {
+    if (editorRef.current && file.id) {
+       const currentVal = editorRef.current.getValue();
+       if (currentVal !== file.content) {
+         editorRef.current.setValue(file.content);
+       }
+    }
+  }, [file.id]);
+
   // ── Toolbar actions ─────────────────────────────────────────────────────────
 
   const handleCopy = async () => {
@@ -236,7 +246,7 @@ export default function Editor({ file, onChange, projectId, readOnly, onCursorCh
           height="100%"
           path={file.id}
           language={file.language}
-          value={file.content}
+          defaultValue={file.content}
           onChange={(value) => onChange(value || "")}
           onMount={handleEditorMount}
           options={{

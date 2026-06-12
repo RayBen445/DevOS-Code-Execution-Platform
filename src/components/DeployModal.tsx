@@ -7,7 +7,7 @@ import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { deductCredits, CREDIT_COSTS } from "../lib/creditsService";
 import { emitBotEventWithToast } from "../lib/botEngine";
-import { buildProjectUrl } from "../lib/brand";
+import { buildProjectUrl, buildPortfolioUrl } from "../lib/brand";
 import { notifyDeployment } from "../lib/notificationService";
 import { createDeployment } from "../lib/deploymentService";
 import { trackActivity } from "../lib/activityService";
@@ -190,7 +190,11 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
         finalDeployUrl = data.url;
       } else {
         const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
-        finalDeployUrl = buildProjectUrl(username, projectSlug);
+        if (projectData?.systemType === "portfolio") {
+          finalDeployUrl = buildPortfolioUrl(username);
+        } else {
+          finalDeployUrl = buildProjectUrl(username, projectSlug);
+        }
         
         const projectRef = doc(db, "projects", projectId);
         await updateDoc(projectRef, {

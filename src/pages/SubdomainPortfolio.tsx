@@ -32,13 +32,18 @@ export default function SubdomainPortfolio({ username }: Props) {
       const filesRef = collection(db, "projects", projectData.id, "files");
       const filesSnap = await getDocs(filesRef);
       let html: string | null = null;
+      let css: string | null = null;
+      let js: string | null = null;
 
       const entryFile = projectData.entryFile || "index.html";
       for (const fileDoc of filesSnap.docs) {
         const fd = fileDoc.data();
         if (fd.path === entryFile || fd.name === entryFile || fileDoc.id === entryFile) {
           html = fd.content || fd.code || null;
-          break;
+        } else if (fd.name === "style.css") {
+          css = fd.content || fd.code || null;
+        } else if (fd.name === "script.js") {
+          js = fd.content || fd.code || null;
         }
       }
 
@@ -46,6 +51,21 @@ export default function SubdomainPortfolio({ username }: Props) {
         const draftDoc = await getDoc(doc(db, "projects", projectData.id));
         const draftData = draftDoc.data();
         html = draftData?.published?.files?.[entryFile] || draftData?.draft?.files?.[entryFile] || null;
+        if (!css) css = draftData?.published?.files?.["style.css"] || draftData?.draft?.files?.["style.css"] || null;
+        if (!js) js = draftData?.published?.files?.["script.js"] || draftData?.draft?.files?.["script.js"] || null;
+      }
+
+      if (html) {
+        if (css && !html.includes('style.css')) {
+          html = html.replace('</head>', `<style>${css}</style></head>`);
+        } else if (css && html.includes('style.css')) {
+          html = html.replace(/<link[^>]*href=["']style\.css["'][^>]*>/i, `<style>${css}</style>`);
+        }
+        if (js && !html.includes('script.js')) {
+          html = html.replace('</body>', `<script>${js}</script></body>`);
+        } else if (js && html.includes('script.js')) {
+          html = html.replace(/<script[^>]*src=["']script\.js["'][^>]*><\/script>/i, `<script>${js}</script>`);
+        }
       }
 
       setHtmlContent(html);
