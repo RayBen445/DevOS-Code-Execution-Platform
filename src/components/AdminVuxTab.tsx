@@ -17,14 +17,14 @@ export default function AdminVuxTab() {
     try {
       // 1. Ping (Latency)
       const startPing = Date.now();
-      await fetch(`${VUX_API_URL}/api/ping`).then((res) => {
+      await fetch(`${VUX_API_URL.replace(/\/+$/, "")}/ping`).then((res) => {
         if (!res.ok) throw new Error("Ping failed");
         return res.text();
       });
       setLatency(Date.now() - startPing);
 
       // 2. Speed
-      const speedRes = await fetch(`${VUX_API_URL}/api/speed`);
+      const speedRes = await fetch(`${VUX_API_URL.replace(/\/+$/, "")}/speed`);
       if (speedRes.ok) {
         setSpeedData(await speedRes.json());
       } else {
@@ -32,7 +32,7 @@ export default function AdminVuxTab() {
       }
 
       // 3. Health
-      const healthRes = await fetch(`${VUX_API_URL}/api/health`);
+      const healthRes = await fetch(`${VUX_API_URL.replace(/\/+$/, "")}/health`);
       if (healthRes.ok) {
         setHealthData(await healthRes.json());
       } else {
@@ -102,7 +102,7 @@ export default function AdminVuxTab() {
           value={latency !== null ? `${latency} ms` : "--"}
           icon={<Server className="w-4 h-4" />}
           statusColor={latency !== null && latency < 200 ? "text-emerald-400" : "text-amber-400"}
-          subtext="Round-trip time to /api/ping"
+          subtext="Round-trip time to /ping"
         />
         <StatCard
           title="Event Loop Delay"
