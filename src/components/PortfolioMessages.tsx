@@ -18,9 +18,9 @@ function formatTimeAgo(timestamp: number) {
   const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);
   if (minutes < 1) return 'Just now';
-  if (minutes < 60) return \`\${minutes}m ago\`;
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return \`\${hours}h ago\`;
+  if (hours < 24) return `${hours}h ago`;
   return new Date(timestamp).toLocaleDateString();
 }
 
@@ -94,13 +94,13 @@ export default function PortfolioMessages({ projectId, onClose }: { projectId: s
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className={`relative p-3 rounded-xl border transition-colors \${msg.read ? 'bg-white/5 border-white/5' : 'bg-blue-500/10 border-blue-500/20'}`}
+                className={`relative p-3 rounded-xl border transition-colors ${msg.read ? 'bg-white/5 border-white/5' : 'bg-blue-500/10 border-blue-500/20'}`}
               >
                 {!msg.read && <div className="absolute top-3 right-3 w-2 h-2 bg-blue-500 rounded-full" />}
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h3 className={`text-sm font-medium \${msg.read ? 'text-white/80' : 'text-white'}`}>{msg.name}</h3>
-                    <a href={`mailto:\${msg.email}`} className="text-xs text-blue-400 hover:underline">{msg.email}</a>
+                    <h3 className={`text-sm font-medium ${msg.read ? 'text-white/80' : 'text-white'}`}>{msg.name}</h3>
+                    <a href={`mailto:${msg.email}`} className="text-xs text-blue-400 hover:underline">{msg.email}</a>
                   </div>
                 </div>
                 <p className="text-xs text-white/70 whitespace-pre-wrap mt-2">{msg.message}</p>
