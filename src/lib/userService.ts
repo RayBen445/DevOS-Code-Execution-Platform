@@ -468,7 +468,29 @@ export const resolveUsernameChangeRequest = async (
   adminUid: string,
   rejectionReason?: string
 ): Promise<void> => {
-  await updateDoc(doc(db, "username_change_requests", requestId), {
+  const reqRef = doc(db, "username_change_requests", requestId);
+  
+  if (action === "approved") {
+    const reqSnap = await getDoc(reqRef);
+    if (reqSnap.exists()) {
+      const data = reqSnap.data() as import('../types').UsernameChangeRequest;
+      const newUsername = data.requestedUsername.toLowerCase();
+      
+      const batch = writeBatch(db);
+      batch.update(doc(db, "users", data.userId), { username: newUsername });
+      batch.update(doc(db, "user_settings", data.userId), { username: newUsername });
+      batch.update(reqRef, {
+        status: action,
+        resolvedAt: serverTimestamp(),
+        resolvedBy: adminUid,
+        ...(rejectionReason ? { rejectionReason } : {}),
+      });
+      await batch.commit();
+      return;
+    }
+  }
+
+  await updateDoc(reqRef, {
     status: action,
     resolvedAt: serverTimestamp(),
     resolvedBy: adminUid,
