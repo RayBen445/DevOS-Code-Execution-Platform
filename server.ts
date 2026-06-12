@@ -2217,12 +2217,22 @@ app.post("/api/build-job", async (req, res) => {
 // VUX Webhook Support
 // ---------------------------------------------------------------------------
 app.post("/api/vux-webhook", async (req, res) => {
-  // Extract the webhook secret to verify the request is genuinely from VUX Engine
-  const authHeader = req.headers.authorization;
-  const expectedSecret = process.env.VUX_WEBHOOK_SECRET;
+  // Extract the webhook signing secret to mathematically verify the request is genuinely from VUX Engine
+  const signature = req.headers["x-vux-signature"];
+  const signingSecret = process.env.VUX_SIGNING_SECRET;
 
-  if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
-    return res.status(401).json({ error: "Invalid webhook secret" });
+  if (signingSecret && signature) {
+    const crypto = require("crypto");
+    const hmac = crypto.createHmac("sha256", signingSecret);
+    const bodyString = JSON.stringify(req.body);
+    const expectedSignature = hmac.update(bodyString).digest("hex");
+
+    // Check if the signature matches exactly or with a "sha256=" prefix
+    if (signature !== expectedSignature && signature !== `sha256=${expectedSignature}`) {
+      return res.status(401).json({ error: "Invalid webhook signature" });
+    }
+  } else if (signingSecret && !signature) {
+    return res.status(401).json({ error: "Missing webhook signature" });
   }
 
   const payload = req.body;
@@ -2230,7 +2240,7 @@ app.post("/api/vux-webhook", async (req, res) => {
   // Here we can process the incoming ticket.issued events from the VUX Engine
   // For example: if (payload.event === "ticket.issued") { ... update Firestore ... }
   
-  emitLog("info", `Received VUX Webhook for event: ${payload.event || 'unknown'}`);
+  emitLog("info", `Received mathematically verified VUX Webhook for event: ${payload.event || 'unknown'}`);
 
   // Acknowledge receipt to the VUX engine
   return res.status(200).json({ received: true });
