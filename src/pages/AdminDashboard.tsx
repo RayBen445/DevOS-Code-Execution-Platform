@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
 import AdminThemesTab from "../components/AdminThemesTab";
+import AdminVuxTab from "../components/AdminVuxTab";
 import KoraChatWidget from "../components/KoraChatWidget";
 import { useAuthState } from "react-firebase-hooks/auth";
 import {
@@ -109,7 +110,7 @@ import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 import CustomSelect from "../components/CustomSelect";
 
-type Tab = "overview" | "templates" | "themes" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events" | "learn" | "kora";
+type Tab = "overview" | "templates" | "themes" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events" | "learn" | "kora" | "vux";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -1920,6 +1921,7 @@ User request: ${aiTestPrompt.trim()}`;
     { id: "events", label: "Events", icon: <Calendar className="w-4 h-4" /> },
     { id: "learn", label: "Learn", icon: <BookOpen className="w-4 h-4" /> },
     { id: "kora", label: "KORA AI", icon: <Bot className="w-4 h-4" /> },
+      { id: "vux", label: "VUX Status", icon: <Activity className="w-4 h-4" /> },
     { id: "site", label: "Site Settings", icon: <Globe className="w-4 h-4" /> },
   ];
 
