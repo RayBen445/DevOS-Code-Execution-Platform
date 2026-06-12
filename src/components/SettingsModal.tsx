@@ -26,7 +26,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatar, setAvatar] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
-  const [catboxUserhash, setCatboxUserhash] = useState("");
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -56,11 +55,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         setBio(data.bio || "");
         setAvatarUrl(data.avatar || data.avatarUrl || auth.currentUser.photoURL || "");
         setAvatar(data.avatar || data.avatarUrl || "");
-        if (data.catboxUserhash) setCatboxUserhash(data.catboxUserhash);
         if (data.bannerUrl) setBannerUrl(data.bannerUrl);
       } else if (settingsDoc.exists()) {
         const settingsData = settingsDoc.data();
-        if (settingsData.catboxUserhash) setCatboxUserhash(settingsData.catboxUserhash);
         if (settingsData.bannerUrl) setBannerUrl(settingsData.bannerUrl);
         const data = settingsDoc.data();
         setUsername(data.username || "");
@@ -93,7 +90,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         bio,
         avatar: avatarUrl,
         avatarUrl,
-        catboxUserhash,
         bannerUrl,
         updatedAt: serverTimestamp(),
       };
@@ -124,7 +120,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       const path = avatarPath(auth.currentUser.uid, file);
       const secureUrl = await uploadImage(file, path, {
-        catboxUserhash,
         onProgress: (pct) => setUploadProgress(pct),
       });
       setUploadProgress(100);
@@ -252,7 +247,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         )}
                         <ImageUpload
                           onFile={async (file) => {
-                            const url = await uploadImage(file, "banner", { catboxUserhash });
+                            const url = await uploadImage(file, "banner", {});
                             setBannerUrl(url);
                           }}
                           accept="image/*"
@@ -261,18 +256,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                        Catbox Userhash
-                      </label>
-                      <input
-                        type="password"
-                        value={catboxUserhash}
-                        onChange={(e) => setCatboxUserhash(e.target.value)}
-                        placeholder="Optional Catbox.moe userhash"
-                        className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
-                      />
-                    </div>
+                    
                   </div>
 
                   <div className="space-y-2">

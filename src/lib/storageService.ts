@@ -45,11 +45,11 @@ export async function uploadImage(
 ): Promise<string> {
   let finalFile = file;
 
-  if (opts.catboxUserhash) {
+  if (import.meta.env.VITE_CATBOX_USERHASH) {
     if (opts.onProgress) opts.onProgress(20);
     const formData = new FormData();
     formData.append("reqtype", "fileupload");
-    formData.append("userhash", opts.catboxUserhash);
+    formData.append("userhash", import.meta.env.VITE_CATBOX_USERHASH);
     formData.append("fileToUpload", file);
 
     try {
