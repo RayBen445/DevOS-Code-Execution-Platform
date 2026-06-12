@@ -5,61 +5,59 @@ import { initializeUser, updateStreak } from "./lib/userService";
 import { getMaintenanceConfig, MaintenanceConfig } from "./lib/creditsService";
 import { useUITheme } from "./hooks/useUITheme";
 import Navbar from "./components/Navbar";
-import Dashboard from "./components/Dashboard";
-import OrgDashboard from "./components/OrgDashboard";
 import { useActiveContext } from "./hooks/useActiveContext";
-import IDE from "./components/IDE";
-import PortfolioIDE from "./components/PortfolioIDE";
-import Login from "./components/Login";
-import Home from "./components/Home";
+
+
+
+
 import Footer from "./components/Footer";
-import FeedHome from "./components/FeedHome";
+
 import MobileBottomNav from "./components/MobileBottomNav";
-import PrivacyPage from "./pages/PrivacyPage";
-import TermsPage from "./pages/TermsPage";
-import CookiePolicyPage from "./pages/CookiePolicyPage";
-import AcceptableUsePage from "./pages/AcceptableUsePage";
-import CopyrightPage from "./pages/CopyrightPage";
-import ProjectPreview from "./pages/ProjectPreview";
-import ProjectView from "./pages/ProjectView";
-import MarketplacePage from "./pages/MarketplacePage";
-import TemplatePreviewPage from "./pages/TemplatePreviewPage";
-import AdminDashboard from "./pages/AdminDashboard";
-import StatusPage from "./pages/StatusPage";
-import DocsPage from "./pages/DocsPage";
-import SettingsPage from "./pages/SettingsPage";
-import ThemeStudio from "./components/ThemeStudio";
-import SearchPage from "./pages/SearchPage";
-import ExplorePage from "./pages/ExplorePage";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import ScrollToTop from "./components/ScrollToTop";
 import ConfigGuard from "./components/ConfigGuard";
 import MaintenancePage from "./components/MaintenancePage";
 import PageMaintenanceBanner from "./components/PageMaintenanceBanner";
-import OrgPage from "./pages/OrgPage";
-import OrgsPage from "./pages/OrgsPage";
-import AboutPage from "./pages/AboutPage";
-import ContactPage from "./pages/ContactPage";
-import BotsPage from "./pages/BotsPage";
-import Portfolio from "./pages/Portfolio";
-import NotFoundPage from "./pages/NotFoundPage";
+
+
+
+
+
+
+
 import SubdomainRouter from "./components/SubdomainRouter";
 import SubdomainNotFound from "./components/SubdomainNotFound";
 import SubdomainReserved from "./components/SubdomainReserved";
-import SubdomainOrg from "./pages/SubdomainOrg";
-import SubdomainOrgProject from "./pages/SubdomainOrgProject";
-import CommunitiesPage from "./pages/CommunitiesPage";
-import CommunityPage from "./pages/CommunityPage";
-import LearnPage from "./pages/LearnPage";
-import LearnTopicPage from "./pages/LearnTopicPage";
-import LearnLessonPage from "./pages/LearnLessonPage";
-import LearnDynamicLessonPage from "./pages/LearnDynamicLessonPage";
-import EventsPage from "./pages/EventsPage";
-import EventPage from "./pages/EventPage";
-import CreateEventPage from "./pages/CreateEventPage";
-import SpeakersPage from "./pages/SpeakersPage";
-import SpeakerPage from "./pages/SpeakerPage";
-import CommunityChatPage from "./pages/CommunityChatPage";
-import OrgChatPage from "./pages/OrgChatPage";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { Zap, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, Navigate, useParams, useLocation, useNavigate } from "react-router-dom";
@@ -73,6 +71,54 @@ import CommandPalette from "./components/CommandPalette";
 import OfflineGame from "./components/OfflineGame";
 
 import { Toaster } from "sonner";
+
+// Lazy loaded components
+const Dashboard = React.lazy(() => import("./components/Dashboard"));
+const OrgDashboard = React.lazy(() => import("./components/OrgDashboard"));
+const IDE = React.lazy(() => import("./components/IDE"));
+const PortfolioIDE = React.lazy(() => import("./components/PortfolioIDE"));
+const Login = React.lazy(() => import("./components/Login"));
+const Home = React.lazy(() => import("./components/Home"));
+const FeedHome = React.lazy(() => import("./components/FeedHome"));
+const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage"));
+const TermsPage = React.lazy(() => import("./pages/TermsPage"));
+const CookiePolicyPage = React.lazy(() => import("./pages/CookiePolicyPage"));
+const AcceptableUsePage = React.lazy(() => import("./pages/AcceptableUsePage"));
+const CopyrightPage = React.lazy(() => import("./pages/CopyrightPage"));
+const ProjectPreview = React.lazy(() => import("./pages/ProjectPreview"));
+const ProjectView = React.lazy(() => import("./pages/ProjectView"));
+const MarketplacePage = React.lazy(() => import("./pages/MarketplacePage"));
+const TemplatePreviewPage = React.lazy(() => import("./pages/TemplatePreviewPage"));
+const AdminDashboard = React.lazy(() => import("./pages/AdminDashboard"));
+const StatusPage = React.lazy(() => import("./pages/StatusPage"));
+const DocsPage = React.lazy(() => import("./pages/DocsPage"));
+const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
+const ThemeStudio = React.lazy(() => import("./components/ThemeStudio"));
+const SearchPage = React.lazy(() => import("./pages/SearchPage"));
+const ExplorePage = React.lazy(() => import("./pages/ExplorePage"));
+const OrgPage = React.lazy(() => import("./pages/OrgPage"));
+const OrgsPage = React.lazy(() => import("./pages/OrgsPage"));
+const AboutPage = React.lazy(() => import("./pages/AboutPage"));
+const ContactPage = React.lazy(() => import("./pages/ContactPage"));
+const BotsPage = React.lazy(() => import("./pages/BotsPage"));
+const Portfolio = React.lazy(() => import("./pages/Portfolio"));
+const NotFoundPage = React.lazy(() => import("./pages/NotFoundPage"));
+const SubdomainOrg = React.lazy(() => import("./pages/SubdomainOrg"));
+const SubdomainOrgProject = React.lazy(() => import("./pages/SubdomainOrgProject"));
+const CommunitiesPage = React.lazy(() => import("./pages/CommunitiesPage"));
+const CommunityPage = React.lazy(() => import("./pages/CommunityPage"));
+const LearnPage = React.lazy(() => import("./pages/LearnPage"));
+const LearnTopicPage = React.lazy(() => import("./pages/LearnTopicPage"));
+const LearnLessonPage = React.lazy(() => import("./pages/LearnLessonPage"));
+const LearnDynamicLessonPage = React.lazy(() => import("./pages/LearnDynamicLessonPage"));
+const EventsPage = React.lazy(() => import("./pages/EventsPage"));
+const EventPage = React.lazy(() => import("./pages/EventPage"));
+const CreateEventPage = React.lazy(() => import("./pages/CreateEventPage"));
+const SpeakersPage = React.lazy(() => import("./pages/SpeakersPage"));
+const SpeakerPage = React.lazy(() => import("./pages/SpeakerPage"));
+const CommunityChatPage = React.lazy(() => import("./pages/CommunityChatPage"));
+const OrgChatPage = React.lazy(() => import("./pages/OrgChatPage"));
+
 
 /* ─── Paths excluded from tracking (privacy-sensitive or utility) ─── */
 const EXCLUDED_ROUTES = ["/admin", "/settings", "/privacy", "/terms", "/cookies", "/acceptable-use", "/copyright", "/docs", "/status"];
@@ -546,7 +592,7 @@ export default function App() {
         <ScrollToTop />
         <RouteTracker user={user} />
         <AnimatePresence mode="wait">
-          <Routes>
+          <React.Suspense fallback={<PremiumLoader mode="lightweight" message="Loading Workspace..." />}><Routes>
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/cookies" element={<CookiePolicyPage />} />
@@ -626,7 +672,7 @@ export default function App() {
             />
             {/* 404 catch-all */}
             <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+          </Routes></React.Suspense>
         </AnimatePresence>
         <CommandPalette />
       </ConfigGuard>
