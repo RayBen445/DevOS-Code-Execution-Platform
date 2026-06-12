@@ -322,98 +322,12 @@ export default function EventPage() {
             )}
           </div>
 
-          {/* Sidebar — RSVP */}
-          <div className="lg:w-80 shrink-0">
-            <div className="sticky top-6 bg-white/5 border border-border-base rounded-2xl p-5">
-              <div className="text-sm text-white/50 mb-1">
-                {registrationCount} {registrationCount === 1 ? "person" : "people"} registered
-              </div>
-              <h3 className="text-lg font-bold text-white mb-4">Register for this event</h3>
-
-              {event.status !== "approved" ? (
-                <p className="text-white/40 text-sm text-center py-4">
-                  This event is pending approval and not yet open for registration.
-                </p>
-              ) : rsvpDone ? (
-                <div className="text-center py-4">
-                  <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-3" />
-                  <p className="font-semibold text-white mb-1">You're in! 🎉</p>
-                  <p className="text-white/50 text-sm">Your spot has been reserved.</p>
-                </div>
-              ) : (
-                <AnimatePresence mode="wait">
-                  {!showRsvp ? (
-                    <motion.button
-                      key="register-btn"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setShowRsvp(true)}
-                      className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all"
-                    >
-                      Register / RSVP
-                    </motion.button>
-                  ) : (
-                    <motion.form
-                      key="rsvp-form"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      onSubmit={handleRsvp}
-                      className="space-y-3"
-                    >
-                      <div>
-                        <label className="block text-xs text-white/50 mb-1">Full Name *</label>
-                        <input
-                          type="text"
-                          value={rsvpName}
-                          onChange={(e) => setRsvpName(e.target.value)}
-                          placeholder="Your name"
-                          required
-                          className="w-full px-3 py-2 bg-white/5 border border-border-base rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-white/50 mb-1">Email *</label>
-                        <input
-                          type="email"
-                          value={rsvpEmail}
-                          onChange={(e) => setRsvpEmail(e.target.value)}
-                          placeholder="you@example.com"
-                          required
-                          className="w-full px-3 py-2 bg-white/5 border border-border-base rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-white/50 mb-1">Phone (optional)</label>
-                        <input
-                          type="tel"
-                          value={rsvpPhone}
-                          onChange={(e) => setRsvpPhone(e.target.value)}
-                          placeholder="+1 555 000 0000"
-                          className="w-full px-3 py-2 bg-white/5 border border-border-base rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={rsvpLoading}
-                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
-                      >
-                        {rsvpLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                        Confirm Registration
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowRsvp(false)}
-                        className="w-full py-2 text-white/40 hover:text-white/70 text-xs transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </motion.form>
-                  )}
-                </AnimatePresence>
-              )}
-            </div>
+          {/* Sidebar */}           <div className="lg:w-80 shrink-0">
+            <VUXEventWidget 
+              apiKey="vux_test_123" 
+              eventId={event.id}
+              currentUser={user ? { name: user.displayName || "User", email: user.email || "" } : undefined}
+            />
           </div>
         </div>
       </div>
