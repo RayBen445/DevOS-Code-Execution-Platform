@@ -266,8 +266,8 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         return;
       }
       
-      const docRef = await addDoc(collection(db, "projects"), {
-      appId: generateAppId(),
+      const projectData: any = {
+        appId: generateAppId(),
         name: newProjectName,
         projectSlug,
         description: newProjectDescription || template.description,
@@ -280,9 +280,14 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         isTemplate: false,
         forksCount: 0,
         views: 0,
-        deployUrl: `/@${settings?.username || "anonymous"}/${projectSlug}`,
-        systemType: template.id === "premium-portfolio" ? "portfolio" : undefined
-      });
+        deployUrl: `/@${settings?.username || "anonymous"}/${projectSlug}`
+      };
+      
+      if (template.id === "premium-portfolio") {
+        projectData.systemType = "portfolio";
+      }
+      
+      const docRef = await addDoc(collection(db, "projects"), projectData);
 
       // Create default files based on template
       const filesRef = collection(db, "projects", docRef.id, "files");
