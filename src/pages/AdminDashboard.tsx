@@ -4677,6 +4677,8 @@ User request: ${aiTestPrompt.trim()}`;
                 )}
 
                 {/* Learn Tab */}
+                {activeTab === "vux" && (<AdminVuxTab />)}
+
                 {activeTab === "kora" && (
           <div className="space-y-6" style={{ height: "calc(100vh - 200px)" }}>
             <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-6 h-full flex flex-col">
