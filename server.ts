@@ -24,55 +24,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
-// ---------------------------------------------------------------------------
-// Portfolio Contact Form API
-// ---------------------------------------------------------------------------
-app.post("/api/portfolio/:projectId/contact", async (req, res) => {
-  const { projectId } = req.params;
-  const { name, email, message } = req.body;
-
-  if (!name || !email || !message) {
-    return res.status(400).json({ error: "Name, email, and message are required." });
-  }
-
-  try {
-    const projectRef = db.collection("projects").doc(projectId);
-    const projectSnap = await projectRef.get();
-    
-    if (!projectSnap.exists) {
-      return res.status(404).json({ error: "Portfolio not found." });
-    }
-
-    const projectData = projectSnap.data();
-    const ownerId = projectData?.userId;
-    
-    if (!ownerId) {
-      return res.status(500).json({ error: "Portfolio owner not found." });
-    }
-
-    // Save message to subcollection
-    const messagesRef = projectRef.collection("messages");
-    await messagesRef.add({
-      name,
-      email,
-      message,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      read: false
-    });
-
-    // Fetch owner email
-    const ownerSnap = await db.collection("users").doc(ownerId).get();
-    const ownerEmail = ownerSnap.data()?.email;
-
-    if (ownerEmail) {
-      // Schedule an email notification
-      await db.collection("email_jobs").add({
-        to: ownerEmail,
-        template: "portfolio_message",
-        status: "queued",
-        data: {
-          name,
-          email,
           message,
           projectId
         },
@@ -146,6 +97,55 @@ const db = firebaseDatabaseId
 // ---------------------------------------------------------------------------
 const app = express();
 const trustProxySetting = process.env.EXPRESS_TRUST_PROXY?.trim();
+// ---------------------------------------------------------------------------
+// Portfolio Contact Form API
+// ---------------------------------------------------------------------------
+app.post("/api/portfolio/:projectId/contact", async (req, res) => {
+  const { projectId } = req.params;
+  const { name, email, message } = req.body;
+
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: "Name, email, and message are required." });
+  }
+
+  try {
+    const projectRef = db.collection("projects").doc(projectId);
+    const projectSnap = await projectRef.get();
+    
+    if (!projectSnap.exists) {
+      return res.status(404).json({ error: "Portfolio not found." });
+    }
+
+    const projectData = projectSnap.data();
+    const ownerId = projectData?.userId;
+    
+    if (!ownerId) {
+      return res.status(500).json({ error: "Portfolio owner not found." });
+    }
+
+    // Save message to subcollection
+    const messagesRef = projectRef.collection("messages");
+    await messagesRef.add({
+      name,
+      email,
+      message,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      read: false
+    });
+
+    // Fetch owner email
+    const ownerSnap = await db.collection("users").doc(ownerId).get();
+    const ownerEmail = ownerSnap.data()?.email;
+
+    if (ownerEmail) {
+      // Schedule an email notification
+      await db.collection("email_jobs").add({
+        to: ownerEmail,
+        template: "portfolio_message",
+        status: "queued",
+        data: {
+          name,
+          email,
 const trustProxyHopCount = trustProxySetting ? Number(trustProxySetting) : Number.NaN;
 if (trustProxySetting === "true") {
   app.set("trust proxy", true);
