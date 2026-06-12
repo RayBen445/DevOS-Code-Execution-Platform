@@ -1754,7 +1754,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
               
 
               {/* Deployments */}
-              {mobileTab === "deployments" && canDeploy && (
+              {false && canDeploy && (
                 <div className="h-full overflow-y-auto p-4">
                   <h3 className="text-sm font-bold text-white mb-4">Deployments</h3>
                   <DeploymentDashboard
@@ -1767,7 +1767,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
               )}
 
               {/* Collaborators (org projects only) */}
-              {mobileTab === "collaborators" && isOrgProject && (
+              {false && isOrgProject && (
                 <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} presenceUsers={presenceUsers} activityItems={activityItems} />
               )}
             </motion.div>
@@ -1806,7 +1806,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
               
 
               {/* Collaborators Panel — org projects only, hidden on mobile */}
-              {activePanel === "collaborators" && !isFocusMode && isOrgProject && (
+              {false && !isFocusMode && isOrgProject && (
                 <div className="hidden md:flex w-72 border-r border-border-base flex-col overflow-y-auto">
                   <CollaboratorsPanel orgMembers={orgMembers} loading={orgMembersLoading} currentUserId={user?.uid} ownerId={project?.ownerId} presenceUsers={presenceUsers} activityItems={activityItems} />
                 </div>
@@ -1940,7 +1940,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
             </div>
 
             {/* Terminal — hidden in focus mode; on mobile it shows as a bottom sheet */}
-            {activePanel === "terminal" && !isFocusMode && (
+            {false && !isFocusMode && (
               <motion.div 
                 initial={{ y: 256 }}
                 animate={{ y: 0 }}

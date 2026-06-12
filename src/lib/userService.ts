@@ -8,7 +8,7 @@ import {
   where, 
   getDocs, 
   addDoc, 
-  serverTimestamp,
+  serverTimestamp, writeBatch,
   updateDoc,
   orderBy,
   limit,
@@ -477,8 +477,8 @@ export const resolveUsernameChangeRequest = async (
       const newUsername = data.requestedUsername.toLowerCase();
       
       const batch = writeBatch(db);
-      batch.update(doc(db, "users", data.userId), { username: newUsername });
-      batch.update(doc(db, "user_settings", data.userId), { username: newUsername });
+      batch.update(doc(db, "users", data.uid), { username: newUsername });
+      batch.update(doc(db, "user_settings", data.uid), { username: newUsername });
       batch.update(reqRef, {
         status: action,
         resolvedAt: serverTimestamp(),
