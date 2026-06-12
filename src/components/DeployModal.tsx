@@ -190,7 +190,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
         finalDeployUrl = data.url;
       } else {
         const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
-        if (projectData?.systemType === "portfolio" || projectName.toLowerCase().includes("portfolio")) {
+        if (projectData?.systemType === "portfolio" || projectName.toLowerCase().includes("portfolio") || projectName.toLowerCase().includes("portflolio")) {
           finalDeployUrl = buildPortfolioUrl(username);
         } else {
           finalDeployUrl = buildProjectUrl(username, projectSlug);
@@ -384,10 +384,10 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                     />
                   </div>
                   <h3 className="text-2xl font-bold mb-3 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
-                    {project.systemType === "portfolio" ? "Syncing your portfolio..." : "Deploying your project..."}
+                    {projectName.toLowerCase().includes("portfolio") || projectName.toLowerCase().includes("portflolio") ? "Syncing your portfolio..." : "Deploying your project..."}
                   </h3>
                   <p className="text-white/40 text-sm max-w-[240px]">
-                    {project.systemType === "portfolio" ? "Publishing your digital presence and routing globally..." : "Provisioning edge servers and optimizing your assets"}
+                    {projectName.toLowerCase().includes("portfolio") || projectName.toLowerCase().includes("portflolio") ? "Publishing your digital presence and routing globally..." : "Provisioning edge servers and optimizing your assets"}
                   </p>
                   
                   <div className="mt-10 w-full max-w-[200px] h-1 bg-white/5 rounded-full overflow-hidden">

@@ -283,35 +283,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         deployUrl: `/@${settings?.username || "anonymous"}/${projectSlug}`
       };
       
-      if (template.id === "premium-portfolio") {
-        projectData.systemType = "portfolio";
-      }
-      
-      const docRef = await addDoc(collection(db, "projects"), projectData);
-
-      // Create default files based on template
-      const filesRef = collection(db, "projects", docRef.id, "files");
-      
-      
-      if (template.id === "premium-portfolio") {
-        const displayName = settings?.displayName || settings?.username || "Developer";
-        const username = settings?.username || "anonymous";
-        
-        let portfolioJsonString = JSON.stringify(premiumPortfolioTemplate, null, 2);
-        portfolioJsonString = portfolioJsonString.replace(/{{displayName}}/g, displayName);
-        portfolioJsonString = portfolioJsonString.replace(/{{username}}/g, username);
-
-        await addDoc(filesRef, {
-          projectId: docRef.id,
-          name: "portfolio.json",
-          path: "/portfolio.json",
-          content: portfolioJsonString,
-          language: "json",
-          updatedAt: serverTimestamp()
-        });
-      }
-
-      if (template.source === "hardcoded") {
+      if (template.files && template.files.length > 0) {
         const filePromises = template.files.map(file => 
           addDoc(filesRef, { 
             projectId: docRef.id,
