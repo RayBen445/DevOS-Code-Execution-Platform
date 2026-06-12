@@ -6,6 +6,8 @@ import { getMaintenanceConfig, MaintenanceConfig } from "./lib/creditsService";
 import { useUITheme } from "./hooks/useUITheme";
 import Navbar from "./components/Navbar";
 import Dashboard from "./components/Dashboard";
+import OrgDashboard from "./components/OrgDashboard";
+import { useActiveContext } from "./hooks/useActiveContext";
 import IDE from "./components/IDE";
 import PortfolioIDE from "./components/PortfolioIDE";
 import Login from "./components/Login";

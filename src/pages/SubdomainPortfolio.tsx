@@ -25,7 +25,7 @@ export default function SubdomainPortfolio({ username }: Props) {
   useEffect(() => {
     if (!username) return;
 
-    const loadProjectContent = async (projectData: Project) => {
+    const loadProjectContent = async (projectData: Project, userData: any) => {
       setProject(projectData);
 
       // Try to load published HTML from project files subcollection

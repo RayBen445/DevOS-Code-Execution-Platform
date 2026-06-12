@@ -384,10 +384,10 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                     />
                   </div>
                   <h3 className="text-2xl font-bold mb-3 bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
-                    Deploying your project...
+                    {project.systemType === "portfolio" ? "Syncing your portfolio..." : "Deploying your project..."}
                   </h3>
                   <p className="text-white/40 text-sm max-w-[240px]">
-                    Provisioning edge servers and optimizing your assets
+                    {project.systemType === "portfolio" ? "Publishing your digital presence and routing globally..." : "Provisioning edge servers and optimizing your assets"}
                   </p>
                   
                   <div className="mt-10 w-full max-w-[200px] h-1 bg-white/5 rounded-full overflow-hidden">
