@@ -23,6 +23,7 @@ import {
 import imageCompression from "browser-image-compression";
 
 export interface UploadOptions {
+  catboxUserhash?: string;
   /** Optional upload progress callback 0–100. Only supported for Firebase fallback. */
   onProgress?: (pct: number) => void;
   /** Skip image compression if true. */
@@ -43,6 +44,29 @@ export async function uploadImage(
   opts: UploadOptions = {}
 ): Promise<string> {
   let finalFile = file;
+
+  if (opts.catboxUserhash) {
+    if (opts.onProgress) opts.onProgress(20);
+    const formData = new FormData();
+    formData.append("reqtype", "fileupload");
+    formData.append("userhash", opts.catboxUserhash);
+    formData.append("fileToUpload", file);
+
+    try {
+      const response = await fetch("https://catbox.moe/user/api.php", {
+        method: "POST",
+        body: formData,
+      });
+      if (response.ok) {
+        const url = await response.text();
+        if (opts.onProgress) opts.onProgress(100);
+        return url;
+      }
+    } catch (e) {
+      console.error("Catbox upload failed, falling back", e);
+    }
+  }
+
 
   // Force compression to stay well under Firestore 1MB limits (Base64 adds ~33% overhead)
   if (file.type.startsWith("image/") && file instanceof File) {

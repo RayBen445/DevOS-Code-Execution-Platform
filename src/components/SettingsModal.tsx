@@ -25,6 +25,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatar, setAvatar] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
+  const [catboxUserhash, setCatboxUserhash] = useState("");
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -55,6 +57,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         setAvatarUrl(data.avatar || data.avatarUrl || auth.currentUser.photoURL || "");
         setAvatar(data.avatar || data.avatarUrl || "");
       } else if (settingsDoc.exists()) {
+          const settingsData = settingsDoc.data();
+          if (settingsData.catboxUserhash) setCatboxUserhash(settingsData.catboxUserhash);
+          if (settingsData.bannerUrl) setBannerUrl(settingsData.bannerUrl);
         const data = settingsDoc.data();
         setUsername(data.username || "");
         setDisplayName(data.displayName || auth.currentUser.displayName || "");
