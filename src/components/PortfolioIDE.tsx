@@ -959,7 +959,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
       toast.error("Failed to sync template");
     }
   };
-\n  const handleQueueDeploy = async (branch = "main") => {
+  const handleQueueDeploy = async (branch = "main") => {
     if (!user || !project) return;
 
     // Permission check

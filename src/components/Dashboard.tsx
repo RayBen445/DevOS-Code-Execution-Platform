@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check, Search, Pin, PinOff } from "lucide-react";
+import * as lucideIcons from "lucide-react";
+import { LayoutTemplate, Folder, Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check, Search, Pin, PinOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime, toValidDate, generateAppId } from '../lib/utils';
@@ -1125,7 +1126,7 @@ p {
                     .filter(t => selectedCategory === "All Templates" || t.category === selectedCategory)
                     .map(template => {
                       const isSelected = selectedTemplateId === template.id;
-                      const Icon = lucideIcons[template.icon as keyof typeof lucideIcons] || lucideIcons.Code;
+                      const Icon = ((lucideIcons as any)[template.icon] as React.ElementType) || lucideIcons.Code;
                       return (
                         <div
                           key={template.id}
@@ -1224,7 +1225,7 @@ p {
                         visibility === "private" ? "bg-blue-600/10 border-blue-500 text-white" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
                       )}
                     >
-                      <Lock className="w-6 h-6" />
+                      <lucideIcons.Lock className="w-6 h-6" />
                       <span className="font-bold text-sm">Private</span>
                     </button>
                   </div>

@@ -13,7 +13,7 @@ export default function InteractiveDemoTour({ run, onFinish }: InteractiveDemoTo
         target: 'body',
         content: 'Welcome to DevOS! Let\'s take a quick tour of your new workspace.',
         placement: 'center',
-        disableBeacon: true,
+        
       },
       {
         target: '#tour-explorer',

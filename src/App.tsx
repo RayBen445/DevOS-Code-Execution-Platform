@@ -43,6 +43,8 @@ import PageMaintenanceBanner from "./components/PageMaintenanceBanner";
 import SubdomainRouter from "./components/SubdomainRouter";
 import SubdomainNotFound from "./components/SubdomainNotFound";
 import SubdomainReserved from "./components/SubdomainReserved";
+import SwipeNavigation from "./components/SwipeNavigation";
+const NewProjectPage = React.lazy(() => import("./pages/NewProjectPage"));
 
 
 
@@ -103,7 +105,7 @@ const OrgPage = React.lazy(() => import("./pages/OrgPage"));
 const OrgsPage = React.lazy(() => import("./pages/OrgsPage"));
 const AboutPage = React.lazy(() => import("./pages/AboutPage"));
 const ContactPage = React.lazy(() => import("./pages/ContactPage"));
-const BotsPage = React.lazy(() => import("./pages/BotsPage"));
+
 const Portfolio = React.lazy(() => import("./pages/Portfolio"));
 const NotFoundPage = React.lazy(() => import("./pages/NotFoundPage"));
 const SubdomainOrg = React.lazy(() => import("./pages/SubdomainOrg"));
@@ -594,6 +596,7 @@ export default function App() {
       <ConfigGuard>
         <ScrollToTop />
         <RouteTracker user={user} />
+        <SwipeNavigation />
         <AnimatePresence mode="wait">
           <React.Suspense fallback={<PremiumLoader mode="lightweight" message="Loading Workspace..." />}><Routes>
             <Route path="/privacy" element={<PrivacyPage />} />
@@ -607,6 +610,7 @@ export default function App() {
             <Route path="/project/:projectId" element={withPageMaintenance("/project", <ProjectView />)} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/status" element={<StatusPage />} />
+            <Route path="/new" element={withPageMaintenance("/new", <NewProjectPage />)} />
             <Route path="/docs" element={withPageMaintenance("/docs", <DocsPage />)} />
             <Route path="/settings" element={withPageMaintenance("/settings", <SettingsPage />)} />
             <Route path="/theme-studio" element={withPageMaintenance("/theme-studio", <ThemeStudio />)} />
@@ -626,7 +630,7 @@ export default function App() {
             <Route path="/communities/:slug/chat" element={<CommunitySlugRedirect chat />} />
             <Route path="/c/:slug" element={withPageMaintenance("/communities", <CommunityPage />)} />
             <Route path="/c/:slug/chat" element={withPageMaintenance("/communities", <CommunityChatPage />)} />
-            <Route path="/bots" element={withPageMaintenance("/bots", <BotsPage />)} />
+
             <Route path="/events" element={withPageMaintenance("/events", <EventsPage />)} />
             <Route path="/events/create" element={withPageMaintenance("/events", <CreateEventPage />)} />
             <Route path="/events/:slug" element={withPageMaintenance("/events", <EventPage />)} />

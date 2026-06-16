@@ -111,6 +111,7 @@ export interface PullRequest {
 }
 
 export interface UserSettings {
+  role?: string;
   username?: string;
   displayName?: string;
   fullName?: string;

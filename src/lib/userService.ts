@@ -260,12 +260,12 @@ export const createPortfolioProject = async (uid: string, username: string): Pro
   const docRef = await addDoc(collection(db, "projects"), projectData);
   const filesRef = collection(db, "projects", docRef.id, "files");
 
-  const htmlContent = `<!DOCTYPE html>
+  let htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${username}'s Portfolio</title>
+  <title>${username} | DevOS</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -300,7 +300,7 @@ export const createPortfolioProject = async (uid: string, username: string): Pro
 </body>
 </html>`;
 
-  const cssContent = `body {
+  let cssContent = `body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
   background-color: #0f111a;
@@ -370,7 +370,7 @@ button:hover {
   text-align: center;
 }`;
 
-  const jsContent = `console.log("Welcome to my portfolio!");
+  let jsContent = `console.log("Welcome to my portfolio!");
 
 document.getElementById('contact-form')?.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -385,6 +385,134 @@ document.getElementById('contact-form')?.addEventListener('submit', (e) => {
     document.getElementById('form-status').classList.remove('hidden');
   }, 800);
 });`;
+
+  // Custom Portfolios for Official/Reserved Users
+  if (username === "admin" || username === "support" || RESERVED_SUBDOMAINS.has(username)) {
+    htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevOS ${username.charAt(0).toUpperCase() + username.slice(1)} | Official</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="glass-container">
+    <div class="badge">Official DevOS ${username.charAt(0).toUpperCase() + username.slice(1)}</div>
+    <h1>We are here to help.</h1>
+    <p>Welcome to the official DevOS ${username} portal. We build the tools that empower developers worldwide.</p>
+    
+    <div class="action-grid">
+      <div class="action-card">
+        <h3>Documentation</h3>
+        <p>Explore our comprehensive guides and API references.</p>
+        <a href="https://devos.com/docs" target="_blank" class="btn">Read Docs</a>
+      </div>
+      <div class="action-card">
+        <h3>Contact Us</h3>
+        <p>Need assistance? Reach out to our team directly.</p>
+        <a href="mailto:support@devos.com" class="btn btn-outline">Email Support</a>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>`;
+
+    cssContent = `body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: radial-gradient(circle at top right, #1e1b4b, #0f111a);
+  color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+* { box-sizing: border-box; }
+.glass-container {
+  max-width: 800px;
+  padding: 3rem;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+.badge {
+  display: inline-block;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+h1 { 
+  font-size: 3rem; 
+  margin: 0 0 1rem 0;
+  background: linear-gradient(135deg, #fff, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+p {
+  color: #94a3b8;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin-bottom: 2.5rem;
+}
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+@media (max-width: 600px) {
+  .action-grid { grid-template-columns: 1fr; }
+}
+.action-card {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: transform 0.3s, border-color 0.3s;
+}
+.action-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+.action-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+}
+.action-card p {
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+.btn {
+  display: inline-block;
+  background: #3b82f6;
+  color: white;
+  text-decoration: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+.btn:hover { background: #2563eb; }
+.btn-outline {
+  background: transparent;
+  border: 1px solid #3b82f6;
+  color: #60a5fa;
+}
+.btn-outline:hover {
+  background: rgba(59, 130, 246, 0.1);
+}`;
+
+    jsContent = `console.log("DevOS Official Portfolio initialized.");`;
+  }
 
   await Promise.all([
     addDoc(filesRef, { projectId: docRef.id, name: "index.html", path: "index.html", content: htmlContent, language: "html", updatedAt: serverTimestamp() }),

@@ -61,6 +61,7 @@ import MobileBottomNav from "./MobileBottomNav";
 import Avatar from "./Avatar";
 import ConfirmModal from "./ConfirmModal";
 import { MarkdownContent } from "./MarkdownContent";
+import TiptapEditor from "./TiptapEditor";
 import PremiumEditor from "./PremiumEditor";
 import { useSEO } from "../hooks/useSEO";
 import { emitBotEventWithToast } from "../lib/botEngine";
@@ -563,6 +564,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                     onDelete={(p) => setDeleteConfirmPost(p)}
                     onEdit={handleEditPost}
                     index={i}
+                    isAdmin={settings?.role === "admin"}
                   />
                 ))
               )}
@@ -864,7 +866,7 @@ function PostComposerModal({
               </div>
 
               {/* Textarea */}
-              <PremiumEditor
+              <TiptapEditor
                 value={postText}
                 onChange={setPostText}
                 placeholder="What are you building? Use markdown..."
@@ -874,8 +876,8 @@ function PostComposerModal({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    if (postText.trim() && !isPublishing) {
-                      handlePublish();
+                    if (postText.trim() && !isPosting) {
+                      handleSubmitPost();
                     }
                   }
                 }}
@@ -1037,6 +1039,7 @@ function FeedItem({
   onDelete: (post: FeedPost) => void;
   onEdit?: (postId: string, newContent: string) => void;
   index: number;
+  isAdmin?: boolean;
 }) {
   const liked = userId ? (post.likedBy?.includes(userId) ?? false) : false;
   const avatarUrl = resolveAvatar(post.avatarUrl || null);
@@ -1200,7 +1203,7 @@ function FeedItem({
               {TYPE_LABEL[post.type] ?? post.type}
             </span>
           )}
-          {userId === post.userId && (
+          {(userId === post.userId || isAdmin) && (
             <div className="flex items-center gap-1">
               {onEdit && (
                 <button
@@ -1228,7 +1231,7 @@ function FeedItem({
       {/* Content (only show if not a silent repost) */}
       {isEditingPost ? (
         <div className="mb-3 space-y-2 border border-white/10 rounded-xl p-2 bg-black/20">
-          <PremiumEditor
+          <TiptapEditor
             value={editContent}
             onChange={setEditContent}
             currentUserId={userId}
