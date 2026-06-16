@@ -276,6 +276,25 @@ export const createPortfolioProject = async (uid: string, username: string): Pro
       <h2>About Me</h2>
       <p>I am a developer building awesome things with DevOS.</p>
     </div>
+    <div class="card" id="contact">
+      <h2>Contact Me</h2>
+      <form id="contact-form">
+        <div class="form-group">
+          <label for="name">Name</label>
+          <input type="text" id="name" required placeholder="Your name" />
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" required placeholder="Your email" />
+        </div>
+        <div class="form-group">
+          <label for="message">Message</label>
+          <textarea id="message" rows="4" required placeholder="Your message"></textarea>
+        </div>
+        <button type="submit">Send Message</button>
+      </form>
+      <div id="form-status" class="hidden">Message sent successfully!</div>
+    </div>
   </div>
   <script src="script.js"></script>
 </body>
@@ -291,6 +310,7 @@ export const createPortfolioProject = async (uid: string, username: string): Pro
   align-items: center;
   min-height: 100vh;
 }
+* { box-sizing: border-box; }
 .container {
   max-width: 800px;
   padding: 2rem;
@@ -301,9 +321,70 @@ h1 { color: #3b82f6; }
   padding: 1.5rem;
   border-radius: 12px;
   margin-top: 2rem;
+}
+.form-group {
+  margin-bottom: 1rem;
+}
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+input, textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: white;
+  font-family: inherit;
+}
+input:focus, textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%;
+}
+button:hover {
+  background: #2563eb;
+}
+.hidden {
+  display: none;
+}
+#form-status {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+  border-radius: 8px;
+  text-align: center;
 }`;
 
-  const jsContent = `console.log("Welcome to my portfolio!");`;
+  const jsContent = `console.log("Welcome to my portfolio!");
+
+document.getElementById('contact-form')?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  const originalText = btn.innerText;
+  btn.innerText = 'Sending...';
+  btn.disabled = true;
+  
+  // Simulate network request
+  setTimeout(() => {
+    e.target.style.display = 'none';
+    document.getElementById('form-status').classList.remove('hidden');
+  }, 800);
+});`;
 
   await Promise.all([
     addDoc(filesRef, { projectId: docRef.id, name: "index.html", path: "index.html", content: htmlContent, language: "html", updatedAt: serverTimestamp() }),

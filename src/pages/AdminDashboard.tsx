@@ -1960,9 +1960,15 @@ User request: ${aiTestPrompt.trim()}`;
 
   return (
     <>
-    <div className="min-h-screen bg-base text-white flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col relative overflow-hidden">
+      {/* Glowing background elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-red-600/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
+      </div>
+
       {/* Top Navbar */}
-      <div className="border-b border-border-base bg-base/80 backdrop-blur-md sticky top-0 z-30">
+      <div className="border-b border-white/5 bg-black/40 backdrop-blur-xl sticky top-0 z-30">
         <div className="flex items-center justify-between h-14 px-4 md:px-6">
           <div className="flex items-center gap-3">
             {/* Mobile hamburger */}
@@ -1998,9 +2004,9 @@ User request: ${aiTestPrompt.trim()}`;
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative z-10">
         {/* Desktop sidebar */}
-        <aside className="hidden md:flex w-60 flex-shrink-0 flex-col border-r border-border-base bg-base overflow-y-auto">
+        <aside className="hidden md:flex w-64 flex-shrink-0 flex-col border-r border-white/5 bg-black/20 backdrop-blur-md overflow-y-auto custom-scrollbar">
           <SidebarNav />
         </aside>
 
@@ -5257,17 +5263,18 @@ function StatCard({
   color: "blue" | "green" | "purple";
 }) {
   const colors = {
-    blue: "bg-blue-600/20 text-blue-400",
-    green: "bg-green-600/20 text-green-400",
-    purple: "bg-purple-600/20 text-purple-400",
+    blue: "bg-blue-600/20 text-blue-400 border-blue-500/20 shadow-[0_0_15px_rgba(37,99,235,0.15)]",
+    green: "bg-green-600/20 text-green-400 border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.15)]",
+    purple: "bg-purple-600/20 text-purple-400 border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)]",
   };
   return (
-    <div className="p-6 rounded-2xl bg-card border border-border-base">
-      <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4", colors[color])}>
+    <div className="relative group p-6 rounded-3xl bg-white/[0.02] border border-white/5 overflow-hidden transition-all hover:bg-white/[0.04] hover:border-white/10">
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-4 border transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3", colors[color])}>
         {icon}
       </div>
-      <p className="text-4xl font-extrabold text-white mb-1">{value}</p>
-      <p className="text-white/40 text-sm font-medium">{label}</p>
+      <p className="text-4xl font-black text-white mb-1 tracking-tight">{value}</p>
+      <p className="text-white/40 text-xs font-bold uppercase tracking-widest">{label}</p>
     </div>
   );
 }
@@ -5285,7 +5292,7 @@ function TemplateCard({
 }) {
   const isBusy = moderating === template.id;
   return (
-    <div className="p-5 rounded-2xl bg-card border border-border-base">
+    <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] transition-all">
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="font-bold text-white text-lg">{template.name}</p>

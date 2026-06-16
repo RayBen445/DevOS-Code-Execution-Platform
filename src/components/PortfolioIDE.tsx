@@ -911,7 +911,55 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
    * Queue a build job and immediately dispatch it to the server.
    * Streams live logs via Socket.io; UI updates via subscribeProjectBuildJobs.
    */
-  const handleQueueDeploy = async (branch = "main") => {
+  
+  const handleSyncTemplate = async () => {
+    if (!project) return;
+    try {
+      addLog("system", `devos ▶ sync-template --target ${project.id}`);
+      await animateStep("Fetching latest template...");
+      
+      const filesRef = collection(db, "projects", project.id, "files");
+      const filesSnap = await getDocs(filesRef);
+      
+      let htmlDoc, cssDoc, jsDoc;
+      filesSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.name === 'index.html') htmlDoc = { id: doc.id, ...data };
+        if (data.name === 'style.css') cssDoc = { id: doc.id, ...data };
+        if (data.name === 'script.js') jsDoc = { id: doc.id, ...data };
+      });
+      
+      await animateStep("Merging changes...");
+      
+      // Inject contact section if missing
+      if (htmlDoc && !htmlDoc.content.includes('id="contact"')) {
+        const newHtml = htmlDoc.content.replace('</div>\n  </div>\n  <script', '</div>\n    <div class="card" id="contact">\n      <h2>Contact Me</h2>\n      <form id="contact-form">\n        <div class="form-group">\n          <label for="name">Name</label>\n          <input type="text" id="name" required placeholder="Your name" />\n        </div>\n        <div class="form-group">\n          <label for="email">Email</label>\n          <input type="email" id="email" required placeholder="Your email" />\n        </div>\n        <div class="form-group">\n          <label for="message">Message</label>\n          <textarea id="message" rows="4" required placeholder="Your message"></textarea>\n        </div>\n        <button type="submit">Send Message</button>\n      </form>\n      <div id="form-status" class="hidden">Message sent successfully!</div>\n    </div>\n  </div>\n  <script');
+        await updateDoc(doc(db, "projects", project.id, "files", htmlDoc.id), { content: newHtml });
+      }
+      
+      if (cssDoc && !cssDoc.content.includes('.form-group')) {
+        const newCss = cssDoc.content + '\n.form-group { margin-bottom: 1rem; } label { display: block; margin-bottom: 0.5rem; color: #94a3b8; font-size: 0.875rem; } input, textarea { width: 100%; padding: 0.75rem; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-family: inherit; } input:focus, textarea:focus { outline: none; border-color: #3b82f6; } button { background: #3b82f6; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s; width: 100%; } button:hover { background: #2563eb; } .hidden { display: none; } #form-status { margin-top: 1rem; padding: 1rem; background: rgba(34, 197, 94, 0.1); color: #4ade80; border-radius: 8px; text-align: center; }';
+        await updateDoc(doc(db, "projects", project.id, "files", cssDoc.id), { content: newCss });
+      }
+      
+      if (jsDoc && !jsDoc.content.includes('contact-form')) {
+        const newJs = jsDoc.content + '\n\ndocument.getElementById(\'contact-form\')?.addEventListener(\'submit\', (e) => { e.preventDefault(); const btn = e.target.querySelector(\'button\'); btn.innerText = \'Sending...\'; btn.disabled = true; setTimeout(() => { e.target.style.display = \'none\'; document.getElementById(\'form-status\').classList.remove(\'hidden\'); }, 800); });';
+        await updateDoc(doc(db, "projects", project.id, "files", jsDoc.id), { content: newJs });
+      }
+      
+      addLog("success", "✔ Template sync completed successfully");
+      toast.success("Portfolio template synced successfully!");
+      
+      // Reload window to fetch updated files
+      setTimeout(() => window.location.reload(), 1000);
+      
+    } catch (err) {
+      console.error(err);
+      addLog("error", "✖ Template sync failed");
+      toast.error("Failed to sync template");
+    }
+  };
+\n  const handleQueueDeploy = async (branch = "main") => {
     if (!user || !project) return;
 
     // Permission check

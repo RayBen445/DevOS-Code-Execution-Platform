@@ -1,231 +1,96 @@
-import { useCallback, useEffect, useState } from "react";
-import type { LucideIcon } from "lucide-react";
-import {
-  ArrowLeft, Bot, BotMessageSquare, Zap, ToggleRight, ToggleLeft,
-  Terminal, RefreshCw, Play, CheckCircle2, Clock, AlertCircle, Info,
-  Cpu, Shield, Code2, Rocket, MessageSquare,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft, Sparkles, Brain, Cpu, Zap, Code2, Lock, Rocket } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MobileBottomNav from "../components/MobileBottomNav";
-import { getBotsForUI, getBotLogsForUI, setBotEnabledForUI, initializeDefaultBots, runBotTestFlow } from "../lib/botEngine";
 import { useSEO } from "../hooks/useSEO";
-import { cn } from "../lib/utils";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
-
-const BOT_COMMANDS: Array<{ cmd: string; desc: string; icon: LucideIcon }> = [
-  { cmd: "/help", desc: "List all available bot commands", icon: Info },
-  { cmd: "/deploy", desc: "Trigger a deploy for the current project", icon: Rocket },
-  { cmd: "/run", desc: "Run the project in the terminal", icon: Play },
-  { cmd: "/ai", desc: "Ask the AI assistant a question", icon: Cpu },
-];
-
-const LOG_LEVEL_STYLES: Record<string, string> = {
-  info: "text-blue-400 border-blue-500/20 bg-blue-500/5",
-  warning: "text-yellow-400 border-yellow-500/20 bg-yellow-500/5",
-  error: "text-red-400 border-red-500/20 bg-red-500/5",
-  success: "text-green-400 border-green-500/20 bg-green-500/5",
-};
-
-const LOG_LEVEL_ICON: Record<string, LucideIcon> = {
-  info: Info, warning: AlertCircle, error: AlertCircle, success: CheckCircle2,
-};
-
-function getBotTypeIcon(type: string): LucideIcon {
-  if (type === "automation") return Cpu;
-  if (type === "moderation") return Shield;
-  if (type === "chat") return MessageSquare;
-  if (type === "code") return Code2;
-  return Bot;
-}
 
 export default function BotsPage() {
-  useSEO({ title: "Bots — DevOS", description: "Manage and monitor DevOS automation bots." });
+  useSEO({ title: "DevOS AI  Coming Soon", description: "The next generation of AI-assisted coding is under development." });
 
-  const [bots, setBots] = useState<any[]>([]);
-  const [logs, setLogs] = useState<any[]>([]);
-  const [testing, setTesting] = useState(false);
-
-  const refresh = useCallback(() => {
-    initializeDefaultBots();
-    setBots(getBotsForUI());
-    setLogs(getBotLogsForUI());
-  }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
-
-  const handleTest = async () => {
-    setTesting(true);
-    try {
-      await runBotTestFlow();
-      refresh();
-      toast.success("Bot test flow complete — check logs below.");
-    } catch {
-      toast.error("Test flow failed.");
-    } finally {
-      setTesting(false);
-    }
-  };
+  const features = [
+    { icon: Brain, title: "Deep Context Understanding", desc: "Our AI reads your entire workspace to provide hyper-relevant suggestions." },
+    { icon: Zap, title: "Real-time Pair Programming", desc: "Code side-by-side with an agent that anticipates your next move." },
+    { icon: Code2, title: "Automated Refactoring", desc: "Instantly upgrade legacy code to modern standards with one click." },
+    { icon: Lock, title: "Enterprise Grade Security", desc: "Your code never leaves your private DevOS environment." },
+  ];
 
   return (
-    <div className="min-h-screen bg-base text-white flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col font-sans selection:bg-blue-500/30">
       <Navbar />
-
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-10 pb-24 md:pb-10 space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
-              <Bot className="w-8 h-8 text-blue-400" />
-              Bots Control Center
-            </h1>
-            <p className="text-white/40 text-sm mt-1">Manage automation, chat, and moderation bots</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={refresh}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Refresh
-            </button>
-            <button
-              onClick={handleTest}
-              disabled={testing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50"
-            >
-              {testing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-              Run Test Flow
-            </button>
-          </div>
+      
+      <main className="flex-1 relative overflow-hidden pt-20 pb-32">
+        {/* Abstract Glowing Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
+          <div className="w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px] mix-blend-screen animate-pulse" />
+          <div className="absolute top-1/4 right-1/4 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[100px] mix-blend-screen" style={{ animation: "pulse 4s infinite reverse" }} />
         </div>
 
-        {/* Commands reference */}
-        <div className="bg-white/[0.03] border border-border-base rounded-2xl p-5">
-          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-blue-400" />
-            Bot Commands (Terminal)
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {BOT_COMMANDS.map(({ cmd, desc, icon: Icon }) => (
-              <div key={cmd} className="bg-white/5 border border-border-base rounded-xl p-3">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Icon className="w-4 h-4 text-blue-400 shrink-0" />
-                  <code className="text-xs font-mono font-bold text-white">{cmd}</code>
-                </div>
-                <p className="text-[11px] text-white/40 leading-relaxed">{desc}</p>
-              </div>
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 text-blue-400 mb-8 mt-8"
+          >
+            <Sparkles className="w-5 h-5" />
+            <span className="text-sm font-bold uppercase tracking-widest">Under Construction</span>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-6xl md:text-8xl font-black tracking-tighter leading-tight mb-6"
+          >
+            Meet your new <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">
+              Coding Co-pilot.
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-xl md:text-2xl text-white/50 max-w-2xl leading-relaxed mb-16 font-light"
+          >
+            We are hard at work developing the ultimate AI coding assistant native to DevOS. It learns your style, reviews your code, and helps you build faster than ever.
+          </motion.p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+            {features.map((feature, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + (idx * 0.1) }}
+                className="group relative p-8 rounded-3xl bg-white/[0.02] border border-white/5 overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <feature.icon className="w-10 h-10 text-blue-400 mb-6 group-hover:scale-110 transition-transform duration-500" />
+                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight">{feature.title}</h3>
+                <p className="text-white/40 leading-relaxed">{feature.desc}</p>
+              </motion.div>
             ))}
           </div>
-        </div>
 
-        {/* Registered bots */}
-        <div>
-          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-yellow-400" />
-            Registered Bots
-          </h2>
-          {bots.length === 0 ? (
-            <div className="bg-white/[0.03] border border-border-base rounded-2xl p-10 text-center text-white/30">
-              <Bot className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No bots registered yet. Click "Run Test Flow" to initialize.</p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-20 p-8 rounded-3xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/20 max-w-4xl flex flex-col md:flex-row items-center justify-between gap-8 backdrop-blur-md"
+          >
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-2 flex items-center gap-3">
+                <Rocket className="w-6 h-6 text-purple-400" />
+                Join the Waitlist
+              </h3>
+              <p className="text-white/60">Get early access to DevOS AI when it launches in beta.</p>
             </div>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-4">
-              {bots.map((bot: any, i: number) => {
-                const TypeIcon = getBotTypeIcon(bot.type);
-                return (
-                  <motion.div
-                    key={bot.name}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="bg-white/[0.03] border border-border-base hover:border-border-base rounded-2xl p-5 transition-all"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-blue-600/15 flex items-center justify-center shrink-0">
-                          <TypeIcon className="w-4 h-4 text-blue-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-white">{bot.name}</h3>
-                          <p className="text-xs text-white/40 capitalize">{bot.type || "automation"} bot</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => { setBotEnabledForUI(bot.name, !bot.enabled); refresh(); }}
-                        className="shrink-0"
-                        title={bot.enabled ? "Disable bot" : "Enable bot"}
-                      >
-                        {bot.enabled
-                          ? <ToggleRight className="w-8 h-8 text-green-400" />
-                          : <ToggleLeft className="w-8 h-8 text-white/25" />}
-                      </button>
-                    </div>
-
-                    {/* Events */}
-                    {bot.events?.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {bot.events.map((ev: string) => (
-                          <span key={ev} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-border-base text-white/50">
-                            {ev}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Permissions */}
-                    <div className="flex items-center gap-4 text-[11px] text-white/30">
-                      <span>Read: {bot.permissions?.read?.join(", ") || "none"}</span>
-                      <span>Write: {bot.permissions?.write?.join(", ") || "none"}</span>
-                    </div>
-
-                    {/* Status */}
-                    <div className={cn(
-                      "mt-3 flex items-center gap-1.5 text-xs font-medium",
-                      bot.enabled ? "text-green-400" : "text-white/30"
-                    )}>
-                      <div className={cn("w-1.5 h-1.5 rounded-full", bot.enabled ? "bg-green-400 animate-pulse" : "bg-white/20")} />
-                      {bot.enabled ? "Active" : "Inactive"}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Logs */}
-        <div>
-          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <BotMessageSquare className="w-4 h-4 text-purple-400" />
-            Activity Logs
-          </h2>
-          <div className="bg-base border border-border-base rounded-2xl p-4">
-            <div className="space-y-2 max-h-80 overflow-auto pr-1">
-              {logs.length === 0 ? (
-                <p className="text-sm text-white/30 py-4 text-center">No activity yet. Run the test flow to generate logs.</p>
-              ) : (
-                [...logs].reverse().map((log: any) => {
-                  const level = log.level || "info";
-                  const Icon = LOG_LEVEL_ICON[level] || Info;
-                  return (
-                    <div key={log.id} className={cn("flex items-start gap-3 p-3 rounded-xl border text-xs", LOG_LEVEL_STYLES[level] || LOG_LEVEL_STYLES.info)}>
-                      <Icon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p>{log.message}</p>
-                        <p className="text-white/30 mt-0.5 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {new Date(log.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+            <button className="px-8 py-4 bg-white text-black rounded-2xl font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.2)]">
+              Notify Me
+            </button>
+          </motion.div>
         </div>
       </main>
 

@@ -101,10 +101,6 @@ export function parseDevosHost(hostname: string): DevosHostTarget {
       const parts = slug.split("-");
       const appId = parts.pop()!;
       const projectSlug = parts.join("-");
-      
-      if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(appId)) {
-        return { kind: "reserved" };
-      }
       return { kind: "app-project", projectSlug, appId };
     }
     return { kind: "unknown" };
@@ -123,25 +119,16 @@ export function parseDevosHost(hostname: string): DevosHostTarget {
   const subdomains = subdomainPart.split(".").filter(Boolean).map(normalizeLabel);
   if (subdomains.length === 3 && subdomains[2] === "org") {
     const [projectSlug, orgSlug] = subdomains;
-    if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(orgSlug)) {
-      return { kind: "reserved" };
-    }
     return { kind: "org-project", projectSlug, orgSlug };
   }
 
   if (subdomains.length === 2 && subdomains[1] === "org") {
     const [orgSlug] = subdomains;
-    if (RESERVED_SUBDOMAINS.has(orgSlug)) {
-      return { kind: "reserved" };
-    }
     return { kind: "organization", orgSlug };
   }
 
   if (subdomains.length === 2) {
     const [projectSlug, username] = subdomains;
-    if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(username)) {
-      return { kind: "reserved" };
-    }
     // Return a legacy kind so App.tsx can redirect it to the hyphenated URL
     return { kind: "legacy-project", projectSlug, username };
   }
@@ -155,18 +142,11 @@ export function parseDevosHost(hostname: string): DevosHostTarget {
       const parts = slug.split("-");
       const username = parts.pop()!;
       const projectSlug = parts.join("-");
-      
-      if (RESERVED_SUBDOMAINS.has(projectSlug) || RESERVED_SUBDOMAINS.has(username)) {
-        return { kind: "reserved" };
-      }
       return { kind: "project", projectSlug, username };
     }
     
     // No hyphens = portfolio
     const username = slug;
-    if (RESERVED_SUBDOMAINS.has(username)) {
-      return { kind: "reserved" };
-    }
     return { kind: "portfolio", username };
   }
 

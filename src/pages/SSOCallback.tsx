@@ -30,8 +30,9 @@ export default function SSOCallback() {
         })
         .catch((err) => {
           console.error("Token verification failed", err);
-          toast.error("Authentication failed. Please try again.");
-          navigate("/?login=true");
+          const errorMessage = err.message || err.code || "Unknown error";
+          toast.error(`Authentication failed: ${errorMessage}`);
+          navigate(`/?login=true&error=${encodeURIComponent(errorMessage)}`);
         });
     } else {
       // No token and no error, this shouldn't happen unless user visited route directly
