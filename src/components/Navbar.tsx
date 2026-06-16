@@ -227,7 +227,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     transition={{ duration: 0.13 }}
                     className="absolute left-0 top-full mt-2 w-52 bg-card border border-border-base rounded-xl shadow-xl overflow-hidden z-50"
                   >
-                    {userOrgs.length > 0 ? (
+                    {(userOrgs?.length || 0) > 0 ? (
                       <>
                         {userOrgs.map((org) => (
                           <Link
@@ -594,7 +594,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                     )}
                     <div className="border-t border-border-base my-1" />
                     {/* My Organizations — quick navigation links */}
-                    {userOrgs.length > 0 && (
+                    {(userOrgs?.length || 0) > 0 && (
                       <>
                         <div className="px-4 py-1.5">
                           <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Organizations</p>
@@ -728,7 +728,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto mt-4 px-5 pb-8 space-y-6">
+              <div className="flex-1 min-h-0 overflow-y-auto mt-4 px-5 pb-8 space-y-6">
                 
                 {/* Navigation Group */}
                 <div>
@@ -770,7 +770,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 </div>
 
                 {/* Workspace Group */}
-                {user && (userOrgs.length > 0 || true) && (
+                {user && ((userOrgs?.length || 0) > 0 || true) && (
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-3 px-1">Workspace</p>
                     <div className="space-y-1 bg-white/5 p-2 rounded-2xl border border-white/5">

@@ -95,6 +95,8 @@ const StatusPage = React.lazy(() => import("./pages/StatusPage"));
 const DocsPage = React.lazy(() => import("./pages/DocsPage"));
 const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
 const ThemeStudio = React.lazy(() => import("./components/ThemeStudio"));
+const SSOCallback = React.lazy(() => import("./pages/SSOCallback"));
+
 const SearchPage = React.lazy(() => import("./pages/SearchPage"));
 const ExplorePage = React.lazy(() => import("./pages/ExplorePage"));
 const OrgPage = React.lazy(() => import("./pages/OrgPage"));

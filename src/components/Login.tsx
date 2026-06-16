@@ -542,6 +542,27 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
             >
               <button
                 type="button"
+                onClick={() => {
+                  const targetApp = "devos";
+                  const returnUrl = encodeURIComponent("https://devos.kontyra.name.ng/sso-callback");
+                  const idpUrl = `https://accounts.kontyra.name.ng/auth?targetApp=${targetApp}&returnUrl=${returnUrl}`;
+                  window.location.href = idpUrl;
+                }}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 px-4 py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white transition-all text-base font-bold relative overflow-hidden group border border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                Continue with Kontyra
+              </button>
+
+              <div className="relative flex items-center py-2">
+                <div className="flex-grow border-t border-white/10"></div>
+                <span className="flex-shrink-0 mx-4 text-white/40 text-xs uppercase tracking-wider font-semibold">Or use legacy</span>
+                <div className="flex-grow border-t border-white/10"></div>
+              </div>
+
+              <button
+                type="button"
                 onClick={handleGoogleSignIn}
                 className="w-full py-4 bg-white/5 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-white/10 transition-all active:scale-[0.98]"
               >
