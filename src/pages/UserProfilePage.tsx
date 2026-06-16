@@ -4,8 +4,10 @@ import { collection, query, where, getDocs, orderBy, limit } from "firebase/fire
 import { db } from "../lib/firebase";
 import { UserSettings, FeedPost, Project } from "../types";
 import { resolveAvatar } from "../lib/avatars";
+import { buildPortfolioUrl } from "../lib/brand";
 import Navbar from "../components/Navbar";
-import { Calendar, Link as LinkIcon, MapPin, Grid, MessageSquare } from "lucide-react";
+import { Calendar, Link as LinkIcon, MapPin, Grid, MessageSquare, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { FeedPostShareCard, ProjectShareCard } from "../components/ShareAsImageCard";
 import { formatRelativeTime } from "../lib/utils";
 
@@ -94,7 +96,16 @@ export default function UserProfilePage() {
             <div className="w-32 h-32 rounded-full border-4 border-bg-base overflow-hidden bg-bg-base">
               <img src={resolveAvatar(userProfile.avatarUrl || userProfile.avatar)} alt="avatar" className="w-full h-full object-cover" />
             </div>
-            {/* If we had a follow system, follow button would go here */}
+                        <button
+              onClick={() => {
+                navigator.clipboard.writeText(buildPortfolioUrl(username!));
+                toast.success("Portfolio link copied!");
+              }}
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl font-medium text-sm flex items-center gap-2 border border-white/10 transition-all active:scale-95"
+            >
+              <Copy className="w-4 h-4" />
+              Copy Link
+            </button>
           </div>
 
           <div className="pt-20">
