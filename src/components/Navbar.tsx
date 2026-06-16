@@ -770,7 +770,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 </div>
 
                 {/* Workspace Group */}
-                {(userOrgs.length > 0 || true) && (
+                {user && (userOrgs.length > 0 || true) && (
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-3 px-1">Workspace</p>
                     <div className="space-y-1 bg-white/5 p-2 rounded-2xl border border-white/5">
@@ -811,6 +811,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                 )}
 
                 {/* Account Group */}
+                {user && (
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-3 px-1">Account</p>
                   <div className="space-y-1 bg-white/5 p-2 rounded-2xl border border-white/5">
@@ -875,19 +876,32 @@ export default function Navbar({ onSignIn }: NavbarProps) {
                   </div>
                 </div>
                 
+                )}
                 <div className="px-1">
                   <UIThemeSwitcher />
                 </div>
               </div>
 
               <div className="px-5 py-5 border-t border-white/5 bg-black/20">
-                <button
-                  onClick={() => { setIsMobileMenuOpen(false); if (user) logoutAccount(user.uid); else logout(); }}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-sm font-bold"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </button>
+                {user ? (
+                  <button
+                    onClick={() => { setIsMobileMenuOpen(false); if (user) logoutAccount(user.uid); else logout(); }}
+                    className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-sm font-bold"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={() => { setIsMobileMenuOpen(false); onSignIn?.(); }}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all text-sm font-bold"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      Sign In
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           </>

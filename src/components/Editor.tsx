@@ -191,7 +191,7 @@ export default function Editor({ file, onChange, projectId, readOnly, onCursorCh
 
   if (file.language === "image") {
     return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-base p-12 overflow-auto">
+      <div id="tour-editor" className="h-full w-full flex flex-col items-center justify-center bg-base p-12 overflow-auto">
         <div className="max-w-full max-h-full rounded-2xl border border-border-base overflow-hidden shadow-2xl shadow-black">
           <img 
             src={file.content} 

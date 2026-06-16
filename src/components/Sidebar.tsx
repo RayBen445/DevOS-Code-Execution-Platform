@@ -663,7 +663,7 @@ export default function Sidebar({ files, activeFileId, onSelectFile, projectId, 
 
       if (item.type === 'folder') {
         return (
-          <div key={item.path}>
+          <div key={item.path} id="tour-explorer">
             <div
               onClick={() => toggleFolder(item.path)}
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all group cursor-pointer text-white/40 hover:bg-white/5 hover:text-white/80"

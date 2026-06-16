@@ -370,7 +370,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
           isPublic: true,
         }).catch(() => {});
       }
-      onSelectProject(docRef.id);
+      window.location.href = '/project/' + docRef.id + '?demo=true';
     } catch (error) {
       console.error("Error creating project:", error);
       toast.error("Failed to create project", { id: toastId });
@@ -524,7 +524,7 @@ p {
       ]);
 
       toast.success("Demo project ready!", { id: toastId });
-      onSelectProject(docRef.id);
+      window.location.href = '/project/' + docRef.id + '?demo=true';
     } catch (error) {
       console.error("Error creating demo:", error);
       toast.error("Failed to load demo", { id: toastId });
@@ -611,7 +611,7 @@ p {
         forksCount: increment(1)
       });
 
-      onSelectProject(docRef.id);
+      window.location.href = '/project/' + docRef.id + '?demo=true';
     } catch (error) {
       console.error("Error forking project:", error);
     }

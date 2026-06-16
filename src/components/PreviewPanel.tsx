@@ -94,7 +94,7 @@ export default function PreviewPanel({ projectId, files, entryFile, saveKey }: P
   }
 
   return (
-    <div className="w-full bg-card flex flex-col h-full overflow-hidden">
+    <div id="tour-preview" className="w-full bg-card flex flex-col h-full overflow-hidden">
       <div className="p-4 flex items-center justify-between border-b border-border-base">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-blue-400" />

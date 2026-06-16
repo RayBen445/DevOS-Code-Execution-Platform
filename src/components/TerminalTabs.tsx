@@ -34,7 +34,7 @@ export default function TerminalTabs({ socket, onClose, cwd }: TerminalTabsProps
   };
 
   return (
-    <div className="flex flex-col w-full h-full bg-surface">
+    <div id="tour-terminal" className="flex flex-col w-full h-full bg-surface">
       {/* Tabs Header */}
       <div className="flex items-center bg-[#161B22] border-b border-[#21262D] h-9">
         <div className="flex-1 flex items-center overflow-x-auto custom-scrollbar h-full">

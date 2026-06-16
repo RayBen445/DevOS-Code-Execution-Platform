@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { emitBotEvent } from "../lib/botEngine";
 import ErrorPanel from "./ErrorPanel";
+import InteractiveDemoTour from "./InteractiveDemoTour";
 import { validateProject } from "../lib/validationService";
 import { ValidationResult } from "../types";
 import ProjectAnalytics from "./ProjectAnalytics";
@@ -1722,7 +1723,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               {/* Files */}
               {mobileTab === "files" && (
                 <div className="h-full">
-                  <Sidebar
+                  <Sidebar data-tour="explorer-panel"
                     files={files}
                     activeFileId={activeFileId}
                     onSelectFile={(id) => { openFileInTab(id); setMobileTab("editor"); }}
@@ -1759,7 +1760,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                     )}
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <PreviewPanel projectId={projectId} files={buildPreviewFiles ?? files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
+                    <PreviewPanel data-tour="preview-panel" projectId={projectId} files={buildPreviewFiles ?? files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
                   </div>
                 </div>
               )}
@@ -1775,7 +1776,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               {mobileTab === "terminal" && (
                 <div className="h-full flex flex-col bg-surface">
                   <div className="flex-1 min-h-0 relative">
-                    <TerminalTabs socket={socket} onClose={() => setMobileTab("files")} cwd={(project?.systemType as string) === "v0" ? "/app" : undefined} />
+                    <TerminalTabs data-tour="terminal-panel" socket={socket} onClose={() => setMobileTab("files")} cwd={(project?.systemType as string) === "v0" ? "/app" : undefined} />
                   </div>
                 </div>
               )}
@@ -1823,7 +1824,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
               {/* Explorer Panel — desktop only, hidden in focus mode */}
               {activePanel === "explorer" && !isFocusMode && (
                 <div className="hidden md:flex">
-                  <Sidebar
+                  <Sidebar data-tour="explorer-panel"
                     files={files}
                     activeFileId={activeFileId}
                     onSelectFile={openFileInTab}
@@ -1945,7 +1946,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
 
                 <div className="flex-1 relative min-h-0 flex flex-col">
                   {activeFile ? (
-                    <Editor
+                    <Editor data-tour="editor-panel"
                       file={activeFile}
                       onChange={handleCodeChange}
                       projectId={projectId}
@@ -2015,7 +2016,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                   onMouseDown={handleTerminalResizeStart}
                 />
                 <div className="flex-1 min-h-0 relative">
-                  <TerminalTabs socket={socket} onClose={() => setActivePanel(null)} cwd={(project?.systemType as string) === "v0" ? "/app" : undefined} />
+                  <TerminalTabs data-tour="terminal-panel" socket={socket} onClose={() => setActivePanel(null)} cwd={(project?.systemType as string) === "v0" ? "/app" : undefined} />
                 </div>
                 {/* Terminal form removed as TerminalTabs handles input */}
                 {/* Validation errors panel — shown when there are build/type errors */}
@@ -2072,7 +2073,7 @@ export default function IDE({ projectId, onBack }: IDEProps) {
                 </div>
               </div>
               <div className="flex-1 overflow-hidden">
-                <PreviewPanel projectId={projectId} files={buildPreviewFiles ?? files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
+                <PreviewPanel data-tour="preview-panel" projectId={projectId} files={buildPreviewFiles ?? files} entryFile={project?.entryFile} saveKey={previewSaveKey} />
               </div>
             </div>
           )}
