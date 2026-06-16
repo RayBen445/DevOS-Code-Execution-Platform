@@ -633,7 +633,7 @@ export default function App() {
             <Route path="/speakers" element={withPageMaintenance("/speakers", <SpeakersPage />)} />
             <Route path="/speakers/:slug" element={withPageMaintenance("/speakers", <SpeakerPage />)} />
             <Route path="/not-found" element={<NotFoundPage />} />
-            <Route path="/@:username" element={withPageMaintenance("/u", <UserProfilePage />)} />
+            <Route path="/@:username" element={withPageMaintenance("/u", <AtUsernameRoute />)} />
             <Route path="/@:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
             <Route path="/projects/:username/:projectSlug" element={withPageMaintenance("/projects", <LegacyProjectRedirect />)} />
             <Route path="/u/:username" element={withPageMaintenance("/u", <LegacyPortfolioRedirect />)} />
