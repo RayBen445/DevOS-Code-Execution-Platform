@@ -15,8 +15,10 @@ import {
   increment,
   getDoc,
 } from "firebase/firestore";
+import { getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 import { DEFAULT_USER_AVATAR, SYSTEM_AVATAR } from "./avatars";
+import { notifyMention } from "./notificationService";
 import { FeedComment, FeedPost } from "../types";
 import { trackActivity } from "./activityService";
 
@@ -93,6 +95,9 @@ export async function createFeedPost(params: {
   });
   // Track post creation as a platform activity
   trackActivity(params.userId, "post", { postId: docRef.id });
+  if (params.content) {
+    await processMentions(params.content, params.userId, params.username, "post", docRef.id);
+  }
   return docRef.id;
 }
 export async function autoPostDeployment(params: {
@@ -186,6 +191,9 @@ export async function addComment(params: {
   });
   // Increment comment count on the post
   await updateDoc(doc(db, "feed", params.postId), { commentsCount: increment(1) });
+  if (params.content) {
+    await processMentions(params.content, params.userId, params.username, "comment", params.postId);
+  }
   return commentRef.id;
 }
 
@@ -286,4 +294,41 @@ export async function editPost(postId: string, newContent: string, newAttachment
 export async function deleteComment(commentId: string, postId: string): Promise<void> {
   await deleteDoc(doc(db, "comments", commentId));
   await updateDoc(doc(db, "feed", postId), { commentsCount: increment(-1) });
+}
+
+
+async function processMentions(
+  text: string,
+  mentionerUserId: string,
+  mentionerUsername: string,
+  contextType: 'post' | 'comment',
+  postId: string
+) {
+  if (!text) return;
+  const matches = text.match(/@([a-zA-Z0-9_-]+)/g);
+  if (!matches) return;
+  
+  const usernames = Array.from(new Set(matches.map(m => m.substring(1).toLowerCase())));
+  
+  for (const username of usernames) {
+    if (username === mentionerUsername.toLowerCase()) continue;
+    
+    try {
+      const q = query(collection(db, "users"), where("username", "==", username), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const mentionedUserId = snap.docs[0].id;
+        await notifyMention({
+          mentionedUserId,
+          mentionedUsername: snap.docs[0].data().username,
+          mentionerUserId,
+          mentionerUsername,
+          contextType,
+          postId
+        });
+      }
+    } catch (err) {
+      console.error("Error processing mention for", username, err);
+    }
+  }
 }

@@ -1081,6 +1081,228 @@ p {
         )}
 
         {isCreating && (
+          <div className="fixed inset-0 z-[100] flex bg-[#0a0a0b] overflow-hidden">
+            {/* Background elements */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+              <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full" />
+              <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full" />
+            </div>
+
+            {/* Close Button */}
+            <button 
+              onClick={() => setIsCreating(false)} 
+              className="absolute top-6 right-6 z-50 p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors backdrop-blur-md"
+            >
+              <X className="w-6 h-6 text-white/60" />
+            </button>
+
+            {/* Left side: Templates */}
+            <div className="w-2/3 h-full overflow-y-auto border-r border-white/5 p-12 custom-scrollbar relative z-10">
+              <div className="max-w-4xl mx-auto">
+                <h2 className="text-4xl font-black text-white tracking-tight mb-2">Create New Project</h2>
+                <p className="text-white/40 text-lg mb-12">Select a template or start from scratch.</p>
+                
+                {/* Categories */}
+                <div className="flex flex-wrap gap-2 mb-8">
+                  {["All Templates", ...Array.from(new Set(allAvailableTemplates.map(t => t.category)))].filter(Boolean).map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={cn(
+                        "px-4 py-2 rounded-full text-sm font-bold transition-all",
+                        selectedCategory === cat 
+                          ? "bg-white text-black" 
+                          : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                      )}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {allAvailableTemplates
+                    .filter(t => selectedCategory === "All Templates" || t.category === selectedCategory)
+                    .map(template => {
+                      const isSelected = selectedTemplateId === template.id;
+                      const Icon = lucideIcons[template.icon as keyof typeof lucideIcons] || lucideIcons.Code;
+                      return (
+                        <div
+                          key={template.id}
+                          onClick={() => setSelectedTemplateId(template.id)}
+                          className={cn(
+                            "group cursor-pointer relative p-6 rounded-3xl border transition-all duration-300",
+                            isSelected 
+                              ? "bg-blue-600/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.15)]" 
+                              : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300",
+                            isSelected ? "bg-blue-600 shadow-lg shadow-blue-600/30" : "bg-white/5 group-hover:scale-110"
+                          )}>
+                            <Icon className={cn("w-6 h-6", isSelected ? "text-white" : "text-white/60")} />
+                          </div>
+                          <h3 className="text-lg font-bold text-white mb-2">{template.name}</h3>
+                          <p className="text-sm text-white/40 line-clamp-2">{template.description}</p>
+                          
+                          {isSelected && (
+                            <div className="absolute top-4 right-4 text-blue-500">
+                              <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+
+            {/* Right side: Project Details */}
+            <div className="w-1/3 h-full bg-black/40 backdrop-blur-xl p-12 overflow-y-auto custom-scrollbar relative z-10 flex flex-col justify-center">
+              <form onSubmit={handleCreateProject} className="space-y-8 max-w-md mx-auto w-full">
+                
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                    <Folder className="w-4 h-4" /> Project Name
+                  </label>
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="My Awesome App"
+                    value={newProjectName}
+                    onChange={(e) => { setNewProjectName(e.target.value); setProjectNameTaken(false); }}
+                    className={cn(
+                      "w-full bg-white/5 border rounded-2xl px-5 py-4 text-lg text-white font-medium focus:outline-none transition-all placeholder:text-white/20",
+                      projectNameTaken ? "border-red-500/60 focus:border-red-500" : "border-white/10 focus:border-blue-500 focus:bg-white/10"
+                    )}
+                    required
+                  />
+                  {projectNameTaken && (
+                    <p className="text-xs text-red-400 flex items-center gap-1">
+                      <X className="w-3 h-3" /> You already have a project with this name
+                    </p>
+                  )}
+                  {checkingProjectName && !projectNameTaken && (
+                    <p className="text-xs text-white/30">Checking availability...</p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                    <LayoutTemplate className="w-4 h-4" /> Description <span className="opacity-50 lowercase">(optional)</span>
+                  </label>
+                  <textarea
+                    placeholder="What are you building?"
+                    value={newProjectDescription}
+                    onChange={(e) => setNewProjectDescription(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 focus:bg-white/10 transition-all resize-none min-h-[120px] placeholder:text-white/20"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                    <Globe className="w-4 h-4" /> Visibility
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setVisibility("public")}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all",
+                        visibility === "public" ? "bg-blue-600/10 border-blue-500 text-white" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+                      )}
+                    >
+                      <Globe className="w-6 h-6" />
+                      <span className="font-bold text-sm">Public</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVisibility("private")}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all",
+                        visibility === "private" ? "bg-blue-600/10 border-blue-500 text-white" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+                      )}
+                    >
+                      <Lock className="w-6 h-6" />
+                      <span className="font-bold text-sm">Private</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-4 mt-8 border-t border-white/5">
+                  <button
+                    type="submit"
+                    disabled={!newProjectName.trim() || projectNameTaken || checkingProjectName}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg hover:shadow-[0_0_40px_rgba(59,130,246,0.3)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Create Project
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {isQuickStarting && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
+            {/* Scrollable overlay — allows the modal to scroll on short viewports */}
+            <div className="flex min-h-full items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-2xl bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <div className="p-8 border-b border-border-base flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
+                    <Rocket className="w-6 h-6 text-blue-500" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-white tracking-tight">Quick Start Guide</h2>
+                </div>
+                <button onClick={() => setIsQuickStarting(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <X className="w-6 h-6 text-white/40" />
+                </button>
+              </div>
+              
+              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                {[
+                  { icon: Plus, title: "1. Create a project", desc: "Start fresh or use a template to kick off your vision." },
+                  { icon: Code, title: "2. Write your code", desc: "Use our powerful editor with real-time preview." },
+                  { icon: Globe, title: "3. Click Deploy", desc: "Get a live, shareable link for your project instantly." },
+                  { icon: Share2, title: "4. Share your project", desc: "Show off your work to the world with one click." }
+                ].map((step, i) => (
+                  <div key={i} className="flex gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-border-base flex items-center justify-center flex-shrink-0">
+                      <step.icon className="w-6 h-6 text-white/60" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-1">{step.title}</h3>
+                      <p className="text-sm text-white/40 leading-relaxed">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-8 bg-white/5 flex justify-end">
+                <button
+                  onClick={() => {
+                    setIsQuickStarting(false);
+                    setIsCreating(true);
+                  }}
+                  className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
+                >
+                  Let's Go!
+                </button>
+              </div>
+            </motion.div>
+            </div>
+          </div>
+        )}
+
+        {isCreating && (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
             {/* Scrollable overlay — allows the modal to scroll on short viewports */}
             <div className="flex min-h-full items-center justify-center p-4">

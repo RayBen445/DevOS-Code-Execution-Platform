@@ -71,14 +71,17 @@ export function parseMarkdown(text: string): TextToken[] {
       continue;
     }
 
-    // Empty line - add as text if not empty
+    // Empty line - add as newline
     if (!trimmed) {
+      tokens.push({ type: 'text', content: '\n' });
       i++;
       continue;
     }
 
     // Regular text with inline formatting
     const inlineTokens = parseInlineMarkdown(line);
+    // Add a newline token after the line to preserve line breaks
+    inlineTokens.push({ type: 'text', content: '\n' });
     tokens.push(...inlineTokens);
     i++;
   }

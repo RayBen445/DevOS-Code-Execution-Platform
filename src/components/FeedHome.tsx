@@ -871,6 +871,14 @@ function PostComposerModal({
                 currentUserId={userId}
                 autoFocus
                 className="w-full text-base mb-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (postText.trim() && !isPublishing) {
+                      handlePublish();
+                    }
+                  }
+                }}
               />
 
               {/* Post type cards */}
@@ -1227,6 +1235,15 @@ function FeedItem({
             placeholder="Edit post..."
             className="w-full"
             autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (onEdit && editContent.trim() !== post.content) {
+                  onEdit(post.id, editContent);
+                }
+                setIsEditingPost(false);
+              }
+            }}
           />
           <div className="flex justify-end gap-2 px-1 pb-1">
             <button 

@@ -88,7 +88,7 @@ function MarkdownToken({ token }: { token: TextToken }) {
       );
 
     case "text":
-      return <span className="break-words [overflow-wrap:anywhere]">{token.content}</span>;
+      return <span className="break-words [overflow-wrap:anywhere] whitespace-pre-wrap">{token.content}</span>;
 
     default:
       return <span>{token.content}</span>;

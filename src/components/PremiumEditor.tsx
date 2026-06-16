@@ -10,6 +10,7 @@ interface PremiumEditorProps {
   className?: string;
   currentUserId?: string;
   autoFocus?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => void;
 }
 
 export default function PremiumEditor({
@@ -18,7 +19,8 @@ export default function PremiumEditor({
   placeholder = "Write something...",
   className,
   currentUserId,
-  autoFocus
+  autoFocus,
+  onKeyDown
 }: PremiumEditorProps) {
   const [isEditing, setIsEditing] = useState(autoFocus || false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,10 +41,12 @@ export default function PremiumEditor({
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
-      // Move cursor to end
-      textareaRef.current.setSelectionRange(value.length, value.length);
+      // Only set selection range on initial mount/edit mode switch, not on every keystroke
+      if (!document.activeElement || document.activeElement !== textareaRef.current) {
+         textareaRef.current.setSelectionRange(value.length, value.length);
+      }
     }
-  }, [isEditing, value.length]);
+  }, [isEditing]);
 
   return (
     <div 
@@ -71,6 +75,7 @@ export default function PremiumEditor({
           placeholder={placeholder}
           multiline
           autoFocus={autoFocus}
+          onKeyDown={onKeyDown}
           rows={Math.max(4, value.split('\n').length)}
           className="w-full bg-transparent p-3 text-white placeholder-white/30 text-sm leading-relaxed resize-none focus:outline-none focus:ring-0"
         />
