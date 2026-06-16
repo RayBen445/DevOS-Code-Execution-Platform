@@ -101,7 +101,7 @@ export default function SubdomainPortfolio({ username }: Props) {
           return;
         }
 
-        await loadProjectContent({ id: pSnap.docs[0].id, ...pSnap.docs[0].data() } as Project);
+        await loadProjectContent({ id: pSnap.docs[0].id, ...pSnap.docs[0].data() } as Project, userSnap.docs[0].data());
       } catch (e) {
         setError("Failed to load portfolio");
       } finally {

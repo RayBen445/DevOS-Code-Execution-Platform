@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../lib/firebase";
-import { subscribeUserOrgs, Organization } from "../lib/orgService";
+import { subscribeUserOrgs } from "../lib/orgService";
+import { Organization } from "../types";
 import { useActiveContext } from "../hooks/useActiveContext";
 import { ChevronDown, Building2, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";

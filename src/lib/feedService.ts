@@ -273,6 +273,15 @@ export async function deletePost(postId: string): Promise<void> {
   await deleteDoc(doc(db, "feed", postId));
 }
 
+/** Edit a post's content by its ID. Only the owner should call this. */
+export async function editPost(postId: string, newContent: string, newAttachments?: string[]): Promise<void> {
+  const updateData: any = { content: newContent };
+  if (newAttachments !== undefined) {
+    updateData.attachments = newAttachments;
+  }
+  await updateDoc(doc(db, "feed", postId), updateData);
+}
+
 /** Delete a comment by its ID. Decrements commentsCount on the parent post. */
 export async function deleteComment(commentId: string, postId: string): Promise<void> {
   await deleteDoc(doc(db, "comments", commentId));

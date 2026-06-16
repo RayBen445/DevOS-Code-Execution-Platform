@@ -2240,7 +2240,7 @@ app.post("/api/vux-webhook", async (req, res) => {
   // Here we can process the incoming ticket.issued events from the VUX Engine
   // For example: if (payload.event === "ticket.issued") { ... update Firestore ... }
   
-  emitLog("info", `Received mathematically verified VUX Webhook for event: ${payload.event || 'unknown'}`);
+  console.log(`[info] Received mathematically verified VUX Webhook for event: ${payload.event || 'unknown'}`);
 
   // Acknowledge receipt to the VUX engine
   return res.status(200).json({ received: true });

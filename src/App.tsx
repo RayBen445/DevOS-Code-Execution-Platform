@@ -89,6 +89,7 @@ const ProjectPreview = React.lazy(() => import("./pages/ProjectPreview"));
 const ProjectView = React.lazy(() => import("./pages/ProjectView"));
 const MarketplacePage = React.lazy(() => import("./pages/MarketplacePage"));
 const TemplatePreviewPage = React.lazy(() => import("./pages/TemplatePreviewPage"));
+const UserProfilePage = React.lazy(() => import("./pages/UserProfilePage"));
 const AdminDashboard = React.lazy(() => import("./pages/AdminDashboard"));
 const StatusPage = React.lazy(() => import("./pages/StatusPage"));
 const DocsPage = React.lazy(() => import("./pages/DocsPage"));
@@ -630,7 +631,7 @@ export default function App() {
             <Route path="/speakers" element={withPageMaintenance("/speakers", <SpeakersPage />)} />
             <Route path="/speakers/:slug" element={withPageMaintenance("/speakers", <SpeakerPage />)} />
             <Route path="/not-found" element={<NotFoundPage />} />
-            <Route path="/@:username" element={withPageMaintenance("/u", <AtUsernameRoute />)} />
+            <Route path="/@:username" element={withPageMaintenance("/u", <UserProfilePage />)} />
             <Route path="/@:username/:projectSlug" element={withPageMaintenance("/u", <ProjectPreview />)} />
             <Route path="/projects/:username/:projectSlug" element={withPageMaintenance("/projects", <LegacyProjectRedirect />)} />
             <Route path="/u/:username" element={withPageMaintenance("/u", <LegacyPortfolioRedirect />)} />

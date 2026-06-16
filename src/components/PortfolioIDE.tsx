@@ -9,6 +9,7 @@ import PreviewPanel from "./PreviewPanel";
 import SettingsPanel from "./SettingsPanel";
 import PortfolioMessages from "./PortfolioMessages";
 import DeployModal from "./DeployModal";
+import TemplateSyncModal from "./TemplateSyncModal";
 import Editor from "./Editor";
 import Navbar from "./Navbar";
 import socket from "../lib/socket";
@@ -64,6 +65,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
     try { return (localStorage.getItem(`ide_panel_${projectId}`) as PanelType) ?? "explorer"; } catch { return "explorer"; }
   });
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
+  const [isTemplateSyncOpen, setIsTemplateSyncOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -1600,6 +1602,15 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
               </button>
               {!isReadOnly && canDeploy && (
                 <>
+                  {project?.forkedFrom && (
+                    <button
+                      onClick={() => setIsTemplateSyncOpen(true)}
+                      className="hidden md:flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 text-xs font-bold transition-all"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Sync Template</span>
+                    </button>
+                  )}
                   {/* Active job badge */}
                   {activeJobId && (
                     <BuildStatusBadge jobId={activeJobId} className="hidden md:inline-flex" />
@@ -2072,6 +2083,19 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
           } catch { /* best-effort */ }
         } : undefined}
       />
+
+      {project && (
+        <TemplateSyncModal
+          isOpen={isTemplateSyncOpen}
+          onClose={() => setIsTemplateSyncOpen(false)}
+          project={project}
+          localFiles={files}
+          onAcceptChanges={async (updatedFiles) => {
+            setFiles(updatedFiles);
+            setIsSaved(false);
+          }}
+        />
+      )}
     </div>
   );
 }

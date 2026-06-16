@@ -118,6 +118,7 @@ export interface UserSettings {
   avatarUrl?: string;
   avatar?: string;
   bannerUrl?: string;
+  portfolioHeading?: string;
   githubToken?: string;
   githubInstallationId?: string;
   skills?: string[];

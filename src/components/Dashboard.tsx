@@ -282,9 +282,11 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         views: 0,
         deployUrl: `/@${settings?.username || "anonymous"}/${projectSlug}`
       };
+      const docRef = await addDoc(collection(db, "projects"), projectData);
+      const filesRef = collection(db, "projects", docRef.id, "files");
       
-      if (template.files && template.files.length > 0) {
-        const filePromises = template.files.map(file => 
+      if ("files" in template && template.files && template.files.length > 0) {
+        const filePromises = template.files.map((file: any) => 
           addDoc(filesRef, { 
             projectId: docRef.id,
             name: file.name || "Untitled", 
@@ -295,8 +297,8 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
           })
         );
         await Promise.all(filePromises);
-      } else {
-        const tplFilesSnap = await getDocs(collection(db, "projects", template.project!.id, "files"));
+      } else if ("project" in template && (template as any).project) {
+        const tplFilesSnap = await getDocs(collection(db, "projects", (template as any).project.id, "files"));
         const filePromises = tplFilesSnap.docs.map(fileDoc => {
           const fileData = fileDoc.data();
           return addDoc(filesRef, {
@@ -307,7 +309,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
         });
         await Promise.all(filePromises);
         
-        await updateDoc(doc(db, "projects", template.project!.id), {
+        await updateDoc(doc(db, "projects", (template as any).project.id), {
           forksCount: increment(1)
         });
       }

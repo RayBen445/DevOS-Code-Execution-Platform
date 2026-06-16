@@ -645,7 +645,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
         )}
       </div>
 
-      {/* Mobile slide-in drawer */}
+            {/* Mobile slide-in drawer */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -655,7 +655,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/60 z-40 md:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
               onClick={() => setIsMobileMenuOpen(false)}
             />
             {/* Drawer */}
@@ -664,25 +664,25 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed top-0 right-0 h-full w-72 bg-surface border-l border-border-base z-50 flex flex-col md:hidden shadow-2xl"
+              className="fixed top-0 right-0 h-full w-[85%] max-w-sm bg-base/90 backdrop-blur-2xl border-l border-white/10 z-50 flex flex-col md:hidden shadow-[0_0_40px_rgba(0,0,0,0.5)]"
             >
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
+                <div className="flex items-center gap-3">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={avatarUrl} alt={displayName} className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10" referrerPolicy="no-referrer" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                      <UserIcon className="w-4 h-4 text-white/60" />
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center ring-2 ring-white/10">
+                      <UserIcon className="w-5 h-5 text-white/60" />
                     </div>
                   )}
-                  <div className="flex flex-col leading-none">
-                    <span className="text-sm font-semibold text-white">{displayName}</span>
-                    {username && <span className="text-[11px] text-white/40">@{username}</span>}
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-base font-bold text-white">{displayName}</span>
+                    {username && <span className="text-xs text-white/50">@{username}</span>}
                   </div>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -691,244 +691,199 @@ export default function Navbar({ onSignIn }: NavbarProps) {
               {/* Credits on mobile — detailed breakdown */}
               {(isAdmin || dailyRemaining !== null) && (
                 <div className={cn(
-                  "mx-4 mt-4 rounded-xl border p-3",
-                  isAdmin ? "bg-red-500/10 border-red-500/20" : "bg-yellow-500/10 border-yellow-500/20"
+                  "mx-5 mt-5 rounded-2xl border p-4",
+                  isAdmin ? "bg-red-500/10 border-red-500/20" : "bg-yellow-500/5 border-yellow-500/20"
                 )}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <Zap className={cn("w-3.5 h-3.5", isAdmin ? "text-red-400" : "text-yellow-400")} />
-                      <span className={cn("text-xs font-bold uppercase tracking-widest", isAdmin ? "text-red-300" : "text-yellow-300")}>Credits</span>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", isAdmin ? "bg-red-500/20" : "bg-yellow-500/20")}>
+                        <Zap className={cn("w-4 h-4", isAdmin ? "text-red-400" : "text-yellow-400")} />
+                      </div>
+                      <span className={cn("text-sm font-bold tracking-wide", isAdmin ? "text-red-300" : "text-yellow-300")}>Credits</span>
                     </div>
-                    <span className={cn("text-lg font-black", isAdmin ? "text-red-300" : "text-yellow-300")}>
+                    <span className={cn("text-xl font-black", isAdmin ? "text-red-300" : "text-yellow-300")}>
                       {isAdmin ? "∞" : totalRemaining}
                     </span>
                   </div>
                   {isAdmin ? (
-                    <p className="text-[11px] text-white/30">Admin • All credit limits bypassed</p>
+                    <p className="text-xs text-red-200/50">Admin • All limits bypassed</p>
                   ) : (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px]">
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
                         <span className="text-white/50">Daily</span>
-                        <span className="text-white font-semibold">{dailyRemaining} / {DAILY_CREDITS_AMOUNT}</span>
+                        <span className="text-white font-bold">{dailyRemaining} / {DAILY_CREDITS_AMOUNT}</span>
                       </div>
-                      <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${Math.max(0, dailyPct)}%` }} />
+                      <div className="h-1.5 rounded-full bg-black/40 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-yellow-500 to-yellow-300 rounded-full" style={{ width: `${Math.max(0, dailyPct)}%` }} />
                       </div>
-                      <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex items-center justify-between text-xs">
                         <span className="text-white/50">Monthly</span>
-                        <span className="text-white font-semibold">{monthlyRemaining ?? 0} / {MONTHLY_CREDITS_AMOUNT}</span>
+                        <span className="text-white font-bold">{monthlyRemaining ?? 0} / {MONTHLY_CREDITS_AMOUNT}</span>
                       </div>
-                      <div className="h-1 rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full bg-blue-400 rounded-full" style={{ width: `${Math.max(0, monthlyPct)}%` }} />
+                      <div className="h-1.5 rounded-full bg-black/40 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-blue-500 to-blue-300 rounded-full" style={{ width: `${Math.max(0, monthlyPct)}%` }} />
                       </div>
                     </div>
                   )}
                 </div>
               )}
 
-              <nav className="flex-1 px-4 py-4 space-y-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Navigate</p>
-                <Link
-                  to="/"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <Home className="w-4 h-4" />
-                  Feed
-                </Link>
-                <Link
-                  to="/explore"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <Compass className="w-4 h-4" />
-                  Explore
-                </Link>
-                <Link
-                  to="/orgs"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <Building2 className="w-4 h-4" />
-                  Organizations
-                </Link>
-                <Link
-                  to="/marketplace"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <Layout className="w-4 h-4" />
-                  Templates
-                </Link>
-                <Link
-                  to="/communities"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <Users className="w-4 h-4" />
-                  Dev Teams
-                </Link>
-
-                <Link
-                  to="/projects"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <FolderCode className="w-4 h-4" />
-                  My Projects
-                </Link>
-                <Link
-                  to="/bots"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <Bot className="w-4 h-4" />
-                  Bots
-                </Link>
-                <Link
-                  to="/events"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <Calendar className="w-4 h-4" />
-                  Events
-                </Link>
-                <Link
-                  to="/learn"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  Learn
-                </Link>
-                <Link
-                  to="/settings?tab=accessibility"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                >
-                  <Accessibility className="w-4 h-4" />
-                  Accessibility
-                </Link>
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-500/10 text-red-400/70 hover:text-red-400 transition-colors text-sm font-medium"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    Admin
-                  </Link>
-                )}
-
-                {/* Workspaces (mobile) */}
-                {(userOrgs.length > 0 || true) && (
-                  <>
-                    <div className="border-t border-border-base my-2" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Workspace</p>
-                    {/* Personal */}
-                    <button
-                      onClick={() => { setUserContext(user!.uid); setIsMobileMenuOpen(false); }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors text-sm text-left",
-                        context?.type === "user" || !context
-                          ? "text-white bg-white/5 font-semibold"
-                          : "text-white/60 hover:text-white hover:bg-white/5"
-                      )}
-                    >
-                      <UserIcon className="w-4 h-4" />
-                      Personal
-                      {(context?.type === "user" || !context) && <Check className="w-4 h-4 ml-auto text-blue-400" />}
-                    </button>
-                    {userOrgs.slice(0, 4).map((org) => {
-                      const isActive = context?.type === "org" && context.id === org.id;
-                      return (
-                        <button
-                          key={org.id}
-                          onClick={() => { isActive ? setUserContext(user!.uid) : setOrgContext(org.id, org.slug, org.name); setIsMobileMenuOpen(false); }}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors text-sm text-left",
-                            isActive
-                              ? "text-blue-300 bg-blue-500/10 font-semibold"
-                              : "text-white/60 hover:text-white hover:bg-white/5"
-                          )}
-                        >
-                          <Building2 className="w-4 h-4 text-blue-400/70" />
-                          <span className="truncate">{org.name}</span>
-                          {isActive && <Check className="w-4 h-4 ml-auto text-blue-400" />}
-                        </button>
-                      );
-                    })}
-                  </>
-                )}
-
-                <div className="border-t border-border-base my-2" />
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-3 mb-2">Account</p>
-                {username && (
-                  <a
-                    href={buildPortfolioUrl(username)}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm"
-                  >
-                    <UserIcon className="w-4 h-4" />
-                    View Profile
-                  </a>
-                )}
-                <Link
-                  to="/settings"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm"
-                >
-                  <Settings className="w-4 h-4" />
-                  Account Settings
-                </Link>
-                <button
-                  onClick={() => { setIsMobileMenuOpen(false); setIsRedeemOpen(true); }}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"
-                >
-                  <Gift className="w-4 h-4" />
-                  Redeem Code
-                </button>
-                {/* Switch Account (mobile) */}
-                {savedAccounts.filter((a) => a.uid !== user?.uid).length > 0 && (
-                  <>
-                    {savedAccounts.filter((a) => a.uid !== user?.uid).map((acc) => (
-                      <button
-                        key={acc.uid}
-                        disabled={switchingUid === acc.uid}
-                        onClick={async () => {
-                          setSwitchingUid(acc.uid);
-                          const result = await switchToAccount(acc.uid);
-                          setSwitchingUid(null);
-                          setIsMobileMenuOpen(false);
-                          if (result.success) { navigate("/"); return; }
-                          const fail = result as { success: false; reason: string };
-                          if (fail.reason === "not_in_cache") { onSignIn?.(); }
-                        }}
-                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left disabled:opacity-50"
+              <div className="flex-1 overflow-y-auto mt-4 px-5 pb-8 space-y-6">
+                
+                {/* Navigation Group */}
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-3 px-1">Navigate</p>
+                  <div className="space-y-1 bg-white/5 p-2 rounded-2xl border border-white/5">
+                    {[
+                      { to: "/", icon: Home, label: "Feed" },
+                      { to: "/explore", icon: Compass, label: "Explore" },
+                      { to: "/orgs", icon: Building2, label: "Organizations" },
+                      { to: "/marketplace", icon: Layout, label: "Templates" },
+                      { to: "/communities", icon: Users, label: "Dev Teams" },
+                      { to: "/projects", icon: FolderCode, label: "My Projects" },
+                      { to: "/bots", icon: Bot, label: "Bots" },
+                      { to: "/events", icon: Calendar, label: "Events" },
+                      { to: "/learn", icon: BookOpen, label: "Learn" },
+                      { to: "/settings?tab=accessibility", icon: Accessibility, label: "Accessibility" },
+                    ].map((item) => (
+                      <Link
+                        key={item.label}
+                        to={item.to}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3.5 px-3 py-3 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-all text-sm font-medium"
                       >
-                        <img src={acc.avatarUrl} alt={acc.displayName} className="w-5 h-5 rounded-full object-cover" referrerPolicy="no-referrer" />
-                        <span className="flex-1">Switch to @{acc.username}</span>
-                        {switchingUid === acc.uid && <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-400" />}
-                      </button>
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </Link>
                     ))}
-                  </>
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3.5 px-3 py-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-sm font-bold"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        Admin
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                {/* Workspace Group */}
+                {(userOrgs.length > 0 || true) && (
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-3 px-1">Workspace</p>
+                    <div className="space-y-1 bg-white/5 p-2 rounded-2xl border border-white/5">
+                      <button
+                        onClick={() => { setUserContext(user!.uid); setIsMobileMenuOpen(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-3.5 px-3 py-3 rounded-xl transition-all text-sm text-left font-medium",
+                          context?.type === "user" || !context
+                            ? "bg-blue-500/20 text-blue-300"
+                            : "text-white/70 hover:text-white hover:bg-white/10"
+                        )}
+                      >
+                        <UserIcon className="w-4 h-4" />
+                        Personal
+                        {(context?.type === "user" || !context) && <Check className="w-4 h-4 ml-auto text-blue-400" />}
+                      </button>
+                      {userOrgs.slice(0, 4).map((org) => {
+                        const isActive = context?.type === "org" && context.id === org.id;
+                        return (
+                          <button
+                            key={org.id}
+                            onClick={() => { isActive ? setUserContext(user!.uid) : setOrgContext(org.id, org.slug, org.name); setIsMobileMenuOpen(false); }}
+                            className={cn(
+                              "w-full flex items-center gap-3.5 px-3 py-3 rounded-xl transition-all text-sm text-left font-medium",
+                              isActive
+                                ? "bg-blue-500/20 text-blue-300"
+                                : "text-white/70 hover:text-white hover:bg-white/10"
+                            )}
+                          >
+                            <Building2 className="w-4 h-4" />
+                            <span className="truncate">{org.name}</span>
+                            {isActive && <Check className="w-4 h-4 ml-auto text-blue-400" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
-                <div className="px-3">
+
+                {/* Account Group */}
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-3 px-1">Account</p>
+                  <div className="space-y-1 bg-white/5 p-2 rounded-2xl border border-white/5">
+                    {username && (
+                      <a
+                        href={buildPortfolioUrl(username)}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3.5 px-3 py-3 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-all text-sm font-medium"
+                      >
+                        <UserIcon className="w-4 h-4" />
+                        View Profile
+                      </a>
+                    )}
+                    <Link
+                      to="/settings"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-3.5 px-3 py-3 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-all text-sm font-medium"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Account Settings
+                    </Link>
+                    <button
+                      onClick={() => { setIsMobileMenuOpen(false); setIsRedeemOpen(true); }}
+                      className="w-full flex items-center gap-3.5 px-3 py-3 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-all text-sm text-left font-medium"
+                    >
+                      <Gift className="w-4 h-4" />
+                      Redeem Code
+                    </button>
+                    <button
+                      onClick={() => { setIsMobileMenuOpen(false); setIsFeedbackOpen(true); }}
+                      className="w-full flex items-center gap-3.5 px-3 py-3 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-all text-sm text-left font-medium"
+                    >
+                      <MessageSquarePlus className="w-4 h-4" />
+                      Send Feedback
+                    </button>
+
+                    {/* Switch Account */}
+                    {savedAccounts.filter((a) => a.uid !== user?.uid).length > 0 && (
+                      <>
+                        <div className="h-px bg-white/10 my-2 mx-2" />
+                        {savedAccounts.filter((a) => a.uid !== user?.uid).map((acc) => (
+                          <button
+                            key={acc.uid}
+                            disabled={switchingUid === acc.uid}
+                            onClick={async () => {
+                              setSwitchingUid(acc.uid);
+                              const result = await switchToAccount(acc.uid);
+                              setSwitchingUid(null);
+                              setIsMobileMenuOpen(false);
+                              if (result.success) { navigate("/"); return; }
+                              if (!result.success && (result as any).reason === "not_in_cache") { onSignIn?.(); }
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-all text-sm text-left disabled:opacity-50 font-medium"
+                          >
+                            <img src={acc.avatarUrl} alt={acc.displayName} className="w-6 h-6 rounded-full object-cover ring-2 ring-white/10" referrerPolicy="no-referrer" />
+                            <span className="flex-1 truncate">Switch to @{acc.username}</span>
+                            {switchingUid === acc.uid && <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="px-1">
                   <UIThemeSwitcher />
                 </div>
-                <button
-                  onClick={() => { setIsMobileMenuOpen(false); setIsFeedbackOpen(true); }}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 text-white/70 hover:text-white transition-colors text-sm text-left"
-                >
-                  <MessageSquarePlus className="w-4 h-4" />
-                  Send Feedback
-                </button>
-              </nav>
+              </div>
 
-              <div className="px-4 pb-6">
+              <div className="px-5 py-5 border-t border-white/5 bg-black/20">
                 <button
                   onClick={() => { setIsMobileMenuOpen(false); if (user) logoutAccount(user.uid); else logout(); }}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-500/10 text-red-400/70 hover:text-red-400 transition-colors text-sm text-left"
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-sm font-bold"
                 >
                   <LogOut className="w-4 h-4" />
                   Logout
@@ -938,7 +893,6 @@ export default function Navbar({ onSignIn }: NavbarProps) {
           </>
         )}
       </AnimatePresence>
-
       <RedeemCodeModal isOpen={isRedeemOpen} onClose={() => setIsRedeemOpen(false)} />
       <FeedbackModal open={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <CreateOrgModal open={isCreateOrgOpen} onClose={() => setIsCreateOrgOpen(false)} />

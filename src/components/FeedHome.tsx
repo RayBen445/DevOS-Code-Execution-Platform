@@ -34,6 +34,7 @@ import {
   Link,
   List,
   Quote,
+  Pencil,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -47,6 +48,7 @@ import {
   repostPost,
   deletePost,
   deleteComment,
+  editPost,
 } from "../lib/feedService";
 import { notifyComment, notifyRepost } from "../lib/notificationService";
 import { resolveAvatar } from "../lib/avatars";
@@ -59,6 +61,7 @@ import MobileBottomNav from "./MobileBottomNav";
 import Avatar from "./Avatar";
 import ConfirmModal from "./ConfirmModal";
 import { MarkdownContent } from "./MarkdownContent";
+import PremiumEditor from "./PremiumEditor";
 import { useSEO } from "../hooks/useSEO";
 import { emitBotEventWithToast } from "../lib/botEngine";
 import { toast } from "sonner";
@@ -346,6 +349,16 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     }
   };
 
+  const handleEditPost = async (postId: string, newContent: string) => {
+    try {
+      await editPost(postId, newContent);
+      setFeed((prev) => prev.map((p) => p.id === postId ? { ...p, content: newContent } : p));
+      toast.success("Post updated.");
+    } catch (err: any) {
+      toast.error("Failed to update post.");
+    }
+  };
+
   const handleDeletePost = async (post: FeedPost) => {
     if (!user || user.uid !== post.userId) {
       toast.error("You do not have permission to delete this post.");
@@ -548,6 +561,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                     onRepost={handleRepost}
                     onComment={handleAddComment}
                     onDelete={(p) => setDeleteConfirmPost(p)}
+                    onEdit={handleEditPost}
                     index={i}
                   />
                 ))
@@ -752,6 +766,7 @@ const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; icon: React.Elemen
 function PostComposerModal({
   open,
   onClose,
+  userId,
   avatarUrl,
   displayName,
   postText,
@@ -849,14 +864,13 @@ function PostComposerModal({
               </div>
 
               {/* Textarea */}
-              <textarea
-                ref={textareaRef}
+              <PremiumEditor
                 value={postText}
-                onChange={(e) => setPostText(e.target.value)}
-                placeholder="What are you building? **bold** *italic* `code` - list"
-                rows={4}
+                onChange={setPostText}
+                placeholder="What are you building? Use markdown..."
+                currentUserId={userId}
                 autoFocus
-                className="w-full bg-transparent text-white placeholder-white/25 text-base leading-relaxed resize-none focus:outline-none"
+                className="w-full text-base mb-2"
               />
 
               {/* Post type cards */}
@@ -1004,6 +1018,7 @@ function FeedItem({
   onRepost,
   onComment,
   onDelete,
+  onEdit,
   index,
 }: {
   post: FeedPost;
@@ -1012,12 +1027,15 @@ function FeedItem({
   onRepost: (post: FeedPost, commentary: string) => void;
   onComment: (post: FeedPost, content: string) => void;
   onDelete: (post: FeedPost) => void;
+  onEdit?: (postId: string, newContent: string) => void;
   index: number;
 }) {
   const liked = userId ? (post.likedBy?.includes(userId) ?? false) : false;
   const avatarUrl = resolveAvatar(post.avatarUrl || null);
 
   const [showComments, setShowComments] = useState(false);
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [editContent, setEditContent] = useState(post.content || "");
   const [comments, setComments] = useState<FeedComment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -1175,24 +1193,66 @@ function FeedItem({
             </span>
           )}
           {userId === post.userId && (
-            <button
-              onClick={() => onDelete(post)}
-              className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
-              aria-label="Delete post"
-              title="Delete post"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {onEdit && (
+                <button
+                  onClick={() => setIsEditingPost(!isEditingPost)}
+                  className="p-1.5 rounded-lg text-white/20 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                  aria-label="Edit post"
+                  title="Edit post"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                onClick={() => onDelete(post)}
+                className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                aria-label="Delete post"
+                title="Delete post"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           )}
         </div>
       </div>
 
       {/* Content (only show if not a silent repost) */}
-      {post.content && (
+      {isEditingPost ? (
+        <div className="mb-3 space-y-2 border border-white/10 rounded-xl p-2 bg-black/20">
+          <PremiumEditor
+            value={editContent}
+            onChange={setEditContent}
+            currentUserId={userId}
+            placeholder="Edit post..."
+            className="w-full"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2 px-1 pb-1">
+            <button 
+              onClick={() => { setIsEditingPost(false); setEditContent(post.content || ""); }}
+              className="text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 text-white/60 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={() => {
+                if (onEdit && editContent.trim() !== post.content) {
+                  onEdit(post.id, editContent);
+                }
+                setIsEditingPost(false);
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      ) : (post.content && (
         <div className="mb-3">
           <MarkdownContent text={post.content} className="text-sm" />
         </div>
-      )}
+      ))}
 
       {/* Attached Images */}
       {post.attachments && post.attachments.length > 0 && (
