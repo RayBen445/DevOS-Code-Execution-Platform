@@ -877,7 +877,7 @@ function PostComposerModal({
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     if (postText.trim() && !isPosting) {
-                      handleSubmitPost();
+                      onSubmit();
                     }
                   }
                 }}
@@ -1030,6 +1030,7 @@ function FeedItem({
   onDelete,
   onEdit,
   index,
+  isAdmin,
 }: {
   post: FeedPost;
   userId?: string;

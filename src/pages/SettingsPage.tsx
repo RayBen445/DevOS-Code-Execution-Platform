@@ -207,35 +207,65 @@ function SettingsSidebarNav({
   activeTab: Tab;
   onSelect: (id: Tab) => void;
 }) {
+  const groups = [
+    {
+      title: "Profile",
+      items: ["profile", "referrals"] as Tab[],
+    },
+    {
+      title: "Account",
+      items: ["account", "security", "danger"] as Tab[],
+    },
+    {
+      title: "Preferences",
+      items: ["preferences", "notifications", "accessibility"] as Tab[],
+    }
+  ];
+
   return (
-    <>
-      <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-4 px-3">
-        Settings
-      </p>
-      <nav className="flex flex-col gap-1">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => onSelect(tab.id)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
-              activeTab === tab.id
-                ? tab.id === "danger"
-                  ? "bg-red-500/15 text-red-400"
-                  : "bg-white/8 text-white"
-                : tab.id === "danger"
-                ? "text-red-400/60 hover:bg-red-500/10 hover:text-red-400"
-                : "text-white/50 hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-            {activeTab === tab.id && (
-              <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/30" />
-            )}
-          </button>
-        ))}
-      </nav>
-    </>
+    <div className="space-y-6">
+      {groups.map((group) => (
+        <div key={group.title}>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-3 px-3">
+            {group.title}
+          </p>
+          <nav className="flex flex-col gap-1">
+            {group.items.map((tabId) => {
+              const tab = TABS.find((t) => t.id === tabId);
+              if (!tab) return null;
+              const isActive = activeTab === tab.id;
+              const isDanger = tab.id === "danger";
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onSelect(tab.id)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
+                    isActive
+                      ? isDanger
+                        ? "bg-red-500/15 text-red-400"
+                        : "bg-white/10 text-white shadow-sm"
+                      : isDanger
+                      ? "text-red-400/60 hover:bg-red-500/10 hover:text-red-400"
+                      : "text-white/50 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTabIndicator"
+                      className={`absolute left-0 w-1 h-5 rounded-r-full ${isDanger ? "bg-red-500" : "bg-white"}`}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1666,7 +1696,7 @@ function DangerZoneTab() {
                   rows={3}
                   maxLength={500}
                   placeholder="Tell us why you'd like to delete your account…"
-                  className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-red-500 transition-colors"
+                  className={inputCls}
                 />
               </div>
               <div className="flex gap-3">

@@ -192,7 +192,7 @@ export default function TiptapEditor({ value, onChange, placeholder = "What's on
     autofocus: autoFocus ? 'end' : false,
     onUpdate: ({ editor }) => {
       // The markdown extension allows us to get markdown directly
-      const markdown = (editor.storage.markdown as any).getMarkdown();
+      const markdown = ((editor as any).storage?.markdown?.getMarkdown?.() ?? editor.getText());
       onChange(markdown);
     },
     editorProps: {
@@ -208,7 +208,7 @@ export default function TiptapEditor({ value, onChange, placeholder = "What's on
   // Watch for external value changes (e.g. if cleared)
   useEffect(() => {
     if (editor && value === '') {
-      const currentContent = (editor.storage.markdown as any).getMarkdown();
+      const currentContent = ((editor as any).storage?.markdown?.getMarkdown?.() ?? editor.getText());
       if (currentContent !== '') {
         editor.commands.setContent('');
       }

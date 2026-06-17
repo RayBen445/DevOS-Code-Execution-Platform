@@ -154,7 +154,7 @@ export default function NewProjectPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col">
-      <Navbar onMenuClick={() => {}} />
+      <Navbar />
       <div className="flex-1 flex overflow-hidden">
         {/* Left side: Templates */}
         <div className="w-2/3 h-full overflow-y-auto border-r border-white/5 p-12 custom-scrollbar relative z-10">
