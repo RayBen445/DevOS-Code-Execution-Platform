@@ -55,6 +55,7 @@ import { resolveAvatar } from "../lib/avatars";
 import { formatRelativeTime, cn } from "../lib/utils";
 import { FeedPost, FeedComment, Project, UserSettings, Poll } from "../types";
 import { getActivePolls, voteOnPoll, getUserVote } from "../lib/pollService";
+import PollCard from "./PollCard";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import MobileBottomNav from "./MobileBottomNav";
@@ -131,7 +132,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
 
   useEffect(() => {
     getActivePolls().then(setActivePolls).catch(() => {});
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!user || activePolls.length === 0) return;
@@ -570,120 +571,75 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               )}
             </div>
 
-            {/* My Projects sidebar */}
-            <div className="space-y-4 w-full max-w-full min-w-0">
-              <div className="flex items-center justify-between px-1">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
-                  My Projects
-                </h2>
-                <button
-                  onClick={() => navigate("/projects")}
-                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium"
-                >
-                  View all →
-                </button>
-              </div>
+            {/* Right Sidebar */}
+            <div className="space-y-6 w-full max-w-full min-w-0">
 
-              {myProjects.length === 0 ? (
-                <div className="rounded-2xl bg-white/5 border border-border-base p-6 text-center">
-                  <FolderCode className="w-8 h-8 text-white/20 mx-auto mb-2" />
-                  <p className="text-white/40 text-xs">No projects yet</p>
-                  <button
-                    onClick={() => navigate("/projects")}
-                    className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors"
-                  >
-                    Create one
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {myProjects.map((project) => (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      onOpen={() => onOpenProject(project.id)}
+              {/* ── Active Polls (top of sidebar — premium position) ── */}
+              {activePolls.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
+                      Live Polls
+                    </h2>
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                      <span className="text-[10px] font-bold text-blue-400">{activePolls.length} active</span>
+                    </span>
+                  </div>
+                  {activePolls.map((poll) => (
+                    <PollCard
+                      key={poll.id}
+                      poll={poll}
+                      compact
+                      onVoted={(updated) =>
+                        setActivePolls((prev) =>
+                          prev.map((p) => (p.id === updated.id ? updated : p))
+                        )
+                      }
                     />
                   ))}
                 </div>
               )}
-            </div>
 
-            {activePolls.length > 0 && (
-              <div className="space-y-3 w-full max-w-full min-w-0">
+              {/* ── My Projects ── */}
+              <div className="space-y-4">
                 <div className="flex items-center justify-between px-1">
                   <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
-                    Dev Team Polls
+                    My Projects
                   </h2>
+                  <button
+                    onClick={() => navigate("/projects")}
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium"
+                  >
+                    View all →
+                  </button>
                 </div>
-                {activePolls.map((poll) => {
-                  const voted = !!userVotes[poll.id];
-                  const votedIds = userVotes[poll.id] ?? [];
-                  const total = Math.max(poll.totalVotes, 1);
-                  return (
-                    <div
-                      key={poll.id}
-                      className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4 space-y-3"
+
+                {myProjects.length === 0 ? (
+                  <div className="rounded-2xl bg-white/5 border border-border-base p-6 text-center">
+                    <FolderCode className="w-8 h-8 text-white/20 mx-auto mb-2" />
+                    <p className="text-white/40 text-xs">No projects yet</p>
+                    <button
+                      onClick={() => navigate("/projects")}
+                      className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors"
                     >
-                      <div className="flex items-start gap-2">
-                        <BarChart2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm font-semibold text-white leading-snug">{poll.question}</p>
-                      </div>
-                      <div className="space-y-2">
-                        {poll.options.map((opt) => {
-                          const pct = voted && total > 0 ? Math.round((opt.votes / total) * 100) : 0;
-                          const isVoted = votedIds.includes(opt.id);
-                          return (
-                            <button
-                              key={opt.id}
-                              disabled={voted || votingPollId === poll.id}
-                              onClick={() => handleVote(poll.id, opt.id)}
-                              className={cn(
-                                "w-full text-left rounded-xl overflow-hidden transition-all relative",
-                                voted
-                                  ? "cursor-default"
-                                  : "hover:ring-1 hover:ring-blue-500/40 active:scale-[0.99]"
-                              )}
-                            >
-                              <div className="relative z-10 flex items-center justify-between px-3 py-2.5">
-                                <span
-                                  className={cn(
-                                    "text-xs font-medium",
-                                    isVoted ? "text-blue-300" : "text-white/70"
-                                  )}
-                                >
-                                  {opt.text}
-                                </span>
-                                {voted && (
-                                  <span className="text-xs text-white/40 font-mono ml-2 flex-shrink-0">
-                                    {pct}%
-                                  </span>
-                                )}
-                              </div>
-                              {/* Background fill */}
-                              <div
-                                className={cn(
-                                  "absolute inset-0 rounded-xl transition-all duration-500",
-                                  isVoted
-                                    ? "bg-blue-600/20 border border-blue-500/30"
-                                    : voted
-                                    ? "bg-white/[0.04] border border-white/[0.07]"
-                                    : "bg-white/[0.04] border border-white/[0.07]"
-                                )}
-                                style={voted ? { width: `${pct}%`, minWidth: "2rem" } : undefined}
-                              />
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <p className="text-[10px] text-white/25">
-                        {poll.totalVotes} vote{poll.totalVotes !== 1 ? "s" : ""}
-                        {voted ? " · You voted" : " · Click to vote"}
-                      </p>
-                    </div>
-                  );
-                })}
+                      Create one
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {myProjects.map((project) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        onOpen={() => onOpenProject(project.id)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+
+            </div>
           </div>
         </div>
         </div>
