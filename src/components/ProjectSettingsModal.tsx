@@ -273,9 +273,10 @@ export default function ProjectSettingsModal({
                         <label className="text-xs font-semibold text-white/40">Visibility</label>
                         <div className="flex gap-3">
                           <button
-                            onClick={() => setIsPublic(true)}
+                            onClick={() => { if (project.systemType !== "portfolio") setIsPublic(true); }}
+                            disabled={project.systemType === "portfolio"}
                             className={cn(
-                              "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all",
+                              "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed",
                               isPublic
                                 ? "bg-green-500/10 border-green-500/30 text-green-400"
                                 : "border-border-base text-white/40 hover:border-border-base"
@@ -285,8 +286,9 @@ export default function ProjectSettingsModal({
                           </button>
                           <button
                             onClick={() => setIsPublic(false)}
+                            disabled={project.systemType === "portfolio"}
                             className={cn(
-                              "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all",
+                              "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed",
                               !isPublic
                                 ? "bg-white/10 border-border-base text-white"
                                 : "border-border-base text-white/40 hover:border-border-base"
@@ -295,6 +297,9 @@ export default function ProjectSettingsModal({
                             <EyeOff className="w-4 h-4" /> Private
                           </button>
                         </div>
+                        {project.systemType === "portfolio" && (
+                          <p className="text-xs text-orange-400 mt-2">Portfolios are always private.</p>
+                        )}
                       </div>
                     </div>
                     <button

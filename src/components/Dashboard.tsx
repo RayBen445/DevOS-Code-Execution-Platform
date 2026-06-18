@@ -7,6 +7,7 @@ import { LayoutTemplate, Folder, Plus, FolderCode, Clock, Calendar, Users, Chevr
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime, toValidDate, generateAppId } from '../lib/utils';
+import QuickStartModal from "./QuickStartModal";
 import GitHubImportModal from "./GitHubImportModal";
 import PublishTemplateModal from "./PublishTemplateModal";
 import ProjectSettingsModal from "./ProjectSettingsModal";
@@ -1252,64 +1253,10 @@ p {
       {/* ── MODALS & OVERLAYS ── */}
       <AnimatePresence>
         {isQuickStarting && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-[#0a0a0b]/80 backdrop-blur-xl"
-              onClick={() => setIsQuickStarting(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-2xl bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative z-10"
-            >
-              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-                    <Rocket className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <h2 className="text-2xl font-black text-white tracking-tight">Quick Start Guide</h2>
-                </div>
-                <button onClick={() => setIsQuickStarting(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/5">
-                  <X className="w-5 h-5 text-white/60" />
-                </button>
-              </div>
-              
-              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                {[
-                  { icon: Plus, title: "1. Create a project", desc: "Start fresh or use a template to kick off your vision." },
-                  { icon: Code, title: "2. Write your code", desc: "Use our powerful editor with real-time preview." },
-                  { icon: Globe, title: "3. Click Deploy", desc: "Get a live, shareable link for your project instantly." },
-                  { icon: Share2, title: "4. Share your project", desc: "Show off your work to the world with one click." }
-                ].map((step, i) => (
-                  <div key={i} className="flex gap-4 group">
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-500/10 group-hover:border-blue-500/30 transition-colors">
-                      <step.icon className="w-5 h-5 text-white/60 group-hover:text-blue-400 transition-colors" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-white mb-1">{step.title}</h3>
-                      <p className="text-sm text-white/40 leading-relaxed">{step.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-8 bg-white/[0.02] border-t border-white/5 flex justify-end">
-                <button
-                  onClick={() => {
-                    setIsQuickStarting(false);
-                    setIsCreating(true);
-                  }}
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.4)]"
-                >
-                  Let's Go!
-                </button>
-              </div>
-            </motion.div>
-          </div>
+          <QuickStartModal
+            onClose={() => setIsQuickStarting(false)}
+            onCreateProject={() => setIsCreating(true)}
+          />
         )}
 
         {isCreating && (

@@ -187,7 +187,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     {
       label: "Try Demo",
       icon: Sparkles,
-      color: "bg-white/5 border border-border-base hover:bg-white/10 text-white",
+      color: "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)] hover:shadow-[0_0_25px_rgba(147,51,234,0.5)] transition-all",
       onClick: onShowLogin ?? (() => navigate("/templates")),
     },
     ...(lastProject
