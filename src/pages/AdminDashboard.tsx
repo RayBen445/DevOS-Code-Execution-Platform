@@ -2446,7 +2446,7 @@ User request: ${aiTestPrompt.trim()}`;
                                   alert("Official portfolio not found! Please trigger a reset to recreate it.");
                                   return;
                                 }
-                                navigate(`/project/${snapshot.docs[0].id}`);
+                                navigate(`/projects?open=${snapshot.docs[0].id}`);
                               } catch (e) {
                                 alert(e.message);
                               }
