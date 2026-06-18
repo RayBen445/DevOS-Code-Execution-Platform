@@ -1650,7 +1650,7 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
               </button>
               {!isReadOnly && canDeploy && (
                 <>
-                  {project?.forkedFrom && (
+                  {(project?.forkedFrom || project?.systemType === 'portfolio') && (
                     <button
                       onClick={() => setIsTemplateSyncOpen(true)}
                       className="hidden md:flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 text-xs font-bold transition-all"
