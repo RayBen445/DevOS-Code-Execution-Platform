@@ -33,6 +33,7 @@ import {
   Italic,
   Link,
   List,
+  ListOrdered,
   Quote,
   Pencil,
 } from "lucide-react";
@@ -722,12 +723,13 @@ const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; icon: React.Elemen
 ];
 
 const TOOLBAR_ACTIONS = [
-  { icon: Bold,   title: "Bold",        wrap: ["**", "**"],    placeholder: "bold text" },
-  { icon: Italic, title: "Italic",      wrap: ["*",  "*"],     placeholder: "italic text" },
-  { icon: Code2,  title: "Code",        wrap: ["`",  "`"],     placeholder: "code" },
-  { icon: Link,   title: "Link",        wrap: ["[",  "](url)"],placeholder: "link text" },
-  { icon: List,   title: "List",        wrap: ["- ", ""],      placeholder: "item" },
-  { icon: Quote,  title: "Quote",       wrap: ["> ", ""],      placeholder: "quote" },
+  { icon: Bold,        title: "Bold",          wrap: ["**", "**"],    placeholder: "bold text" },
+  { icon: Italic,      title: "Italic",        wrap: ["*",  "*"],     placeholder: "italic text" },
+  { icon: Code2,       title: "Code",          wrap: ["`",  "`"],     placeholder: "code" },
+  { icon: Link,        title: "Link",          wrap: ["[",  "](url)"],placeholder: "link text" },
+  { icon: List,        title: "Bullet List",   wrap: ["- ", ""],      placeholder: "item" },
+  { icon: ListOrdered, title: "Numbered List", wrap: ["1. ", ""],     placeholder: "item" },
+  { icon: Quote,       title: "Quote",         wrap: ["> ", ""],      placeholder: "quote" },
 ] as const;
 
 function PostComposerModal({
@@ -791,7 +793,7 @@ function PostComposerModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 20 }}
             transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-50 flex flex-col max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl shadow-black/50"
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-4xl z-50 flex flex-col max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl shadow-black/50"
             style={{ background: "linear-gradient(135deg, #141416 0%, #0f0f11 100%)", border: "1px solid rgba(255,255,255,0.09)" }}
           >
             {/* Top accent line */}

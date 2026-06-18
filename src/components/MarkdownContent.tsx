@@ -53,6 +53,26 @@ function MarkdownToken({ token }: { token: TextToken }) {
         </ul>
       );
 
+    case "ordered_list":
+      return (
+        <ol className="space-y-2 ml-4">
+          {token.children?.map((item, idx) => (
+            <li key={idx} className="flex gap-3">
+              <span className="text-blue-400 flex-shrink-0 mt-0.5 font-bold">{idx + 1}.</span>
+              <div className="space-y-1">
+                {item.children ? (
+                  item.children.map((child, childIdx) => (
+                    <MarkdownToken key={childIdx} token={child} />
+                  ))
+                ) : (
+                  <span>{item.content}</span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      );
+
     case "codeblock":
       return (
         <pre className="bg-black/40 border border-border-base rounded-lg p-4 overflow-x-auto">

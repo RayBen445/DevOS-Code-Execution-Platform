@@ -6,7 +6,7 @@ import Mention from '@tiptap/extension-mention';
 import Image from '@tiptap/extension-image';
 import { Markdown } from 'tiptap-markdown';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
-import { Bold, Italic, List, Quote, Code, Image as ImageIcon } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Quote, Code, Image as ImageIcon } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { resolveAvatar } from "../lib/avatars";
@@ -271,6 +271,14 @@ export default function TiptapEditor({ value, onChange, placeholder = "What's on
         </button>
         <button
           type="button"
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          className={cn("p-1.5 rounded hover:bg-white/10 transition-colors", editor.isActive('orderedList') ? 'bg-white/20 text-white' : 'text-white/60')}
+          title="Numbered List"
+        >
+          <ListOrdered size={16} />
+        </button>
+        <button
+          type="button"
           onClick={addImage}
           className="p-1.5 rounded hover:bg-white/10 transition-colors text-white/60"
           title="Add Image"
@@ -294,6 +302,19 @@ export default function TiptapEditor({ value, onChange, placeholder = "What's on
           margin-bottom: 0.5rem;
         }
         .ProseMirror p:last-child {
+          margin-bottom: 0;
+        }
+        .ProseMirror ul {
+          list-style-type: disc;
+          padding-left: 1.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .ProseMirror ol {
+          list-style-type: decimal;
+          padding-left: 1.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .ProseMirror li p {
           margin-bottom: 0;
         }
       `}} />

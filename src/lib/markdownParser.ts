@@ -4,7 +4,7 @@
  */
 
 export interface TextToken {
-  type: "text" | "bold" | "italic" | "code" | "link" | "blockquote" | "list" | "codeblock";
+  type: "text" | "bold" | "italic" | "code" | "link" | "blockquote" | "list" | "ordered_list" | "codeblock";
   content: string;
   url?: string; // for links
   children?: TextToken[]; // for nested structures
@@ -52,15 +52,35 @@ export function parseMarkdown(text: string): TextToken[] {
       continue;
     }
 
-    // Unordered list (starts with *)
-    if (trimmed.startsWith("*") && trimmed.length > 1 && trimmed[1] === " ") {
+    // Unordered list (starts with * or -)
+    if ((trimmed.startsWith("* ") || trimmed.startsWith("- ")) && trimmed.length > 1) {
       const listItems: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith("*") && lines[i].trim()[1] === " ") {
+      while (i < lines.length && (lines[i].trim().startsWith("* ") || lines[i].trim().startsWith("- "))) {
         listItems.push(lines[i].trim().substring(2).trim());
         i++;
       }
       tokens.push({
         type: "list",
+        content: "",
+        children: listItems.map((item) => ({
+          type: "text" as const,
+          content: item,
+          children: parseInlineMarkdown(item),
+        })),
+      });
+      continue;
+    }
+
+    // Ordered list (starts with number followed by dot, e.g., "1. ")
+    if (/^\d+\.\s/.test(trimmed)) {
+      const listItems: string[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        const itemContent = lines[i].trim().replace(/^\d+\.\s+/, "");
+        listItems.push(itemContent);
+        i++;
+      }
+      tokens.push({
+        type: "ordered_list",
         content: "",
         children: listItems.map((item) => ({
           type: "text" as const,
