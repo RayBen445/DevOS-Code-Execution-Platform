@@ -599,6 +599,7 @@ export default function App() {
         <SwipeNavigation />
         <AnimatePresence mode="wait">
           <React.Suspense fallback={<PremiumLoader mode="lightweight" message="Loading Workspace..." />}><Routes>
+            <Route path="/sso-callback" element={<SSOCallback />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/cookies" element={<CookiePolicyPage />} />

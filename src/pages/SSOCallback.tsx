@@ -26,7 +26,7 @@ export default function SSOCallback() {
         .then((userCredential) => {
           // 2. Success! Redirect to the child app's dashboard
           toast.success("Successfully signed in with Kontyra");
-          navigate("/dashboard");
+          navigate("/projects");
         })
         .catch((err) => {
           console.error("Token verification failed", err);
