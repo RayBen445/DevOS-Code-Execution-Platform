@@ -51,6 +51,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [publicProjects, setPublicProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<"my-projects" | "public-projects">("my-projects");
+  const [selectedView, setSelectedView] = useState<string>("all");
 
   // One-time cleanup for duplicate system portfolios
   useEffect(() => {
@@ -689,7 +690,7 @@ p {
     const grouped: Record<string, Project[]> = {};
     const ungrouped: Project[] = [];
     for (const p of filteredProjects) {
-      if (p.isPinned || (p.systemType === "portfolio" && p.isSystem)) {
+      if (p.isPinned || p.systemType === "portfolio") {
         pinned.push(p);
       } else if (p.group) {
         if (!grouped[p.group]) grouped[p.group] = [];
@@ -953,96 +954,269 @@ p {
   }, [groupPopoverProjectId]);
 
   useSEO({ title: isOrgWorkspace && context?.type === "org" ? `${context.name} — DevOS` : "Dashboard — DevOS" });
+  
+  // Projects to show in the right pane based on selectedView
+  let displayedGridProjects = [];
+  let gridTitle = "";
+  if (activeTab === "public-projects") {
+    displayedGridProjects = publicProjects.filter(p => !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+    gridTitle = "Explore Public";
+  } else {
+    if (selectedView === "all") {
+      displayedGridProjects = filteredProjects;
+      gridTitle = "All Projects";
+    } else if (selectedView === "pinned") {
+      displayedGridProjects = pinnedProjects.filter(p => !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+      gridTitle = "Pinned Projects";
+    } else if (selectedView.startsWith("group:")) {
+      const gName = selectedView.substring(6);
+      displayedGridProjects = (groupedMap[gName] || []).filter(p => !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+      gridTitle = gName;
+    } else if (selectedView === "ungrouped") {
+      displayedGridProjects = ungroupedProjects.filter(p => !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+      gridTitle = "Ungrouped";
+    }
+  }
+
   return (
-    <div className="w-full px-4 md:px-8 py-8">
-      {/* Workspace Banner */}
-      {isOrgWorkspace && context?.type === "org" && (
-        <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-          <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
-          <span className="text-sm text-blue-300 font-medium">
-            Workspace: <span className="font-bold">{context.name}</span>
-          </span>
-          <span className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 text-[10px] font-bold uppercase tracking-wider">org</span>
-        </div>
-      )}
-      {/* Header / Profile Section */}
-      <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <p className="text-white/40">
-            {isOrgWorkspace && context?.type === "org"
-              ? `Showing projects for ${context.name}.`
-              : "Manage your cloud-based development environments."}
-          </p>
-          {!isOrgWorkspace && settings?.username && (
-            <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
-              @{settings.username}
-            </span>
-          )}
-        </div>
-        
-        <div className="flex flex-wrap gap-3">
-          {/* Primary */}
+    <div className="w-full max-w-[1600px] mx-auto px-4 md:px-8 py-8 flex flex-col lg:flex-row gap-8">
+      {/* ── LEFT SIDEBAR ── */}
+      <div className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-6">
+        {/* Workspace Banner */}
+        {isOrgWorkspace && context?.type === "org" && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+            <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-[10px] text-blue-400/70 font-bold uppercase tracking-wider">Workspace</span>
+              <span className="text-sm text-blue-300 font-bold truncate max-w-[150px]">{context.name}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Actions */}
+        <div className="flex flex-col gap-2">
           <button
             onClick={() => setIsCreating(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-white/90 transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-bold hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-[1.02] transition-all active:scale-95 border border-blue-400/20"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             New Project
-            <span className="px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest ml-1 shadow-[0_0_10px_rgba(37,99,235,0.5)]">Beta</span>
+          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setIsQuickStarting(true)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/10 transition-all active:scale-95 text-xs"
+            >
+              <Rocket className="w-3.5 h-3.5 text-blue-400" />
+              Quick Start
+            </button>
+            <button
+              onClick={() => navigate("/marketplace")}
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-semibold hover:bg-white/10 transition-all active:scale-95 text-xs"
+            >
+              <Layout className="w-3.5 h-3.5 text-purple-400" />
+              Templates
+            </button>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="flex flex-col gap-1">
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-1">Views</p>
+          <button
+            onClick={() => { setActiveTab("my-projects"); setSelectedView("all"); }}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+              activeTab === "my-projects" && selectedView === "all" ? "bg-white/10 text-white shadow-sm" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+            )}
+          >
+            <FolderCode className={cn("w-4 h-4", activeTab === "my-projects" && selectedView === "all" ? "text-blue-400" : "")} />
+            All Projects
+            <span className="ml-auto text-xs bg-white/5 px-2 py-0.5 rounded-full">{projects.length}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("public-projects")}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+              activeTab === "public-projects" ? "bg-white/10 text-white shadow-sm" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+            )}
+          >
+            <Globe className={cn("w-4 h-4", activeTab === "public-projects" ? "text-green-400" : "")} />
+            Explore Public
           </button>
           <button
             onClick={() => setShowCreateOrg(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-border-base text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white/40 hover:bg-white/5 hover:text-white/80 transition-all"
           >
-            <Building2 className="w-4 h-4 text-blue-400" />
+            <Building2 className="w-4 h-4" />
             New Organization
           </button>
-          {/* Secondary */}
-          <button
-            onClick={() => setIsQuickStarting(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-border-base text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
-          >
-            <Rocket className="w-4 h-4 text-blue-400" />
-            Quick Start
-          </button>
-          <button
-            onClick={() => navigate("/marketplace")}
-            className="flex items-center gap-2 px-5 py-3 bg-white/10 border border-border-base text-white rounded-xl font-semibold hover:bg-white/15 transition-all active:scale-95"
-          >
-            <Layout className="w-4 h-4 text-purple-400" />
-            Templates
-          </button>
-          {/* Tertiary */}
-          <button
-            onClick={handleTryDemo}
-            className="flex items-center gap-2 px-4 py-3 text-white/40 hover:text-white/70 rounded-xl font-medium transition-all active:scale-95 text-sm"
-          >
-            <Sparkles className="w-4 h-4 text-yellow-500/60" />
-            Try Demo
-          </button>
+        </div>
+
+        {/* Folders / Groups */}
+        {activeTab === "my-projects" && (
+          <div className="flex flex-col gap-1 mt-2">
+            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-1">Folders</p>
+            {pinnedProjects.length > 0 && (
+              <button
+                onClick={() => setSelectedView("pinned")}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                  selectedView === "pinned" ? "bg-amber-500/10 text-amber-500" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+                )}
+              >
+                <Pin className={cn("w-4 h-4", selectedView === "pinned" ? "text-amber-500" : "")} />
+                Pinned
+                <span className="ml-auto text-xs bg-white/5 px-2 py-0.5 rounded-full text-white/60">{pinnedProjects.length}</span>
+              </button>
+            )}
+            
+            {allGroupNames.map(gn => (
+              <button
+                key={gn}
+                onClick={() => setSelectedView(`group:${gn}`)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all truncate",
+                  selectedView === `group:${gn}` ? "bg-blue-500/10 text-blue-400" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+                )}
+              >
+                <FolderOpen className={cn("w-4 h-4 flex-shrink-0", selectedView === `group:${gn}` ? "text-blue-400" : "")} />
+                <span className="truncate">{gn}</span>
+                <span className="ml-auto text-xs bg-white/5 px-2 py-0.5 rounded-full text-white/60 flex-shrink-0">{(groupedMap[gn] || []).length}</span>
+              </button>
+            ))}
+
+            {ungroupedProjects.length > 0 && allGroupNames.length > 0 && (
+              <button
+                onClick={() => setSelectedView("ungrouped")}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                  selectedView === "ungrouped" ? "bg-white/10 text-white" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+                )}
+              >
+                <Folder className="w-4 h-4" />
+                Ungrouped
+                <span className="ml-auto text-xs bg-white/5 px-2 py-0.5 rounded-full text-white/60">{ungroupedProjects.length}</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── RIGHT MAIN AREA ── */}
+      <div className="flex-1 min-w-0 flex flex-col gap-6">
+        
+        {/* Top Header & Search */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-white tracking-tight">{gridTitle}</h1>
+            <p className="text-sm text-white/40">
+              {activeTab === "public-projects" ? "Discover projects built by the community." : "Manage your cloud-based development environments."}
+            </p>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all shadow-inner"
+            />
+          </div>
+        </div>
+
+        {/* Continue Working Banner (Only on "All Projects" view) */}
+        {activeTab === "my-projects" && selectedView === "all" && !searchQuery.trim() && (() => {
+          const last = projects.find((p) => p.ownerId === user?.uid);
+          if (!last) return null;
+          return (
+            <div className="rounded-2xl bg-gradient-to-r from-blue-600/10 via-purple-600/5 to-transparent border border-blue-500/20 p-6 flex flex-col sm:flex-row sm:items-center gap-6 relative overflow-hidden group hover:border-blue-500/40 transition-colors">
+              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-2xl" />
+              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                <Clock className="w-6 h-6 text-blue-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-blue-400/80 font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3" /> Continue Working
+                </p>
+                <h3 className="text-white font-bold text-lg truncate group-hover:text-blue-100 transition-colors">{last.name}</h3>
+                <p className="text-sm text-white/40 mt-1 truncate">
+                  Last updated {formatRelativeTime(last.updatedAt)}
+                  {last.description && <> <span className="mx-1 opacity-50">•</span> {last.description}</>}
+                </p>
+              </div>
+              <button
+                onClick={() => onSelectProject(last.id)}
+                className="flex-shrink-0 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold transition-all active:scale-[0.97] border border-white/5 backdrop-blur-sm"
+              >
+                Resume Workspace
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Project Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 pb-8">
+          {displayedGridProjects.map((p, i) => renderCard(p, i))}
+          
+          {/* Empty State */}
+          {displayedGridProjects.length === 0 && !isCreating && (
+            <div className="col-span-full py-24 text-center rounded-3xl border-2 border-dashed border-white/5 bg-white/[0.01]">
+              <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-4" />
+              <p className="text-white/40 font-medium text-lg mb-2">No projects found.</p>
+              <p className="text-white/30 text-sm mb-6">Create a new project or adjust your search filters.</p>
+              {activeTab === "my-projects" && (
+                <button
+                  onClick={() => setIsCreating(true)}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600/20 text-blue-400 rounded-xl font-bold hover:bg-blue-600 hover:text-white transition-all active:scale-95 border border-blue-500/30"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Project
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── FOOTER ELEMENTS ── */}
+        <div className="mt-auto pt-12 border-t border-white/5 flex flex-col items-center gap-4">
+          <div className="flex items-center gap-2 text-white/20 text-sm font-medium">
+            Built with <span className="text-white/40 font-bold tracking-tight">DevOS</span>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-white/10 font-bold uppercase tracking-[0.2em]">
+            <span>Kontyra and Tech Visionary Network</span>
+          </div>
         </div>
       </div>
 
+      {/* ── MODALS & OVERLAYS ── */}
       <AnimatePresence>
         {isQuickStarting && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
-            {/* Scrollable overlay — allows the modal to scroll on short viewports */}
-            <div className="flex min-h-full items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-[#0a0a0b]/80 backdrop-blur-xl"
+              onClick={() => setIsQuickStarting(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-2xl bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative z-10"
             >
-              <div className="p-8 border-b border-border-base flex items-center justify-between">
+              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
-                    <Rocket className="w-6 h-6 text-blue-500" />
+                  <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                    <Rocket className="w-5 h-5 text-blue-400" />
                   </div>
-                  <h2 className="text-2xl font-bold text-white tracking-tight">Quick Start Guide</h2>
+                  <h2 className="text-2xl font-black text-white tracking-tight">Quick Start Guide</h2>
                 </div>
-                <button onClick={() => setIsQuickStarting(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                  <X className="w-6 h-6 text-white/40" />
+                <button onClick={() => setIsQuickStarting(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/5">
+                  <X className="w-5 h-5 text-white/60" />
                 </button>
               </div>
               
@@ -1053,31 +1227,30 @@ p {
                   { icon: Globe, title: "3. Click Deploy", desc: "Get a live, shareable link for your project instantly." },
                   { icon: Share2, title: "4. Share your project", desc: "Show off your work to the world with one click." }
                 ].map((step, i) => (
-                  <div key={i} className="flex gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-border-base flex items-center justify-center flex-shrink-0">
-                      <step.icon className="w-6 h-6 text-white/60" />
+                  <div key={i} className="flex gap-4 group">
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-500/10 group-hover:border-blue-500/30 transition-colors">
+                      <step.icon className="w-5 h-5 text-white/60 group-hover:text-blue-400 transition-colors" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-white mb-1">{step.title}</h3>
+                      <h3 className="text-base font-bold text-white mb-1">{step.title}</h3>
                       <p className="text-sm text-white/40 leading-relaxed">{step.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="p-8 bg-white/5 flex justify-end">
+              <div className="p-8 bg-white/[0.02] border-t border-white/5 flex justify-end">
                 <button
                   onClick={() => {
                     setIsQuickStarting(false);
                     setIsCreating(true);
                   }}
-                  className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
+                  className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.4)]"
                 >
                   Let's Go!
                 </button>
               </div>
             </motion.div>
-            </div>
           </div>
         )}
 
@@ -1092,9 +1265,9 @@ p {
             {/* Close Button */}
             <button 
               onClick={() => setIsCreating(false)} 
-              className="absolute top-6 right-6 z-50 p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors backdrop-blur-md"
+              className="absolute top-6 right-6 z-50 p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors backdrop-blur-md hover:scale-105 active:scale-95"
             >
-              <X className="w-6 h-6 text-white/60" />
+              <X className="w-5 h-5 text-white/60" />
             </button>
 
             {/* Left side: Templates */}
@@ -1110,10 +1283,10 @@ p {
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
                       className={cn(
-                        "px-4 py-2 rounded-full text-sm font-bold transition-all",
+                        "px-4 py-2 rounded-full text-sm font-bold transition-all border",
                         selectedCategory === cat 
-                          ? "bg-white text-black" 
-                          : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                          ? "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]" 
+                          : "bg-white/5 text-white/40 border-transparent hover:bg-white/10 hover:text-white"
                       )}
                     >
                       {cat}
@@ -1126,7 +1299,7 @@ p {
                     .filter(t => selectedCategory === "All Templates" || t.category === selectedCategory)
                     .map(template => {
                       const isSelected = selectedTemplateId === template.id;
-                      const Icon = ((lucideIcons as any)[template.icon] as React.ElementType) || lucideIcons.Code;
+                      const Icon = ((lucideIcons)[template.icon] ) || lucideIcons.Code;
                       return (
                         <div
                           key={template.id}
@@ -1135,21 +1308,21 @@ p {
                             "group cursor-pointer relative p-6 rounded-3xl border transition-all duration-300",
                             isSelected 
                               ? "bg-blue-600/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.15)]" 
-                              : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/10"
+                              : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/20 hover:shadow-xl"
                           )}
                         >
                           <div className={cn(
                             "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300",
-                            isSelected ? "bg-blue-600 shadow-lg shadow-blue-600/30" : "bg-white/5 group-hover:scale-110"
+                            isSelected ? "bg-blue-600 shadow-lg shadow-blue-600/30" : "bg-white/5 group-hover:bg-white/10 group-hover:scale-110"
                           )}>
-                            <Icon className={cn("w-6 h-6", isSelected ? "text-white" : "text-white/60")} />
+                            <Icon className={cn("w-6 h-6 transition-colors", isSelected ? "text-white" : "text-white/60 group-hover:text-white")} />
                           </div>
                           <h3 className="text-lg font-bold text-white mb-2">{template.name}</h3>
-                          <p className="text-sm text-white/40 line-clamp-2">{template.description}</p>
+                          <p className="text-xs text-white/40 line-clamp-2 leading-relaxed">{template.description}</p>
                           
                           {isSelected && (
                             <div className="absolute top-4 right-4 text-blue-500">
-                              <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
                             </div>
                           )}
                         </div>
@@ -1160,7 +1333,7 @@ p {
             </div>
 
             {/* Right side: Project Details */}
-            <div className="w-1/3 h-full bg-black/40 backdrop-blur-xl p-12 overflow-y-auto custom-scrollbar relative z-10 flex flex-col justify-center">
+            <div className="w-1/3 h-full bg-black/40 backdrop-blur-2xl border-l border-white/5 p-12 overflow-y-auto custom-scrollbar relative z-10 flex flex-col justify-center">
               <form onSubmit={handleCreateProject} className="space-y-8 max-w-md mx-auto w-full">
                 
                 <div className="space-y-3">
@@ -1175,29 +1348,29 @@ p {
                     onChange={(e) => { setNewProjectName(e.target.value); setProjectNameTaken(false); }}
                     className={cn(
                       "w-full bg-white/5 border rounded-2xl px-5 py-4 text-lg text-white font-medium focus:outline-none transition-all placeholder:text-white/20",
-                      projectNameTaken ? "border-red-500/60 focus:border-red-500" : "border-white/10 focus:border-blue-500 focus:bg-white/10"
+                      projectNameTaken ? "border-red-500/60 focus:border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]" : "border-white/10 focus:border-blue-500 focus:bg-blue-500/5 shadow-inner"
                     )}
                     required
                   />
                   {projectNameTaken && (
-                    <p className="text-xs text-red-400 flex items-center gap-1">
+                    <p className="text-xs text-red-400 flex items-center gap-1 font-medium">
                       <X className="w-3 h-3" /> You already have a project with this name
                     </p>
                   )}
                   {checkingProjectName && !projectNameTaken && (
-                    <p className="text-xs text-white/30">Checking availability...</p>
+                    <p className="text-xs text-white/30 animate-pulse">Checking availability...</p>
                   )}
                 </div>
 
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                    <LayoutTemplate className="w-4 h-4" /> Description <span className="opacity-50 lowercase">(optional)</span>
+                    <LayoutTemplate className="w-4 h-4" /> Description <span className="opacity-50 lowercase font-normal">(optional)</span>
                   </label>
                   <textarea
                     placeholder="What are you building?"
                     value={newProjectDescription}
                     onChange={(e) => setNewProjectDescription(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 focus:bg-white/10 transition-all resize-none min-h-[120px] placeholder:text-white/20"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 focus:bg-blue-500/5 transition-all resize-none min-h-[120px] placeholder:text-white/20 shadow-inner"
                   />
                 </div>
 
@@ -1211,7 +1384,7 @@ p {
                       onClick={() => setVisibility("public")}
                       className={cn(
                         "flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all",
-                        visibility === "public" ? "bg-blue-600/10 border-blue-500 text-white" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+                        visibility === "public" ? "bg-blue-600/10 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/20 hover:text-white"
                       )}
                     >
                       <Globe className="w-6 h-6" />
@@ -1222,7 +1395,7 @@ p {
                       onClick={() => setVisibility("private")}
                       className={cn(
                         "flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all",
-                        visibility === "private" ? "bg-blue-600/10 border-blue-500 text-white" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+                        visibility === "private" ? "bg-blue-600/10 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/20 hover:text-white"
                       )}
                     >
                       <lucideIcons.Lock className="w-6 h-6" />
@@ -1235,7 +1408,7 @@ p {
                   <button
                     type="submit"
                     disabled={!newProjectName.trim() || projectNameTaken || checkingProjectName}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg hover:shadow-[0_0_40px_rgba(59,130,246,0.3)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg hover:shadow-[0_0_40px_rgba(59,130,246,0.4)] hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
                   >
                     <Plus className="w-5 h-5" />
                     Create Project
@@ -1245,465 +1418,9 @@ p {
             </div>
           </div>
         )}
-
-        {isQuickStarting && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
-            {/* Scrollable overlay — allows the modal to scroll on short viewports */}
-            <div className="flex min-h-full items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl"
-            >
-              <div className="p-8 border-b border-border-base flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center">
-                    <Rocket className="w-6 h-6 text-blue-500" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-white tracking-tight">Quick Start Guide</h2>
-                </div>
-                <button onClick={() => setIsQuickStarting(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                  <X className="w-6 h-6 text-white/40" />
-                </button>
-              </div>
-              
-              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                {[
-                  { icon: Plus, title: "1. Create a project", desc: "Start fresh or use a template to kick off your vision." },
-                  { icon: Code, title: "2. Write your code", desc: "Use our powerful editor with real-time preview." },
-                  { icon: Globe, title: "3. Click Deploy", desc: "Get a live, shareable link for your project instantly." },
-                  { icon: Share2, title: "4. Share your project", desc: "Show off your work to the world with one click." }
-                ].map((step, i) => (
-                  <div key={i} className="flex gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-border-base flex items-center justify-center flex-shrink-0">
-                      <step.icon className="w-6 h-6 text-white/60" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white mb-1">{step.title}</h3>
-                      <p className="text-sm text-white/40 leading-relaxed">{step.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-8 bg-white/5 flex justify-end">
-                <button
-                  onClick={() => {
-                    setIsQuickStarting(false);
-                    setIsCreating(true);
-                  }}
-                  className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
-                >
-                  Let's Go!
-                </button>
-              </div>
-            </motion.div>
-            </div>
-          </div>
-        )}
-
-        {isCreating && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
-            {/* Scrollable overlay — allows the modal to scroll on short viewports */}
-            <div className="flex min-h-full items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-2xl bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl"
-            >
-              <div className="p-8 border-b border-border-base flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white tracking-tight">Create New Project</h2>
-                <button onClick={() => setIsCreating(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                  <X className="w-6 h-6 text-white/40" />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateProject} className="p-8 space-y-8">
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Project Name</label>
-                    <input
-                      autoFocus
-                      type="text"
-                      placeholder="My Awesome App"
-                      value={newProjectName}
-                      onChange={(e) => { setNewProjectName(e.target.value); setProjectNameTaken(false); }}
-                      className={cn(
-                        "w-full bg-white/5 border rounded-xl px-4 py-3 text-white focus:outline-none transition-all",
-                        projectNameTaken ? "border-red-500/60 focus:border-red-500" : "border-border-base focus:border-blue-500"
-                      )}
-                      required
-                    />
-                    {projectNameTaken && (
-                      <p className="text-xs text-red-400 flex items-center gap-1">
-                        ✗ You already have a project with this name
-                      </p>
-                    )}
-                    {checkingProjectName && !projectNameTaken && (
-                      <p className="text-xs text-white/30">Checking availability…</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Description (Optional)</label>
-                    <textarea
-                      placeholder="What are you building?"
-                      value={newProjectDescription}
-                      onChange={(e) => setNewProjectDescription(e.target.value)}
-                      className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all h-24 resize-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setVisibility("public")}
-                      className={cn(
-                        "p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2",
-                        visibility === "public" ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-border-base hover:border-border-base"
-                      )}
-                    >
-                      <Eye className={cn("w-6 h-6", visibility === "public" ? "text-blue-500" : "text-white/20")} />
-                      <span className="font-bold text-sm">Public</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setVisibility("private")}
-                      className={cn(
-                        "p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2",
-                        visibility === "private" ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-border-base hover:border-border-base"
-                      )}
-                    >
-                      <EyeOff className={cn("w-6 h-6", visibility === "private" ? "text-blue-500" : "text-white/20")} />
-                      <span className="font-bold text-sm">Private</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Choose a Template</label>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                      {templateCategories.map(cat => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setSelectedCategory(cat)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all",
-                            selectedCategory === cat 
-                              ? "bg-blue-600 text-white" 
-                              : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
-                          )}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto custom-scrollbar pr-2">
-                      {displayedTemplates.map((t) => {
-                        const Icon = t.icon === "Globe" ? Globe : t.icon === "User" ? UserIcon : t.icon === "Code2" ? Code : FolderCode;
-                        return (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => setSelectedTemplateId(t.id)}
-                            className={cn(
-                              "p-4 rounded-2xl border-2 transition-all flex flex-col items-start gap-2 text-left",
-                              selectedTemplateId === t.id ? "bg-blue-600/10 border-blue-600" : "bg-white/5 border-border-base hover:border-border-base"
-                            )}
-                          >
-                            <div className="flex items-center justify-between w-full mb-1">
-                              <div className={cn(
-                                "w-10 h-10 rounded-xl flex items-center justify-center",
-                                selectedTemplateId === t.id ? "bg-blue-600 text-white" : "bg-white/5 text-white/40"
-                              )}>
-                                <Icon className="w-5 h-5" />
-                              </div>
-                              {t.source === "firestore" && (
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">Community</span>
-                              )}
-                            </div>
-                            <span className="font-bold text-sm text-white line-clamp-1">{t.name}</span>
-                            <p className="text-[10px] text-white/40 leading-tight line-clamp-2">{t.description}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">License</label>
-                    <CustomSelect
-                      value={selectedLicense}
-                      onChange={setSelectedLicense}
-                      options={[
-                        { value: "none", label: "No License" },
-                        { value: "MIT", label: "MIT License" },
-                        { value: "Apache2", label: "Apache License 2.0" },
-                        { value: "GPL3", label: "GNU GPL v3" },
-                      ]}
-                    />
-                    {selectedLicense !== "none" && (
-                      <p className="text-xs text-white/30">A LICENSE file will be added to your project.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-4 pt-8 border-t border-border-base">
-                  <button
-                    type="button"
-                    onClick={() => setIsCreating(false)}
-                    className="px-6 py-3 rounded-xl font-bold text-white/40 hover:text-white transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={projectNameTaken || checkingProjectName}
-                    className="px-10 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20 disabled:opacity-50"
-                  >
-                    Create Project
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-            </div>
-          </div>
-        )}
       </AnimatePresence>
 
-      {/* ─── Continue Working banner ─── */}
-      {activeTab === "my-projects" && (() => {
-        const last = projects.find((p) => p.ownerId === user?.uid);
-        if (!last) return null;
-        return (
-          <div className="mb-8 rounded-2xl bg-gradient-to-r from-blue-600/10 to-blue-500/5 border border-blue-500/20 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] text-blue-400/70 font-bold uppercase tracking-widest mb-1">Continue Working</p>
-              <h3 className="text-white font-bold text-base truncate">{last.name}</h3>
-              <p className="text-xs text-white/40 mt-0.5">
-                Last updated {formatRelativeTime(last.updatedAt)}
-                {last.description && <> · {last.description}</>}
-              </p>
-            </div>
-            <button
-              onClick={() => onSelectProject(last.id)}
-              className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-all active:scale-[0.97]"
-            >
-              <ChevronRight className="w-4 h-4" />
-              Resume
-            </button>
-          </div>
-        );
-      })()}
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b border-border-base pb-4">
-        <div className="flex gap-8">
-          <button
-            onClick={() => setActiveTab("my-projects")}
-            className={cn(
-              "text-sm font-bold uppercase tracking-widest transition-all relative",
-              activeTab === "my-projects" ? "text-white" : "text-white/20 hover:text-white/40"
-            )}
-          >
-            {isOrgWorkspace ? "Org Projects" : "My Projects"}
-            {activeTab === "my-projects" && (
-              <motion.div layoutId="activeTab" className="absolute -bottom-[18px] left-0 right-0 h-0.5 bg-blue-600" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("public-projects")}
-            className={cn(
-              "text-sm font-bold uppercase tracking-widest transition-all relative",
-              activeTab === "public-projects" ? "text-white" : "text-white/20 hover:text-white/40"
-            )}
-          >
-            Explore Public
-            {activeTab === "public-projects" && (
-              <motion.div layoutId="activeTab" className="absolute -bottom-[18px] left-0 right-0 h-0.5 bg-blue-600" />
-            )}
-          </button>
-        </div>
-        <div className="relative w-full sm:w-auto mt-2 sm:mt-0">
-          <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full sm:w-64 pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-500/50 transition-all"
-          />
-        </div>
-      </div>
-
-      {/* ─── My Projects: Grouped Sections ─── */}
-      {activeTab === "my-projects" && (
-        <div className="space-y-8">
-          {/* Pinned Projects */}
-          {pinnedProjects.length > 0 && (
-            <div>
-              <button
-                onClick={() => toggleGroupCollapse("__pinned__")}
-                className="w-full flex items-center justify-between mb-4 group"
-              >
-                <div className="flex items-center gap-2">
-                  <Pin className="w-4 h-4 text-amber-500" />
-                  <span className="text-sm font-bold text-amber-500 uppercase tracking-widest">Pinned Projects</span>
-                  <span className="px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold">
-                    {pinnedProjects.length}
-                  </span>
-                </div>
-                <ChevronDown className={cn("w-4 h-4 text-white/20 transition-transform", collapsedGroups.has("__pinned__") && "-rotate-90")} />
-              </button>
-              <AnimatePresence initial={false}>
-                {!collapsedGroups.has("__pinned__") && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    className="overflow-hidden"
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {pinnedProjects.map((p, i) => renderCard(p, i))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {/* User-defined named groups */}
-          {allGroupNames.map((groupName, gi) => {
-            const groupProjects = groupedMap[groupName] ?? [];
-            const collapseKey = `__group__${groupName}`;
-            return (
-              <div key={groupName}>
-                <button
-                  onClick={() => toggleGroupCollapse(collapseKey)}
-                  className="w-full flex items-center justify-between mb-4 group"
-                >
-                  <div className="flex items-center gap-2">
-                    <FolderOpen className="w-4 h-4 text-blue-400/60" />
-                    <span className="text-sm font-bold text-white/50 uppercase tracking-widest">{groupName}</span>
-                    <span className="px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400/70 text-[10px] font-bold">
-                      {groupProjects.length}
-                    </span>
-                  </div>
-                  <ChevronDown className={cn("w-4 h-4 text-white/20 transition-transform", collapsedGroups.has(collapseKey) && "-rotate-90")} />
-                </button>
-                <AnimatePresence initial={false}>
-                  {!collapsedGroups.has(collapseKey) && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                      className="overflow-hidden"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {groupProjects.map((p, i) => renderCard(p, gi * 50 + i))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-
-          {/* Ungrouped projects */}
-          {ungroupedProjects.length > 0 && (
-            <div>
-              {/* Only show section header when there are also named groups */}
-              {allGroupNames.length > 0 && (
-                <button
-                  onClick={() => toggleGroupCollapse("__ungrouped__")}
-                  className="w-full flex items-center justify-between mb-4 group"
-                >
-                  <div className="flex items-center gap-2">
-                    <FolderCode className="w-4 h-4 text-white/20" />
-                    <span className="text-sm font-bold text-white/30 uppercase tracking-widest">Ungrouped</span>
-                    <span className="px-1.5 py-0.5 rounded-full bg-white/5 text-white/30 text-[10px] font-bold">
-                      {ungroupedProjects.length}
-                    </span>
-                  </div>
-                  <ChevronDown className={cn("w-4 h-4 text-white/20 transition-transform", collapsedGroups.has("__ungrouped__") && "-rotate-90")} />
-                </button>
-              )}
-              <AnimatePresence initial={false}>
-                {!collapsedGroups.has("__ungrouped__") && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    className="overflow-hidden"
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {ungroupedProjects.map((p, i) => renderCard(p, allGroupNames.length * 50 + i))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {/* Empty state */}
-          {projects.length === 0 && !isCreating && (
-            <div className="py-20 text-center rounded-3xl border-2 border-dashed border-border-base">
-              <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-4" />
-              <p className="text-white/40 font-medium mb-6">No projects yet. Create your first one to get started!</p>
-              <div className="flex items-center justify-center gap-4 flex-wrap">
-                <button
-                  onClick={() => setIsCreating(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                  Create Project
-                </button>
-                <button
-                  onClick={() => navigate("/marketplace")}
-                  className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-border-base text-white rounded-xl font-bold hover:bg-white/10 transition-all active:scale-95"
-                >
-                  <Layout className="w-4 h-4 text-purple-400" />
-                  Use Template
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── Explore Public: Flat Grid ─── */}
-      {activeTab === "public-projects" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {publicProjects
-            .filter(p => !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase()))
-            .map((project, idx) => renderCard(project, idx))}
-          {publicProjects.filter(p => !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && !isCreating && (
-            <div className="col-span-full py-20 text-center rounded-3xl border-2 border-dashed border-border-base">
-              <FolderCode className="w-12 h-12 text-white/10 mx-auto mb-4" />
-              <p className="text-white/40 font-medium mb-6">No public projects found.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      <LiveMap className="mt-16 mb-16" />
-
-      <div className="mt-24 pt-12 border-t border-border-base flex flex-col items-center gap-4">
-        <div className="flex items-center gap-2 text-white/20 text-sm font-medium">
-          Built with <span className="text-white/40 font-bold tracking-tight">DevOS</span>
-        </div>
-        <div className="flex items-center gap-2 text-[10px] text-white/10 font-bold uppercase tracking-[0.2em]">
-          <span>Kontyra and Tech Visionary Network</span>
-        </div>
-      </div>
+      <LiveMap className="mt-16 mb-16 hidden" />
 
       {publishTemplateProject && (
         <PublishTemplateModal
@@ -1737,8 +1454,6 @@ p {
     </div>
   );
 }
-
-/* ─── Project Share Button ─── */
 
 function ProjectShareButton({
   project,
