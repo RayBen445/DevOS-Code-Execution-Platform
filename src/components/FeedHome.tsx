@@ -714,12 +714,21 @@ interface PostComposerModalProps {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
 }
 
-const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; icon: React.ElementType; desc: string; color: string }[] = [
-  { value: "update", label: "Update", icon: RefreshCcw, desc: "Share what you're working on", color: "yellow" },
-  { value: "snippet", label: "Snippet", icon: Code2, desc: "Share a code snippet", color: "orange" },
-  { value: "feature", label: "Feature", icon: Sparkles, desc: "Announce a new feature", color: "purple" },
-  { value: "deployment", label: "Deployment", icon: Rocket, desc: "You shipped something live", color: "green" },
+const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; icon: React.ElementType; desc: string; color: string; accent: string }[] = [
+  { value: "update",      label: "Update",     icon: RefreshCcw, desc: "Share progress",       color: "text-yellow-400",  accent: "bg-yellow-500/10 border-yellow-500/30" },
+  { value: "snippet",     label: "Snippet",    icon: Code2,      desc: "Code or tip",          color: "text-orange-400",  accent: "bg-orange-500/10 border-orange-500/30" },
+  { value: "feature",     label: "Feature",    icon: Sparkles,   desc: "New feature",          color: "text-purple-400",  accent: "bg-purple-500/10 border-purple-500/30" },
+  { value: "deployment",  label: "Deployed",   icon: Rocket,     desc: "Shipped live",         color: "text-green-400",   accent: "bg-green-500/10 border-green-500/30" },
 ];
+
+const TOOLBAR_ACTIONS = [
+  { icon: Bold,   title: "Bold",        wrap: ["**", "**"],    placeholder: "bold text" },
+  { icon: Italic, title: "Italic",      wrap: ["*",  "*"],     placeholder: "italic text" },
+  { icon: Code2,  title: "Code",        wrap: ["`",  "`"],     placeholder: "code" },
+  { icon: Link,   title: "Link",        wrap: ["[",  "](url)"],placeholder: "link text" },
+  { icon: List,   title: "List",        wrap: ["- ", ""],      placeholder: "item" },
+  { icon: Quote,  title: "Quote",       wrap: ["> ", ""],      placeholder: "quote" },
+] as const;
 
 function PostComposerModal({
   open,
@@ -738,6 +747,30 @@ function PostComposerModal({
   onSubmit,
   textareaRef,
 }: PostComposerModalProps) {
+  const selectedType = TYPE_OPTIONS.find((t) => t.value === postType) ?? TYPE_OPTIONS[0];
+  const charCount = postText.length;
+  const MAX_CHARS = 2000;
+  const charPct = Math.min((charCount / MAX_CHARS) * 100, 100);
+  const isNearLimit = charCount > MAX_CHARS * 0.8;
+  const isOverLimit = charCount > MAX_CHARS;
+
+  const applyFormat = (wrap: readonly [string, string], placeholder: string) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const selected = postText.slice(start, end) || placeholder;
+    const before = postText.slice(0, start);
+    const after = postText.slice(end);
+    const newText = before + wrap[0] + selected + wrap[1] + after;
+    setPostText(newText);
+    requestAnimationFrame(() => {
+      el.focus();
+      const cursor = start + wrap[0].length + selected.length + wrap[1].length;
+      el.setSelectionRange(cursor, cursor);
+    });
+  };
+
   return (
     <AnimatePresence>
       {open && (
@@ -747,207 +780,220 @@ function PostComposerModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 z-50"
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
             onClick={onClose}
           />
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.97, y: 16 }}
+            initial={{ opacity: 0, scale: 0.96, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 16 }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-lg z-50 bg-surface border border-border-base rounded-2xl shadow-2xl flex flex-col max-h-[85vh]"
+            exit={{ opacity: 0, scale: 0.96, y: 20 }}
+            transition={{ type: "spring", damping: 26, stiffness: 300 }}
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-50 flex flex-col max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl shadow-black/50"
+            style={{ background: "linear-gradient(135deg, #141416 0%, #0f0f11 100%)", border: "1px solid rgba(255,255,255,0.09)" }}
           >
+            {/* Top accent line */}
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/60 to-transparent" />
+
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
               <div className="flex items-center gap-3">
-                <img
-                  src={avatarUrl}
-                  alt={displayName}
-                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                  referrerPolicy="no-referrer"
-                />
+                <div className="relative">
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    className="w-9 h-9 rounded-full object-cover ring-2 ring-white/10"
+                    referrerPolicy="no-referrer"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[#0f0f11]" />
+                </div>
                 <div>
                   <p className="text-sm font-bold text-white leading-none">{displayName}</p>
-                  <p className="text-[11px] text-white/40 mt-0.5">New post</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", selectedType.accent, selectedType.color)}>
+                      {selectedType.label}
+                    </span>
+                    <span className="text-[10px] text-white/30">· sharing with everyone</span>
+                  </div>
                 </div>
               </div>
+
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                className="p-2 rounded-xl hover:bg-white/[0.07] text-white/40 hover:text-white transition-all"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-5">
-              {/* Markdown formatting toolbar */}
-              <div className="flex items-center gap-0.5 border-b border-white/[0.06] pb-2">
-                {([
-                  { icon: Bold,   title: "Bold",        wrap: ["**", "**"],    placeholder: "bold text" },
-                  { icon: Italic, title: "Italic",      wrap: ["*", "*"],      placeholder: "italic text" },
-                  { icon: Code2,  title: "Inline code", wrap: ["`", "`"],      placeholder: "code" },
-                  { icon: Link,   title: "Link",        wrap: ["[", "](url)"], placeholder: "link text" },
-                  { icon: List,   title: "List item",   wrap: ["- ", ""],      placeholder: "item" },
-                  { icon: Quote,  title: "Blockquote",  wrap: ["> ", ""],      placeholder: "quote" },
-                ] as const).map(({ icon: Icon, title, wrap, placeholder }) => (
-                  <button
-                    key={title}
-                    type="button"
-                    title={title}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      const el = textareaRef.current;
-                      if (!el) return;
-                      const start = el.selectionStart ?? 0;
-                      const end = el.selectionEnd ?? 0;
-                      const selected = postText.slice(start, end) || placeholder;
-                      const before = postText.slice(0, start);
-                      const after = postText.slice(end);
-                      const newText = before + wrap[0] + selected + wrap[1] + after;
-                      setPostText(newText);
-                      requestAnimationFrame(() => {
-                        el.focus();
-                        const cursor = start + wrap[0].length + selected.length + wrap[1].length;
-                        el.setSelectionRange(cursor, cursor);
-                      });
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                  </button>
-                ))}
-              </div>
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="md:grid md:grid-cols-5 min-h-0">
 
-              {/* Textarea */}
-              <TiptapEditor
-                value={postText}
-                onChange={setPostText}
-                placeholder="What are you building? Use markdown..."
-                currentUserId={userId}
-                autoFocus
-                className="w-full text-base mb-2"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (postText.trim() && !isPosting) {
-                      onSubmit();
-                    }
-                  }
-                }}
-              />
+                {/* ── Left: Editor ── */}
+                <div className="md:col-span-3 flex flex-col border-b md:border-b-0 md:border-r border-white/[0.07]">
 
-              {/* Post type cards */}
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/30 mb-3">Post Type</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {TYPE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setPostType(opt.value)}
-                      className={cn(
-                        "flex items-start gap-3 p-3 rounded-xl border transition-all text-left",
-                        postType === opt.value
-                          ? "bg-blue-600/15 border-blue-500/60 shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
-                          : "bg-white/[0.03] border-white/[0.08] hover:border-border-base hover:bg-white/[0.06]"
-                      )}
-                    >
-                      <opt.icon className="w-4 h-4 mt-0.5 text-white/50 shrink-0" />
-                      <div>
-                        <p className={cn(
-                          "text-xs font-bold leading-none mb-1",
-                          postType === opt.value ? "text-blue-300" : "text-white"
-                        )}>
-                          {opt.label}
-                        </p>
-                        <p className="text-[10px] text-white/35 leading-snug">{opt.desc}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Project selector */}
-              {myProjects.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/30 mb-3">Attach Project</p>
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                    {/* Deselect option */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProjectId("")}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition-all text-left",
-                        selectedProjectId === ""
-                          ? "bg-white/10 border-border-base"
-                          : "bg-white/[0.03] border-white/[0.08] hover:border-border-base"
-                      )}
-                    >
-                      <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-                        <Layers className="w-3.5 h-3.5 text-white/50" />
-                      </div>
-                      <span className="text-xs text-white/50">No project attached</span>
-                    </button>
-                    {myProjects.map((p) => (
+                  {/* Formatting toolbar */}
+                  <div className="flex items-center gap-1 px-5 pt-4 pb-2 border-b border-white/[0.05]">
+                    {TOOLBAR_ACTIONS.map(({ icon: Icon, title, wrap, placeholder }) => (
                       <button
-                        key={p.id}
+                        key={title}
                         type="button"
-                        onClick={() => setSelectedProjectId(p.id)}
-                        className={cn(
-                          "w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition-all text-left",
-                          selectedProjectId === p.id
-                            ? "bg-blue-600/15 border-blue-500/60"
-                            : "bg-white/[0.03] border-white/[0.08] hover:border-border-base hover:bg-white/[0.06]"
-                        )}
+                        title={title}
+                        onMouseDown={(e) => { e.preventDefault(); applyFormat(wrap, placeholder); }}
+                        className="p-1.5 rounded-lg hover:bg-white/[0.08] text-white/30 hover:text-white/70 transition-colors"
                       >
-                        <div className={cn(
-                          "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0",
-                          selectedProjectId === p.id ? "bg-blue-600/30" : "bg-white/5"
-                        )}>
-                          <FolderCode className={cn("w-3.5 h-3.5", selectedProjectId === p.id ? "text-blue-400" : "text-white/40")} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn(
-                            "text-xs font-semibold truncate",
-                            selectedProjectId === p.id ? "text-blue-300" : "text-white/80"
-                          )}>
-                            {p.name}
-                          </p>
-                          {p.description && <p className="text-[10px] text-white/30 truncate">{p.description}</p>}
-                        </div>
-                        {p.isPublic ? (
-                          <Globe className="w-3 h-3 text-white/20 flex-shrink-0" />
-                        ) : (
-                          <Lock className="w-3 h-3 text-white/20 flex-shrink-0" />
-                        )}
+                        <Icon className="w-3.5 h-3.5" />
                       </button>
                     ))}
+                    <div className="h-4 w-px bg-white/10 mx-1" />
+                    <span className="text-[10px] text-white/20 ml-auto">Markdown supported</span>
+                  </div>
+
+                  {/* Editor */}
+                  <div className="flex-1 px-5 py-4">
+                    <TiptapEditor
+                      value={postText}
+                      onChange={setPostText}
+                      placeholder={`What are you ${postType === "deployment" ? "shipping" : postType === "snippet" ? "sharing" : "building"}?`}
+                      currentUserId={userId}
+                      autoFocus
+                      className="w-full min-h-[160px] text-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && e.metaKey) {
+                          e.preventDefault();
+                          if (postText.trim() && !isPosting && !isOverLimit) onSubmit();
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Char counter */}
+                  <div className="flex items-center gap-3 px-5 pb-4">
+                    <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-300",
+                          isOverLimit ? "bg-red-500" : isNearLimit ? "bg-amber-500" : "bg-blue-500/50"
+                        )}
+                        style={{ width: `${charPct}%` }}
+                      />
+                    </div>
+                    <span className={cn("text-[11px] font-mono tabular-nums", isOverLimit ? "text-red-400" : isNearLimit ? "text-amber-400" : "text-white/25")}>
+                      {charCount}/{MAX_CHARS}
+                    </span>
                   </div>
                 </div>
-              )}
+
+                {/* ── Right: Settings ── */}
+                <div className="md:col-span-2 flex flex-col gap-5 p-5">
+
+                  {/* Post type */}
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3">Post Type</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {TYPE_OPTIONS.map((opt) => {
+                        const active = postType === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setPostType(opt.value)}
+                            className={cn(
+                              "flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left",
+                              active
+                                ? cn(opt.accent, "shadow-sm")
+                                : "bg-white/[0.02] border-white/[0.07] hover:bg-white/[0.05] hover:border-white/15"
+                            )}
+                          >
+                            <opt.icon className={cn("w-3.5 h-3.5 flex-shrink-0", active ? opt.color : "text-white/30")} />
+                            <div className="min-w-0">
+                              <p className={cn("text-xs font-bold truncate", active ? opt.color : "text-white/60")}>{opt.label}</p>
+                              <p className="text-[10px] text-white/25 truncate">{opt.desc}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Project */}
+                  {myProjects.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3">Attach Project</p>
+                      <div className="space-y-1 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProjectId("")}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition-all text-xs",
+                            selectedProjectId === ""
+                              ? "bg-white/8 border-white/20 text-white/70"
+                              : "bg-white/[0.02] border-white/[0.07] text-white/30 hover:bg-white/[0.05]"
+                          )}
+                        >
+                          <Layers className="w-3.5 h-3.5 flex-shrink-0" />
+                          None
+                        </button>
+                        {myProjects.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setSelectedProjectId(p.id)}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition-all",
+                              selectedProjectId === p.id
+                                ? "bg-blue-600/15 border-blue-500/40"
+                                : "bg-white/[0.02] border-white/[0.07] hover:bg-white/[0.05] hover:border-white/15"
+                            )}
+                          >
+                            <FolderCode className={cn("w-3.5 h-3.5 flex-shrink-0", selectedProjectId === p.id ? "text-blue-400" : "text-white/30")} />
+                            <div className="flex-1 min-w-0">
+                              <p className={cn("text-xs font-semibold truncate", selectedProjectId === p.id ? "text-blue-300" : "text-white/70")}>{p.name}</p>
+                            </div>
+                            {p.isPublic ? <Globe className="w-3 h-3 text-white/20 flex-shrink-0" /> : <Lock className="w-3 h-3 text-white/20 flex-shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Keyboard hint */}
+                  <div className="mt-auto hidden md:flex items-center gap-1.5 text-[10px] text-white/20">
+                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 font-mono">⌘</kbd>
+                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 font-mono">↵</kbd>
+                    <span>to post</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Sticky Post button */}
-            <div className="p-4 border-t border-border-base">
+            {/* Footer */}
+            <div className="flex items-center gap-3 px-5 py-4 border-t border-white/[0.07]">
+              <button
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl border border-white/10 text-sm text-white/40 hover:text-white hover:border-white/20 transition-all"
+              >
+                Cancel
+              </button>
               <button
                 onClick={onSubmit}
-                disabled={isPosting || !postText.trim()}
+                disabled={isPosting || !postText.trim() || isOverLimit}
                 className={cn(
-                  "w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
-                  postText.trim() && !isPosting
-                    ? "bg-blue-600 hover:bg-blue-700 text-white active:scale-[0.98] shadow-lg shadow-blue-500/20"
-                    : "bg-white/5 text-white/25 cursor-not-allowed"
+                  "flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
+                  postText.trim() && !isPosting && !isOverLimit
+                    ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/20 active:scale-[0.98]"
+                    : "bg-white/[0.04] text-white/20 cursor-not-allowed"
                 )}
               >
                 {isPosting ? (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Publishing…</>
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <><Send className="w-4 h-4" />Publish Post</>
                 )}
-                Post
               </button>
             </div>
           </motion.div>
@@ -956,6 +1002,7 @@ function PostComposerModal({
     </AnimatePresence>
   );
 }
+
 
 /* ─── Feed Item ─── */
 
