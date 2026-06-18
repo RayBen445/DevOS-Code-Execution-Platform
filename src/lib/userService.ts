@@ -68,7 +68,7 @@ export const registerUserProfile = async (
   });
 
   await initializeCredits(user.uid);
-  await createPortfolioProject(user.uid, profile.username).catch((err) => {
+  await createPortfolioProject(user.uid, profile.username, isAdmin).catch((err) => {
     console.error("createPortfolioProject failed (non-fatal):", err);
   });
 
@@ -142,7 +142,7 @@ export const initializeUser = async (user: any) => {
     await initializeCredits(user.uid);
 
     // Create initial portfolio project
-    await createPortfolioProject(user.uid, username);
+    await createPortfolioProject(user.uid, username, isAdmin);
 
     // Auto-join all official communities and orgs
     await joinOfficialCommunities(user.uid).catch(() => {});
@@ -203,7 +203,7 @@ export const initializeUser = async (user: any) => {
     
     if (portfolioSnap.empty) {
       const username = settingsSnap.data().username || user.email?.split("@")[0];
-      await createPortfolioProject(user.uid, username);
+      await createPortfolioProject(user.uid, username, user.email === ADMIN_EMAIL);
     }
   }
 
@@ -235,9 +235,10 @@ export const checkUsernameAvailable = async (username: string): Promise<boolean>
   return snap.empty;
 };
 
-export const createPortfolioProject = async (uid: string, username: string): Promise<string> => {
+export const createPortfolioProject = async (uid: string, username: string, isAdmin: boolean = false): Promise<string> => {
+  const projectName = isAdmin ? "Support Portfolio" : `${username} Portfolio`;
   const projectData = {
-    name: "My Portfolio",
+    name: projectName,
     description: "Your professional developer portfolio, built with DevOS.",
     ownerId: uid,
     ownerUsername: username,

@@ -742,7 +742,16 @@ p {
               )}
             </div>
           </div>
-          <h3 className={cn("text-base font-bold mb-1", project.systemType === 'portfolio' && project.isSystem ? "text-blue-100" : "text-white")}>{project.name}</h3>
+          <h3 className={cn("text-base font-bold mb-1", project.systemType === 'portfolio' && project.isSystem ? "text-blue-100" : "text-white")}>
+            {(() => {
+              if (project.systemType === "portfolio") {
+                if (project.isSystem) return "Support Portfolio";
+                if (project.ownerUsername) return `${project.ownerUsername} Portfolio`;
+                return "User Portfolio";
+              }
+              return project.name;
+            })()}
+          </h3>
           {project.description && (
             <p className="text-xs text-white/40 mb-3 line-clamp-2 leading-relaxed">{project.description}</p>
           )}
@@ -1021,53 +1030,82 @@ p {
         </div>
 
         {/* Navigation */}
-        <div className="flex flex-col gap-1">
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-1">Views</p>
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-2">Views</p>
           <button
             onClick={() => { setActiveTab("my-projects"); setSelectedView("all"); }}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-              activeTab === "my-projects" && selectedView === "all" ? "bg-white/10 text-white shadow-sm" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all relative overflow-hidden group",
+              activeTab === "my-projects" && selectedView === "all" ? "bg-white/[0.08] text-white shadow-inner" : "text-white/50 hover:bg-white/[0.04] hover:text-white"
             )}
           >
-            <FolderCode className={cn("w-4 h-4", activeTab === "my-projects" && selectedView === "all" ? "text-blue-400" : "")} />
+            {activeTab === "my-projects" && selectedView === "all" && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-blue-500 rounded-r-full shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+            )}
+            <FolderCode className={cn("w-4 h-4 transition-colors", activeTab === "my-projects" && selectedView === "all" ? "text-blue-400" : "group-hover:text-blue-400/70")} />
             All Projects
-            <span className="ml-auto text-xs bg-white/5 px-2 py-0.5 rounded-full">{projects.length}</span>
+            <span className={cn("ml-auto text-xs px-2.5 py-0.5 rounded-full font-bold transition-colors", activeTab === "my-projects" && selectedView === "all" ? "bg-blue-500/20 text-blue-300" : "bg-white/5 text-white/40")}>{projects.length}</span>
           </button>
+          
           <button
             onClick={() => setActiveTab("public-projects")}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-              activeTab === "public-projects" ? "bg-white/10 text-white shadow-sm" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all relative overflow-hidden group",
+              activeTab === "public-projects" ? "bg-white/[0.08] text-white shadow-inner" : "text-white/50 hover:bg-white/[0.04] hover:text-white"
             )}
           >
-            <Globe className={cn("w-4 h-4", activeTab === "public-projects" ? "text-green-400" : "")} />
+            {activeTab === "public-projects" && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-green-500 rounded-r-full shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
+            )}
+            <Globe className={cn("w-4 h-4 transition-colors", activeTab === "public-projects" ? "text-green-400" : "group-hover:text-green-400/70")} />
             Explore Public
           </button>
+          
           <button
             onClick={() => setShowCreateOrg(true)}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white/40 hover:bg-white/5 hover:text-white/80 transition-all"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white/50 hover:bg-white/[0.04] hover:text-white transition-all group"
           >
-            <Building2 className="w-4 h-4" />
+            <Building2 className="w-4 h-4 transition-colors group-hover:text-white/80" />
             New Organization
           </button>
         </div>
 
         {/* Folders / Groups */}
         {activeTab === "my-projects" && (
-          <div className="flex flex-col gap-1 mt-2">
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-1">Folders</p>
+          <div className="flex flex-col gap-1.5 mt-4">
+            <div className="flex items-center justify-between px-3 mb-2">
+              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Folders</p>
+              <button onClick={() => setIsCreatingFolder(true)} className="text-white/30 hover:text-white/80 transition-colors p-1 rounded-md hover:bg-white/10" title="New Folder">
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {isCreatingFolder && (
+              <form onSubmit={handleCreateFolder} className="px-3 mb-2">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onBlur={() => { if(!newFolderName) setIsCreatingFolder(false); }}
+                  placeholder="Folder name..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-blue-500/50"
+                />
+              </form>
+            )}
             {pinnedProjects.length > 0 && (
               <button
                 onClick={() => setSelectedView("pinned")}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                  selectedView === "pinned" ? "bg-amber-500/10 text-amber-500" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all relative overflow-hidden group",
+                  selectedView === "pinned" ? "bg-amber-500/10 text-amber-400 shadow-inner" : "text-white/50 hover:bg-white/[0.04] hover:text-white"
                 )}
               >
-                <Pin className={cn("w-4 h-4", selectedView === "pinned" ? "text-amber-500" : "")} />
+                {selectedView === "pinned" && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-amber-500 rounded-r-full shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+                )}
+                <Pin className={cn("w-4 h-4 transition-colors", selectedView === "pinned" ? "text-amber-500" : "group-hover:text-amber-500/70")} />
                 Pinned
-                <span className="ml-auto text-xs bg-white/5 px-2 py-0.5 rounded-full text-white/60">{pinnedProjects.length}</span>
+                <span className={cn("ml-auto text-xs px-2.5 py-0.5 rounded-full font-bold transition-colors", selectedView === "pinned" ? "bg-amber-500/20 text-amber-300" : "bg-white/5 text-white/40")}>{pinnedProjects.length}</span>
               </button>
             )}
             
@@ -1076,13 +1114,16 @@ p {
                 key={gn}
                 onClick={() => setSelectedView(`group:${gn}`)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all truncate",
-                  selectedView === `group:${gn}` ? "bg-blue-500/10 text-blue-400" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all relative overflow-hidden group truncate",
+                  selectedView === `group:${gn}` ? "bg-blue-500/10 text-blue-300 shadow-inner" : "text-white/50 hover:bg-white/[0.04] hover:text-white"
                 )}
               >
-                <FolderOpen className={cn("w-4 h-4 flex-shrink-0", selectedView === `group:${gn}` ? "text-blue-400" : "")} />
+                {selectedView === `group:${gn}` && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-blue-500 rounded-r-full shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                )}
+                <FolderOpen className={cn("w-4 h-4 flex-shrink-0 transition-colors", selectedView === `group:${gn}` ? "text-blue-400 fill-blue-500/20" : "group-hover:text-blue-400/70")} />
                 <span className="truncate">{gn}</span>
-                <span className="ml-auto text-xs bg-white/5 px-2 py-0.5 rounded-full text-white/60 flex-shrink-0">{(groupedMap[gn] || []).length}</span>
+                <span className={cn("ml-auto text-xs px-2.5 py-0.5 rounded-full font-bold flex-shrink-0 transition-colors", selectedView === `group:${gn}` ? "bg-blue-500/20 text-blue-300" : "bg-white/5 text-white/40")}>{(groupedMap[gn] || []).length}</span>
               </button>
             ))}
 
@@ -1090,13 +1131,16 @@ p {
               <button
                 onClick={() => setSelectedView("ungrouped")}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                  selectedView === "ungrouped" ? "bg-white/10 text-white" : "text-white/40 hover:bg-white/5 hover:text-white/80"
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all relative overflow-hidden group",
+                  selectedView === "ungrouped" ? "bg-white/[0.08] text-white shadow-inner" : "text-white/50 hover:bg-white/[0.04] hover:text-white"
                 )}
               >
-                <Folder className="w-4 h-4" />
+                {selectedView === "ungrouped" && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-white rounded-r-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
+                )}
+                <Folder className={cn("w-4 h-4 transition-colors", selectedView === "ungrouped" ? "text-white" : "group-hover:text-white/80")} />
                 Ungrouped
-                <span className="ml-auto text-xs bg-white/5 px-2 py-0.5 rounded-full text-white/60">{ungroupedProjects.length}</span>
+                <span className={cn("ml-auto text-xs px-2.5 py-0.5 rounded-full font-bold transition-colors", selectedView === "ungrouped" ? "bg-white/20 text-white" : "bg-white/5 text-white/40")}>{ungroupedProjects.length}</span>
               </button>
             )}
           </div>
