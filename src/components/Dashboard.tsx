@@ -52,6 +52,20 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const [publicProjects, setPublicProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<"my-projects" | "public-projects">("my-projects");
   const [selectedView, setSelectedView] = useState<string>("all");
+  const [customFolders, setCustomFolders] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('devos_custom_folders') || '[]'); } catch { return []; }
+  });
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  useEffect(() => { localStorage.setItem('devos_custom_folders', JSON.stringify(customFolders)); }, [customFolders]);
+  const handleCreateFolder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newFolderName.trim() && !customFolders.includes(newFolderName.trim())) {
+      setCustomFolders([...customFolders, newFolderName.trim()]);
+    }
+    setNewFolderName("");
+    setIsCreatingFolder(false);
+  };
 
   // One-time cleanup for duplicate system portfolios
   useEffect(() => {

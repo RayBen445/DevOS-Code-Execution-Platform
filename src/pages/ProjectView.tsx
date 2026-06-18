@@ -234,7 +234,7 @@ export default function ProjectView() {
                     )}
                   </div>
 
-                  <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">{project.name}</h1>
+                  <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">{(project.systemType === 'portfolio' ? (project.isSystem ? 'Support Portfolio' : (project.ownerUsername ? `${project.ownerUsername} Portfolio` : 'User Portfolio')) : project.name)}</h1>
 
                   {project.description && (
                     <p className="text-white/50 text-lg leading-relaxed mb-5 max-w-2xl">{project.description}</p>
