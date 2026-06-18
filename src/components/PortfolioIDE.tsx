@@ -329,7 +329,9 @@ export default function PortfolioIDE({ projectId, onBack }: IDEProps) {
       const projectDoc = await getDoc(doc(db, "projects", projectId));
       const projectData = projectDoc.data();
       const projectSlug = projectData?.projectSlug || `${(project?.name || "project").toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
-      const url = `${window.location.origin}/@${username}/${projectSlug}`;
+      const url = projectData?.systemType === "portfolio" && projectData?.subdomain 
+        ? `https://${projectData.subdomain}` 
+        : `${window.location.origin}/@${username}/${projectSlug}`;
       const htmlFile = files.find(f => f.name.toLowerCase() === "index.html");
       const entryFile = htmlFile?.path || "index.html";
 

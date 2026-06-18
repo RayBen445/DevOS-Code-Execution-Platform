@@ -2423,6 +2423,69 @@ User request: ${aiTestPrompt.trim()}`;
                         </button>
                       </div>
                     )}
+                    
+                    {/* System Maintenance Section */}
+                    <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-6 backdrop-blur-xl relative overflow-hidden mt-8">
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-orange-500 opacity-50" />
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-lg font-black tracking-tight text-red-400 flex items-center gap-2">
+                          <Trash2 className="w-5 h-5 text-red-400" />
+                          System Maintenance Actions
+                        </h2>
+                      </div>
+                      <div className="flex flex-col gap-4">
+                        <p className="text-white/60 text-sm">
+                          Warning: The actions below modify core platform data and cannot be undone.
+                        </p>
+                        <div className="flex items-center gap-4 flex-wrap">
+                          <button
+                            onClick={async () => {
+                              try {
+                                const snapshot = await getDocs(query(collection(db, "projects"), where("systemType", "==", "portfolio"), where("ownerUsername", "in", ["admin", "support"])));
+                                if (snapshot.empty) {
+                                  alert("Official portfolio not found! Please trigger a reset to recreate it.");
+                                  return;
+                                }
+                                navigate(`/project/${snapshot.docs[0].id}`);
+                              } catch (e) {
+                                alert(e.message);
+                              }
+                            }}
+                            className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500/10 text-blue-400 rounded-xl font-bold hover:bg-blue-500/20 transition-all border border-blue-500/20 w-fit"
+                          >
+                            <FolderCode className="w-4 h-4" />
+                            Edit Official Portfolio
+                          </button>
+                          
+                          <button
+                            onClick={async () => {
+                              if (!confirm("Are you sure you want to delete ALL portfolio projects?")) return;
+                              try {
+                                const snapshot = await getDocs(query(collection(db, "projects"), where("systemType", "==", "portfolio")));
+                                let deleted = 0;
+                                for (const docSnap of snapshot.docs) {
+                                  const filesSnap = await getDocs(collection(db, "projects", docSnap.id, "files"));
+                                  for (const fileDoc of filesSnap.docs) {
+                                    await deleteDoc(fileDoc.ref);
+                                  }
+                                  await deleteDoc(docSnap.ref);
+                                  deleted++;
+                                }
+                                alert(`Deleted ${deleted} portfolios. They will automatically recreate on next login/refresh.`);
+                                window.location.reload();
+                              } catch (e) {
+                                alert(e.message);
+                              }
+                            }}
+                            className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-400 rounded-xl font-bold hover:bg-red-500/20 transition-all border border-red-500/20 w-fit"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Reset All Portfolios
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
                 )}
                 {/* Templates Tab */}
