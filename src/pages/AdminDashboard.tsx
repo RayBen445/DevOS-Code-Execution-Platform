@@ -3036,8 +3036,9 @@ User request: ${aiTestPrompt.trim()}`;
                 {/* Credits Tab */}
                 {activeTab === "credits" && (
                   <div className="space-y-8">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                     {/* Global Credit Config */}
-                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Settings2 className="w-4 h-4 text-purple-400" />
                         Global Credit Config
@@ -3123,7 +3124,7 @@ User request: ${aiTestPrompt.trim()}`;
                       )}
                     </div>
 
-                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <h2 className="text-lg font-bold text-white mb-1">Adjust User Credits</h2>
                       <p className="text-white/40 text-sm mb-6">Enter username, email, or UID and the amount to add (positive) or subtract (negative).</p>
                       <form onSubmit={handleAdjustCredits} className="space-y-5">
@@ -3155,7 +3156,7 @@ User request: ${aiTestPrompt.trim()}`;
                     </div>
 
                     {/* Gift Credits */}
-                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Gift className="w-4 h-4 text-green-400" />
                         Gift Credits
@@ -3206,7 +3207,7 @@ User request: ${aiTestPrompt.trim()}`;
                     </div>
 
                     {/* Unlimited Credits Pass */}
-                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Infinity className="w-4 h-4 text-yellow-400" />
                         Grant Unlimited Pass
@@ -3242,6 +3243,8 @@ User request: ${aiTestPrompt.trim()}`;
                           {grantingUnlimited ? <><Loader2 className="w-4 h-4 animate-spin" />Granting…</> : <><Infinity className="w-4 h-4" />Grant Unlimited Pass</>}
                         </button>
                       </form>
+                    </div>
+
                     </div>
 
                     <div>
@@ -3430,7 +3433,7 @@ User request: ${aiTestPrompt.trim()}`;
                 {/* Notifications Tab */}
                 {activeTab === "notifications" && (
                   <div className="space-y-8">
-                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-lg">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
                       <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                         <Bell className="w-4 h-4 text-blue-400" />
                         Send Notification
