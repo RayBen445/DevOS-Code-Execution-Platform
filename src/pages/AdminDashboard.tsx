@@ -1934,6 +1934,7 @@ User request: ${aiTestPrompt.trim()}`;
     { id: "kora", label: "KORA AI", icon: <Bot className="w-4 h-4" /> },
       { id: "vux", label: "VUX Status", icon: <Activity className="w-4 h-4" /> },
     { id: "site", label: "Site Settings", icon: <Globe className="w-4 h-4" /> },
+    { id: "portfolio-ide", label: "Official Portfolios", icon: <Code2 className="w-4 h-4" />, badge: "LIVE" as any },
   ];
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2035,33 +2036,69 @@ User request: ${aiTestPrompt.trim()}`;
   };
 
 
+  const tabGroups = [
+    {
+      title: "Analytics",
+      tabs: ["overview"]
+    },
+    {
+      title: "Users & Content",
+      tabs: ["users", "credits", "posts", "polls", "feedback", "deletions", "reserved"]
+    },
+    {
+      title: "Platform",
+      tabs: ["templates", "themes", "communities", "organizations", "projects", "events", "learn"]
+    },
+    {
+      title: "System",
+      tabs: ["notifications", "redeem", "email", "maintenance", "site", "kora", "vux"]
+    },
+    {
+      title: "Developer Tools",
+      tabs: ["portfolio-ide"]
+    }
+  ];
+
   const SidebarNav = ({ onSelect }: { onSelect?: () => void }) => (
-    <nav className="flex flex-col gap-1 p-4">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/25 px-3 mb-3">
-        Platform Control
-      </p>
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => { setActiveTab(tab.id); onSelect?.(); }}
-          className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left relative",
-            activeTab === tab.id
-              ? "bg-blue-600/15 text-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]"
-              : "text-white/40 hover:text-white hover:bg-white/5"
-          )}
-        >
-          {tab.icon}
-          <span className="flex-1">{tab.label}</span>
-          {tab.badge !== undefined && (
-            <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold min-w-[18px] text-center">
-              {tab.badge}
-            </span>
-          )}
-          {activeTab === tab.id && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-500 rounded-r-full" />
-          )}
-        </button>
+    <nav className="flex flex-col gap-6 p-4">
+      {tabGroups.map((group, idx) => (
+        <div key={idx} className="flex flex-col gap-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/25 px-3 mb-2">
+            {group.title}
+          </p>
+          {group.tabs.map((tabId) => {
+            const tab = tabs.find(t => t.id === tabId);
+            if (!tab) return null;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id as Tab); onSelect?.(); }}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left relative group",
+                  activeTab === tab.id
+                    ? "bg-blue-600/15 text-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]"
+                    : "text-white/40 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <div className={cn("transition-transform duration-300", activeTab === tab.id ? "scale-110" : "group-hover:scale-110")}>
+                  {tab.icon}
+                </div>
+                <span className="flex-1">{tab.label}</span>
+                {tab.badge !== undefined && (
+                  <span className={cn(
+                    "px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[18px] text-center",
+                    tab.badge === "LIVE" ? "bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse" : "bg-red-600 text-white"
+                  )}>
+                    {tab.badge}
+                  </span>
+                )}
+                {activeTab === tab.id && (
+                  <motion.div layoutId="activeTabIndicator" className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-500 rounded-r-full" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       ))}
     </nav>
   );
