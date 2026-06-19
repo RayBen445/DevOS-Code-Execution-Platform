@@ -111,7 +111,7 @@ import Avatar from "../components/Avatar";
 import ConfirmModal from "../components/ConfirmModal";
 import CustomSelect from "../components/CustomSelect";
 
-type Tab = "overview" | "templates" | "themes" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events" | "learn" | "kora" | "vux";
+type Tab = "overview" | "templates" | "themes" | "users" | "credits" | "notifications" | "redeem" | "posts" | "reserved" | "polls" | "feedback" | "deletions" | "maintenance" | "email" | "communities" | "organizations" | "projects" | "site" | "events" | "learn" | "kora" | "vux" | "portfolio-ide";
 
 const detectLanguage = (filename: string): string => {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -1938,6 +1938,103 @@ User request: ${aiTestPrompt.trim()}`;
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+  const [officialPortfolios, setOfficialPortfolios] = useState<any[]>([]);
+  const [loadingPortfolios, setLoadingPortfolios] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "portfolio-ide" && !selectedPortfolioId) {
+      const fetchPortfolios = async () => {
+        setLoadingPortfolios(true);
+        try {
+          const q = query(collection(db, "projects"), where("systemType", "==", "portfolio"));
+          const snap = await getDocs(q);
+          setOfficialPortfolios(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch (e) {
+          console.error("Failed to fetch portfolios", e);
+        } finally {
+          setLoadingPortfolios(false);
+        }
+      };
+      fetchPortfolios();
+    }
+  }, [activeTab, selectedPortfolioId]);
+
+  const tabDescriptions: Record<string, string> = {
+    overview: "Platform health and key metrics",
+    templates: "Review, approve, and manage all templates",
+    users: "View and manage all registered users",
+    credits: "Adjust user credit balances",
+    notifications: "Send targeted or global notifications",
+    redeem: "Create and manage promotional codes",
+    posts: "Publish official announcements to the feed",
+    polls: "Create and manage community polls",
+    reserved: "Manage reserved and protected usernames",
+    deletions: "Users who have requested account deletion",
+    maintenance: "Toggle maintenance mode and set the banner message",
+    email: "Send a custom email to any user via Gmail SMTP",
+    communities: "View, create, edit and delete all platform communities",
+    organizations: "View, create, edit and delete all platform organizations",
+    projects: "Create and manage official DevOS projects",
+    events: "Approve, reject, or delete developer events submitted by users",
+    learn: "Browse the learning topics and lessons available on the platform",
+    site: "Edit branding, links, footer text, and global voice-call availability",
+    kora: "Manage KORA AI settings",
+    vux: "Check the status of the VUX execution engine",
+    themes: "Create and manage platform themes",
+  };
+
+  const tabColors: Record<string, string> = {
+    overview: "blue", templates: "purple", themes: "orange", users: "blue", credits: "green",
+    polls: "orange", notifications: "blue", redeem: "purple", posts: "blue", feedback: "blue",
+    deletions: "red", reserved: "zinc", maintenance: "orange", email: "blue", communities: "purple",
+    organizations: "blue", projects: "blue", events: "orange", learn: "blue", site: "zinc",
+    kora: "blue", vux: "green"
+  };
+
+  const SubpageWrapper = ({ children, activeTabId }: { children: React.ReactNode, activeTabId: string }) => {
+    const activeTabData = tabs.find(t => t.id === activeTabId);
+    if (!activeTabData) return <>{children}</>;
+
+    const color = tabColors[activeTabId] || "blue";
+    const colorClasses = {
+      blue: "from-blue-500/20 via-blue-500/5 to-transparent border-blue-500/20 text-blue-400",
+      purple: "from-purple-500/20 via-purple-500/5 to-transparent border-purple-500/20 text-purple-400",
+      green: "from-green-500/20 via-green-500/5 to-transparent border-green-500/20 text-green-400",
+      orange: "from-orange-500/20 via-orange-500/5 to-transparent border-orange-500/20 text-orange-400",
+      red: "from-red-500/20 via-red-500/5 to-transparent border-red-500/20 text-red-400",
+      zinc: "from-white/10 via-white/5 to-transparent border-white/10 text-white/60",
+    }[color] as string;
+
+    const barClass = colorClasses.split(' ')[0];
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-7xl mx-auto px-4 md:px-8 py-8 flex flex-col min-h-full"
+      >
+        <div className="mb-6 flex items-start gap-4">
+          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border bg-gradient-to-b", colorClasses)}>
+            <div className="scale-125">{activeTabData.icon}</div>
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">{activeTabData.label}</h1>
+            <p className="text-sm text-white/40 mt-1">{tabDescriptions[activeTabId]}</p>
+          </div>
+        </div>
+        <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-3xl overflow-hidden relative shadow-2xl flex flex-col">
+          <div className={cn("absolute top-0 left-0 right-0 h-1 bg-gradient-to-r z-10", barClass)} />
+          <div className="p-6 flex-1 overflow-y-auto custom-scrollbar relative z-0">
+            {children}
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
+
   const SidebarNav = ({ onSelect }: { onSelect?: () => void }) => (
     <nav className="flex flex-col gap-1 p-4">
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/25 px-3 mb-3">
@@ -2060,114 +2157,59 @@ User request: ${aiTestPrompt.trim()}`;
         </AnimatePresence>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
-            {/* Page title */}
-            <div className="mb-8 flex items-start gap-3">
-              <div className="flex-1">
-                <h1 className="text-2xl font-extrabold text-white">
-                  {tabs.find((t) => t.id === activeTab)?.label}
-                </h1>
-                <p className="text-sm text-white/40 mt-0.5">
-                  {activeTab === "overview" && "Platform health and key metrics"}
-                  {activeTab === "templates" && "Review, approve, and manage all templates"}
-                  {activeTab === "users" && "View and manage all registered users"}
-                  {activeTab === "credits" && "Adjust user credit balances"}
-                  {activeTab === "notifications" && "Send targeted or global notifications"}
-                  {activeTab === "redeem" && "Create and manage promotional codes"}
-                  {activeTab === "posts" && "Publish official announcements to the feed"}
-                  {activeTab === "polls" && "Create and manage community polls"}
-                  {activeTab === "reserved" && "Manage reserved and protected usernames"}
-                  {activeTab === "deletions" && "Users who have requested account deletion"}
-                  {activeTab === "maintenance" && "Toggle maintenance mode and set the banner message"}
-                  {activeTab === "email" && "Send a custom email to any user via Gmail SMTP"}
-                  {activeTab === "communities" && "View, create, edit and delete all platform communities"}
-                  {activeTab === "organizations" && "View, create, edit and delete all platform organizations"}
-                  {activeTab === "projects" && "Create and manage official DevOS projects"}
-                  {activeTab === "events" && "Approve, reject, or delete developer events submitted by users"}
-                  {activeTab === "learn" && "Browse the learning topics and lessons available on the platform"}
-                  {activeTab === "site" && "Edit branding, links, footer text, and global voice-call availability"}
-                </p>
+        <main className="flex-1 overflow-y-auto relative bg-[#0a0a0b]">
+          {activeTab === "portfolio-ide" ? (
+            selectedPortfolioId ? (
+              <div className="h-full w-full flex flex-col animate-in fade-in duration-500">
+                <div className="h-12 bg-[#0a0a0b] border-b border-white/10 flex items-center px-4 shrink-0">
+                  <button 
+                    onClick={() => setSelectedPortfolioId(null)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-lg text-sm font-bold transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Back to Portfolios
+                  </button>
+                </div>
+                <div className="flex-1 relative">
+                  <PortfolioIDE projectId={selectedPortfolioId} />
+                </div>
               </div>
-
-              {/* Admin notification bell */}
-              <div className="relative" ref={adminNotifRef}>
-                <button
-                  onClick={() => setShowAdminNotifPanel((v) => !v)}
-                  className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all border border-border-base"
-                  title="Pending items"
-                >
-                  <Bell className="w-5 h-5" />
-                  {(pendingTemplates.length + openFeedbackCount + pendingUsernameRequestCount + pendingDeletionCount) > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[1.1rem] flex items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white px-1 leading-none h-[1.1rem]">
-                      {pendingTemplates.length + openFeedbackCount + pendingUsernameRequestCount + pendingDeletionCount}
-                    </span>
-                  )}
-                </button>
-
-                {showAdminNotifPanel && (
-                  <div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border-base rounded-2xl shadow-2xl z-50 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-border-base">
-                      <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Pending Items</p>
-                    </div>
-                    <div className="p-2 space-y-1">
-                      {pendingTemplates.length > 0 && (
-                        <button
-                          onClick={() => { setActiveTab("templates"); setShowAdminNotifPanel(false); }}
-                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Layout className="w-4 h-4 text-purple-400" />
-                            <span className="text-sm text-white">Template approvals</span>
+            ) : (
+              <SubpageWrapper activeTabId={activeTab}>
+                {loadingPortfolios ? (
+                  <div className="flex items-center justify-center py-32">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  </div>
+                ) : officialPortfolios.length === 0 ? (
+                  <div className="text-center py-32 text-white/40">No official portfolios found.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {officialPortfolios.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedPortfolioId(p.id)}
+                        className="p-6 bg-white/5 border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 rounded-2xl text-left transition-all group relative overflow-hidden"
+                      >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="flex items-center justify-between mb-4 relative z-10">
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
+                            <Code2 className="w-5 h-5" />
                           </div>
-                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold">{pendingTemplates.length}</span>
-                        </button>
-                      )}
-                      {openFeedbackCount > 0 && (
-                        <button
-                          onClick={() => { setActiveTab("feedback"); setShowAdminNotifPanel(false); }}
-                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <MessageSquare className="w-4 h-4 text-blue-400" />
-                            <span className="text-sm text-white">Open feedback</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-bold">{openFeedbackCount}</span>
-                        </button>
-                      )}
-                      {pendingUsernameRequestCount > 0 && (
-                        <button
-                          onClick={() => { setActiveTab("users"); setShowAdminNotifPanel(false); }}
-                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <AtSign className="w-4 h-4 text-yellow-400" />
-                            <span className="text-sm text-white">Username requests</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 text-[10px] font-bold">{pendingUsernameRequestCount}</span>
-                        </button>
-                      )}
-                      {pendingDeletionCount > 0 && (
-                        <button
-                          onClick={() => { setActiveTab("deletions"); setShowAdminNotifPanel(false); }}
-                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-left"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                            <span className="text-sm text-white">Deletion requests</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 text-[10px] font-bold">{pendingDeletionCount}</span>
-                        </button>
-                      )}
-                      {(pendingTemplates.length + openFeedbackCount + pendingUsernameRequestCount + pendingDeletionCount) === 0 && (
-                        <p className="text-sm text-white/30 text-center py-4">All clear ✓</p>
-                      )}
-                    </div>
+                          <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-2 relative z-10">{p.isSystem ? 'System Support Portfolio' : p.name}</h3>
+                        <p className="text-sm text-white/40 mb-4 relative z-10 line-clamp-2">{p.description || "No description provided."}</p>
+                        <div className="flex items-center gap-2 text-xs font-bold relative z-10">
+                          <span className="px-2 py-1 bg-white/5 text-white/40 rounded-lg border border-white/5">{p.id}</span>
+                          <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-lg border border-blue-500/30">{p.ownerUsername || 'admin'}</span>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
-              </div>
-            </div>
-
+              </SubpageWrapper>
+            )
+          ) : (
+            <SubpageWrapper activeTabId={activeTab}>
             {loading ? (
               <div className="flex items-center justify-center py-32">
                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -5159,7 +5201,8 @@ User request: ${aiTestPrompt.trim()}`;
                 )}
               </>
             )}
-          </div>
+            </SubpageWrapper>
+          )}
         </main>
       </div>
     </div>
