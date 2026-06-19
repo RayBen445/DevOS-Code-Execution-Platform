@@ -67,6 +67,8 @@ import {
   X,
   FileCode,
   ChevronDown,
+  ChevronRight,
+  ChevronLeft,
   ChevronUp,
   Settings2,
   AlertTriangle,
