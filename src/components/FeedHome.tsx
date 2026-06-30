@@ -513,6 +513,33 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                 </h2>
               </div>
 
+              {/* Mobile Active Polls */}
+              {activePolls.length > 0 && (
+                <div className="block lg:hidden space-y-3 mb-6">
+                  <div className="flex items-center justify-between px-1">
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
+                      Live Polls
+                    </h2>
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                      <span className="text-[10px] font-bold text-blue-400">{activePolls.length} active</span>
+                    </span>
+                  </div>
+                  {activePolls.map((poll) => (
+                    <PollCard
+                      key={poll.id}
+                      poll={poll}
+                      compact
+                      onVoted={(updated) =>
+                        setActivePolls((prev) =>
+                          prev.map((p) => (p.id === updated.id ? updated : p))
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+
               {/* Post Composer — desktop trigger */}
               {user && (
                 <button
@@ -577,7 +604,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
 
               {/* ── Active Polls (top of sidebar — premium position) ── */}
               {activePolls.length > 0 && (
-                <div className="space-y-3">
+                <div className="hidden lg:block space-y-3">
                   <div className="flex items-center justify-between px-1">
                     <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
                       Live Polls
