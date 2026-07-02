@@ -12,7 +12,6 @@ export function AdminUsersTab(props: any) {
     handleRejectUsernameRequest,
     resolvingRequest,
     setShowRejectInput,
-    handleResolveUsernameRequest,
     handleApproveUsernameRequest,
     userSearch,
     setUserSearch,
