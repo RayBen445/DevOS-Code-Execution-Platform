@@ -178,11 +178,11 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
 
       let filtered: Project[];
       if (isOrgWorkspace) {
-        // Org workspace: show all org projects
-        filtered = projs;
+        // Org workspace: show all org projects, but exclude portfolios
+        filtered = projs.filter(p => p.systemType !== "portfolio");
       } else {
-        // Personal workspace: exclude org-owned projects
-        filtered = projs.filter(p => p.ownerType !== "organization");
+        // Personal workspace: exclude org-owned projects and portfolios
+        filtered = projs.filter(p => p.ownerType !== "organization" && p.systemType !== "portfolio");
       }
 
       // Sort by updatedAt descending

@@ -206,8 +206,9 @@ export default function OrgPage() {
     const q = query(collection(db, "projects"), where("ownerOrgId", "==", org.id));
     return onSnapshot(q, (snap) => {
       const projs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Project));
-      projs.sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0));
-      setOrgProjects(projs);
+      const filtered = projs.filter(p => p.systemType !== "portfolio");
+      filtered.sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0));
+      setOrgProjects(filtered);
     });
   }, [org?.id, activeTab]);
 
