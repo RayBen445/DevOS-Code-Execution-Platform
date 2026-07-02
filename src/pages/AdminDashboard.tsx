@@ -569,15 +569,7 @@ export default function AdminDashboard() {
     ));
 
     
-  const adminTabProps = {
-    users, usernameRequests, showRejectInput, rejectReason, setRejectReason,
-    handleRejectUsernameRequest, resolvingRequest, setShowRejectInput,
-    handleApproveUsernameRequest, userSearch, setUserSearch,
-    handleRoleUpdate, updatingRole, setUserActionConfirm, moderatingUser,
-    usernameEditUid, setUsernameEditUid, usernameEditValue, setUsernameEditValue,
-    handleAdminChangeUsername, savingUsername, handleToggleOfficial, togglingOfficial,
-    handleCreatePortfolio, creatingPortfolio, user
-  , postContent, setPostContent, postType, setPostType, adminPostAttachments, setAdminPostAttachments, adminPostTextareaRef, publishingPost, handleAdminPost, handleAdminPostAttachmentUpload, removeAdminPostAttachment, loadingConfig, config, saveGlobalCreditConfig, savingConfig, globalCost, setGlobalCost, globalCreditsEnabled, setGlobalCreditsEnabled, targetUid, setTargetUid, creditAmount, setCreditAmount, operation, setOperation, handleAddOrDeductCredits, savingUserCredits, searchUid, setSearchUid, searchedUser, handleSearchUserCredits, searchingUser, adjusting, giftTarget, setGiftTarget, giftAmount, setGiftAmount, giftExpiry, setGiftExpiry, handleGiftCredits, gifting, unlimitedTarget, setUnlimitedTarget, unlimitedUntil, setUnlimitedUntil, handleGrantUnlimited, grantingUnlimited};
+
 
   return () => unsubs.forEach((u) => u());
   }, [isAdmin]);
@@ -2611,6 +2603,17 @@ function TemplateCard({
   onReject: () => void;
 }) {
   const isBusy = moderating === template.id;
+
+
+  const adminTabProps = {
+    users, usernameRequests, showRejectInput, rejectReason, setRejectReason,
+    handleRejectUsernameRequest, resolvingRequest, setShowRejectInput,
+    handleApproveUsernameRequest, userSearch, setUserSearch,
+    handleRoleUpdate, updatingRole, setUserActionConfirm, moderatingUser,
+    usernameEditUid, setUsernameEditUid, usernameEditValue, setUsernameEditValue,
+    handleAdminChangeUsername, savingUsername, handleToggleOfficial, togglingOfficial,
+    handleCreatePortfolio, creatingPortfolio, user
+  , postContent, setPostContent, postType, setPostType, adminPostAttachments, setAdminPostAttachments, adminPostTextareaRef, publishingPost, handleAdminPost, handleAdminPostAttachmentUpload, removeAdminPostAttachment, loadingConfig, config, saveGlobalCreditConfig, savingConfig, globalCost, setGlobalCost, globalCreditsEnabled, setGlobalCreditsEnabled, targetUid, setTargetUid, creditAmount, setCreditAmount, operation, setOperation, handleAddOrDeductCredits, savingUserCredits, searchUid, setSearchUid, searchedUser, handleSearchUserCredits, searchingUser, adjusting, giftTarget, setGiftTarget, giftAmount, setGiftAmount, giftExpiry, setGiftExpiry, handleGiftCredits, gifting, unlimitedTarget, setUnlimitedTarget, unlimitedUntil, setUnlimitedUntil, handleGrantUnlimited, grantingUnlimited};
   return (
     <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.04] transition-all">
       <div className="flex items-start justify-between mb-3">
