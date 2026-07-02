@@ -131,7 +131,7 @@ export default function PublishTemplateModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative bg-card border border-border-base rounded-3xl p-8 w-full max-w-lg z-10"
+            className="relative bg-card border border-border-base rounded-3xl p-8 w-full max-w-lg z-10 max-h-[90vh] overflow-y-auto flex flex-col"
           >
             <div className="flex items-center justify-between mb-8">
               <div>

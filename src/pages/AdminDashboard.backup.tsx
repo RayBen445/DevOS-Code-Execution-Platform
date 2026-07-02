@@ -551,18 +551,7 @@ export default function AdminDashboard() {
       (snap) => setPendingDeletionCount(snap.size)
     ));
 
-    
-  const adminTabProps = {
-    users, usernameRequests, showRejectInput, rejectReason, setRejectReason,
-    handleRejectUsernameRequest, resolvingRequest, setShowRejectInput,
-    handleResolveUsernameRequest, handleApproveUsernameRequest, userSearch, setUserSearch,
-    handleRoleUpdate, updatingRole, setUserActionConfirm, moderatingUser,
-    usernameEditUid, setUsernameEditUid, usernameEditValue, setUsernameEditValue,
-    handleAdminChangeUsername, savingUsername, handleToggleOfficial, togglingOfficial,
-    handleCreatePortfolio, creatingPortfolio, user
-  , postContent, setPostContent, postType, setPostType, adminPostAttachments, setAdminPostAttachments, adminPostTextareaRef, publishingPost, handleAdminPost, handleAdminPostAttachmentUpload, removeAdminPostAttachment, loadingConfig, config, saveGlobalCreditConfig, savingConfig, globalCost, setGlobalCost, globalCreditsEnabled, setGlobalCreditsEnabled, targetUid, setTargetUid, creditAmount, setCreditAmount, operation, setOperation, handleAddOrDeductCredits, savingUserCredits, searchUid, setSearchUid, searchedUser, handleSearchUserCredits, searchingUser, adjusting, giftTarget, setGiftTarget, giftAmount, setGiftAmount, giftExpiry, setGiftExpiry, handleGiftCredits, gifting, unlimitedTarget, setUnlimitedTarget, unlimitedUntil, setUnlimitedUntil, handleGrantUnlimited, grantingUnlimited};
-
-  return () => unsubs.forEach((u) => u());
+    return () => unsubs.forEach((u) => u());
   }, [isAdmin]);
 
   useEffect(() => {
@@ -2803,10 +2792,486 @@ User request: ${aiTestPrompt.trim()}`;
                 )}
 
                 {/* Users Tab */}
-                {activeTab === "users" && <AdminUsersTab {...adminTabProps} />}
+                {activeTab === "users" && (
+                  <div>
+                    <p className="text-white/40 text-sm mb-6">{users.length} registered users</p>
+                    {/* Pending Username Change Requests */}
+                    {usernameRequests.length > 0 && (
+                      <div className="mb-6 bg-surface border border-yellow-500/20 rounded-2xl p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <AtSign className="w-4 h-4 text-yellow-400" />
+                          <h3 className="text-sm font-bold text-white">Pending Username Requests</h3>
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-[10px] font-bold border border-yellow-500/20">
+                            {usernameRequests.length}
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          {usernameRequests.map((req) => (
+                            <div key={req.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/3 border border-border-base">
+                              <div className="min-w-0">
+                                <p className="text-sm text-white">
+                                  <span className="font-mono text-white/60">@{req.currentUsername}</span>
+                                  <span className="text-white/30 mx-2">→</span>
+                                  <span className="font-mono font-bold text-yellow-400">@{req.requestedUsername}</span>
+                                </p>
+                                {req.reason && <p className="text-xs text-white/40 mt-0.5 truncate">{req.reason}</p>}
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                {showRejectInput === req.id ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="text"
+                                      value={rejectReason}
+                                      onChange={(e) => setRejectReason(e.target.value)}
+                                      placeholder="Reason (optional)"
+                                      className="text-xs px-2 py-1.5 rounded-xl bg-white/5 border border-border-base text-white placeholder-white/30 focus:outline-none focus:border-red-500/40 w-32"
+                                    />
+                                    <button
+                                      onClick={() => handleRejectUsernameRequest(req)}
+                                      disabled={resolvingRequest === req.id}
+                                      className="px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                    >
+                                      {resolvingRequest === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Reject"}
+                                    </button>
+                                    <button
+                                      onClick={() => { setShowRejectInput(null); setRejectReason(""); }}
+                                      className="px-2.5 py-1.5 rounded-xl bg-white/5 text-white/40 hover:text-white text-xs font-bold transition-all"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => handleApproveUsernameRequest(req)}
+                                      disabled={resolvingRequest === req.id}
+                                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-bold transition-all disabled:opacity-50"
+                                    >
+                                      {resolvingRequest === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => setShowRejectInput(req.id)}
+                                      className="px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all"
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Desktop: table-like rows; Mobile: cards */}
+                    <div className="space-y-2">
+                      {users.map((u) => (
+                        <div key={u.uid} className="rounded-2xl bg-surface border border-border-base">
+                          <div className="p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 min-w-0 w-full xl:w-auto flex-1">
+                              <Avatar src={u.avatarUrl} displayName={u.displayName} size="md" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-bold text-white text-sm truncate">{u.displayName}</p>
+                                  {u.role === "admin" && (
+                                    <span className="px-1.5 py-0.5 rounded-md bg-red-500/20 text-red-400 text-[10px] font-bold uppercase flex-shrink-0">Admin</span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-white/40 truncate">@{u.username} · {u.email}</p>
+                              </div>
+                            </div>
+                            
+                            {/* Action Buttons Container */}
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              <div className="text-right text-xs text-white/40 hidden sm:block mr-2">
+                                <p className="flex items-center gap-1 justify-end">
+                                  <span className="font-bold">{u.projectCount || 0}</span> projects
+                                </p>
+                                <p className="flex items-center gap-1 justify-end text-yellow-400/70">
+                                  <Zap className="w-3 h-3" />
+                                  {u.credits ? `${u.credits.daily + u.credits.monthly}` : "—"}
+                                </p>
+                              </div>
+                              
+                              {/* Role controls */}
+                              {u.role === "admin" ? (
+                                <button
+                                  onClick={() => handleUpdateRole(u.uid, "user")}
+                                  disabled={updatingRole === u.uid}
+                                  title="Demote to user"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                >
+                                  {updatingRole === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Demote</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleUpdateRole(u.uid, "admin")}
+                                  disabled={updatingRole === u.uid}
+                                  title="Promote to admin"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                >
+                                  {updatingRole === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Promote</span>
+                                </button>
+                              )}
+
+                              {/* Moderation controls */}
+                              {u.status === "banned" || u.status === "suspended" ? (
+                                <button
+                                  onClick={() => setUserActionConfirm({ uid: u.uid, action: "reinstate" })}
+                                  disabled={moderatingUser === u.uid}
+                                  title="Reinstate user"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                >
+                                  {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Reinstate</span>
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => setUserActionConfirm({ uid: u.uid, action: "suspend" })}
+                                    disabled={moderatingUser === u.uid || u.uid === user?.uid}
+                                    title="Suspend user"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                  >
+                                    {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
+                                    <span className="hidden sm:inline">Suspend</span>
+                                  </button>
+                                  <button
+                                    onClick={() => setUserActionConfirm({ uid: u.uid, action: "ban" })}
+                                    disabled={moderatingUser === u.uid || u.uid === user?.uid}
+                                    title="Ban user"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                  >
+                                    {moderatingUser === u.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+                                    <span className="hidden sm:inline">Ban</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Change Username button */}
+                              <button
+                                onClick={() => {
+                                  setUsernameEditUid(u.uid);
+                                  setUsernameEditValue(u.username);
+                                }}
+                                title="Change username"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-xs font-bold"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Rename</span>
+                              </button>
+
+                              {/* Official toggle */}
+                              <button
+                                onClick={() => handleToggleOfficial(u.uid, !!u.isOfficial)}
+                                disabled={togglingOfficial === u.uid}
+                                title={u.isOfficial ? "Remove official status" : "Mark as official"}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all text-xs font-bold disabled:opacity-50 ${
+                                  u.isOfficial
+                                    ? "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30"
+                                    : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                                }`}
+                              >
+                                {togglingOfficial === u.uid
+                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  : <BadgeCheck className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">{u.isOfficial ? "Official ✓" : "Official"}</span>
+                              </button>
+
+                              {/* Create Portfolio button */}
+                              {!u.hasPortfolio && (
+                                <button
+                                  onClick={() => handleCreatePortfolio(u.uid, u.username)}
+                                  disabled={creatingPortfolio === u.uid}
+                                  title="Create portfolio for this user"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all text-xs font-bold disabled:opacity-50"
+                                >
+                                  {creatingPortfolio === u.uid
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    : <Plus className="w-3.5 h-3.5" />}
+                                  <span className="hidden sm:inline">Portfolio</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Inline username editor */}
+                          {usernameEditUid === u.uid && (
+                            <div className="px-4 pb-4 flex items-center gap-2">
+                              <input
+                                autoFocus
+                                type="text"
+                                value={usernameEditValue}
+                                onChange={(e) => setUsernameEditValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                                placeholder="new_username"
+                                maxLength={20}
+                                className="flex-1 bg-white/5 border border-border-base rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500 transition-all"
+                              />
+                              <button
+                                onClick={() => handleAdminChangeUsername(u.uid, usernameEditValue)}
+                                disabled={savingUsername || !usernameEditValue.trim()}
+                                className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                              >
+                                {savingUsername ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
+                              </button>
+                              <button
+                                onClick={() => { setUsernameEditUid(null); setUsernameEditValue(""); }}
+                                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white text-xs font-bold transition-all"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {users.length === 0 && (
+                        <p className="text-white/30 text-sm py-8 text-center">No users found.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Credits Tab */}
-                {activeTab === "credits" && <AdminCreditsTab {...adminTabProps} />}
+                {activeTab === "credits" && (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                    {/* Global Credit Config */}
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Settings2 className="w-4 h-4 text-purple-400" />
+                        Global Credit Config
+                      </h2>
+                      <p className="text-white/40 text-sm mb-6">Control whether credits are enforced platform-wide and set a universal action cost.</p>
+                      {loadingConfig ? (
+                        <div className="flex items-center gap-2 text-white/30 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Loading config…</div>
+                      ) : (
+                        <form onSubmit={handleSaveCreditConfig} className="space-y-5">
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-border-base">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Credits Enabled</p>
+                              <p className="text-xs text-white/40">When disabled, all actions are free for everyone.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setCreditConfig((c) => ({ ...c, creditsEnabled: !c.creditsEnabled }))}
+                              className={cn(
+                                "w-12 h-6 rounded-full transition-all relative flex-shrink-0",
+                                creditConfig.creditsEnabled ? "bg-blue-600" : "bg-white/10"
+                              )}
+                            >
+                              <span className={cn(
+                                "absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow",
+                                creditConfig.creditsEnabled ? "left-7" : "left-1"
+                              )} />
+                            </button>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
+                              Charge Per Action (0 = use per-action defaults)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={creditConfig.chargePerAction}
+                              onChange={(e) => setCreditConfig((c) => ({ ...c, chargePerAction: parseInt(e.target.value, 10) || 0 }))}
+                              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all"
+                              placeholder="0"
+                            />
+                            <p className="text-[11px] text-white/30">Set a flat cost per action. Leave 0 to use individual action costs below.</p>
+                          </div>
+
+                          {/* Per-action cost overrides */}
+                          <div className="space-y-3">
+                            <p className="text-xs font-bold text-white/40 uppercase tracking-widest">Per-Action Cost Overrides</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              {(["createProject", "deploy", "sync", "save", "post", "aiRequest"] as const).map((action) => (
+                                <div key={action} className="space-y-1">
+                                  <label className="text-[11px] text-white/40 capitalize">{action === "aiRequest" ? "AI Request" : action.replace(/([A-Z])/g, " $1")}</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder={String({ createProject: 5, deploy: 10, sync: 3, save: 1, post: 2, aiRequest: 5 }[action])}
+                                    value={creditConfig.actionCosts?.[action] ?? ""}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10);
+                                      setCreditConfig((c) => ({
+                                        ...c,
+                                        actionCosts: {
+                                          ...c.actionCosts,
+                                          [action]: isNaN(val) ? undefined : val,
+                                        },
+                                      }));
+                                    }}
+                                    className="w-full bg-white/5 border border-border-base rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition-all"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={savingConfig}
+                            className={cn(
+                              "w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
+                              savingConfig ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700 text-white active:scale-95"
+                            )}
+                          >
+                            {savingConfig ? <><Loader2 className="w-4 h-4 animate-spin" />Saving…</> : <><Settings2 className="w-4 h-4" />Save Config</>}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
+                      <h2 className="text-lg font-bold text-white mb-1">Adjust User Credits</h2>
+                      <p className="text-white/40 text-sm mb-6">Enter username, email, or UID and the amount to add (positive) or subtract (negative).</p>
+                      <form onSubmit={handleAdjustCredits} className="space-y-5">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Target User</label>
+                          <input type="text" value={creditTarget} onChange={(e) => setCreditTarget(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="username, email, or UID" required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Amount</label>
+                            <input type="number" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all" placeholder="10" required />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Type</label>
+                            <CustomSelect
+                              value={creditType}
+                              onChange={(v) => setCreditType(v as "daily" | "monthly")}
+                              options={[
+                                { value: "daily", label: "Daily" },
+                                { value: "monthly", label: "Monthly" },
+                              ]}
+                            />
+                          </div>
+                        </div>
+                        <button type="submit" disabled={adjusting} className={cn("w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2", adjusting ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95")}>
+                          {adjusting ? <><Loader2 className="w-4 h-4 animate-spin" />Adjusting...</> : <><Zap className="w-4 h-4" />Apply Credits Adjustment</>}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Gift Credits */}
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Gift className="w-4 h-4 text-green-400" />
+                        Gift Credits
+                      </h2>
+                      <p className="text-white/40 text-sm mb-5">Give a user bonus credits with an optional expiry date.</p>
+                      <form onSubmit={handleGiftCredits} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Target User</label>
+                          <input
+                            type="text"
+                            value={giftTarget}
+                            onChange={(e) => setGiftTarget(e.target.value)}
+                            placeholder="username, email, or UID"
+                            required
+                            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Amount</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={giftAmount}
+                              onChange={(e) => setGiftAmount(e.target.value)}
+                              required
+                              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Expires (optional)</label>
+                            <input
+                              type="date"
+                              value={giftExpiry}
+                              onChange={(e) => setGiftExpiry(e.target.value)}
+                              className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 transition-all"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={gifting}
+                          className="w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {gifting ? <><Loader2 className="w-4 h-4 animate-spin" />Gifting…</> : <><Gift className="w-4 h-4" />Gift Credits</>}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Unlimited Credits Pass */}
+                    <div className="bg-surface border border-border-base rounded-2xl p-6">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Infinity className="w-4 h-4 text-yellow-400" />
+                        Grant Unlimited Pass
+                      </h2>
+                      <p className="text-white/40 text-sm mb-5">Give a user unlimited credits until a specified date.</p>
+                      <form onSubmit={handleGrantUnlimited} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Target User</label>
+                          <input
+                            type="text"
+                            value={unlimitedTarget}
+                            onChange={(e) => setUnlimitedTarget(e.target.value)}
+                            placeholder="username, email, or UID"
+                            required
+                            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Valid Until</label>
+                          <input
+                            type="date"
+                            value={unlimitedUntil}
+                            onChange={(e) => setUnlimitedUntil(e.target.value)}
+                            required
+                            className="w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-all"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={grantingUnlimited}
+                          className="w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {grantingUnlimited ? <><Loader2 className="w-4 h-4 animate-spin" />Granting…</> : <><Infinity className="w-4 h-4" />Grant Unlimited Pass</>}
+                        </button>
+                      </form>
+                    </div>
+
+                    </div>
+
+                    <div>
+                      <h2 className="text-lg font-bold text-white mb-4">User Credits Overview</h2>
+                      <div className="space-y-2">
+                        {users.map((u) => (
+                          <div key={u.uid} className="p-4 rounded-2xl bg-surface border border-border-base flex items-center justify-between">
+                            <div>
+                              <p className="font-bold text-white text-sm">@{u.username}</p>
+                              <p className="text-xs text-white/30">{u.email}</p>
+                            </div>
+                            <div className="text-right text-sm">
+                              <p className="text-yellow-400 font-bold flex items-center gap-1 justify-end">
+                                <Zap className="w-3 h-3" />
+                                {u.credits ? `${u.credits.daily + u.credits.monthly}` : "—"} total
+                              </p>
+                              {u.credits && (
+                                <p className="text-white/30 text-xs">{u.credits.daily} daily + {u.credits.monthly} monthly</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Polls Tab */}
                 {activeTab === "polls" && (
@@ -3107,7 +3572,132 @@ User request: ${aiTestPrompt.trim()}`;
                 )}
 
                 {/* Admin Posts Tab */}
-                {activeTab === "posts" && <AdminPostsTab {...adminTabProps} />}
+                {activeTab === "posts" && (
+                  <div className="space-y-8">
+                    <div className="bg-surface border border-border-base rounded-2xl p-6 max-w-2xl">
+                      <h2 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                        <Newspaper className="w-4 h-4 text-blue-400" />
+                        Publish Official Post
+                      </h2>
+                      <p className="text-white/40 text-sm mb-6">
+                        Posts appear in the community feed as <span className="text-yellow-400 font-bold">DevOS Official</span>.
+                      </p>
+                      <form onSubmit={handlePublishAdminPost} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Post Type</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {(["announcement", "update", "feature"] as const).map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setPostType(t)}
+                                className={cn(
+                                  "py-2.5 px-3 rounded-xl text-xs font-bold border transition-all",
+                                  postType === t
+                                    ? "bg-blue-600/20 border-blue-500 text-blue-300"
+                                    : "bg-white/5 border-border-base text-white/50 hover:border-border-base"
+                                )}
+                              >
+                                {t === "announcement" ? "Announcement" : t === "update" ? "Update" : "Feature"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Content</label>
+                          <div className="bg-white/5 border border-border-base rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+                            {/* Toolbar */}
+                            <div className="flex items-center gap-0.5 border-b border-white/[0.06] p-2 bg-black/20">
+                              {([
+                                { icon: Bold,   title: "Bold",        wrap: ["**", "**"],    placeholder: "bold text" },
+                                { icon: Italic, title: "Italic",      wrap: ["*", "*"],      placeholder: "italic text" },
+                                { icon: Code2,  title: "Inline code", wrap: ["`", "`"],      placeholder: "code" },
+                                { icon: Link2,   title: "Link",        wrap: ["[", "](url)"], placeholder: "link text" },
+                                { icon: List,   title: "List item",   wrap: ["- ", ""],      placeholder: "item" },
+                                { icon: Quote,  title: "Blockquote",  wrap: ["> ", ""],      placeholder: "quote" },
+                              ] as const).map(({ icon: Icon, title, wrap, placeholder }) => (
+                                <button
+                                  key={title}
+                                  type="button"
+                                  title={title}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    const el = adminPostTextareaRef.current;
+                                    if (!el) return;
+                                    const start = el.selectionStart ?? 0;
+                                    const end = el.selectionEnd ?? 0;
+                                    const selected = postContent.slice(start, end) || placeholder;
+                                    const before = postContent.slice(0, start);
+                                    const after = postContent.slice(end);
+                                    setPostContent(before + wrap[0] + selected + wrap[1] + after);
+                                    requestAnimationFrame(() => {
+                                      el.focus();
+                                      const cursor = start + wrap[0].length + selected.length + wrap[1].length;
+                                      el.setSelectionRange(cursor, cursor);
+                                    });
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                                >
+                                  <Icon className="w-3.5 h-3.5" />
+                                </button>
+                              ))}
+                              <div className="w-px h-4 bg-white/10 mx-2" />
+                              <label className="p-1.5 rounded-lg hover:bg-white/10 text-blue-400 hover:text-blue-300 transition-colors cursor-pointer" title="Attach Image">
+                                <ImageDown className="w-3.5 h-3.5" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    if (!e.target.files?.length) return;
+                                    const files = Array.from(e.target.files);
+                                    toast.loading("Uploading image(s)...", { id: "admin-upload" });
+                                    try {
+                                      const { uploadImage } = await import("../lib/storageService");
+                                      const newAttachments = await Promise.all(
+                                        files.map(f => uploadImage(f, `feed/${Date.now()}_${f.name}`))
+                                      );
+                                      setAdminPostAttachments(prev => [...prev, ...newAttachments]);
+                                      toast.success("Image(s) attached!", { id: "admin-upload" });
+                                    } catch (err) {
+                                      toast.error("Failed to upload image(s)", { id: "admin-upload" });
+                                    }
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            <textarea ref={adminPostTextareaRef} value={postContent} onChange={(e) => setPostContent(e.target.value)} rows={5} className="w-full bg-transparent px-4 py-3 text-white focus:outline-none resize-none" required placeholder="Write your official announcement here... (Markdown supported)" />
+                            {adminPostAttachments.length > 0 && (
+                              <div className="flex flex-wrap gap-2 p-3 border-t border-white/[0.06] bg-black/20">
+                                {adminPostAttachments.map((url, i) => (
+                                  <div key={i} className="relative group">
+                                    <img src={url} className="w-16 h-16 object-cover rounded-lg border border-border-base" alt="attachment" />
+                                    <button
+                                      type="button"
+                                      onClick={() => setAdminPostAttachments(adminPostAttachments.filter((_, idx) => idx !== i))}
+                                      className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button type="submit" disabled={publishingPost} className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold transition-all">
+                            {publishingPost ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            {publishingPost ? "Publishing..." : "Publish to Feed"}
+                          </button>
+                          <p className="text-xs text-white/30">Appears as <span className="text-yellow-400">DevOS Official</span></p>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
                 {activeTab === "reserved" && (
                   <div className="space-y-6 max-w-xl">
                     <div className="bg-surface border border-border-base rounded-2xl p-6">

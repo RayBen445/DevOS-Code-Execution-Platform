@@ -145,7 +145,7 @@ export default function CommandPalette() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="fixed top-[15vh] left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-[9999] bg-[#0a0c10] border border-white/10 rounded-2xl shadow-[0_0_80px_rgba(59,130,246,0.15)] overflow-hidden"
+            className="fixed top-[15vh] left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-[9999] bg-[#0a0c10] border border-white/10 rounded-2xl shadow-[0_0_80px_rgba(59,130,246,0.15)] overflow-hidden max-h-[90vh] overflow-y-auto flex flex-col"
           >
             <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10">
               <Search className="w-5 h-5 text-blue-400" />

@@ -536,7 +536,7 @@ export default function ThemeStudio() {
       <AnimatePresence>
         {isPublishModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full max-w-md bg-base border border-border-base rounded-3xl p-8 shadow-2xl">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full max-w-md bg-base border border-border-base rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col">
               <h2 className="text-2xl font-black mb-2">Publish Theme</h2>
               <p className="text-sm text-secondary mb-6">Share your custom theme with the world.</p>
               

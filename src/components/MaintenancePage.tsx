@@ -15,7 +15,7 @@ export default function MaintenancePage({ banner, isAuthenticated, onSignIn, onS
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 280 }}
-        className="max-w-md w-full text-center"
+        className="max-w-md w-full text-center max-h-[90vh] overflow-y-auto flex flex-col"
       >
         {/* Animated icon */}
         <div className="relative inline-flex items-center justify-center mb-8">

@@ -485,7 +485,7 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 280 }}
-          className="max-w-md w-full text-center"
+          className="max-w-md w-full text-center max-h-[90vh] overflow-y-auto flex flex-col"
         >
           <div className="w-20 h-20 rounded-2xl bg-red-500/15 border border-red-500/20 flex items-center justify-center mx-auto mb-6">
             <ShieldAlert className="w-9 h-9 text-red-400" />
@@ -513,7 +513,7 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 280 }}
-          className="max-w-md w-full text-center"
+          className="max-w-md w-full text-center max-h-[90vh] overflow-y-auto flex flex-col"
         >
           <div className="w-20 h-20 rounded-2xl bg-yellow-500/15 border border-yellow-500/20 flex items-center justify-center mx-auto mb-6">
             <ShieldAlert className="w-9 h-9 text-yellow-400" />
@@ -541,7 +541,7 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 280 }}
-          className="max-w-md w-full text-center"
+          className="max-w-md w-full text-center max-h-[90vh] overflow-y-auto flex flex-col"
         >
           <div className="w-20 h-20 rounded-2xl bg-white/10 border border-border-base flex items-center justify-center mx-auto mb-6">
             <ShieldAlert className="w-9 h-9 text-white/40" />

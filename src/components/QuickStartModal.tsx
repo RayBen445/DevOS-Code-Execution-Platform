@@ -80,7 +80,7 @@ export default function QuickStartModal({ onClose, onCreateProject }: QuickStart
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="relative w-full max-w-4xl bg-[#0a0a0b] border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row z-10"
+        className="relative w-full max-w-4xl bg-[#0a0a0b] border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row z-10 max-h-[90vh] overflow-y-auto flex flex-col"
       >
         {/* Left Side: Navigation / Stepper */}
         <div className="w-full md:w-1/3 bg-white/[0.02] border-b md:border-b-0 md:border-r border-white/5 p-6 md:p-8 flex flex-col">

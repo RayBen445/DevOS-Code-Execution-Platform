@@ -243,12 +243,12 @@ export default function OfflineGame() {
             <WifiOff className="w-10 h-10 text-red-500" />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">You're Offline</h1>
-          <p className="text-white/50 max-w-md text-center">
+          <p className="text-white/50 max-w-md text-center max-h-[90vh] overflow-y-auto flex flex-col">
             Lost connection to DevOS servers. Test your typing skills while you wait!
           </p>
         </div>
 
-        <div className="mt-20 w-full max-w-4xl flex flex-col items-center">
+        <div className="mt-20 w-full max-w-4xl flex flex-col items-center max-h-[90vh] overflow-y-auto flex flex-col">
           <div className="flex w-full justify-between px-6 mb-4 text-white/70 font-bold">
             <div className="flex items-center gap-2 text-2xl">
               <Trophy className="w-6 h-6 text-yellow-500" />

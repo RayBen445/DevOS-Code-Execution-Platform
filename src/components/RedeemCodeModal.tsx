@@ -64,7 +64,7 @@ export default function RedeemCodeModal({ isOpen, onClose }: RedeemCodeModalProp
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="w-full max-w-md bg-card border border-border-base rounded-2xl overflow-hidden shadow-2xl my-auto"
+            className="w-full max-w-md bg-card border border-border-base rounded-2xl overflow-hidden shadow-2xl my-auto max-h-[90vh] overflow-y-auto flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-border-base">

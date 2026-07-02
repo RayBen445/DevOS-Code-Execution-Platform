@@ -1277,7 +1277,7 @@ p {
 
             {/* Left side: Templates */}
             <div className="w-2/3 h-full overflow-y-auto border-r border-white/5 p-12 custom-scrollbar relative z-10">
-              <div className="max-w-4xl mx-auto">
+              <div className="max-w-4xl mx-auto max-h-[90vh] overflow-y-auto flex flex-col">
                 <h2 className="text-4xl font-black text-white tracking-tight mb-2">Create New Project</h2>
                 <p className="text-white/40 text-lg mb-12">Select a template or start from scratch.</p>
                 

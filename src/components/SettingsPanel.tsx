@@ -426,7 +426,7 @@ export default function SettingsPanel({ projectId, project, files, onDelete }: S
       {/* Commit Message Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-card border border-border-base rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-md bg-card border border-border-base rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto flex flex-col">
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-white">Push to GitHub</h3>

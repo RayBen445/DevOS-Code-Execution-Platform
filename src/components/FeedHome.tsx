@@ -1500,7 +1500,7 @@ function FeedItem({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-card border border-border-base rounded-2xl shadow-2xl p-5"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-card border border-border-base rounded-2xl shadow-2xl p-5 max-h-[90vh] overflow-y-auto flex flex-col"
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-bold text-white">Repost</h3>

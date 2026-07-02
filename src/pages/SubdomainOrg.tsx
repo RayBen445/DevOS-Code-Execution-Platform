@@ -136,7 +136,7 @@ export default function SubdomainOrg({ slug }: Props) {
       </div>
 
       {/* Header */}
-      <header className="relative max-w-4xl mx-auto px-6 pt-14 pb-10">
+      <header className="relative max-w-4xl mx-auto px-6 pt-14 pb-10 max-h-[90vh] overflow-y-auto flex flex-col">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

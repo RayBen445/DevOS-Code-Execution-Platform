@@ -80,7 +80,7 @@ function CreateCommunityModal({ open, onClose, userId, onCreated }: CreateModalP
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative bg-surface border border-border-base rounded-2xl p-6 w-full max-w-md z-10 shadow-2xl"
+        className="relative bg-surface border border-border-base rounded-2xl p-6 w-full max-w-md z-10 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col"
       >
         <h2 className="text-xl font-bold text-white mb-1">Create a Community</h2>
         <p className="text-white/40 text-sm mb-6">Start a topic-based space for developers.</p>

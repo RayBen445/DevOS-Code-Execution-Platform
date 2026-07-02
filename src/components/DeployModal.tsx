@@ -263,7 +263,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-lg bg-base border border-border-base rounded-[32px] overflow-hidden shadow-2xl"
+            className="relative w-full max-w-lg bg-base border border-border-base rounded-[32px] overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col"
           >
             <div className="p-6 border-b border-border-base flex items-center justify-between bg-gradient-to-r from-blue-500/5 to-transparent">
               <h2 className="text-xl font-bold flex items-center gap-3">

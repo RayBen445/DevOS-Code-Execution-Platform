@@ -1636,7 +1636,7 @@ function DangerZoneTab() {
               initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="relative w-full max-w-md bg-card border border-border-base rounded-3xl p-8 shadow-2xl"
+              className="relative w-full max-w-md bg-card border border-border-base rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col"
             >
               <button onClick={() => !deactivating && setShowDeactivate(false)} disabled={deactivating}
                 className="absolute top-5 right-5 p-2 hover:bg-white/5 rounded-full transition-colors disabled:opacity-40">
@@ -1675,7 +1675,7 @@ function DangerZoneTab() {
               initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="relative w-full max-w-md bg-card border border-border-base rounded-3xl p-8 shadow-2xl"
+              className="relative w-full max-w-md bg-card border border-border-base rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col"
             >
               <button onClick={() => !requesting && setShowDeleteRequest(false)} disabled={requesting}
                 className="absolute top-5 right-5 p-2 hover:bg-white/5 rounded-full transition-colors disabled:opacity-40">

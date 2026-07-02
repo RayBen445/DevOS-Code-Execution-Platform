@@ -919,7 +919,7 @@ export default function PortfolioEditor({ project, files, onUpdateFile }: Portfo
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              className="relative w-full max-w-md bg-base border-l border-border-base h-full shadow-2xl flex flex-col"
+              className="relative w-full max-w-md bg-base border-l border-border-base h-full shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto flex flex-col"
             >
               <div className="p-6 border-b border-border-base flex items-center justify-between">
                 <div className="flex items-center gap-3">

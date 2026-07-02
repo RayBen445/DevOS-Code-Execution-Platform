@@ -86,7 +86,7 @@ export default function ConfigGuard({ children }: { children: React.ReactNode })
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 280 }}
-          className="max-w-md w-full bg-card border border-red-500/20 rounded-2xl p-8 text-center shadow-2xl"
+          className="max-w-md w-full bg-card border border-red-500/20 rounded-2xl p-8 text-center shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col"
         >
           <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="w-8 h-8 text-red-400" />

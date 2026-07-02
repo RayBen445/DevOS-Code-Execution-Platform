@@ -86,7 +86,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="w-full max-w-md bg-base border border-border-base rounded-2xl overflow-hidden shadow-2xl pointer-events-auto"
+              className="w-full max-w-md bg-base border border-border-base rounded-2xl overflow-hidden shadow-2xl pointer-events-auto max-h-[90vh] overflow-y-auto flex flex-col"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">

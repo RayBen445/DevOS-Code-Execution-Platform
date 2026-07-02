@@ -364,7 +364,7 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.93, y: 24 }}
         transition={{ type: "spring", damping: 28, stiffness: 320 }}
-        className="relative w-full max-w-md glass-dark border border-border-base rounded-3xl p-8 shadow-2xl overflow-hidden"
+        className="relative w-full max-w-md glass-dark border border-border-base rounded-3xl p-8 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto flex flex-col"
       >
         {/* Ambient glow */}
         <div className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-600/12 rounded-full blur-[60px]" />

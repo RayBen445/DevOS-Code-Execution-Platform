@@ -92,7 +92,7 @@ export default function CreateOrgModal({ open, onClose }: CreateOrgModalProps) {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl"
+              className="relative w-full max-w-lg bg-base border border-border-base rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col"
             >
               {/* Header */}
               <div className="p-6 border-b border-border-base flex items-center justify-between">

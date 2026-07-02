@@ -945,7 +945,7 @@ function CreateOrgProjectModal({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="w-full max-w-md bg-card border border-border-base rounded-2xl shadow-2xl">
+        <div className="w-full max-w-md bg-card border border-border-base rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col">
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
             <div className="flex items-center gap-2">
               <FolderCode className="w-4 h-4 text-blue-400" />
