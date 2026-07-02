@@ -32,9 +32,12 @@ export default function UserProfilePage() {
           setUserProfile(data);
           
           // Fetch projects
-          const projQ = query(collection(db, "projects"), where("ownerUsername", "==", username.toLowerCase()), where("isPublic", "==", true), limit(20));
+          const projQ = query(collection(db, "projects"), where("ownerUsername", "==", username.toLowerCase()), where("isPublic", "==", true), limit(30));
           const projSnap = await getDocs(projQ);
-          const filteredProjs = projSnap.docs.map(d => ({ id: d.id, ...d.data() } as Project)).filter(p => p.systemType !== "portfolio").slice(0, 10);
+          const filteredProjs = projSnap.docs
+            .map(d => ({ id: d.id, ...d.data() } as Project))
+            .filter(p => p.systemType !== "portfolio" && p.ownerType !== "admin" && !p.isAdminProject)
+            .slice(0, 10);
           setProjects(filteredProjs);
 
           // Fetch posts

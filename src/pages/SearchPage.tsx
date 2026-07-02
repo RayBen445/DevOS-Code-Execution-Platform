@@ -142,7 +142,9 @@ export default function SearchPage() {
           devsSnap.docs.map((d) => ({ uid: d.id, ...d.data() } as UserProfile))
         );
         setSuggestedProjects(
-          projectsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Project))
+          projectsSnap.docs
+            .map((d) => ({ id: d.id, ...d.data() } as Project))
+            .filter(p => p.systemType !== "portfolio" && p.ownerType !== "admin" && !p.isAdminProject)
         );
         allTemplatesRef.current = templates;
       } catch {
@@ -302,9 +304,9 @@ export default function SearchPage() {
                 limit(15)
               )
             );
-            let projects = snap.docs.map(
-              (d) => ({ id: d.id, ...d.data() } as Project)
-            );
+            let projects = snap.docs
+              .map((d) => ({ id: d.id, ...d.data() } as Project))
+              .filter(p => p.systemType !== "portfolio" && p.ownerType !== "admin" && !p.isAdminProject);
             if (sort === "trending") {
               projects = projects.sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
             }

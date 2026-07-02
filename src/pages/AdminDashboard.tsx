@@ -1626,7 +1626,8 @@ export default function AdminDashboard() {
         projectSlug: slug,
         ownerId: user.uid,
         ownerUsername: username,
-        ownerType: "user",
+        ownerType: "admin",         // platform-level project, not a personal user project
+        isAdminProject: true,       // extra flag to make filtering unambiguous
         isPublic: newProjectPublic,
         isOfficial: newProjectOfficial,
         isTemplate: false,
