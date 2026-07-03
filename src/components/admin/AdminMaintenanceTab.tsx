@@ -1,12 +1,54 @@
-import React from 'react';
-import { Settings2, Loader2, Save, Search, User, Zap, Gift, Infinity, CheckCircle2, ChevronRight, Hash, Building2, Terminal, Code2, Play, Users, Clock, Plus, Trash2, Edit2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Settings2, Loader2, Save, Search, User, Zap, Gift, Infinity, CheckCircle2, ChevronRight, Hash, Building2, Terminal, Code2, Play, Users, Clock, Plus, Trash2, Edit2, Wrench, ToggleRight, ToggleLeft, WifiOff, Wifi, AlertTriangle } from 'lucide-react';
+import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { toast } from 'sonner';
 
 export function AdminMaintenanceTab(props: any) {
-  // Props will be passed via adminTabProps
-  const { ...adminTabProps } = props;
   const { 
-    // Destructure needed props here or just use props.propName
+    loadingMaintenance,
+    setMaintenanceMode,
+    maintenanceMode,
+    maintenancePages,
+    setMaintenancePages,
+    maintenanceBanner,
+    setMaintenanceBanner,
+    handleSaveMaintenance,
+    savingMaintenance
   } = props;
+
+  const [isMigrating, setIsMigrating] = useState(false);
+
+  const runMigration = async () => {
+    setIsMigrating(true);
+    try {
+      const snapshot = await getDocs(query(collection(db, "projects"), where("systemType", "==", "portfolio")));
+      const batch = writeBatch(db);
+      let count = 0;
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.ownerType !== "admin" || data.isAdminProject !== true) {
+          batch.update(doc(db, "projects", docSnap.id), {
+            ownerType: "admin",
+            isAdminProject: true
+          });
+          count++;
+        }
+      });
+
+      if (count > 0) {
+        await batch.commit();
+        toast.success(`Migrated ${count} admin portfolio projects successfully!`);
+      } else {
+        toast.info("No projects needed migration.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Migration failed: " + err.message);
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   return (
     <>
@@ -128,6 +170,25 @@ export function AdminMaintenanceTab(props: any) {
                             ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
                             : <><Wrench className="w-4 h-4" /> Save Changes</>}
                         </button>
+
+                        {/* Database Migration */}
+                        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 mt-8">
+                          <h2 className="text-sm font-bold text-red-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4" /> Database Migrations
+                          </h2>
+                          <p className="text-white/60 text-xs mb-4">
+                            Run one-time administrative migrations to sync database models (e.g. update legacy portfolio projects to be tagged as Admin).
+                          </p>
+                          <button
+                            onClick={runMigration}
+                            disabled={isMigrating}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-all"
+                          >
+                            {isMigrating
+                              ? <><Loader2 className="w-4 h-4 animate-spin" /> Migrating Projects…</>
+                              : <><Zap className="w-4 h-4" /> Migrate Admin Projects</>}
+                          </button>
+                        </div>
                       </>
                     )}
                   </div>
