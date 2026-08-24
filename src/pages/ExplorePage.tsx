@@ -121,7 +121,7 @@ function TrendingProjectsTab() {
     );
     const unsub = onSnapshot(q, (snap) => {
       const all = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Project));
-      setProjects(all.filter(p => p.systemType !== "portfolio" && p.ownerType !== "admin" && !p.isAdminProject));
+      setProjects(all.filter(p => p.systemType !== "portfolio"));
       setLoading(false);
     }, () => setLoading(false));
     return () => unsub();

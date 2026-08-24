@@ -36,7 +36,7 @@ export default function UserProfilePage() {
           const projSnap = await getDocs(projQ);
           const filteredProjs = projSnap.docs
             .map(d => ({ id: d.id, ...d.data() } as Project))
-            .filter(p => p.systemType !== "portfolio" && p.ownerType !== "admin" && !p.isAdminProject)
+            .filter(p => p.systemType !== "portfolio")
             .slice(0, 10);
           setProjects(filteredProjs);
 

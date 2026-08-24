@@ -144,7 +144,7 @@ export default function SearchPage() {
         setSuggestedProjects(
           projectsSnap.docs
             .map((d) => ({ id: d.id, ...d.data() } as Project))
-            .filter(p => p.systemType !== "portfolio" && p.ownerType !== "admin" && !p.isAdminProject)
+            .filter(p => p.systemType !== "portfolio")
         );
         allTemplatesRef.current = templates;
       } catch {
@@ -306,7 +306,7 @@ export default function SearchPage() {
             );
             let projects = snap.docs
               .map((d) => ({ id: d.id, ...d.data() } as Project))
-              .filter(p => p.systemType !== "portfolio" && p.ownerType !== "admin" && !p.isAdminProject);
+              .filter(p => p.systemType !== "portfolio");
             if (sort === "trending") {
               projects = projects.sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
             }
