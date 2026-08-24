@@ -442,9 +442,9 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
     <div className="min-h-screen bg-base text-white flex flex-col w-full max-w-full min-w-0 overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1 pb-16 md:pb-0 w-full max-w-full min-w-0 overflow-x-hidden">
-        <div className="h-full w-full max-w-full min-w-0">
-          <div className="max-w-7xl mx-auto px-3 md:px-6 py-6 md:py-10 h-full w-full max-w-full min-w-0">
+      <main className="flex-1 pb-16 md:pb-0 w-full min-w-0 overflow-x-hidden">
+        <div className="h-full w-full min-w-0">
+          <div className="w-full px-4 md:px-8 py-6 md:py-10 h-full min-w-0">
           {/* Page heading */}
           <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">

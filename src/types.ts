@@ -40,6 +40,7 @@ export interface Project {
   systemType?: 'portfolio' | 'blog' | 'docs';
   isEditable?: boolean;
   isDeletable?: boolean;
+  subdomain?: string;
   draft?: any;
   published?: any;
   deployStatus?: 'idle' | 'building' | 'success' | 'failed';

@@ -1006,7 +1006,7 @@ p {
   }
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-4 md:px-8 py-8 flex flex-col lg:flex-row gap-8">
+    <div className="w-full px-4 md:px-8 py-8 flex flex-col lg:flex-row gap-8">
       {/* ── LEFT SIDEBAR ── */}
       <div className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-6">
         {/* Workspace Banner */}

@@ -13,6 +13,7 @@ import {
 import { Project } from "../types";
 import { cn } from "../lib/utils";
 import { toast } from "sonner";
+import { DEVOS_PRODUCT_HOST } from "../lib/brand";
 
 type Section =
   | "general"
@@ -51,6 +52,7 @@ export default function ProjectSettingsModal({
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? "");
   const [isPublic, setIsPublic] = useState(project.isPublic);
+  const [subdomain, setSubdomain] = useState(project.subdomain ?? "");
   const [savingGeneral, setSavingGeneral] = useState(false);
 
   // Env vars
@@ -102,6 +104,7 @@ export default function ProjectSettingsModal({
         name: name.trim(),
         description: description.trim(),
         isPublic,
+        ...(project.systemType === "portfolio" ? { subdomain: subdomain.trim() } : {}),
         updatedAt: serverTimestamp(),
       });
       toast.success("Project settings saved.");
@@ -301,6 +304,23 @@ export default function ProjectSettingsModal({
                           <p className="text-xs text-orange-400 mt-2">Portfolios are always private.</p>
                         )}
                       </div>
+                      
+                      {project.systemType === "portfolio" && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-white/40">Domain Prefix (Subdomain)</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={subdomain}
+                              onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                              className="flex-1 bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all"
+                              placeholder="my-portfolio"
+                            />
+                            <span className="text-white/40 text-sm">.{DEVOS_PRODUCT_HOST}</span>
+                          </div>
+                          <p className="text-xs text-white/40">Custom domain prefix for your official portfolio.</p>
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={handleSaveGeneral}
