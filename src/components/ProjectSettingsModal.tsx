@@ -104,7 +104,7 @@ export default function ProjectSettingsModal({
         name: name.trim(),
         description: description.trim(),
         isPublic,
-        ...(project.systemType === "portfolio" ? { subdomain: subdomain.trim() } : {}),
+        subdomain: subdomain.trim(),
         updatedAt: serverTimestamp(),
       });
       toast.success("Project settings saved.");
@@ -305,22 +305,20 @@ export default function ProjectSettingsModal({
                         )}
                       </div>
                       
-                      {project.systemType === "portfolio" && (
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-semibold text-white/40">Domain Prefix (Subdomain)</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={subdomain}
-                              onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                              className="flex-1 bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all"
-                              placeholder="my-portfolio"
-                            />
-                            <span className="text-white/40 text-sm">.{DEVOS_PRODUCT_HOST}</span>
-                          </div>
-                          <p className="text-xs text-white/40">Custom domain prefix for your official portfolio.</p>
+                      <div className="space-y-1.5 border-t border-white/10 pt-4 mt-4">
+                        <label className="text-xs font-semibold text-white/40">Domain Prefix (Subdomain)</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={subdomain}
+                            onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                            className="flex-1 bg-white/5 border border-border-base rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all"
+                            placeholder="my-custom-domain"
+                          />
+                          <span className="text-white/40 text-sm">.{DEVOS_PRODUCT_HOST}</span>
                         </div>
-                      )}
+                        <p className="text-xs text-white/40">Custom domain prefix for this project.</p>
+                      </div>
                     </div>
                     <button
                       onClick={handleSaveGeneral}
