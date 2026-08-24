@@ -150,7 +150,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
           <span className="font-black text-lg tracking-tight text-white">{PRODUCT_NAV_LABEL}</span>
         </Link>
         {user && (
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[50vw] xl:max-w-[60vw]">
             <Link
               to="/"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors text-sm font-medium"

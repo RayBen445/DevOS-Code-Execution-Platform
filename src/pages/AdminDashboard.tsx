@@ -4602,12 +4602,12 @@ User request: ${aiTestPrompt.trim()}`;
                         <p className="text-sm">No projects yet.</p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                         {adminProjects.map((proj) => (
-                          <div key={proj.id} className="bg-surface border border-border-base rounded-2xl p-4 flex items-start justify-between gap-4">
+                          <div key={proj.id} className="bg-surface border border-border-base rounded-2xl p-4 flex flex-col gap-3">
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-bold text-white text-sm">{proj.name}</p>
+                              <div className="flex items-center gap-2 flex-wrap mb-2">
+                                <p className="font-bold text-white text-sm truncate">{proj.name}</p>
                                 {proj.isOfficial && (
                                   <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-bold">
                                     <BadgeCheck className="w-3 h-3" /> Official
@@ -4617,12 +4617,15 @@ User request: ${aiTestPrompt.trim()}`;
                                   {proj.isPublic ? "Public" : "Private"}
                                 </span>
                               </div>
-                              <p className="text-xs text-white/40 mt-1 line-clamp-1">{proj.description || <span className="italic opacity-50">No description</span>}</p>
-                              <p className="text-[10px] text-white/25 mt-1">
+                              <p className="text-xs text-white/40 mt-1 line-clamp-2">{proj.description || <span className="italic opacity-50">No description</span>}</p>
+                            </div>
+                            <div className="flex items-center justify-between border-t border-border-base pt-3 mt-auto">
+                              <p className="text-[10px] text-white/30 truncate">
                                 by @{proj.ownerUsername ?? "—"}
-                                {" · "}
-                                <a href={`/projects?open=${proj.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-400/60 hover:text-blue-400 transition-colors">Open in IDE ↗</a>
                               </p>
+                              <a href={`/projects?open=${proj.id}`} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-blue-400/80 hover:text-blue-400 transition-colors flex items-center gap-1">
+                                Open IDE <ArrowUpRight className="w-3 h-3" />
+                              </a>
                             </div>
                           </div>
                         ))}
