@@ -92,17 +92,20 @@ import { cn } from "../lib/utils";
 import { sendNotification } from "../lib/notificationService";
 import { getSavedAccounts, logoutAccount, type SavedAccount } from "../lib/sessionManager";
 
-type Tab = "profile" | "account" | "security" | "preferences" | "notifications" | "accessibility" | "referrals" | "danger";
+type Tab = "account" | "security" | "appearance" | "notifications" | "privacy" | "connected_apps" | "billing" | "usage" | "dev_preferences" | "accessibility" | "danger" | "index";
 
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "profile", label: "Profile", icon: <User className="w-4 h-4" /> },
-  { id: "account", label: "Account", icon: <Zap className="w-4 h-4" /> },
-  { id: "security", label: "Security", icon: <Lock className="w-4 h-4" /> },
-  { id: "preferences", label: "Preferences", icon: <Settings className="w-4 h-4" /> },
-  { id: "notifications", label: "Notifications", icon: <Bell className="w-4 h-4" /> },
-  { id: "accessibility", label: "Accessibility", icon: <Keyboard className="w-4 h-4" /> },
-  { id: "referrals", label: "Referrals", icon: <Users className="w-4 h-4" /> },
-  { id: "danger", label: "Danger Zone", icon: <ShieldAlert className="w-4 h-4" /> },
+const TABS: { id: Tab; label: string; desc: string; icon: React.ReactNode; iconBg: string }[] = [
+  { id: "account", label: "Account", desc: "Manage your personal information, username, email and more.", icon: <User className="w-5 h-5 text-blue-400" />, iconBg: "bg-blue-500/10" },
+  { id: "security", label: "Security", desc: "Password, 2FA, sessions and login activity.", icon: <ShieldCheck className="w-5 h-5 text-green-400" />, iconBg: "bg-green-500/10" },
+  { id: "appearance", label: "Appearance", desc: "Theme, colors, font and interface preferences.", icon: <Palette className="w-5 h-5 text-purple-400" />, iconBg: "bg-purple-500/10" },
+  { id: "notifications", label: "Notifications", desc: "Manage what you get notified about.", icon: <Bell className="w-5 h-5 text-yellow-400" />, iconBg: "bg-yellow-500/10" },
+  { id: "privacy", label: "Privacy", desc: "Control your visibility and data.", icon: <ShieldAlert className="w-5 h-5 text-red-400" />, iconBg: "bg-red-500/10" },
+  { id: "connected_apps", label: "Connected Apps", desc: "Integrations with GitHub, Vercel and more.", icon: <LinkIcon className="w-5 h-5 text-blue-400" />, iconBg: "bg-blue-500/10" },
+  { id: "billing", label: "Billing", desc: "Manage your plan, payments and invoices.", icon: <Zap className="w-5 h-5 text-orange-400" />, iconBg: "bg-orange-500/10" },
+  { id: "usage", label: "Usage & Limits", desc: "Projects, storage, deployments and usage.", icon: <Loader2Icon className="w-5 h-5 text-purple-400" />, iconBg: "bg-purple-500/10" },
+  { id: "dev_preferences", label: "Developer Preferences", desc: "Editor, terminal, Git and more.", icon: <Code2 className="w-5 h-5 text-blue-400" />, iconBg: "bg-blue-500/10" },
+  { id: "accessibility", label: "Accessibility", desc: "Make DevOS work better for you.", icon: <Keyboard className="w-5 h-5 text-purple-400" />, iconBg: "bg-purple-500/10" },
+  { id: "danger", label: "Danger Zone", desc: "Irreversible actions like deleting your account.", icon: <XCircle className="w-5 h-5 text-red-400" />, iconBg: "bg-red-500/10" },
 ];
 
 function ReferralsTab({ uid }: { uid: string }) {
@@ -203,69 +206,58 @@ function ReferralsTab({ uid }: { uid: string }) {
 function SettingsSidebarNav({
   activeTab,
   onSelect,
+  onBack,
 }: {
   activeTab: Tab;
   onSelect: (id: Tab) => void;
+  onBack?: () => void;
 }) {
-  const groups = [
-    {
-      title: "Profile",
-      items: ["profile", "referrals"] as Tab[],
-    },
-    {
-      title: "Account",
-      items: ["account", "security", "danger"] as Tab[],
-    },
-    {
-      title: "Preferences",
-      items: ["preferences", "notifications", "accessibility"] as Tab[],
-    }
-  ];
+  if (activeTab === "index") return null;
 
   return (
-    <div className="space-y-6">
-      {groups.map((group) => (
-        <div key={group.title}>
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-3 px-3">
-            {group.title}
-          </p>
-          <nav className="flex flex-col gap-1">
-            {group.items.map((tabId) => {
-              const tab = TABS.find((t) => t.id === tabId);
-              if (!tab) return null;
-              const isActive = activeTab === tab.id;
-              const isDanger = tab.id === "danger";
-
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => onSelect(tab.id)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
-                    isActive
-                      ? isDanger
-                        ? "bg-red-500/15 text-red-400"
-                        : "bg-white/10 text-white shadow-sm"
-                      : isDanger
-                      ? "text-red-400/60 hover:bg-red-500/10 hover:text-red-400"
-                      : "text-white/50 hover:bg-white/5 hover:text-white"
-                  }`}
-                >
-                  {tab.icon}
-                  {tab.label}
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeTabIndicator"
-                      className={`absolute left-0 w-1 h-5 rounded-r-full ${isDanger ? "bg-red-500" : "bg-white"}`}
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+    <nav className="space-y-1">
+      {onBack && (
+        <div className="md:hidden mb-4">
+          <button onClick={onBack} className="flex items-center gap-2 text-white/60 hover:text-white mb-4">
+            <ChevronRight className="w-4 h-4 rotate-180" /> Back to Settings
+          </button>
         </div>
-      ))}
-    </div>
+      )}
+      <div className="hidden md:block px-3 mb-4 text-xs font-bold text-white/40 uppercase tracking-widest">Settings</div>
+      
+      {/* Search Bar */}
+      <div className="px-2 mb-4">
+        <div className="relative">
+          <input type="text" placeholder="Search settings..." className="w-full bg-black/20 border border-white/5 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:border-blue-500/50 outline-none" />
+          <svg className="w-4 h-4 text-white/30 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        </div>
+      </div>
+
+      {TABS.map((tab) => {
+        const active = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onSelect(tab.id as Tab)}
+            className={cn(
+              "w-full flex items-center justify-between px-3 py-3 md:py-2.5 rounded-xl transition-all text-sm font-medium",
+              active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn("w-8 h-8 md:w-6 md:h-6 rounded-lg flex items-center justify-center shrink-0", tab.iconBg)}>
+                {React.cloneElement(tab.icon as React.ReactElement, { className: "w-4 h-4" })}
+              </div>
+              <div className="text-left">
+                <div>{tab.label}</div>
+                <div className="text-[10px] text-white/30 md:hidden mt-0.5 leading-tight line-clamp-1 pr-4">{tab.desc}</div>
+              </div>
+            </div>
+            {!active && <ChevronRight className="w-4 h-4 text-white/20 shrink-0" />}
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -273,7 +265,7 @@ export default function SettingsPage() {
   const [user, authLoading] = useAuthState(auth);
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(window.location.search);
-  const initialTab = (searchParams.get("tab") as Tab) ?? "profile";
+  const initialTab = (searchParams.get("tab") as Tab) ?? "index";
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -316,39 +308,14 @@ export default function SettingsPage() {
         </span>
       </div>
 
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile slide-in drawer */}
-      <aside
-        className={`fixed top-0 left-0 h-full w-60 bg-base border-r border-border-base z-40 flex flex-col p-5 transform transition-transform duration-300 ease-in-out md:hidden ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between mb-6">
-          <span className="text-sm font-bold text-white">Settings</span>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-1.5 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
-            aria-label="Close settings menu"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <SettingsSidebarNav activeTab={activeTab} onSelect={handleTabSelect} />
-      </aside>
-
       {/* Main layout */}
-      <div className="flex-1 max-w-6xl mx-auto w-full px-4 md:px-6 py-6 md:py-10 flex gap-8">
-        {/* Desktop sidebar — always visible on md+ */}
-        <aside className="hidden md:block w-52 flex-shrink-0">
-          <SettingsSidebarNav activeTab={activeTab} onSelect={handleTabSelect} />
-        </aside>
+      <div className="flex-1 max-w-6xl mx-auto w-full px-0 md:px-6 py-0 md:py-10 flex gap-8">
+        {/* Desktop sidebar — visible on md+ unless index */}
+        {activeTab !== "index" && (
+          <aside className="hidden md:block w-64 flex-shrink-0">
+            <SettingsSidebarNav activeTab={activeTab} onSelect={handleTabSelect} />
+          </aside>
+        )}
 
         {/* Panel */}
         <main className="flex-1 min-w-0">
@@ -359,11 +326,56 @@ export default function SettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.15 }}
+              className="px-4 py-6 md:p-0"
             >
+              {activeTab === "index" && (
+                <div className="w-full">
+                  {/* Mobile Index View */}
+                  <div className="md:hidden">
+                    <h1 className="text-2xl font-bold text-white mb-2 px-1">Settings</h1>
+                    <p className="text-white/50 text-sm mb-6 px-1">Manage your account, security and preferences.</p>
+                    <SettingsSidebarNav activeTab="index" onSelect={handleTabSelect} />
+                  </div>
+
+                  {/* Desktop Index View (Grid) */}
+                  <div className="hidden md:block">
+                    <div className="mb-8">
+                      <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
+                      <p className="text-white/60">Manage your DevOS account and preferences.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {TABS.map(t => (
+                        <button key={t.id} onClick={() => { setActiveTab(t.id as Tab); setSidebarOpen(false); }} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all text-left flex items-start gap-4">
+                          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0", t.iconBg)}>
+                            {React.cloneElement(t.icon as React.ReactElement, { className: "w-6 h-6" })}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-bold text-white mb-1 flex items-center justify-between">
+                              {t.label}
+                              <ChevronRight className="w-4 h-4 text-white/20" />
+                            </div>
+                            <div className="text-xs text-white/40 leading-relaxed pr-2">{t.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {activeTab !== "index" && (
+                <div className="md:hidden mb-6">
+                  <button onClick={() => setActiveTab("index")} className="flex items-center gap-2 text-white/60 hover:text-white">
+                    <ChevronRight className="w-4 h-4 rotate-180" /> {TABS.find((t) => t.id === activeTab)?.label ?? "Back"}
+                  </button>
+                </div>
+              )}
+
               {activeTab === "profile" && <ProfileTab />}
               {activeTab === "account" && <AccountTab />}
               {activeTab === "security" && <SecurityTab />}
               {activeTab === "preferences" && <PreferencesTab />}
+              {activeTab === "appearance" && <PreferencesTab />}
               {activeTab === "notifications" && <NotificationsTab />}
               {activeTab === "accessibility" && <AccessibilityTab />}
               {activeTab === "referrals" && user && <ReferralsTab uid={user.uid} />}
@@ -372,7 +384,7 @@ export default function SettingsPage() {
           </AnimatePresence>
         </main>
       </div>
-      <Footer />
+      <div className="hidden md:block"><Footer /></div>
       <MobileBottomNav />
     </div>
   );

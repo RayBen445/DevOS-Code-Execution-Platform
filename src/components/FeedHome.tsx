@@ -69,7 +69,8 @@ import PremiumEditor from "./PremiumEditor";
 import { useSEO } from "../hooks/useSEO";
 import { emitBotEventWithToast } from "../lib/botEngine";
 import { toast } from "sonner";
-import { FeedPostShareCard, useShareAsImage } from "./ShareAsImageCard";
+import { FeedPostShareCard, ProjectShareCard, useShareAsImage } from "./ShareAsImageCard";
+import PostContentRenderer from "./PostContentRenderer";
 import MentionInput, { extractMentions } from "./MentionInput";
 import { notifyMention } from "../lib/notificationService";
 
@@ -78,10 +79,32 @@ interface FeedHomeProps {
   onShowLogin?: () => void;
 }
 
+const QUOTES = [
+  "Better developers build a brighter tomorrow.",
+  "Code is like humor. When you have to explain it, it's bad.",
+  "First, solve the problem. Then, write the code.",
+  "Make it work, make it right, make it fast.",
+  "Talk is cheap. Show me the code.",
+  "Simplicity is the soul of efficiency.",
+  "Truth can only be found in one place: the code.",
+  "Any fool can write code that a computer can understand.",
+  "Good programmers write code that humans can understand.",
+  "Programming isn't about what you know; it's about what you can figure out."
+];
+
 export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) {
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
+  const [quoteIndex, setQuoteIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setQuoteIndex(prev => (prev + 1) % QUOTES.length);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
   const [feed, setFeed] = useState<FeedPost[]>([]);
+  const [activeFeedTab, setActiveFeedTab] = useState("For you");
   const [myProjects, setMyProjects] = useState<Project[]>([]);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [feedLoading, setFeedLoading] = useState(true);
@@ -482,10 +505,10 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               </div>
             </div>
             {/* Quote (Desktop Only) */}
-            <div className="hidden md:flex flex-col items-end text-right">
-              <p className="text-sm text-white/40 italic">"Better developers build a brighter tomorrow."</p>
-              <p className="text-xs text-white/20 mt-0.5">— DevOS</p>
-            </div>
+          <div className="hidden md:flex flex-col items-end text-right">
+            <p className="text-sm text-white/40 italic">"{QUOTES[quoteIndex]}"</p>
+            <p className="text-xs text-white/20 mt-0.5">- DevOS</p>
+          </div>
           </div>
 
           {/* Quick Actions */}
@@ -555,16 +578,17 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               {/* Feed Tabs */}
               <div className="flex items-center justify-between border-b border-white/10 mb-4 px-1">
                 <div className="flex items-center gap-6 overflow-x-auto no-scrollbar">
-                  {["For you", "Following", "DevOS Official", "Communities", "Announcements"].map((tab, idx) => (
+                  {["For you", "Following", "DevOS Official", "Communities", "Announcements"].map((tab) => (
                     <button
                       key={tab}
+                      onClick={() => setActiveFeedTab(tab)}
                       className={cn(
                         "pb-3 text-sm font-bold whitespace-nowrap transition-colors relative",
-                        idx === 0 ? "text-white" : "text-white/40 hover:text-white/70"
+                        activeFeedTab === tab ? "text-white" : "text-white/40 hover:text-white/70"
                       )}
                     >
                       {tab}
-                      {idx === 0 && (
+                      {activeFeedTab === tab && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-full shadow-[0_-2px_10px_rgba(59,130,246,0.5)]" />
                       )}
                     </button>
@@ -626,7 +650,11 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                   <p className="text-white/40 text-sm">No activity yet. Be the first to deploy!</p>
                 </div>
               ) : (
-                feed.map((post, i) => (
+                feed.filter(post => {
+                  if (activeFeedTab === "Announcements") return post.type === "announcement";
+                  if (activeFeedTab === "DevOS Official") return post.username === "devos" || post.type === "announcement";
+                  return true;
+                }).map((post, i) => (
                   <FeedItem
                     key={post.id}
                     post={post}
@@ -795,7 +823,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                   <ChevronDown className="w-5 h-5 text-white/20 -rotate-90" />
                 </button>
                 <button
-                  onClick={() => { setShowCreateMenu(false); navigate("/teams"); }}
+                  onClick={() => { setShowCreateMenu(false); navigate("/communities"); }}
                   className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all text-left"
                 >
                   <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/20">
@@ -1432,7 +1460,7 @@ function FeedItem({
         </div>
       ) : (post.content && (
         <div className="mb-3">
-          <MarkdownContent text={post.content} className="text-sm" />
+          <PostContentRenderer content={post.content} />
         </div>
       ))}
 
@@ -1461,7 +1489,7 @@ function FeedItem({
           </div>
           <div className="text-sm text-white/70 leading-relaxed">
             {post.originalPost.content && (
-              <MarkdownContent text={post.originalPost.content} className="text-sm" />
+              <PostContentRenderer content={post.originalPost.content} />
             )}
           </div>
           {post.originalPost.projectName && (
@@ -1650,7 +1678,7 @@ function FeedItem({
               <div className="rounded-xl border border-border-base bg-white/[0.03] p-3 mb-4">
                 <p className="text-xs font-semibold text-white/50 mb-1">@{post.username}</p>
                 <div className="text-xs leading-relaxed line-clamp-3">
-                  <MarkdownContent text={post.content} className="text-xs" />
+                  <PostContentRenderer content={post.content} />
                 </div>
               </div>
 
