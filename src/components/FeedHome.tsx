@@ -36,6 +36,7 @@ import {
   ListOrdered,
   Quote,
   Pencil,
+  ChevronDown,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -92,6 +93,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [deleteConfirmPost, setDeleteConfirmPost] = useState<FeedPost | null>(null);
   const [isDeletingPost, setIsDeletingPost] = useState(false);
   const [activePolls, setActivePolls] = useState<Poll[]>([]);
@@ -173,33 +175,33 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
 
   const quickActions = [
     {
-      label: "+ New Project",
+      title: "New Project",
+      subtitle: "Start building",
       icon: Plus,
-      color: "bg-blue-600 hover:bg-blue-700 text-white",
+      color: "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/20",
       onClick: () => navigate("/projects"),
     },
     {
-      label: "Open Projects",
+      title: "Open Projects",
+      subtitle: "View and manage",
       icon: FolderCode,
-      color: "bg-white/5 border border-border-base hover:bg-white/10 text-white",
+      color: "bg-surface border border-white/5 hover:bg-white/5 hover:border-white/10 text-white",
       onClick: () => navigate("/projects"),
     },
     {
-      label: "Try Demo",
+      title: "Try Demo",
+      subtitle: "Explore DevOS",
       icon: Sparkles,
-      color: "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)] hover:shadow-[0_0_25px_rgba(147,51,234,0.5)] transition-all",
+      color: "bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white shadow-lg shadow-purple-500/20",
       onClick: onShowLogin ?? (() => navigate("/templates")),
     },
-    ...(lastProject
-      ? [
-          {
-            label: "Continue Last",
-            icon: Clock,
-            color: "bg-white/5 border border-border-base hover:bg-white/10 text-white",
-            onClick: () => onOpenProject(lastProject.id),
-          },
-        ]
-      : []),
+    {
+      title: "Continue Last",
+      subtitle: "Pick up where you left off",
+      icon: Clock,
+      color: "bg-surface border border-white/5 hover:bg-white/5 hover:border-white/10 text-white",
+      onClick: () => { if (lastProject) onOpenProject(lastProject.id); else navigate("/projects"); },
+    },
   ];
 
   /** Returns true when an error is a Firestore permission-denied error. */
@@ -446,60 +448,67 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
         <div className="h-full w-full min-w-0">
           <div className="w-full px-4 md:px-8 py-6 md:py-10 h-full min-w-0">
           {/* Page heading */}
-          <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center">
-                <Activity className="w-5 h-5 text-blue-400" />
-              </div>
+          <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+                  <Avatar
+                    src={settings?.avatarUrl || user?.photoURL}
+                    displayName={settings?.displayName || user?.displayName || "User"}
+                    size="md"
+                    className="w-14 h-14"
+                  />
               <div>
-                <h1 className="text-xl font-extrabold text-white leading-none">
-                  {settings?.displayName
-                    ? (() => {
-                        const h = new Date().getHours();
-                        const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-                        return `${g}, ${settings.displayName.split(" ")[0]}`;
-                      })()
-                    : "Your Feed"}
-                </h1>
-                <p className="text-xs text-white/40 mt-0.5">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl md:text-2xl font-extrabold text-white leading-none">
+                    {settings?.displayName
+                      ? (() => {
+                          const h = new Date().getHours();
+                          const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+                          return `${g}, ${settings.displayName.split(" ")[0]}`;
+                        })()
+                      : "Good evening"}
+                  </h1>
+                  {settings?.isOfficial && (
+                    <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold tracking-wide">
+                      <BadgeCheck className="w-3 h-3" /> DevOS Pro
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-white/50 mt-1.5 hidden md:block">
+                  Build. Share. Learn. Grow — with a global community of developers.
+                </p>
+                <p className="text-sm text-white/50 mt-1.5 md:hidden">
+                  Build. Share. Learn. Grow.
+                </p>
               </div>
             </div>
-            {/* Streak badges */}
-            {((settings?.dailyStreak ?? 0) > 0 || (settings?.monthlyStreak ?? 0) > 0) && (
-              <div className="flex items-center gap-2">
-                {(settings?.dailyStreak ?? 0) > 0 && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20">
-                    <Flame className="w-3.5 h-3.5 text-orange-400" />
-                    <span className="text-xs font-bold text-orange-300">
-                      {settings!.dailyStreak} day{settings!.dailyStreak !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                )}
-                {(settings?.monthlyStreak ?? 0) > 0 && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20">
-                    <Zap className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-xs font-bold text-blue-300">
-                      {settings!.monthlyStreak} mo
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Quote (Desktop Only) */}
+            <div className="hidden md:flex flex-col items-end text-right">
+              <p className="text-sm text-white/40 italic">"Better developers build a brighter tomorrow."</p>
+              <p className="text-xs text-white/20 mt-0.5">— DevOS</p>
+            </div>
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {quickActions.map((action) => (
               <button
-                key={action.label}
+                key={action.title}
                 onClick={action.onClick}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-3 rounded-2xl font-semibold text-sm transition-all active:scale-95",
+                  "flex items-center gap-4 px-5 py-4 rounded-[1.25rem] transition-all active:scale-[0.98] group text-left",
                   action.color
                 )}
               >
-                <action.icon className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{action.label}</span>
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <action.icon className={cn("w-6 h-6 flex-shrink-0 transition-transform group-hover:scale-110", action.color.includes("bg-surface") ? "text-white/60" : "text-white/90")} />
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="font-bold text-sm text-white truncate">{action.title}</span>
+                    <span className="text-[11px] font-medium opacity-70 truncate">{action.subtitle}</span>
+                  </div>
+                </div>
+                <div className="hidden md:block">
+                  <span className="text-lg opacity-40 group-hover:opacity-100 transition-opacity group-hover:translate-x-1 inline-block">›</span>
+                </div>
               </button>
             ))}
           </div>
@@ -507,10 +516,63 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
           <div className="grid lg:grid-cols-3 gap-6 w-full max-w-full min-w-0">
             {/* Feed (main column) */}
             <div className="lg:col-span-2 space-y-4 w-full max-w-full min-w-0">
-              <div className="flex items-center justify-between px-1">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
-                  Dev Team Feed
-                </h2>
+              {/* Inline Composer (Trigger) */}
+              <div className="bg-surface border border-white/5 rounded-2xl p-4 mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Avatar
+                    src={settings?.avatarUrl || user?.photoURL}
+                    displayName={settings?.displayName || user?.displayName || "User"}
+                    className="w-10 h-10"
+                  />
+                  <div
+                    onClick={() => setShowComposer(true)}
+                    className="flex-1 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 rounded-xl px-4 py-2.5 cursor-text transition-colors"
+                  >
+                    <span className="text-sm text-white/30">What are you building today?</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 md:gap-4 overflow-x-auto no-scrollbar">
+                    <button onClick={() => setShowComposer(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap">
+                      <ImageDown className="w-4 h-4" /> <span className="text-xs font-bold hidden sm:inline">Image</span>
+                    </button>
+                    <button onClick={() => setShowComposer(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap">
+                      <BarChart2 className="w-4 h-4" /> <span className="text-xs font-bold hidden sm:inline">Poll</span>
+                    </button>
+                    <button onClick={() => setShowComposer(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap">
+                      <FolderCode className="w-4 h-4" /> <span className="text-xs font-bold hidden sm:inline">Project</span>
+                    </button>
+                    <button onClick={() => setShowComposer(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap">
+                      <Code2 className="w-4 h-4" /> <span className="text-xs font-bold hidden sm:inline">Code</span>
+                    </button>
+                  </div>
+                  <button onClick={() => setShowComposer(true)} className="hidden sm:flex px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors">
+                    Post
+                  </button>
+                </div>
+              </div>
+
+              {/* Feed Tabs */}
+              <div className="flex items-center justify-between border-b border-white/10 mb-4 px-1">
+                <div className="flex items-center gap-6 overflow-x-auto no-scrollbar">
+                  {["For you", "Following", "DevOS Official", "Communities", "Announcements"].map((tab, idx) => (
+                    <button
+                      key={tab}
+                      className={cn(
+                        "pb-3 text-sm font-bold whitespace-nowrap transition-colors relative",
+                        idx === 0 ? "text-white" : "text-white/40 hover:text-white/70"
+                      )}
+                    >
+                      {tab}
+                      {idx === 0 && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-full shadow-[0_-2px_10px_rgba(59,130,246,0.5)]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <button className="hidden md:flex items-center gap-1 pb-3 text-xs font-bold text-white/40 hover:text-white transition-colors">
+                  Latest <ChevronDown className="w-3 h-3" />
+                </button>
               </div>
 
               {/* Mobile Active Polls */}
@@ -540,25 +602,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                 </div>
               )}
 
-              {/* Post Composer — desktop trigger */}
-              {user && (
-                <button
-                  onClick={() => setShowComposer(true)}
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-border-base hover:bg-white/[0.05] transition-all group text-left"
-                >
-                  <Avatar
-                    src={settings?.avatarUrl || user.photoURL}
-                    displayName={settings?.displayName || user.displayName}
-                    size="sm"
-                  />
-                  <span className="text-sm text-white/30 group-hover:text-white/50 transition-colors flex-1">
-                    What are you building?
-                  </span>
-                  <div className="w-7 h-7 rounded-lg bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-                    <Plus className="w-4 h-4 text-blue-400" />
-                  </div>
-                </button>
-              )}
+
 
               {feedLoading ? (
                 <div className="space-y-3">
@@ -606,12 +650,12 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               {activePolls.length > 0 && (
                 <div className="hidden lg:block space-y-3">
                   <div className="flex items-center justify-between px-1">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
-                      Live Polls
+                    <h2 className="flex items-center gap-2 text-sm font-bold text-white">
+                      <Users className="w-4 h-4 text-blue-400" /> Live Polls
                     </h2>
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                      <span className="text-[10px] font-bold text-blue-400">{activePolls.length} active</span>
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                      <span className="text-[10px] font-bold text-green-400">{activePolls.length} active</span>
                     </span>
                   </div>
                   {activePolls.map((poll) => (
@@ -632,8 +676,8 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               {/* ── My Projects ── */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-1">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
-                    My Projects
+                  <h2 className="flex items-center gap-2 text-sm font-bold text-white">
+                    <FolderCode className="w-4 h-4 text-orange-400" /> Your Projects
                   </h2>
                   <button
                     onClick={() => navigate("/projects")}
@@ -676,13 +720,98 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
       {/* FAB for mobile */}
       {user && (
         <button
-          onClick={() => setShowComposer(true)}
+          onClick={() => setShowCreateMenu(true)}
           className="md:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/30 flex items-center justify-center text-white transition-all active:scale-90"
-          aria-label="New post"
+          aria-label="Create"
         >
           <Plus className="w-6 h-6" />
         </button>
       )}
+
+      {/* Mobile Create Bottom Sheet */}
+      <AnimatePresence>
+        {showCreateMenu && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCreateMenu(false)}
+              className="fixed inset-0 bg-black/60 z-[100] md:hidden backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-[101] bg-[#0d121c] rounded-t-3xl border-t border-white/10 p-6 pb-10 md:hidden flex flex-col"
+            >
+              <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-white">Create</h3>
+                <button onClick={() => setShowCreateMenu(false)} className="p-2 rounded-full hover:bg-white/10 text-white/60 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => { setShowCreateMenu(false); navigate("/projects"); }}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all text-left"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
+                    <FolderCode className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-white text-base">New Project</h4>
+                    <p className="text-white/40 text-xs mt-0.5">Start a new project from scratch</p>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-white/20 -rotate-90" />
+                </button>
+                <button
+                  onClick={() => { setShowCreateMenu(false); setShowComposer(true); }}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all text-left"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
+                    <Pencil className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-white text-base">Create Post</h4>
+                    <p className="text-white/40 text-xs mt-0.5">Share an update with the community</p>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-white/20 -rotate-90" />
+                </button>
+                <button
+                  onClick={() => { setShowCreateMenu(false); setShowComposer(true); }}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all text-left"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-green-500/20">
+                    <BarChart2 className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-white text-base">Create Poll</h4>
+                    <p className="text-white/40 text-xs mt-0.5">Get opinions from the community</p>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-white/20 -rotate-90" />
+                </button>
+                <button
+                  onClick={() => { setShowCreateMenu(false); navigate("/teams"); }}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all text-left"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/20">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-white text-base">Create Dev Team</h4>
+                    <p className="text-white/40 text-xs mt-0.5">Start a team and collaborate</p>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-white/20 -rotate-90" />
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Fullscreen Post Composer Modal */}
       {user && (

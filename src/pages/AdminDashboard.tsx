@@ -107,6 +107,8 @@ import {
   List,
   ImageDown,
   Palette,
+  LayoutDashboard,
+  ArrowUpRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, generateAppId } from '../lib/utils';
