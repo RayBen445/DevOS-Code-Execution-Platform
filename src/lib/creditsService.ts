@@ -333,6 +333,7 @@ export interface SiteConfig {
   websiteUrl: string;
   footerCredit: string;
   allowVoiceCalls: boolean;
+  quotes: string[];
 }
 
 export const SITE_CONFIG_DEFAULTS: SiteConfig = {
@@ -344,6 +345,18 @@ export const SITE_CONFIG_DEFAULTS: SiteConfig = {
   websiteUrl: "https://devos.app",
   footerCredit: "Built by Kontyra and Tech Visionary Network",
   allowVoiceCalls: true,
+  quotes: [
+    "Better developers build a brighter tomorrow.",
+    "Code is like humor. When you have to explain it, it's bad.",
+    "First, solve the problem. Then, write the code.",
+    "Make it work, make it right, make it fast.",
+    "Talk is cheap. Show me the code.",
+    "Simplicity is the soul of efficiency.",
+    "Truth can only be found in one place: the code.",
+    "Any fool can write code that a computer can understand.",
+    "Good programmers write code that humans can understand.",
+    "Programming isn't about what you know; it's about what you can figure out."
+  ]
 };
 
 /** Read site branding config from system_config/site */
@@ -360,6 +373,7 @@ export const getSiteConfig = async (): Promise<SiteConfig> => {
     websiteUrl: d.websiteUrl ?? SITE_CONFIG_DEFAULTS.websiteUrl,
     footerCredit: d.footerCredit ?? SITE_CONFIG_DEFAULTS.footerCredit,
     allowVoiceCalls: d.allowVoiceCalls ?? SITE_CONFIG_DEFAULTS.allowVoiceCalls,
+    quotes: d.quotes ?? SITE_CONFIG_DEFAULTS.quotes,
   };
 };
 

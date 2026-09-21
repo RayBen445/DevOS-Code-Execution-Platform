@@ -37,6 +37,7 @@ import {
   Quote,
   Pencil,
   ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -91,6 +92,62 @@ const QUOTES = [
   "Good programmers write code that humans can understand.",
   "Programming isn't about what you know; it's about what you can figure out."
 ];
+
+function ExpandablePost({ content, isPreview = false }: { content: string, isPreview?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Auto-detect raw code pasted without backticks
+  let processedContent = content;
+  if (!content.includes('```') && (content.trim().startsWith('export ') || content.trim().startsWith('import ') || content.trim().startsWith('function ') || content.trim().startsWith('const '))) {
+    processedContent = '```tsx\n' + content + '\n```';
+  }
+
+  const isLong = processedContent.length > 300 || processedContent.split('\n').length > 6;
+  
+  // Extract URLs for link previews
+  const urlRegex = /(?:https?:\/\/|www\.)[^\s()]+/g;
+  const rawUrls = Array.from(content.matchAll(urlRegex)).map(m => m[0]);
+  const urls = [...new Set(rawUrls)]; // unique
+  
+  return (
+    <div>
+      <div className={cn("relative overflow-hidden transition-all duration-300", !expanded && isLong ? "max-h-[150px]" : "max-h-[5000px]")}>
+        <MarkdownContent text={processedContent} className={isPreview ? "text-xs" : "text-sm"} />
+        {!expanded && isLong && (
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#0d1117] to-transparent pointer-events-none" />
+        )}
+      </div>
+      {isLong && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-2 text-blue-400 hover:text-blue-300 text-sm font-semibold"
+        >
+          {expanded ? "Show less" : "Read more"}
+        </button>
+      )}
+      {!isPreview && urls.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {urls.map((url, uidx) => {
+            const validUrl = url.startsWith('http') ? url : `https://${url}`;
+            let hostname = url;
+            try { hostname = new URL(validUrl).hostname; } catch(e){}
+            return (
+              <a key={uidx} href={validUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <ExternalLink className="w-5 h-5 text-blue-400" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-white truncate">{hostname}</div>
+                  <div className="text-xs text-white/40 truncate">{validUrl}</div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) {
   const [user] = useAuthState(auth);
@@ -1460,7 +1517,7 @@ function FeedItem({
         </div>
       ) : (post.content && (
         <div className="mb-3">
-          <PostContentRenderer content={post.content} />
+          <ExpandablePost content={post.content} />
         </div>
       ))}
 
@@ -1489,7 +1546,7 @@ function FeedItem({
           </div>
           <div className="text-sm text-white/70 leading-relaxed">
             {post.originalPost.content && (
-              <PostContentRenderer content={post.originalPost.content} />
+              <ExpandablePost content={post.originalPost.content} />
             )}
           </div>
           {post.originalPost.projectName && (
@@ -1677,8 +1734,8 @@ function FeedItem({
               {/* Original post preview */}
               <div className="rounded-xl border border-border-base bg-white/[0.03] p-3 mb-4">
                 <p className="text-xs font-semibold text-white/50 mb-1">@{post.username}</p>
-                <div className="text-xs leading-relaxed line-clamp-3">
-                  <PostContentRenderer content={post.content} />
+                <div className="text-xs leading-relaxed">
+                  <ExpandablePost content={post.content} isPreview={true} />
                 </div>
               </div>
 

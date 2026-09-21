@@ -5210,6 +5210,23 @@ User request: ${aiTestPrompt.trim()}`;
                           </div>
                         </div>
 
+                        {/* Quotes Configuration */}
+                        <div className="bg-surface border border-border-base rounded-2xl p-6 space-y-4">
+                          <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
+                            Quotes
+                          </h2>
+                          <p className="text-white/40 text-sm">Add one quote per line. These will rotate on the feed.</p>
+                          <div>
+                            <textarea
+                              value={siteConfig.quotes ? siteConfig.quotes.join("\n") : ""}
+                              onChange={(e) => setSiteConfig(s => ({ ...s, quotes: e.target.value.split("\n").filter(Boolean) }))}
+                              placeholder="Add quotes here..."
+                              rows={10}
+                              className="w-full bg-black/40 border border-border-base rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500 transition-colors resize-y"
+                            />
+                          </div>
+                        </div>
+
                         {/* Social Links */}
                         <div className="bg-surface border border-border-base rounded-2xl p-6 space-y-4">
                           <h2 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">

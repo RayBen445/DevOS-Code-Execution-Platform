@@ -246,7 +246,7 @@ function SettingsSidebarNav({
           >
             <div className="flex items-center gap-3">
               <div className={cn("w-8 h-8 md:w-6 md:h-6 rounded-lg flex items-center justify-center shrink-0", tab.iconBg)}>
-                {React.cloneElement(tab.icon as React.ReactElement, { className: "w-4 h-4" })}
+                {React.cloneElement(tab.icon as any, { className: "w-4 h-4" })}
               </div>
               <div className="text-left">
                 <div>{tab.label}</div>
@@ -346,9 +346,9 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {TABS.map(t => (
                         <button key={t.id} onClick={() => { setActiveTab(t.id as Tab); setSidebarOpen(false); }} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all text-left flex items-start gap-4">
-                          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0", t.iconBg)}>
-                            {React.cloneElement(t.icon as React.ReactElement, { className: "w-6 h-6" })}
-                          </div>
+                          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 mb-4 transition-transform group-hover:scale-110", t.iconBg)}>
+                            {React.cloneElement(t.icon as any, { className: "w-6 h-6" })}
+                        </div>
                           <div className="flex-1">
                             <div className="font-bold text-white mb-1 flex items-center justify-between">
                               {t.label}
@@ -371,14 +371,14 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {activeTab === "profile" && <ProfileTab />}
+              {activeTab === ("profile" as any) && <ProfileTab />}
               {activeTab === "account" && <AccountTab />}
               {activeTab === "security" && <SecurityTab />}
-              {activeTab === "preferences" && <PreferencesTab />}
+              {activeTab === ("preferences" as any) && <PreferencesTab />}
               {activeTab === "appearance" && <PreferencesTab />}
               {activeTab === "notifications" && <NotificationsTab />}
               {activeTab === "accessibility" && <AccessibilityTab />}
-              {activeTab === "referrals" && user && <ReferralsTab uid={user.uid} />}
+              {activeTab === ("referrals" as any) && user && <ReferralsTab uid={user.uid} />}
               {activeTab === "danger" && <DangerZoneTab />}
             </motion.div>
           </AnimatePresence>
