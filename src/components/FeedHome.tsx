@@ -37,7 +37,6 @@ import {
   Quote,
   Pencil,
   ChevronDown,
-  ExternalLink,
 } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
