@@ -79,18 +79,7 @@ interface FeedHomeProps {
   onShowLogin?: () => void;
 }
 
-const QUOTES = [
-  "Better developers build a brighter tomorrow.",
-  "Code is like humor. When you have to explain it, it's bad.",
-  "First, solve the problem. Then, write the code.",
-  "Make it work, make it right, make it fast.",
-  "Talk is cheap. Show me the code.",
-  "Simplicity is the soul of efficiency.",
-  "Truth can only be found in one place: the code.",
-  "Any fool can write code that a computer can understand.",
-  "Good programmers write code that humans can understand.",
-  "Programming isn't about what you know; it's about what you can figure out."
-];
+
 
 function ExpandablePost({ content, isPreview = false }: { content: string, isPreview?: boolean }) {
   const [expanded, setExpanded] = useState(false);
@@ -155,7 +144,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setQuoteIndex(prev => (prev + 1) % QUOTES.length);
+      setQuoteIndex(prev => (prev + 1) % quotes.length);
     }, 8000);
     return () => clearInterval(interval);
   }, []);
@@ -163,7 +152,27 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const [activeFeedTab, setActiveFeedTab] = useState("For you");
   const [myProjects, setMyProjects] = useState<Project[]>([]);
   const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [quotes, setQuotes] = useState<string[]>([]);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
+
+  useEffect(() => {
+    getSiteConfig().then((cfg) => {
+      if (cfg.quotes && cfg.quotes.length > 0) {
+        setQuotes(cfg.quotes);
+      } else {
+        setQuotes(["Better developers build a brighter tomorrow."]);
+      }
+    }).catch(() => setQuotes(["Better developers build a brighter tomorrow."]));
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      getFollowing(user.uid).then(setFollowingIds).catch(() => {});
+    } else {
+      setFollowingIds([]);
+    }
+  }, [user]);
 
   // Post composer state
   const [postText, setPostText] = useState("");
@@ -562,7 +571,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
             </div>
             {/* Quote (Desktop Only) */}
           <div className="hidden md:flex flex-col items-end text-right">
-            <p className="text-sm text-white/40 italic">"{QUOTES[quoteIndex]}"</p>
+            <p className="text-sm text-white/40 italic">"{quotes[quoteIndex]}"</p>
             <p className="text-xs text-white/20 mt-0.5">- DevOS</p>
           </div>
           </div>
@@ -879,7 +888,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                   <ChevronDown className="w-5 h-5 text-white/20 -rotate-90" />
                 </button>
                 <button
-                  onClick={() => { setShowCreateMenu(false); navigate("/communities"); }}
+                  onClick={() => { setShowCreateMenu(false); navigate("/orgs"); }}
                   className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all text-left"
                 >
                   <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/20">

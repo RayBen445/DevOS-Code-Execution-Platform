@@ -3,7 +3,7 @@ import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import * as lucideIcons from "lucide-react";
-import { LayoutTemplate, Folder, Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check, Search, Pin, PinOff } from "lucide-react";
+import { LayoutTemplate, Folder, Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check, Search, Pin, PinOff, MoreHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime, toValidDate, generateAppId } from '../lib/utils';
@@ -125,6 +125,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   // Project grouping
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupPopoverProjectId, setGroupPopoverProjectId] = useState<string | null>(null);
+  const [moreMenuProjectId, setMoreMenuProjectId] = useState<string | null>(null);
   const [newGroupName, setNewGroupName] = useState("");
   const [savingGroup, setSavingGroup] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -804,148 +805,96 @@ p {
 
         {/* Card actions footer */}
         <div className="px-4 pb-4 flex gap-2">
-          {project.ownerId === user?.uid ? (
-            <>
-              <button
-                onClick={() => onSelectProject(project.id)}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 transition-all text-xs font-bold"
-              >
-                <FolderCode className="w-3.5 h-3.5" />
-                Open
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setSettingsProject(project); }}
-                className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all"
-                title="Project Settings"
-              >
-                <Settings className="w-3.5 h-3.5" />
-              </button>
-              {!project.isTemplate && (
+            {project.ownerId === user?.uid ? (
+              <>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setPublishTemplateProject(project); }}
-                  className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-purple-500/10 hover:text-purple-400 transition-all"
-                  title="Publish as Template"
+                  onClick={() => onSelectProject(project.id)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 transition-all text-xs font-bold"
                 >
-                  <Upload className="w-3.5 h-3.5" />
+                  <FolderCode className="w-3.5 h-3.5" />
+                  Open
                 </button>
-              )}
-              <button
-                onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
-                title="Deploy project (open IDE → Deploy tab)"
-              >
-                <Rocket className="w-3.5 h-3.5" />
-              </button>
-              {/* ── Group button + popover ── */}
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setGroupPopoverProjectId(isGroupPopoverOpen ? null : project.id);
-                    setNewGroupName("");
-                  }}
-                  className={cn(
-                    "flex items-center justify-center px-3 py-2 rounded-lg transition-all",
-                    project.group
-                      ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
-                      : "bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"
-                  )}
-                  title="Move to group"
-                >
-                  <Tag className="w-3.5 h-3.5" />
-                </button>
-                <AnimatePresence>
-                  {isGroupPopoverOpen && (
-                    <motion.div
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMoreMenuProjectId(moreMenuProjectId === project.id ? null : project.id);
+                    }}
+                    className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all"
+                  >
+                    <MoreHorizontal className="w-3.5 h-3.5" />
+                  </button>
+                  <AnimatePresence>
+                    {moreMenuProjectId === project.id && (
+                      <motion.div
                         initial={{ opacity: 0, y: 6, scale: 0.96 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 4, scale: 0.96 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute bottom-full right-0 mb-2 w-52 bg-card border border-border-base rounded-xl shadow-2xl z-30 overflow-hidden"
+                        className="absolute bottom-full right-0 mb-2 w-56 bg-card border border-border-base rounded-xl shadow-2xl z-40 overflow-hidden py-1"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="px-3 py-2 border-b border-border-base">
-                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Move to Group</p>
-                        </div>
-                        <div className="py-1 max-h-48 overflow-y-auto">
-                          {allGroupNames.map((gn) => (
-                            <button
-                              key={gn}
-                              onClick={() => handleMoveToGroup(project.id, project.group === gn ? null : gn)}
-                              disabled={savingGroup}
-                              className="w-full flex items-center justify-between px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors text-left"
-                            >
-                              <span className="flex items-center gap-2">
-                                <FolderOpen className="w-3.5 h-3.5 text-white/30" />
-                                {gn}
-                              </span>
-                              {project.group === gn && <Check className="w-3.5 h-3.5 text-blue-400" />}
-                            </button>
-                          ))}
-                          {project.group && (
-                            <button
-                              onClick={() => handleMoveToGroup(project.id, null)}
-                              disabled={savingGroup}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400/70 hover:bg-red-500/10 hover:text-red-400 transition-colors text-left"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              Remove from group
-                            </button>
-                          )}
-                        </div>
-                        {/* New group input */}
-                        <div className="px-3 py-2 border-t border-border-base">
-                          <div className="flex gap-1.5">
-                            <input
-                              autoFocus
-                              type="text"
-                              placeholder="New group…"
-                              value={newGroupName}
-                              onChange={(e) => setNewGroupName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" && newGroupName.trim()) {
-                                  handleMoveToGroup(project.id, newGroupName.trim());
-                                }
-                              }}
-                              className="flex-1 bg-white/5 border border-border-base rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-blue-500"
-                            />
-                            <button
-                              onClick={() => { if (newGroupName.trim()) handleMoveToGroup(project.id, newGroupName.trim()); }}
-                              disabled={!newGroupName.trim() || savingGroup}
-                              className="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all disabled:opacity-40"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSettingsProject(project); setMoreMenuProjectId(null); }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors text-left"
+                        >
+                          <Settings className="w-4 h-4" />
+                          Settings
+                        </button>
+                        {!project.isTemplate && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setPublishTemplateProject(project); setMoreMenuProjectId(null); }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-white/70 hover:bg-purple-500/10 hover:text-purple-400 transition-colors text-left"
+                          >
+                            <Upload className="w-4 h-4" />
+                            Publish Template
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); setMoreMenuProjectId(null); }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-white/70 hover:bg-green-500/10 hover:text-green-400 transition-colors text-left"
+                        >
+                          <Rocket className="w-4 h-4" />
+                          Deploy
+                        </button>
+                        {!(project.systemType === 'portfolio' && project.isSystem) && (
+                          <button
+                            onClick={(e) => { handleTogglePin(e, project); setMoreMenuProjectId(null); }}
+                            className={"w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors text-left " + (project.isPinned ? "text-amber-500 hover:bg-amber-500/10" : "text-white/70 hover:bg-white/5 hover:text-white")}
+                          >
+                            <Pin className="w-4 h-4" />
+                            {project.isPinned ? "Unpin" : "Pin"}
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setGroupPopoverProjectId(project.id);
+                            setMoreMenuProjectId(null);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors text-left"
+                        >
+                          <Tag className="w-4 h-4" />
+                          Group
+                        </button>
+                        
+                        <div className="h-px bg-white/5 my-1 mx-2" />
+                        
+                        {project.isDeletable !== false && (
+                          <button
+                            onClick={(e) => { handleDeleteProject(e, project.id); setMoreMenuProjectId(null); }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400/70 hover:bg-red-500/10 hover:text-red-400 transition-colors text-left"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </button>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
-              {/* ── Pin Button ── */}
-              {!(project.systemType === 'portfolio' && project.isSystem) && (
-                <button
-                  onClick={(e) => handleTogglePin(e, project)}
-                  className={`p-2 rounded-xl transition-all ${
-                    project.isPinned
-                      ? "bg-amber-500/20 text-amber-500 hover:bg-amber-500/30"
-                      : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"
-                  }`}
-                  title={project.isPinned ? "Unpin project" : "Pin project"}
-                >
-                  <Pin className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
-              {project.isDeletable !== false && (
-                <button
-                  onClick={(e) => handleDeleteProject(e, project.id)}
-                  className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:bg-red-500/10 hover:text-red-400 transition-all"
-                  title="Delete Project"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
+                <ProjectShareButton project={project} username={settings?.username} avatarUrl={settings?.avatarUrl} />
+
             </>
           ) : (
             <>
@@ -979,6 +928,14 @@ p {
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, [groupPopoverProjectId]);
+
+  // Close more menu when clicking outside
+  useEffect(() => {
+    if (!moreMenuProjectId) return;
+    const handler = () => setMoreMenuProjectId(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [moreMenuProjectId]);
 
   useSEO({ title: isOrgWorkspace && context?.type === "org" ? `${context.name} — DevOS` : "Dashboard — DevOS" });
   
