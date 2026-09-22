@@ -607,45 +607,56 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
             {/* Feed (main column) */}
             <div className="lg:col-span-2 space-y-4 w-full max-w-full min-w-0">
               {/* Inline Composer (Trigger) */}
-              <div className="bg-surface border border-white/5 rounded-2xl p-4 mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <Avatar
-                    src={settings?.avatarUrl || user?.photoURL}
-                    displayName={settings?.displayName || user?.displayName || "User"}
-                    className="w-10 h-10"
-                  />
-                  <div
-                    onClick={() => setShowComposer(true)}
-                    className="flex-1 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 rounded-xl px-4 py-2.5 cursor-text transition-colors"
-                  >
-                    <span className="text-sm text-white/30">What are you building today?</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 md:gap-4 overflow-x-auto no-scrollbar">
-                    <button onClick={() => setShowComposer(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap">
-                      <ImageDown className="w-4 h-4" /> <span className="text-xs font-bold hidden sm:inline">Image</span>
-                    </button>
-                    <button onClick={() => setShowComposer(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap">
-                      <BarChart2 className="w-4 h-4" /> <span className="text-xs font-bold hidden sm:inline">Poll</span>
-                    </button>
-                    <button onClick={() => setShowComposer(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap">
-                      <FolderCode className="w-4 h-4" /> <span className="text-xs font-bold hidden sm:inline">Project</span>
-                    </button>
-                    <button onClick={() => setShowComposer(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap">
-                      <Code2 className="w-4 h-4" /> <span className="text-xs font-bold hidden sm:inline">Code</span>
-                    </button>
-                  </div>
-                  <button onClick={() => setShowComposer(true)} className="hidden sm:flex px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors">
-                    Post
-                  </button>
-                </div>
+            <div className="bg-white/[0.03] border border-border-base rounded-2xl p-4 mb-6 shadow-sm">
+              <div className="flex gap-3">
+                <Avatar
+                  src={settings?.avatarUrl || user?.photoURL}
+                  displayName={settings?.displayName || user?.displayName || "User"}
+                  className="w-10 h-10 ring-2 ring-white/5 flex-shrink-0"
+                />
+                <button
+                  onClick={() => setShowComposer(true)}
+                  className="flex-1 bg-black/20 hover:bg-black/40 border border-transparent hover:border-white/5 rounded-xl px-4 text-left text-white/30 text-sm transition-all"
+                >
+                  What are you building today?
+                </button>
               </div>
+              <div className="flex items-center justify-between sm:justify-start sm:gap-6 mt-4 px-1">
+                <button 
+                  onClick={() => { setPostType("update"); setShowComposer(true); }}
+                  className="flex items-center gap-2 text-white/40 hover:text-white transition-colors"
+                >
+                  <ImageDown className="w-4 h-4" />
+                  <span className="text-sm font-semibold hidden sm:inline">Image</span>
+                </button>
+                <button 
+                  onClick={() => { setPostType("update"); setShowComposer(true); }}
+                  className="flex items-center gap-2 text-white/40 hover:text-white transition-colors"
+                >
+                  <BarChart2 className="w-4 h-4" />
+                  <span className="text-sm font-semibold hidden sm:inline">Poll</span>
+                </button>
+                <button 
+                  onClick={() => { setPostType("deployment"); setShowComposer(true); }}
+                  className="flex items-center gap-2 text-white/40 hover:text-white transition-colors"
+                >
+                  <FolderCode className="w-4 h-4" />
+                  <span className="text-sm font-semibold hidden sm:inline">Project</span>
+                </button>
+                <button 
+                  onClick={() => { setPostType("snippet"); setShowComposer(true); }}
+                  className="flex items-center gap-2 text-white/40 hover:text-white transition-colors"
+                >
+                  <Code2 className="w-4 h-4" />
+                  <span className="text-sm font-semibold hidden sm:inline">Code</span>
+                </button>
+              </div>
+            </div>
 
               {/* Feed Tabs */}
               <div className="flex items-center justify-between border-b border-white/10 mb-4 px-1">
                 <div className="flex items-center gap-6 overflow-x-auto no-scrollbar">
-                  {["For you", "Following", "DevOS Official", "Communities", "Announcements"].map((tab) => (
+                  {["For you", "Following", "DevOS Official", "Communities", "Announcements", "Polls"].map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveFeedTab(tab)}
@@ -666,35 +677,6 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                 </button>
               </div>
 
-              {/* Mobile Active Polls */}
-              {activePolls.length > 0 && (
-                <div className="block lg:hidden space-y-3 mb-6">
-                  <div className="flex items-center justify-between px-1">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-white/30">
-                      Live Polls
-                    </h2>
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                      <span className="text-[10px] font-bold text-blue-400">{activePolls.length} active</span>
-                    </span>
-                  </div>
-                  {activePolls.map((poll) => (
-                    <PollCard
-                      key={poll.id}
-                      poll={poll}
-                      compact
-                      onVoted={(updated) =>
-                        setActivePolls((prev) =>
-                          prev.map((p) => (p.id === updated.id ? updated : p))
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-
-
-
               {feedLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, i) => (
@@ -711,6 +693,27 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                     </div>
                   ))}
                 </div>
+              ) : activeFeedTab === "Polls" ? (
+                  activePolls.length > 0 ? (
+                    <div className="space-y-4">
+                      {activePolls.map((poll) => (
+                        <PollCard
+                          key={poll.id}
+                          poll={poll}
+                          onVoted={(updated) =>
+                            setActivePolls((prev) =>
+                              prev.map((p) => (p.id === updated.id ? updated : p))
+                            )
+                          }
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-white/5 border border-border-base p-10 text-center">
+                      <BarChart2 className="w-10 h-10 text-white/20 mx-auto mb-3" />
+                      <p className="text-white/40 text-sm">No active polls right now.</p>
+                    </div>
+                  )
               ) : feed.length === 0 ? (
                 <div className="rounded-2xl bg-white/5 border border-border-base p-10 text-center">
                   <Zap className="w-10 h-10 text-white/20 mx-auto mb-3" />
@@ -720,6 +723,8 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                 feed.filter(post => {
                   if (activeFeedTab === "Announcements") return post.type === "announcement";
                   if (activeFeedTab === "DevOS Official") return post.username === "devos" || post.type === "announcement";
+                  if (activeFeedTab === "Following") return followingIds.includes(post.userId);
+                  if (activeFeedTab === "Communities") return !!post.communityId;
                   return true;
                 }).map((post, i) => (
                   <FeedItem
