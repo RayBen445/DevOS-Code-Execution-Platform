@@ -126,6 +126,9 @@ export interface UserSettings {
   skills?: string[];
   dailyStreak?: number;
   monthlyStreak?: number;
+  uid?: string;
+  location?: string;
+  createdAt?: any;
   links?: {
     github?: string;
     twitter?: string;
