@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { getSiteConfig } from "../lib/creditsService";
+import { getFollowing } from "../lib/followService";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
