@@ -991,9 +991,9 @@ const TOOLBAR_ACTIONS = [
 function PostComposerModal({
   open,
   onClose,
-  userId,
   avatarUrl,
   displayName,
+  userId,
   postText,
   setPostText,
   postType,
@@ -1005,264 +1005,233 @@ function PostComposerModal({
   onSubmit,
   textareaRef,
 }: PostComposerModalProps) {
-  const selectedType = TYPE_OPTIONS.find((t) => t.value === postType) ?? TYPE_OPTIONS[0];
+  const [activeTab, setActiveTab] = React.useState<"image"|"video"|"code"|"link"|"poll"|"file"|"event">("image");
   const charCount = postText.length;
   const MAX_CHARS = 2000;
-  const charPct = Math.min((charCount / MAX_CHARS) * 100, 100);
-  const isNearLimit = charCount > MAX_CHARS * 0.8;
-  const isOverLimit = charCount > MAX_CHARS;
-
-  const applyFormat = (wrap: readonly [string, string], placeholder: string) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart ?? 0;
-    const end = el.selectionEnd ?? 0;
-    const selected = postText.slice(start, end) || placeholder;
-    const before = postText.slice(0, start);
-    const after = postText.slice(end);
-    const newText = before + wrap[0] + selected + wrap[1] + after;
-    setPostText(newText);
-    requestAnimationFrame(() => {
-      el.focus();
-      const cursor = start + wrap[0].length + selected.length + wrap[1].length;
-      el.setSelectionRange(cursor, cursor);
-    });
-  };
+  
+  if (!open) return null;
 
   return (
     <AnimatePresence>
-      {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
-            onClick={onClose}
-          />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 20 }}
+          transition={{ type: "spring", damping: 26, stiffness: 300 }}
+          className="w-full max-w-2xl bg-[#0B0D14] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between p-5 border-b border-white/[0.05]">
+            <div className="flex gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.4)]">
+                <Layout className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Create a Post</h2>
+                <p className="text-sm text-white/50">Share your thoughts, ideas, progress or questions with the DevOS community.</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 text-white/50 hover:text-white hover:bg-white/5 rounded-xl transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 20 }}
-            transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-4xl z-50 flex flex-col max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl shadow-black/50"
-            style={{ background: "linear-gradient(135deg, #141416 0%, #0f0f11 100%)", border: "1px solid rgba(255,255,255,0.09)" }}
-          >
-            {/* Top accent line */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/60 to-transparent" />
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
+          <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+            {/* User Row */}
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="relative">
-                  <img
-                    src={avatarUrl}
-                    alt={displayName}
-                    className="w-9 h-9 rounded-full object-cover ring-2 ring-white/10"
-                    referrerPolicy="no-referrer"
-                  />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[#0f0f11]" />
-                </div>
+                <img src={avatarUrl} alt={displayName} className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10" />
                 <div>
-                  <p className="text-sm font-bold text-white leading-none">{displayName}</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", selectedType.accent, selectedType.color)}>
-                      {selectedType.label}
-                    </span>
-                    <span className="text-[10px] text-white/30">· sharing with everyone</span>
-                  </div>
+                  <p className="text-sm font-bold text-white">{displayName}</p>
+                  <p className="text-xs text-white/50">@user_{userId.slice(0, 5)}</p>
                 </div>
               </div>
-
-              <button
-                onClick={onClose}
-                className="p-2 rounded-xl hover:bg-white/[0.07] text-white/40 hover:text-white transition-all"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
+              <button className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/5 transition-colors text-xs font-semibold text-white/80">
+                <Globe className="w-3.5 h-3.5" /> Public <ChevronDown className="w-3 h-3" />
               </button>
             </div>
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="md:grid md:grid-cols-5 min-h-0">
-
-                {/* ── Left: Editor ── */}
-                <div className="md:col-span-3 flex flex-col border-b md:border-b-0 md:border-r border-white/[0.07]">
-
-                  {/* Formatting toolbar */}
-                  <div className="flex items-center gap-1 px-5 pt-4 pb-2 border-b border-white/[0.05]">
-                    {TOOLBAR_ACTIONS.map(({ icon: Icon, title, wrap, placeholder }) => (
-                      <button
-                        key={title}
-                        type="button"
-                        title={title}
-                        onMouseDown={(e) => { e.preventDefault(); applyFormat(wrap, placeholder); }}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.08] text-white/30 hover:text-white/70 transition-colors"
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                      </button>
-                    ))}
-                    <div className="h-4 w-px bg-white/10 mx-1" />
-                    <span className="text-[10px] text-white/20 ml-auto">Markdown supported</span>
-                  </div>
-
-                  {/* Editor */}
-                  <div className="flex-1 px-5 py-4">
-                    <TiptapEditor
-                      value={postText}
-                      onChange={setPostText}
-                      placeholder={`What are you ${postType === "deployment" ? "shipping" : postType === "snippet" ? "sharing" : "building"}?`}
-                      currentUserId={userId}
-                      autoFocus
-                      className="w-full min-h-[160px] text-sm"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && e.metaKey) {
-                          e.preventDefault();
-                          if (postText.trim() && !isPosting && !isOverLimit) onSubmit();
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {/* Char counter */}
-                  <div className="flex items-center gap-3 px-5 pb-4">
-                    <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all duration-300",
-                          isOverLimit ? "bg-red-500" : isNearLimit ? "bg-amber-500" : "bg-blue-500/50"
-                        )}
-                        style={{ width: `${charPct}%` }}
-                      />
-                    </div>
-                    <span className={cn("text-[11px] font-mono tabular-nums", isOverLimit ? "text-red-400" : isNearLimit ? "text-amber-400" : "text-white/25")}>
-                      {charCount}/{MAX_CHARS}
-                    </span>
-                  </div>
-                </div>
-
-                {/* ── Right: Settings ── */}
-                <div className="md:col-span-2 flex flex-col gap-5 p-5">
-
-                  {/* Post type */}
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3">Post Type</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {TYPE_OPTIONS.map((opt) => {
-                        const active = postType === opt.value;
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => setPostType(opt.value)}
-                            className={cn(
-                              "flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left",
-                              active
-                                ? cn(opt.accent, "shadow-sm")
-                                : "bg-white/[0.02] border-white/[0.07] hover:bg-white/[0.05] hover:border-white/15"
-                            )}
-                          >
-                            <opt.icon className={cn("w-3.5 h-3.5 flex-shrink-0", active ? opt.color : "text-white/30")} />
-                            <div className="min-w-0">
-                              <p className={cn("text-xs font-bold truncate", active ? opt.color : "text-white/60")}>{opt.label}</p>
-                              <p className="text-[10px] text-white/25 truncate">{opt.desc}</p>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Project */}
-                  {myProjects.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-3">Attach Project</p>
-                      <div className="space-y-1 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedProjectId("")}
-                          className={cn(
-                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition-all text-xs",
-                            selectedProjectId === ""
-                              ? "bg-white/8 border-white/20 text-white/70"
-                              : "bg-white/[0.02] border-white/[0.07] text-white/30 hover:bg-white/[0.05]"
-                          )}
-                        >
-                          <Layers className="w-3.5 h-3.5 flex-shrink-0" />
-                          None
-                        </button>
-                        {myProjects.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => setSelectedProjectId(p.id)}
-                            className={cn(
-                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition-all",
-                              selectedProjectId === p.id
-                                ? "bg-blue-600/15 border-blue-500/40"
-                                : "bg-white/[0.02] border-white/[0.07] hover:bg-white/[0.05] hover:border-white/15"
-                            )}
-                          >
-                            <FolderCode className={cn("w-3.5 h-3.5 flex-shrink-0", selectedProjectId === p.id ? "text-blue-400" : "text-white/30")} />
-                            <div className="flex-1 min-w-0">
-                              <p className={cn("text-xs font-semibold truncate", selectedProjectId === p.id ? "text-blue-300" : "text-white/70")}>{p.name}</p>
-                            </div>
-                            {p.isPublic ? <Globe className="w-3 h-3 text-white/20 flex-shrink-0" /> : <Lock className="w-3 h-3 text-white/20 flex-shrink-0" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Keyboard hint */}
-                  <div className="mt-auto hidden md:flex items-center gap-1.5 text-[10px] text-white/20">
-                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 font-mono">⌘</kbd>
-                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 font-mono">↵</kbd>
-                    <span>to post</span>
-                  </div>
-                </div>
+            {/* Editor Area */}
+            <div className="border border-white/10 rounded-xl bg-white/[0.02] flex flex-col focus-within:border-white/30 focus-within:bg-white/[0.04] transition-all">
+              <TiptapEditor
+                value={postText}
+                onChange={setPostText}
+                placeholder={"What's on your mind, " + displayName.split(" ")[0] + "?"}
+                currentUserId={userId}
+                autoFocus
+                className="w-full min-h-[120px] p-4 text-sm text-white border-none focus:ring-0 bg-transparent resize-none"
+              />
+              <div className="flex justify-end p-3">
+                <span className={cn("text-xs font-mono", charCount > MAX_CHARS ? "text-red-400" : "text-white/30")}>
+                  {charCount}/{MAX_CHARS}
+                </span>
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center gap-3 px-5 py-4 border-t border-white/[0.07]">
-              <button
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-white/10 text-sm text-white/40 hover:text-white hover:border-white/20 transition-all"
-              >
+            {/* Media/Tabs Toolbar */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+              {[
+                { id: "image", icon: ImageDown, label: "Image", color: "text-blue-400" },
+                { id: "video", icon: Video, label: "Video", color: "text-purple-400" },
+                { id: "code", icon: Code2, label: "Code", color: "text-green-400" },
+                { id: "link", icon: Link2, label: "Link", color: "text-blue-400" },
+                { id: "poll", icon: BarChart2, label: "Poll", color: "text-yellow-400" },
+                { id: "file", icon: File, label: "File", color: "text-white/70" },
+                { id: "event", icon: Calendar, label: "Event", color: "text-red-400" },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id as any);
+                      if (tab.id === "code") setPostType("snippet");
+                      else if (tab.id === "poll") setPostType("update");
+                      else if (tab.id === "link") setPostType("deployment");
+                      else setPostType("update");
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-xl border transition-all whitespace-nowrap",
+                      isActive
+                        ? "bg-white/10 border-white/20 text-white"
+                        : "bg-transparent border-white/10 text-white/50 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    <tab.icon className={cn("w-4 h-4", tab.color)} />
+                    <span className="text-xs font-semibold">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Attachment Area (Dynamic) */}
+            <div className="border border-white/10 border-dashed rounded-xl p-6 flex flex-col items-center justify-center bg-white/[0.01] hover:bg-white/[0.03] transition-colors cursor-pointer group">
+              {activeTab === "image" && (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <ImageDown className="w-5 h-5 text-white/50" />
+                  </div>
+                  <p className="text-sm text-white font-medium mb-1">Drag and drop files here, or <span className="text-blue-400">click to upload</span></p>
+                  <p className="text-xs text-white/40">Supports JPG, PNG, WebP, GIF (max 10MB)</p>
+                </>
+              )}
+              {activeTab === "video" && (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <Video className="w-5 h-5 text-white/50" />
+                  </div>
+                  <p className="text-sm text-white font-medium mb-1">Drag and drop a video here, or <span className="text-blue-400">click to upload</span></p>
+                  <p className="text-xs text-white/40">Supports MP4, MOV, WebM (max 100MB)</p>
+                </>
+              )}
+              {activeTab === "code" && (
+                <div className="w-full text-left">
+                  <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-3">
+                     <span className="text-sm font-semibold text-white/70">TypeScript <ChevronDown className="w-3 h-3 inline ml-1"/></span>
+                     <div className="flex items-center gap-2">
+                       <span className="text-xs text-white/50">Wrap lines</span>
+                       <div className="w-8 h-4 bg-blue-500 rounded-full relative"><div className="w-3 h-3 bg-white rounded-full absolute right-0.5 top-0.5" /></div>
+                     </div>
+                  </div>
+                  <pre className="text-sm font-mono text-white/70">
+                    <span className="text-blue-400">function</span> <span className="text-yellow-200">greet</span>(name: <span className="text-green-300">string</span>) {'{\n'}
+                    {'  '}return <span className="text-orange-300">Hello, !</span>;{'\n'}
+                    {'}\n'}
+                  </pre>
+                </div>
+              )}
+              {activeTab === "poll" && (
+                <div className="w-full space-y-3">
+                  <input type="text" placeholder="Option 1" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-white/30" />
+                  <input type="text" placeholder="Option 2" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-white/30" />
+                  <div className="flex items-center justify-between pt-2">
+                    <button className="text-blue-400 text-sm font-semibold hover:text-blue-300 transition-colors">+ Add option</button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-white/50">Poll duration</span>
+                      <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white">7 days <ChevronDown className="w-3 h-3"/></button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {activeTab === "link" && (
+                <div className="w-full">
+                  <input type="text" placeholder="Paste a link..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30" />
+                </div>
+              )}
+              {activeTab === "file" && (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <File className="w-5 h-5 text-white/50" />
+                  </div>
+                  <p className="text-sm text-white font-medium mb-1">Drag and drop a file here, or <span className="text-blue-400">click to upload</span></p>
+                  <p className="text-xs text-white/40">Supports PDF, Docs, ZIPs and more (max 50MB)</p>
+                </>
+              )}
+              {activeTab === "event" && (
+                <div className="w-full space-y-3 text-left">
+                  <input type="text" placeholder="Event Title" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-white/30" />
+                  <div className="flex items-center gap-3">
+                    <input type="date" className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-white/30" />
+                    <input type="time" className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-white/30" />
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Quick Actions List (Bottom of scrollable area) */}
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center gap-4">
+                <button className="flex items-center gap-1.5 text-xs font-semibold text-white/50 hover:text-white transition-colors">
+                  <Smile className="w-4 h-4" /> Add emoji
+                </button>
+                <button className="flex items-center gap-1.5 text-xs font-semibold text-white/50 hover:text-white transition-colors">
+                  <MapPin className="w-4 h-4" /> Add location
+                </button>
+                <button className="flex items-center gap-1.5 text-xs font-semibold text-white/50 hover:text-white transition-colors">
+                  <Users className="w-4 h-4" /> Tag people
+                </button>
+              </div>
+              <button className="flex items-center gap-1 text-xs font-semibold text-white/50 hover:text-white transition-colors">
+                <Settings className="w-4 h-4" /> Advanced options <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+
+          {/* Footer Footer */}
+          <div className="p-5 border-t border-white/[0.05] flex items-center justify-between bg-black/20">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/5 transition-all">
+              <Bookmark className="w-4 h-4" /> Save draft
+            </button>
+            
+            <div className="flex items-center gap-3">
+              <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white/50 hover:text-white transition-all">
                 Cancel
               </button>
-              <button
+              <button 
                 onClick={onSubmit}
                 disabled={isPosting || !postText.trim() || isOverLimit}
-                className={cn(
-                  "flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
-                  postText.trim() && !isPosting && !isOverLimit
-                    ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/20 active:scale-[0.98]"
-                    : "bg-white/[0.04] text-white/20 cursor-not-allowed"
-                )}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-bold transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)]"
               >
-                {isPosting ? (
-                  <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Publishing…</>
-                ) : (
-                  <><Send className="w-4 h-4" />Publish Post</>
-                )}
+                <Send className="w-4 h-4" /> {isPosting ? "Posting..." : "Post"}
               </button>
             </div>
-          </motion.div>
-        </>
-      )}
+          </div>
+        </motion.div>
+      </motion.div>
     </AnimatePresence>
   );
 }
+/* Feed Item */
 
-
-/* ─── Feed Item ─── */
 
 const TYPE_COLORS: Record<string, string> = {
   deployment: "bg-green-500/10 text-green-400 border-green-500/20",
@@ -1809,3 +1778,4 @@ function ProjectCard({ project, onOpen }: { project: Project; onOpen: () => void
     </button>
   );
 }
+
