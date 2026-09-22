@@ -39,7 +39,7 @@ import {
   Quote,
   Pencil,
   ChevronDown,
-} from "lucide-react";
+Layout, Video, Link2, File, Calendar, Smile, MapPin, Settings, ChevronRight, Bookmark } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit, doc } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
@@ -182,6 +182,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isPosting, setIsPosting] = useState(false);
+  const [composerTab, setComposerTab] = useState<"image"|"video"|"code"|"link"|"poll"|"file"|"event">("image");
   const [showComposer, setShowComposer] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [deleteConfirmPost, setDeleteConfirmPost] = useState<FeedPost | null>(null);
@@ -615,7 +616,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
                   className="w-10 h-10 ring-2 ring-white/5 flex-shrink-0"
                 />
                 <button
-                  onClick={() => setShowComposer(true)}
+                  onClick={() => { setComposerTab("image"); setShowComposer(true); }}
                   className="flex-1 bg-black/20 hover:bg-black/40 border border-transparent hover:border-white/5 rounded-xl px-4 text-left text-white/30 text-sm transition-all"
                 >
                   What are you building today?
@@ -623,28 +624,28 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               </div>
               <div className="flex items-center justify-between sm:justify-start sm:gap-6 mt-4 px-1">
                 <button 
-                  onClick={() => { setPostType("update"); setShowComposer(true); }}
+                  onClick={() => { setPostType("update"); setComposerTab("image"); setShowComposer(true); }}
                   className="flex items-center gap-2 text-white/40 hover:text-white transition-colors"
                 >
                   <ImageDown className="w-4 h-4" />
                   <span className="text-sm font-semibold hidden sm:inline">Image</span>
                 </button>
                 <button 
-                  onClick={() => { setPostType("update"); setShowComposer(true); }}
+                  onClick={() => { setPostType("update"); setComposerTab("poll"); setShowComposer(true); }}
                   className="flex items-center gap-2 text-white/40 hover:text-white transition-colors"
                 >
                   <BarChart2 className="w-4 h-4" />
                   <span className="text-sm font-semibold hidden sm:inline">Poll</span>
                 </button>
                 <button 
-                  onClick={() => { setPostType("deployment"); setShowComposer(true); }}
+                  onClick={() => { setPostType("deployment"); setComposerTab("link"); setShowComposer(true); }}
                   className="flex items-center gap-2 text-white/40 hover:text-white transition-colors"
                 >
                   <FolderCode className="w-4 h-4" />
                   <span className="text-sm font-semibold hidden sm:inline">Project</span>
                 </button>
                 <button 
-                  onClick={() => { setPostType("snippet"); setShowComposer(true); }}
+                  onClick={() => { setPostType("snippet"); setComposerTab("code"); setShowComposer(true); }}
                   className="flex items-center gap-2 text-white/40 hover:text-white transition-colors"
                 >
                   <Code2 className="w-4 h-4" />
@@ -969,6 +970,7 @@ interface PostComposerModalProps {
   isPosting: boolean;
   onSubmit: () => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
+  initialTab?: "image"|"video"|"code"|"link"|"poll"|"file"|"event";
 }
 
 const TYPE_OPTIONS: { value: FeedPost["type"]; label: string; icon: React.ElementType; desc: string; color: string; accent: string }[] = [
@@ -1004,10 +1006,16 @@ function PostComposerModal({
   isPosting,
   onSubmit,
   textareaRef,
+  initialTab = "image",
 }: PostComposerModalProps) {
-  const [activeTab, setActiveTab] = React.useState<"image"|"video"|"code"|"link"|"poll"|"file"|"event">("image");
+  const [activeTab, setActiveTab] = React.useState<"image"|"video"|"code"|"link"|"poll"|"file"|"event">(initialTab);
+
+  React.useEffect(() => {
+    if (open) setActiveTab(initialTab);
+  }, [open, initialTab]);
   const charCount = postText.length;
   const MAX_CHARS = 2000;
+  const isOverLimit = charCount > MAX_CHARS;
   
   if (!open) return null;
 
@@ -1778,4 +1786,7 @@ function ProjectCard({ project, onOpen }: { project: Project; onOpen: () => void
     </button>
   );
 }
+
+
+
 
