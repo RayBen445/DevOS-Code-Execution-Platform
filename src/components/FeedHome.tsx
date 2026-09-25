@@ -857,7 +857,7 @@ export default function FeedHome({ onOpenProject, onShowLogin }: FeedHomeProps) 
               
               <div className="flex flex-col gap-3">
                 <button
-                  onClick={() => { setShowCreateMenu(false); navigate("/projects"); }}
+                  onClick={() => { setShowCreateMenu(false); navigate("/new"); }}
                   className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all text-left"
                 >
                   <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">

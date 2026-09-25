@@ -3,7 +3,7 @@ import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, getDocs, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import * as lucideIcons from "lucide-react";
-import { LayoutTemplate, Folder, Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check, Search, Pin, PinOff, MoreHorizontal } from "lucide-react";
+import { LayoutTemplate, Folder, Plus, FolderCode, Clock, Calendar, Users, ChevronRight, ChevronDown, Github, Trash2, User as UserIcon, GitFork, Zap, Rocket, Sparkles, X, Layout, Code, Globe, Share2, Eye, EyeOff, Upload, Settings, RefreshCw, ExternalLink, ImageDown, Building2, Tag, FolderOpen, Check, Search, Pin, PinOff, MoreHorizontal, ArrowLeft, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Project, UserSettings } from "../types";
 import { cn, formatRelativeTime, toValidDate, generateAppId } from '../lib/utils';
@@ -39,6 +39,7 @@ export default function Dashboard({ onSelectProject }: DashboardProps) {
   const isOrgWorkspace = context?.type === "org";
   const [projects, setProjects] = useState<Project[]>([]);
   const [isCreating, setIsCreating] = useState(false);
+  const [createMobileTab, setCreateMobileTab] = useState<"templates" | "details">("templates");
   const [isQuickStarting, setIsQuickStarting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -1220,35 +1221,94 @@ p {
         )}
 
         {isCreating && (
-          <div className="fixed inset-0 z-[100] flex bg-[#0a0a0b] overflow-hidden">
+          <div className="fixed inset-0 z-[100] flex flex-col lg:flex-row bg-[#0a0a0b] overflow-hidden">
             {/* Background elements */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
               <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full" />
               <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full" />
             </div>
 
-            {/* Close Button */}
+            {/* Mobile Header with Tabs & Close button */}
+            <div className="lg:hidden px-4 py-2.5 bg-[#0e0e11] border-b border-white/10 flex items-center justify-between z-50 shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (createMobileTab === "details") {
+                      setCreateMobileTab("templates");
+                    } else {
+                      setIsCreating(false);
+                    }
+                  }}
+                  className="p-1.5 -ml-1 text-white/60 hover:text-white rounded-lg hover:bg-white/5 active:scale-95 transition-all"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <span className="font-bold text-sm text-white">New Project</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-white/5 p-1 rounded-xl border border-white/10 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setCreateMobileTab("templates")}
+                    className={cn(
+                      "px-3 py-1 rounded-lg font-semibold transition-all",
+                      createMobileTab === "templates" 
+                        ? "bg-blue-600 text-white shadow-sm" 
+                        : "text-white/50 hover:text-white"
+                    )}
+                  >
+                    1. Template
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreateMobileTab("details")}
+                    className={cn(
+                      "px-3 py-1 rounded-lg font-semibold transition-all",
+                      createMobileTab === "details" 
+                        ? "bg-blue-600 text-white shadow-sm" 
+                        : "text-white/50 hover:text-white"
+                    )}
+                  >
+                    2. Details
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => setIsCreating(false)} 
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Desktop Close Button */}
             <button 
               onClick={() => setIsCreating(false)} 
-              className="absolute top-6 right-6 z-50 p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors backdrop-blur-md hover:scale-105 active:scale-95"
+              className="hidden lg:flex absolute top-6 right-6 z-50 p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors backdrop-blur-md hover:scale-105 active:scale-95 items-center justify-center"
             >
               <X className="w-5 h-5 text-white/60" />
             </button>
 
             {/* Left side: Templates */}
-            <div className="w-2/3 h-full overflow-y-auto border-r border-white/5 p-12 custom-scrollbar relative z-10">
-              <div className="max-w-4xl mx-auto max-h-[90vh] overflow-y-auto flex flex-col">
-                <h2 className="text-4xl font-black text-white tracking-tight mb-2">Create New Project</h2>
-                <p className="text-white/40 text-lg mb-12">Select a template or start from scratch.</p>
+            <div className={cn(
+              "w-full lg:w-2/3 h-full overflow-y-auto border-r-0 lg:border-r border-white/5 p-4 sm:p-6 lg:p-12 custom-scrollbar relative z-10",
+              createMobileTab !== "templates" ? "hidden lg:block" : "block"
+            )}>
+              <div className="max-w-4xl mx-auto pb-24 lg:pb-8 flex flex-col">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight mb-2">Create New Project</h2>
+                <p className="text-white/40 text-sm sm:text-base lg:text-lg mb-6 sm:mb-10">Select a template or start from scratch.</p>
                 
                 {/* Categories */}
-                <div className="flex flex-wrap gap-2 mb-8">
+                <div className="flex gap-2 overflow-x-auto pb-3 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar touch-pan-x">
                   {["All Templates", ...Array.from(new Set(allAvailableTemplates.map(t => t.category)))].filter(Boolean).map(cat => (
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
                       className={cn(
-                        "px-4 py-2 rounded-full text-sm font-bold transition-all border",
+                        "px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all border shrink-0",
                         selectedCategory === cat 
                           ? "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]" 
                           : "bg-white/5 text-white/40 border-transparent hover:bg-white/10 hover:text-white"
@@ -1259,35 +1319,46 @@ p {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   {allAvailableTemplates
                     .filter(t => selectedCategory === "All Templates" || t.category === selectedCategory)
                     .map(template => {
                       const isSelected = selectedTemplateId === template.id;
-                      const Icon = ((lucideIcons)[template.icon] ) || lucideIcons.Code;
+                      const Icon = ((lucideIcons as any)[template.icon] as React.ElementType) || lucideIcons.Code;
                       return (
                         <div
                           key={template.id}
                           onClick={() => setSelectedTemplateId(template.id)}
                           className={cn(
-                            "group cursor-pointer relative p-6 rounded-3xl border transition-all duration-300",
+                            "group cursor-pointer relative p-5 rounded-2xl sm:rounded-3xl border transition-all duration-300 flex flex-col justify-between",
                             isSelected 
-                              ? "bg-blue-600/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.15)]" 
+                              ? "bg-blue-600/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.15)] ring-1 ring-blue-500" 
                               : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/20 hover:shadow-xl"
                           )}
                         >
-                          <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300",
-                            isSelected ? "bg-blue-600 shadow-lg shadow-blue-600/30" : "bg-white/5 group-hover:bg-white/10 group-hover:scale-110"
-                          )}>
-                            <Icon className={cn("w-6 h-6 transition-colors", isSelected ? "text-white" : "text-white/60 group-hover:text-white")} />
+                          <div>
+                            <div className={cn(
+                              "w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300",
+                              isSelected ? "bg-blue-600 shadow-lg shadow-blue-600/30" : "bg-white/5 group-hover:bg-white/10 group-hover:scale-110"
+                            )}>
+                              <Icon className={cn("w-5 h-5 sm:w-6 sm:h-6 transition-colors", isSelected ? "text-white" : "text-white/60 group-hover:text-white")} />
+                            </div>
+                            <h3 className="text-base sm:text-lg font-bold text-white mb-1.5">{template.name}</h3>
+                            <p className="text-xs text-white/40 line-clamp-2 leading-relaxed">{template.description}</p>
                           </div>
-                          <h3 className="text-lg font-bold text-white mb-2">{template.name}</h3>
-                          <p className="text-xs text-white/40 line-clamp-2 leading-relaxed">{template.description}</p>
                           
                           {isSelected && (
                             <div className="absolute top-4 right-4 text-blue-500">
                               <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                            </div>
+                          )}
+
+                          {template.category && (
+                            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-white/30">{template.category}</span>
+                              <span className={cn("font-semibold text-xs", isSelected ? "text-blue-400" : "text-white/30 group-hover:text-white/60")}>
+                                {isSelected ? "Selected" : "Select"}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1295,15 +1366,57 @@ p {
                     })}
                 </div>
               </div>
+
+              {/* Mobile floating bar to continue to details */}
+              <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-[#0d0d10]/95 backdrop-blur-xl border-t border-white/10 z-30 flex items-center justify-between gap-3 shadow-2xl">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-medium text-white/50 uppercase tracking-wider">Template selected</p>
+                  <p className="text-sm font-bold text-white truncate">
+                    {(allAvailableTemplates.find(t => t.id === selectedTemplateId) || allAvailableTemplates[0])?.name}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCreateMobileTab("details")}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm flex items-center gap-1.5 shadow-lg shadow-blue-600/25 shrink-0 active:scale-95 transition-all"
+                >
+                  Configure Details
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Right side: Project Details */}
-            <div className="w-1/3 h-full bg-black/40 backdrop-blur-2xl border-l border-white/5 p-12 overflow-y-auto custom-scrollbar relative z-10 flex flex-col justify-center">
-              <form onSubmit={handleCreateProject} className="space-y-8 max-w-md mx-auto w-full">
-                
-                <div className="space-y-3">
+            <div className={cn(
+              "w-full lg:w-1/3 h-full bg-black/40 backdrop-blur-2xl border-t lg:border-t-0 lg:border-l border-white/5 p-4 sm:p-6 lg:p-12 overflow-y-auto custom-scrollbar relative z-10 flex flex-col justify-between lg:justify-center",
+              createMobileTab !== "details" ? "hidden lg:flex" : "flex"
+            )}>
+              <form onSubmit={handleCreateProject} className="space-y-6 max-w-md mx-auto w-full pb-8 lg:pb-0">
+                {/* Template preview badge */}
+                <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 text-white shadow-sm">
+                      {React.createElement(((lucideIcons as any)[(allAvailableTemplates.find(t => t.id === selectedTemplateId) || allAvailableTemplates[0])?.icon] as React.ElementType) || lucideIcons.Code, { className: "w-4 h-4" })}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase font-bold tracking-wider text-blue-400">Chosen Template</p>
+                      <p className="text-sm font-bold text-white truncate">
+                        {(allAvailableTemplates.find(t => t.id === selectedTemplateId) || allAvailableTemplates[0])?.name}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCreateMobileTab("templates")}
+                    className="text-xs font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2 shrink-0 ml-2"
+                  >
+                    Change
+                  </button>
+                </div>
+
+                <div className="space-y-2">
                   <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                    <Folder className="w-4 h-4" /> Project Name
+                    <Folder className="w-3.5 h-3.5" /> Project Name
                   </label>
                   <input
                     autoFocus
@@ -1312,7 +1425,7 @@ p {
                     value={newProjectName}
                     onChange={(e) => { setNewProjectName(e.target.value); setProjectNameTaken(false); }}
                     className={cn(
-                      "w-full bg-white/5 border rounded-2xl px-5 py-4 text-lg text-white font-medium focus:outline-none transition-all placeholder:text-white/20",
+                      "w-full bg-white/5 border rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 text-base sm:text-lg text-white font-medium focus:outline-none transition-all placeholder:text-white/20",
                       projectNameTaken ? "border-red-500/60 focus:border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]" : "border-white/10 focus:border-blue-500 focus:bg-blue-500/5 shadow-inner"
                     )}
                     required
@@ -1327,53 +1440,73 @@ p {
                   )}
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                    <LayoutTemplate className="w-4 h-4" /> Description <span className="opacity-50 lowercase font-normal">(optional)</span>
+                    <LayoutTemplate className="w-3.5 h-3.5" /> Description <span className="opacity-50 lowercase font-normal">(optional)</span>
                   </label>
                   <textarea
                     placeholder="What are you building?"
                     value={newProjectDescription}
                     onChange={(e) => setNewProjectDescription(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 focus:bg-blue-500/5 transition-all resize-none min-h-[120px] placeholder:text-white/20 shadow-inner"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 text-sm sm:text-base text-white focus:outline-none focus:border-blue-500 focus:bg-blue-500/5 transition-all resize-none min-h-[80px] sm:min-h-[100px] placeholder:text-white/20 shadow-inner"
                   />
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-                    <Globe className="w-4 h-4" /> Visibility
+                    <Globe className="w-3.5 h-3.5" /> Visibility
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setVisibility("public")}
                       className={cn(
-                        "flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all",
-                        visibility === "public" ? "bg-blue-600/10 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                        "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all",
+                        visibility === "public" ? "bg-blue-600/15 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/20 hover:text-white"
                       )}
                     >
-                      <Globe className="w-6 h-6" />
-                      <span className="font-bold text-sm">Public</span>
+                      <Globe className="w-4 h-4 shrink-0 text-blue-400" />
+                      <div>
+                        <p className="text-xs font-bold leading-tight">Public</p>
+                        <p className="text-[10px] text-white/40 mt-0.5">Everyone</p>
+                      </div>
                     </button>
                     <button
                       type="button"
                       onClick={() => setVisibility("private")}
                       className={cn(
-                        "flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all",
-                        visibility === "private" ? "bg-blue-600/10 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                        "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all",
+                        visibility === "private" ? "bg-blue-600/15 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/20 hover:text-white"
                       )}
                     >
-                      <lucideIcons.Lock className="w-6 h-6" />
-                      <span className="font-bold text-sm">Private</span>
+                      <lucideIcons.Lock className="w-4 h-4 shrink-0 text-amber-400" />
+                      <div>
+                        <p className="text-xs font-bold leading-tight">Private</p>
+                        <p className="text-[10px] text-white/40 mt-0.5">Only you</p>
+                      </div>
                     </button>
                   </div>
                 </div>
 
-                <div className="pt-4 mt-8 border-t border-white/5">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest">License <span className="text-white/20 lowercase font-normal">(optional)</span></label>
+                  <select
+                    value={selectedLicense}
+                    onChange={(e) => setSelectedLicense(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="none" className="bg-[#121214] text-white">No License (All Rights Reserved)</option>
+                    <option value="MIT" className="bg-[#121214] text-white">MIT License</option>
+                    <option value="Apache2" className="bg-[#121214] text-white">Apache 2.0</option>
+                    <option value="GPL3" className="bg-[#121214] text-white">GNU GPL v3</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 border-t border-white/5">
                   <button
                     type="submit"
                     disabled={!newProjectName.trim() || projectNameTaken || checkingProjectName}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg hover:shadow-[0_0_40px_rgba(59,130,246,0.4)] hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-base sm:text-lg hover:shadow-[0_0_40px_rgba(59,130,246,0.4)] hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 shadow-lg"
                   >
                     <Plus className="w-5 h-5" />
                     Create Project

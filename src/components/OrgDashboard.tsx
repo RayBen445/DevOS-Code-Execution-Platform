@@ -8,6 +8,7 @@ import { Building2, Plus, FolderCode, Users, Settings, FolderOpen, ChevronRight,
 import { motion } from "framer-motion";
 import { formatRelativeTime } from "../lib/utils";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import ContextSwitcher from "./ContextSwitcher";
 import DevosLogo from "./DevosLogo";
 
@@ -16,6 +17,7 @@ interface OrgDashboardProps {
 }
 
 export default function OrgDashboard({ onSelectProject }: OrgDashboardProps) {
+  const navigate = useNavigate();
   const { context } = useActiveContext();
   const [org, setOrg] = useState<Organization | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -87,7 +89,7 @@ export default function OrgDashboard({ onSelectProject }: OrgDashboardProps) {
             </div>
             <h1 className="font-bold text-lg">{org.name}</h1>
           </div>
-          <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-colors">
+          <button onClick={() => navigate("/new")} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-colors">
             <Plus className="w-4 h-4" />
             New Project
           </button>

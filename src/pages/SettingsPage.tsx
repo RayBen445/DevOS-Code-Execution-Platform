@@ -5,7 +5,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import {
   User, Lock, Palette, Bell, Shield, Link as LinkIcon, CreditCard, BarChart2, Code2, Accessibility, AlertTriangle, ChevronRight, ArrowLeft, Search, Camera, CheckCircle2, ChevronDown, Moon, Sun, Monitor
-} from "lucide-react";
+, Clock, Activity } from "lucide-react";
 import Navbar from "../components/Navbar";
 import MobileBottomNav from "../components/MobileBottomNav";
 import { UserSettings } from "../types";
@@ -146,12 +146,172 @@ export default function SettingsPage() {
     </div>
   );
 
+  
+  const renderSecurity = () => (
+    <div className="p-4 sm:p-6 pb-24 max-w-3xl mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => setActiveTab("main")} className="p-2 -ml-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-xl font-bold text-white">Security</h1>
+      </div>
+      
+      <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-3xl p-5 mb-8 flex items-center gap-4">
+        <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400">
+          <Lock className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="font-bold text-white">Security</h2>
+          <p className="text-xs text-white/60 mt-1">Keep your account safe and secure.</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-border-base rounded-2xl">
+          <div className="flex gap-4">
+            <div className="mt-1"><Lock className="w-5 h-5 text-blue-400" /></div>
+            <div>
+              <p className="text-sm font-bold text-white">Password</p>
+              <p className="text-xs text-white/50 mt-0.5">Last changed 2 months ago</p>
+            </div>
+          </div>
+          <button className="px-4 py-1.5 rounded-lg border border-white/10 text-xs font-semibold text-white/70 hover:text-white hover:bg-white/5">Change &gt;</button>
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-border-base rounded-2xl">
+          <div className="flex gap-4">
+            <div className="mt-1"><Shield className="w-5 h-5 text-blue-400" /></div>
+            <div>
+              <p className="text-sm font-bold text-white">Two-Factor Authentication</p>
+              <p className="text-xs text-white/50 mt-0.5">Add an extra layer of security.</p>
+            </div>
+          </div>
+          <button className="px-4 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold">Enrolled</button>
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-border-base rounded-2xl">
+          <div className="flex gap-4">
+            <div className="mt-1"><LinkIcon className="w-5 h-5 text-blue-400" /></div>
+            <div>
+              <p className="text-sm font-bold text-white">Passkeys</p>
+              <p className="text-xs text-white/50 mt-0.5">Use biometrics or security keys.</p>
+            </div>
+          </div>
+          <button className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">Manage &gt;</button>
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-border-base rounded-2xl">
+          <div className="flex gap-4">
+            <div className="mt-1"><Clock className="w-5 h-5 text-white/40" /></div>
+            <div>
+              <p className="text-sm font-bold text-white">Login Sessions</p>
+              <p className="text-xs text-white/50 mt-0.5">View and manage your active sessions.</p>
+            </div>
+          </div>
+          <button className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-xs font-semibold transition-colors">View Sessions</button>
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-border-base rounded-2xl">
+          <div className="flex gap-4">
+            <div className="mt-1"><Shield className="w-5 h-5 text-white/40" /></div>
+            <div>
+              <p className="text-sm font-bold text-white">Login History</p>
+              <p className="text-xs text-white/50 mt-0.5">See recent account activity.</p>
+            </div>
+          </div>
+          <button className="px-4 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-xs font-semibold transition-colors">View History</button>
+        </div>
+      </div>
+      
+      <div className="mt-6 flex items-start gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
+        <Lock className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-bold text-emerald-400">Keep your account secure</p>
+          <p className="text-xs text-emerald-400/70 mt-1 leading-relaxed">Enable two-factor authentication to protect your account from unauthorized access.</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderNotifications = () => (
+    <div className="p-4 sm:p-6 pb-24 max-w-3xl mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => setActiveTab("main")} className="p-2 -ml-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-xl font-bold text-white">Notifications</h1>
+      </div>
+      
+      <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-3xl p-5 mb-8 flex items-center gap-4">
+        <div className="w-12 h-12 bg-yellow-500/20 rounded-2xl flex items-center justify-center text-yellow-400">
+          <Bell className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="font-bold text-white">Notifications</h2>
+          <p className="text-xs text-white/60 mt-1">Choose what you want to be notified about.</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2"><Bell className="w-3.5 h-3.5"/> Email Notifications</h3>
+        
+        <div className="space-y-0.5 bg-white/[0.02] border border-border-base rounded-3xl overflow-hidden">
+          {[
+            { title: "Product updates", desc: "News about new features and improvements.", active: true },
+            { title: "Security alerts", desc: "Important security notifications.", active: true },
+            { title: "Project activity", desc: "Updates on your projects.", active: true },
+            { title: "Team updates", desc: "Activity from your teams.", active: true },
+            { title: "Marketing", desc: "Tips, guides and promotional content.", active: false }
+          ].map((item, i) => (
+            <div key={i} className="flex items-center justify-between p-4 border-b border-border-base last:border-0 bg-bg-base/50">
+              <div>
+                <p className="text-sm font-bold text-white">{item.title}</p>
+                <p className="text-xs text-white/50 mt-0.5">{item.desc}</p>
+              </div>
+              <div className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 ${item.active ? "bg-blue-600" : "bg-white/10"}`}>
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform ${item.active ? "translate-x-4" : ""}`} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="pt-4 space-y-3">
+          <button className="w-full flex items-center justify-between p-4 bg-white/[0.02] border border-border-base rounded-2xl hover:bg-white/[0.04] transition-colors">
+            <div className="flex gap-4 items-center">
+              <Bell className="w-5 h-5 text-yellow-400" />
+              <p className="text-sm font-bold text-white">Push Notifications</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/30" />
+          </button>
+          
+          <button className="w-full flex items-center justify-between p-4 bg-white/[0.02] border border-border-base rounded-2xl hover:bg-white/[0.04] transition-colors">
+            <div className="flex gap-4 items-center">
+              <Activity className="w-5 h-5 text-rose-400" />
+              <p className="text-sm font-bold text-white">In-App Notifications</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/30" />
+          </button>
+
+          <button className="w-full flex items-center justify-between p-4 bg-white/[0.02] border border-border-base rounded-2xl hover:bg-white/[0.04] transition-colors">
+            <div className="flex gap-4 items-center">
+              <Clock className="w-5 h-5 text-purple-400" />
+              <p className="text-sm font-bold text-white">Notification Frequency</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/30" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-bg-base">
       <Navbar />
       <div className="pt-16 min-h-screen">
         {activeTab === "main" && renderMain()}
         {activeTab === "account" && renderAccount()}
+        {activeTab === "security" && renderSecurity()}
+        {activeTab === "notifications" && renderNotifications()}
         {activeTab === "appearance" && (
            <div className="p-4 sm:p-6 pb-24 max-w-3xl mx-auto">
              <div className="flex items-center gap-3 mb-6">
@@ -206,3 +366,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
