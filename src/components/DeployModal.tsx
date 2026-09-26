@@ -167,52 +167,64 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
       const projectDoc = await getDoc(doc(db, "projects", projectId));
       const projectData = projectDoc.data();
       
-      let finalDeployUrl = "";
-
-      if (deployMethod === "vercel") {
-        const response = await fetch("/api/deploy/vercel", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
-          },
-          body: JSON.stringify({
-            projectId,
-            files,
-            framework: projectData?.framework || "Unknown",
-          }),
-        });
-
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || "Cloud Run deployment failed");
-        }
-        finalDeployUrl = data.url;
+      // Calculate canonical DevOS URL
+      const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
+      let devosUrl = "";
+      if (projectData?.systemType === "portfolio" || projectName.toLowerCase().includes("portfolio") || projectName.toLowerCase().includes("portflolio")) {
+        devosUrl = buildPortfolioUrl(username);
       } else {
-        const projectSlug = projectData?.projectSlug || `${projectName.toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 7)}`;
-        if (projectData?.systemType === "portfolio" || projectName.toLowerCase().includes("portfolio") || projectName.toLowerCase().includes("portflolio")) {
-          finalDeployUrl = buildPortfolioUrl(username);
-        } else {
-          finalDeployUrl = buildProjectUrl(username, projectSlug);
-        }
-        
-        const projectRef = doc(db, "projects", projectId);
-        await updateDoc(projectRef, {
-          projectSlug,
-          deployUrl: finalDeployUrl,
-          liveUrl: finalDeployUrl,
-          title: projectName,
-          ownerUsername: username,
-          entryFile,
-          isPublic: true,
-          deployStatus: "success",
-          lastDeployedAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
+        devosUrl = buildProjectUrl(username, projectSlug, projectData?.appId);
       }
 
+      let vercelUrl = "";
+      let finalDeployUrl = devosUrl;
+
+      if (deployMethod === "vercel") {
+        try {
+          const response = await fetch("/api/deploy/vercel", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
+            },
+            body: JSON.stringify({
+              projectId,
+              files,
+              framework: projectData?.framework || "Unknown",
+              devosUrl,
+            }),
+          });
+
+          const data = await response.json();
+          if (response.ok && data.success) {
+            vercelUrl = data.vercelUrl || data.url;
+            finalDeployUrl = devosUrl;
+          } else {
+            console.warn("Vercel deployment unconfigured, falling back to DevOS edge:", data?.error);
+          }
+        } catch (e) {
+          console.warn("Vercel deployment fetch error, defaulting to DevOS URL:", e);
+        }
+      }
+
+      const projectRef = doc(db, "projects", projectId);
+      await updateDoc(projectRef, {
+        projectSlug,
+        deployUrl: finalDeployUrl,
+        liveUrl: finalDeployUrl,
+        ...(vercelUrl ? { vercelUrl, deployTarget: "vercel" } : { deployTarget: deployMethod }),
+        title: projectName,
+        ownerUsername: username,
+        entryFile,
+        isPublic: true,
+        deployed: true,
+        deployStatus: "success",
+        lastDeployedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
       // Record deployment in the deployments collection
-      await createDeployment(projectId, auth.currentUser.uid, username, finalDeployUrl, deployMethod);
+      await createDeployment(projectId, auth.currentUser.uid, username, finalDeployUrl, deployMethod, vercelUrl);
 
       setDeployedUrl(finalDeployUrl);
       setStep("success");
@@ -429,7 +441,7 @@ export default function DeployModal({ isOpen, onClose, projectName, projectId, f
                     Deployment successful. Your application is now accessible worldwide.
                   </p>
                   
-                  <div className="w-full p-2 rounded-2xl bg-black/40 border border-border-base flex items-center gap-3 mb-10 group">
+                  <div className="w-full p-2 rounded-2xl bg-black/40 border border-border-base flex items-center gap-3 mb-3 group">
                     <div className="flex-1 px-4 py-3 rounded-xl bg-white/5 font-mono text-sm text-blue-400 truncate text-left">
                       {deployedUrl}
                     </div>

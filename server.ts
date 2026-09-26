@@ -2261,7 +2261,7 @@ app.post("/api/deploy/vercel", express.json({ limit: "50mb" }), async (req, res)
     return res.status(401).json({ error: "Invalid token" });
   }
 
-  const { projectId, files, framework } = req.body;
+  const { projectId, files, framework, devosUrl } = req.body;
   if (!projectId || !files || !Array.isArray(files)) return res.status(400).json({ error: "Missing required fields" });
 
   const jobId = Math.random().toString(36).slice(2, 10);
@@ -2327,17 +2327,21 @@ app.post("/api/deploy/vercel", express.json({ limit: "50mb" }), async (req, res)
     emitLog("info", "Configuring DevOS proxy to wrap the deployment...");
 
     // Update project with real URL
+    const effectiveDeployUrl = devosUrl || deployUrl;
+
+    // Update project with real URL and DevOS vanity domain
     await admin.firestore().collection("projects").doc(projectId).update({
       vercelUrl: deployUrl,
-      deployUrl: deployUrl, // We store the vercel URL, but SubdomainRouter will iframe it
+      deployUrl: effectiveDeployUrl,
+      liveUrl: effectiveDeployUrl,
       deployTarget: "vercel",
       deployStatus: "success",
       lastDeployedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    (globalThis as any).__devosIo?.to(projectId).emit("build-complete", { jobId, status: "success", previewUrl: deployUrl });
+    (globalThis as any).__devosIo?.to(projectId).emit("build-complete", { jobId, status: "success", previewUrl: effectiveDeployUrl });
 
-    return res.json({ success: true, url: deployUrl, duration: Date.now() - startedAt });
+    return res.json({ success: true, url: effectiveDeployUrl, vercelUrl: deployUrl, duration: Date.now() - startedAt });
   } catch (err: any) {
     const errorMsg = String(err?.message || "Vercel deployment failed");
     emitLog("error", errorMsg);

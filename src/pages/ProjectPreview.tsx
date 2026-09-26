@@ -46,6 +46,13 @@ export default function ProjectPreview() {
         const projectData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Project;
         setProject(projectData);
         
+        // If deployed to Vercel edge, render live build directly
+        if (projectData.vercelUrl) {
+          setIframeUrl(projectData.vercelUrl);
+          setLoading(false);
+          return;
+        }
+
         // 2. Fetch files for the project
         const filesSnapshot = await getDocs(collection(db, "projects", projectData.id, "files"));
         const filesData = filesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FileData[];

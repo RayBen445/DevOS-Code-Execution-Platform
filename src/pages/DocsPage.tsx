@@ -738,7 +738,7 @@ export default function DocsPage() {
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }} 
               className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-purple-600/20 blur-[120px]" 
             />
-            <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02] mix-blend-overlay" />
+            <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none opacity-40 mix-blend-overlay" />
           </div>
           <div className="relative flex flex-col gap-6">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">

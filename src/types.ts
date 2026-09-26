@@ -531,6 +531,8 @@ export interface Deployment {
   username: string;
   /** Public URL of the deployed project, e.g. https://project.username.devos.kontyra.name.ng */
   url: string;
+  /** Underlying edge host URL if deployed through Vercel */
+  vercelUrl?: string;
   /** Per-commit preview URL, e.g. /@username/slug-a1b2c3 */
   previewUrl?: string | null;
   /** Git branch this deployment belongs to (default: "main") */

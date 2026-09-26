@@ -197,14 +197,20 @@ export default function SubdomainProject({ slug, ownerUsername, appId }: Props) 
   }
 
   // If we have a liveUrl or deployUrl, redirect/iframe it
-  const externalUrl = project.liveUrl || project.deployUrl;
-  if (externalUrl && !htmlContent) {
+  // If project has a vercelUrl or external edge host, render it seamlessly under DevOS custom URL
+  const frameSource = project.vercelUrl || (
+    (project.liveUrl || project.deployUrl) && (project.liveUrl || project.deployUrl) !== window.location.href
+      ? (project.liveUrl || project.deployUrl)
+      : null
+  );
+
+  if (project.vercelUrl || (frameSource && !htmlContent)) {
     return (
       <iframe
-        src={externalUrl}
+        src={project.vercelUrl || frameSource!}
         title={project.title || project.name}
         className="w-full h-screen border-0"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
       />
     );
   }
