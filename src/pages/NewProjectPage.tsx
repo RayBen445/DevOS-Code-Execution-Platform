@@ -221,7 +221,7 @@ export default function NewProjectPage() {
         )}>
           <div className="max-w-4xl mx-auto pb-24 lg:pb-8">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight mb-2">Create New Project</h2>
-            <p className="text-white/40 text-sm sm:text-base lg:text-lg mb-6 sm:mb-8">Select a template or start from scratch.</p>
+            <p className="text-slate-300 text-sm sm:text-base lg:text-lg mb-6 sm:mb-8">Select a template or start from scratch.</p>
             
             {/* Categories filter - horizontally scrollable on mobile */}
             <div className="flex gap-2 overflow-x-auto pb-3 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar touch-pan-x">
@@ -233,7 +233,7 @@ export default function NewProjectPage() {
                     "px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all shrink-0",
                     selectedCategory === cat 
                       ? "bg-white text-black shadow-md" 
-                      : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-white/5"
+                      : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/10"
                   )}
                 >
                   {cat}
@@ -272,13 +272,13 @@ export default function NewProjectPage() {
                           <Icon className={cn("w-5 h-5 sm:w-6 sm:h-6", isSelected ? "text-white" : "text-white/60")} />
                         </div>
                         <h3 className="text-base sm:text-lg font-bold text-white mb-1.5 leading-snug">{template.name}</h3>
-                        <p className="text-xs sm:text-sm text-white/40 line-clamp-2 leading-relaxed">{template.description}</p>
+                        <p className="text-xs sm:text-sm text-slate-300 line-clamp-2 leading-relaxed">{template.description}</p>
                       </div>
 
                       {template.category && (
                         <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-white/30">{template.category}</span>
-                          <span className={cn("font-semibold text-xs", isSelected ? "text-blue-400" : "text-white/30 group-hover:text-white/60")}>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">{template.category}</span>
+                          <span className={cn("font-semibold text-xs", isSelected ? "text-blue-400" : "text-slate-400 group-hover:text-slate-200")}>
                             {isSelected ? "Selected" : "Select"}
                           </span>
                         </div>
@@ -292,7 +292,7 @@ export default function NewProjectPage() {
           {/* Mobile floating bar to continue to details */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-[#0d0d10]/95 backdrop-blur-xl border-t border-white/10 z-30 flex items-center justify-between gap-3 shadow-2xl">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium text-white/50 uppercase tracking-wider">Template selected</p>
+              <p className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider">Template selected</p>
               <p className="text-sm font-bold text-white truncate">{selectedTemplate.name}</p>
             </div>
             <button
@@ -315,7 +315,7 @@ export default function NewProjectPage() {
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl sm:text-2xl font-bold text-white mb-1.5">Configure Project</h3>
-                <p className="text-white/40 text-xs sm:text-sm">Set up your workspace and project details.</p>
+                <p className="text-slate-300 text-xs sm:text-sm">Set up your workspace and project details.</p>
               </div>
 
               {/* Template preview badge */}
@@ -352,14 +352,14 @@ export default function NewProjectPage() {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
                     <Folder className="w-3.5 h-3.5" /> Project Name
                   </label>
                   <input
                     type="text"
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm sm:text-base text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-white/20"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm sm:text-base text-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-500"
                     placeholder="e.g. NextJS Awesome App"
                     required
                     autoFocus
@@ -367,19 +367,19 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
-                    Description <span className="text-white/20 lowercase font-normal">(optional)</span>
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                    Description <span className="text-slate-400 lowercase font-normal">(optional)</span>
                   </label>
                   <textarea
                     value={newProjectDescription}
                     onChange={(e) => setNewProjectDescription(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm sm:text-base text-white focus:outline-none focus:border-blue-500 transition-all h-20 sm:h-24 resize-none placeholder:text-white/20"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm sm:text-base text-white focus:outline-none focus:border-blue-500 transition-all h-20 sm:h-24 resize-none placeholder:text-slate-500"
                     placeholder="Briefly describe what this project does..."
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
                     <Globe className="w-3.5 h-3.5" /> Visibility
                   </label>
                   <div className="grid grid-cols-2 gap-2.5">
@@ -390,13 +390,13 @@ export default function NewProjectPage() {
                         "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all",
                         visibility === "public"
                           ? "bg-blue-600/15 border-blue-500 text-white"
-                          : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10"
+                          : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
                       )}
                     >
                       <Globe className="w-4 h-4 shrink-0 text-blue-400" />
                       <div>
                         <p className="text-xs font-bold leading-tight">Public</p>
-                        <p className="text-[10px] text-white/40 mt-0.5">Everyone</p>
+                        <p className="text-[10px] text-slate-300 mt-0.5">Everyone</p>
                       </div>
                     </button>
                     <button
@@ -406,20 +406,20 @@ export default function NewProjectPage() {
                         "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all",
                         visibility === "private"
                           ? "bg-blue-600/15 border-blue-500 text-white"
-                          : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10"
+                          : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
                       )}
                     >
                       <Lock className="w-4 h-4 shrink-0 text-amber-400" />
                       <div>
                         <p className="text-xs font-bold leading-tight">Private</p>
-                        <p className="text-[10px] text-white/40 mt-0.5">Only you</p>
+                        <p className="text-[10px] text-slate-300 mt-0.5">Only you</p>
                       </div>
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest">License <span className="text-white/20 lowercase font-normal">(optional)</span></label>
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-widest">License <span className="text-slate-400 lowercase font-normal">(optional)</span></label>
                   <select
                     value={selectedLicense}
                     onChange={(e) => setSelectedLicense(e.target.value)}
@@ -442,7 +442,7 @@ export default function NewProjectPage() {
                   "w-full py-3.5 sm:py-4 rounded-xl font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-base sm:text-lg shadow-lg",
                   newProjectName.trim() && !isSubmitting
                     ? "bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/25" 
-                    : "bg-white/5 text-white/30 cursor-not-allowed"
+                    : "bg-white/5 text-slate-500 cursor-not-allowed"
                 )}
               >
                 <Rocket className="w-5 h-5" />

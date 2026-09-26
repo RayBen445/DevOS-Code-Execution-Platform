@@ -43,7 +43,7 @@ export default function NotFoundPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="text-white/40 text-sm leading-relaxed mb-10 max-w-sm mx-auto"
+            className="text-slate-300 text-sm leading-relaxed mb-10 max-w-sm mx-auto"
           >
             Looks like this page doesn't exist — maybe the URL changed, the page was removed, or
             you followed a broken link.
@@ -64,14 +64,14 @@ export default function NotFoundPage() {
             </Link>
             <button
               onClick={() => window.history.back()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-border-base rounded-xl font-bold text-sm transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-border-base rounded-xl font-bold text-sm transition-all"
             >
               <ArrowLeft className="w-4 h-4" />
               Go Back
             </button>
             <Link
               to="/search"
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-border-base rounded-xl font-bold text-sm transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-border-base rounded-xl font-bold text-sm transition-all"
             >
               <Search className="w-4 h-4" />
               Search
@@ -85,7 +85,7 @@ export default function NotFoundPage() {
             transition={{ delay: 0.5 }}
             className="mt-12 pt-8 border-t border-white/[0.06]"
           >
-            <p className="text-xs text-white/25 uppercase tracking-widest font-bold mb-4">
+            <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-4">
               Helpful links
             </p>
             <div className="flex flex-wrap justify-center gap-3 text-sm">
@@ -100,7 +100,7 @@ export default function NotFoundPage() {
                 <Link
                   key={to}
                   to={to}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-slate-400 hover:text-white transition-colors"
                 >
                   {label}
                 </Link>

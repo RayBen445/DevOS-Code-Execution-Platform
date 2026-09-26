@@ -71,7 +71,7 @@ export default function ContactPage() {
     }
   };
 
-  const inputCls = "w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/60 transition-all text-sm";
+  const inputCls = "w-full bg-white/5 border border-border-base rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/60 transition-all text-sm";
 
   return (
     <div className="min-h-screen bg-base text-white flex flex-col">
@@ -84,7 +84,7 @@ export default function ContactPage() {
         </div>
         <div className="relative max-w-4xl mx-auto text-center">
           <div className="mb-6 text-left">
-            <button onClick={() => window.history.back()} className="inline-flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors">
+            <button onClick={() => window.history.back()} className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" />
               Back
             </button>
@@ -100,7 +100,7 @@ export default function ContactPage() {
                 hear from you.
               </span>
             </h1>
-            <p className="text-lg text-white/50 max-w-xl mx-auto leading-relaxed">
+            <p className="text-lg text-slate-300 max-w-xl mx-auto leading-relaxed">
               Have a question, bug report, or partnership inquiry? Drop us a message and we'll get back to you as soon as possible.
             </p>
           </motion.div>
@@ -122,25 +122,25 @@ export default function ContactPage() {
             </div>
 
             <div className="border-t border-border-base pt-6">
-              <p className="text-xs font-bold text-white/30 uppercase tracking-widest mb-4">Find Us Online</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Find Us Online</p>
               <div className="flex flex-col gap-3">
                 {config.githubUrl && (
                   <a href={config.githubUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-sm text-white/50 hover:text-white transition-colors">
+                    className="flex items-center gap-3 text-sm text-slate-300 hover:text-white transition-colors">
                     <Github className="w-4 h-4 flex-shrink-0" />
                     {config.githubUrl.replace("https://", "")}
                   </a>
                 )}
                 {config.twitterUrl && (
                   <a href={config.twitterUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-sm text-white/50 hover:text-white transition-colors">
+                    className="flex items-center gap-3 text-sm text-slate-300 hover:text-white transition-colors">
                     <Twitter className="w-4 h-4 flex-shrink-0" />
                     {config.twitterUrl.replace("https://", "")}
                   </a>
                 )}
                 {config.websiteUrl && (
                   <a href={config.websiteUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-sm text-white/50 hover:text-white transition-colors">
+                    className="flex items-center gap-3 text-sm text-slate-300 hover:text-white transition-colors">
                     <Globe className="w-4 h-4 flex-shrink-0" />
                     {config.websiteUrl.replace("https://", "")}
                   </a>
@@ -150,7 +150,7 @@ export default function ContactPage() {
 
             <div className="p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10">
               <p className="text-xs font-bold text-blue-400 mb-2 uppercase tracking-widest">For Bugs & Issues</p>
-              <p className="text-sm text-white/50 leading-relaxed">
+              <p className="text-sm text-slate-300 leading-relaxed">
                 Please include steps to reproduce, browser/OS, and any console errors.
                 Screenshots are always helpful!
               </p>
@@ -182,7 +182,7 @@ export default function ContactPage() {
 
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Your Name</label>
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Your Name</label>
                       <input
                         type="text"
                         placeholder="Jane Smith"
@@ -193,7 +193,7 @@ export default function ContactPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Email Address</label>
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Email Address</label>
                       <input
                         type="email"
                         placeholder="jane@example.com"
@@ -206,7 +206,7 @@ export default function ContactPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Topic</label>
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Topic</label>
                     <CustomSelect
                       value={topic}
                       onChange={setTopic}
@@ -215,7 +215,7 @@ export default function ContactPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Message</label>
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Message</label>
                     <textarea
                       placeholder="Tell us what's on your mind…"
                       value={message}
@@ -235,7 +235,7 @@ export default function ContactPage() {
                     {loading ? "Sending…" : "Send Message"}
                   </button>
 
-                  <p className="text-xs text-white/20 text-center">
+                  <p className="text-xs text-slate-400 text-center">
                     Your message is sent directly to the DevOS admin dashboard.
                   </p>
                 </form>
@@ -255,14 +255,14 @@ function ContactDetail({ icon: Icon, label, value, href }: { icon: React.Element
   return (
     <div className="flex items-start gap-3">
       <div className="w-9 h-9 rounded-xl bg-white/5 border border-border-base flex items-center justify-center flex-shrink-0 mt-0.5">
-        <Icon className="w-4 h-4 text-white/40" />
+        <Icon className="w-4 h-4 text-slate-400" />
       </div>
       <div>
-        <p className="text-xs text-white/30 font-semibold mb-0.5">{label}</p>
+        <p className="text-xs text-slate-400 font-semibold mb-0.5">{label}</p>
         {href ? (
-          <a href={href} className="text-sm text-white/70 hover:text-white transition-colors">{value}</a>
+          <a href={href} className="text-sm text-slate-200 hover:text-white transition-colors">{value}</a>
         ) : (
-          <p className="text-sm text-white/70">{value}</p>
+          <p className="text-sm text-slate-200">{value}</p>
         )}
       </div>
     </div>

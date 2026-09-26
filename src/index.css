@@ -40,12 +40,12 @@ body {
 /* ── Theme CSS variables (defaults = dark theme) ───────────────────────────── */
 :root {
   --primary-color: #3b82f6;
-  --bg-base:        #0B0F17;
-  --bg-surface:     #111827;
-  --bg-card:        #111111;
+  --bg-base:        #06070a;
+  --bg-surface:     #0c0d14;
+  --bg-card:        #0e1017;
   --border-base:    rgba(255,255,255,0.08);
   --text-primary:   #ffffff;
-  --text-secondary: rgba(255,255,255,0.5);
+  --text-secondary: rgba(255,255,255,0.75);
   --accent:         #3b82f6;
   --accent-hover:   #2563eb;
   --radius-md:      0.75rem;
@@ -93,6 +93,19 @@ body {
   @apply antialiased;
   font-family: var(--font-sans);
 }
+
+
+/* ── Global Contrast Enhancement for text-white alpha classes ────────────── */
+.text-white\/10 { color: rgba(255, 255, 255, 0.35); }
+.text-white\/15 { color: rgba(255, 255, 255, 0.40); }
+.text-white\/20 { color: rgba(255, 255, 255, 0.48); }
+.text-white\/25 { color: rgba(255, 255, 255, 0.55); }
+.text-white\/30 { color: rgba(255, 255, 255, 0.62); }
+.text-white\/35 { color: rgba(255, 255, 255, 0.68); }
+.text-white\/40 { color: rgba(255, 255, 255, 0.72); }
+.text-white\/50 { color: rgba(255, 255, 255, 0.80); }
+.text-white\/60 { color: rgba(255, 255, 255, 0.86); }
+.text-white\/70 { color: rgba(255, 255, 255, 0.92); }
 
 /* ── Custom scrollbar ──────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {

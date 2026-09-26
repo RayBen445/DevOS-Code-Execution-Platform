@@ -74,7 +74,7 @@ export default function AboutPage() {
         </div>
         <div className="relative max-w-4xl mx-auto text-center">
           <div className="mb-6 text-left">
-            <button onClick={() => window.history.back()} className="inline-flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors">
+            <button onClick={() => window.history.back()} className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" />
               Back
             </button>
@@ -90,7 +90,7 @@ export default function AboutPage() {
                 for builders.
               </span>
             </h1>
-            <p className="text-lg text-white/50 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
               {PRODUCT_BRAND_NAME} started as a frustration — too much time wasted on environment setup, config files, and deployment complexity.
               We built a cloud IDE that removes all of that, so developers can focus on what they love: writing code and shipping products.
             </p>
@@ -105,7 +105,7 @@ export default function AboutPage() {
             {STATS.map(({ value, label }) => (
               <div key={label} className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-center">
                 <p className="text-4xl font-black text-white mb-1">{value}</p>
-                <p className="text-xs font-bold text-white/30 uppercase tracking-widest">{label}</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</p>
               </div>
             ))}
           </motion.div>
@@ -121,12 +121,12 @@ export default function AboutPage() {
               <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-5">
                 Make great software accessible to everyone.
               </h2>
-              <p className="text-white/50 leading-relaxed mb-4">
+              <p className="text-slate-300 leading-relaxed mb-4">
                 We believe that infrastructure should be invisible. Whether you're a solo developer prototyping your next idea
                 or a team of 50 shipping a production product, DevOS gives you the same professional-grade tooling —
                 without the operational burden.
               </p>
-              <p className="text-white/50 leading-relaxed">
+              <p className="text-slate-300 leading-relaxed">
                 From browser-based coding to instant deployments and organisation management, every feature is designed
                 to remove friction and put creativity first.
               </p>
@@ -143,7 +143,7 @@ export default function AboutPage() {
                 <div key={label} className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col gap-2">
                   <Icon className="w-5 h-5 text-blue-400" />
                   <p className="text-sm font-bold text-white">{label}</p>
-                  <p className="text-xs text-white/30">{desc}</p>
+                  <p className="text-xs text-slate-400">{desc}</p>
                 </div>
               ))}
             </div>
@@ -155,7 +155,7 @@ export default function AboutPage() {
       <section className="px-6 pb-24 bg-white/[0.02]">
         <div className="max-w-5xl mx-auto py-20">
           <motion.div {...fadeUp} className="text-center mb-12">
-            <p className="text-xs font-bold text-white/30 uppercase tracking-widest mb-3">What We Believe</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">What We Believe</p>
             <h2 className="text-3xl font-black tracking-tight">Our core values</h2>
           </motion.div>
           <div className="grid md:grid-cols-2 gap-6">
@@ -173,7 +173,7 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white mb-1.5">{title}</h3>
-                  <p className="text-sm text-white/50 leading-relaxed">{body}</p>
+                  <p className="text-sm text-slate-300 leading-relaxed">{body}</p>
                 </div>
               </motion.div>
             ))}
@@ -185,7 +185,7 @@ export default function AboutPage() {
       <section className="px-6 pb-24">
         <div className="max-w-5xl mx-auto">
           <motion.div {...fadeUp} className="text-center mb-12">
-            <p className="text-xs font-bold text-white/30 uppercase tracking-widest mb-3">The People</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">The People</p>
             <h2 className="text-3xl font-black tracking-tight">Who builds DevOS</h2>
           </motion.div>
           <div className="flex flex-wrap justify-center gap-6">
@@ -198,7 +198,7 @@ export default function AboutPage() {
                 <img src={avatar} alt={name} className="w-16 h-16 rounded-full object-cover border-2 border-border-base" referrerPolicy="no-referrer" />
                 <div className="text-center">
                   <p className="font-bold text-white text-sm">@{name}</p>
-                  <p className="text-xs text-white/40 mt-0.5">{role}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{role}</p>
                 </div>
               </motion.div>
             ))}
@@ -216,7 +216,7 @@ export default function AboutPage() {
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent" />
             <Zap className="w-10 h-10 text-blue-400 mx-auto mb-5" />
             <h2 className="text-3xl font-black tracking-tight mb-3">Ready to start building?</h2>
-            <p className="text-white/50 mb-8 max-w-md mx-auto">
+            <p className="text-slate-300 mb-8 max-w-md mx-auto">
               Join thousands of developers already shipping faster with DevOS.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">

@@ -99,7 +99,7 @@ export default function StatusPage() {
           {/* Header */}
           <div>
             <h1 className="text-4xl font-extrabold tracking-tight mb-2">DevOS Status</h1>
-            <p className="text-white/40 text-sm">Real-time platform health information</p>
+            <p className="text-slate-300 text-sm">Real-time platform health information</p>
           </div>
 
           {/* Overall status banner */}
@@ -110,7 +110,7 @@ export default function StatusPage() {
 
           {/* Services */}
           <div>
-            <h2 className="text-sm font-bold uppercase tracking-widest text-white/30 mb-4">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">
               Services
             </h2>
             <div className="divide-y divide-white/5 rounded-2xl border border-border-base overflow-hidden">
@@ -120,11 +120,11 @@ export default function StatusPage() {
                   className="flex items-center justify-between px-6 py-4 bg-card hover:bg-white/[0.02] transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Activity className="w-4 h-4 text-white/20" />
-                    <span className="font-medium text-white/80">{service.name}</span>
+                    <Activity className="w-4 h-4 text-slate-400" />
+                    <span className="font-semibold text-white">{service.name}</span>
                   </div>
                   <div className="flex items-center gap-6">
-                    <span className="text-xs text-white/30 font-mono hidden sm:block">
+                    <span className="text-xs text-slate-400 font-mono hidden sm:block">
                       {service.uptime} uptime
                     </span>
                     <StatusBadge status={service.status} />
@@ -136,13 +136,13 @@ export default function StatusPage() {
 
           {/* Incidents */}
           <div>
-            <h2 className="text-sm font-bold uppercase tracking-widest text-white/30 mb-4">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">
               Incidents
             </h2>
             <div className="rounded-2xl border border-border-base bg-card px-6 py-8 flex flex-col items-center gap-3 text-center">
               <CheckCircle2 className="w-8 h-8 text-green-500/50" />
-              <p className="text-white/40 text-sm">No active incidents. Everything is running smoothly.</p>
-              <p className="text-white/20 text-xs">Last checked: {new Date().toUTCString()}</p>
+              <p className="text-slate-300 text-sm">No active incidents. Everything is running smoothly.</p>
+              <p className="text-slate-400 text-xs">Last checked: {new Date().toUTCString()}</p>
             </div>
           </div>
         </motion.div>

@@ -23,7 +23,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-8">
         <h2 className="text-4xl font-bold text-white mb-3">Getting Started</h2>
-        <p className="text-lg text-white/50 mb-8 max-w-3xl">Documentation and guides for building on DevOS</p>
+        <p className="text-lg text-slate-300 mb-8 max-w-3xl">Documentation and guides for building on DevOS</p>
         <Step number={1} title="Create an account">
           Sign up with your email or Google account. Once logged in, you'll land on your personal dashboard.
         </Step>
@@ -52,7 +52,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Projects</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Projects are the core unit of DevOS. Each project has its own file system, environment, and URL.
         </p>
         <Section title="Project homepage">
@@ -93,7 +93,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Deployment</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Deploy your project to a live URL with a single click. No configuration needed.
         </p>
         <Section title="How it works">
@@ -130,7 +130,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Portfolio</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Every DevOS account comes with a personal portfolio page at{" "}
           <code className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-sm">
             {buildPortfolioUrl("&lt;username&gt;").replace("https://", "")}
@@ -168,7 +168,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Templates</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Templates are pre-built starting points shared by the DevOS community or created by the
           DevOS team.
         </p>
@@ -194,7 +194,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Credits</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Credits are the currency used to run code, deploy projects, and access AI features in DevOS.
         </p>
         <Section title="Free daily credits">
@@ -228,7 +228,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Organizations</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Organizations let teams collaborate under a shared identity. Every org has a public page
           at{" "}
           <code className="px-1 py-0.5 bg-white/10 rounded text-blue-300 text-sm">
@@ -261,7 +261,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Community &amp; Feed</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Connect with other developers, share your work, and discover projects through the DevOS
           social layer.
         </p>
@@ -299,7 +299,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Git Sync</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Push your DevOS project files directly to a GitHub repository without leaving the browser.
         </p>
         <Step number={1} title="Connect GitHub">
@@ -327,7 +327,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Activity &amp; Streaks</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           DevOS tracks your coding consistency with daily and monthly activity streaks.
         </p>
         <Section title="Daily streak">
@@ -360,7 +360,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Collaboration</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Work on projects together with other DevOS users in real time.
         </p>
         <Section title="Adding collaborators">
@@ -430,7 +430,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Communities</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Communities are shared spaces where developers with similar interests collaborate, share projects, and chat in real time.
         </p>
         <Section title="Creating a community">
@@ -461,7 +461,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Organizations</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Organizations let teams collaborate on projects with fine-grained role-based access control (RBAC).
         </p>
         <Section title="Roles">
@@ -486,7 +486,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Learning Platform</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           The built-in learning platform lets you study programming concepts without leaving DevOS.
         </p>
         <Section title="Topics &amp; lessons">
@@ -508,7 +508,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Events</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           DevOS hosts developer events — hackathons, workshops, AMAs, and more.
         </p>
         <Section title="Submitting an event">
@@ -530,7 +530,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Plugin Marketplace</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           The Plugin Marketplace is coming soon — a curated registry of first- and third-party plugins that extend your DevOS projects with one click.
         </p>
         <Section title="Official plugins">
@@ -552,7 +552,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Credits</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Credits power AI-assisted features and deployments on DevOS.
         </p>
         <Section title="Daily &amp; monthly credits">
@@ -577,7 +577,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Branching &amp; Pull Requests</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Create branches from the Git panel, switch between them, open PRs with source→target branch, and merge with one click.
         </p>
         <Section title="Creating a branch">
@@ -599,7 +599,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Keyboard Shortcuts</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           Find the full shortcut reference in <strong>Settings → Accessibility</strong>.
         </p>
         <Section title="Opening the reference">
@@ -621,7 +621,7 @@ const sections: DocSection[] = [
     content: (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Bot System</h2>
-        <p className="text-white/60 leading-relaxed">
+        <p className="text-slate-300 leading-relaxed">
           DevOS runs 12 built-in automation bots: Deploy, Credit, Feed, Notification, Welcome, Activity, Milestone, Moderation, Plugin, Search Index, Project Health, and Debug.
         </p>
         <Section title="Deploy Bot">
@@ -751,11 +751,11 @@ export default function DocsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3 min-w-[220px]">
                 <div className="rounded-2xl border border-border-base bg-white/5 px-4 py-3">
-                  <p className="text-xs uppercase tracking-widest text-white/40">Sections</p>
+                  <p className="text-xs uppercase tracking-widest text-slate-300 font-semibold">Sections</p>
                   <p className="text-2xl font-bold text-white">{sections.length}</p>
                 </div>
                 <div className="rounded-2xl border border-border-base bg-white/5 px-4 py-3">
-                  <p className="text-xs uppercase tracking-widest text-white/40">Host</p>
+                  <p className="text-xs uppercase tracking-widest text-slate-300 font-semibold">Host</p>
                   <p className="text-sm font-semibold text-white/80">{DEVOS_PRODUCT_HOST}</p>
                 </div>
               </div>
@@ -768,7 +768,7 @@ export default function DocsPage() {
                   placeholder="Search docs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent text-sm text-white/70 placeholder:text-white/30 focus:outline-none w-full"
+                  className="bg-transparent text-sm text-white/70 placeholder:text-slate-400 focus:outline-none w-full"
                 />
               </div>
               <div className="flex gap-2">
@@ -794,7 +794,7 @@ export default function DocsPage() {
       <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 md:px-6 py-8 md:py-12 gap-8 relative">
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col gap-2 w-64 flex-shrink-0 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto no-scrollbar bg-[#0f1117] border border-border-base rounded-2xl p-3 shadow-lg shadow-black/30">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-2 px-2 flex-shrink-0">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-slate-300 mb-2 px-2 flex-shrink-0">
             Documentation
           </p>
           {filteredSections.map((section) => {
@@ -808,7 +808,7 @@ export default function DocsPage() {
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 relative text-left overflow-hidden group",
                   isActive
                     ? "bg-gradient-to-r from-blue-600/20 to-purple-600/5 text-blue-200 shadow-lg shadow-blue-500/10 border border-blue-500/30"
-                    : "text-white/60 hover:text-white/90 hover:bg-white/5 border border-transparent"
+                    : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent"
                 )}
               >
                 {isActive && (
@@ -835,7 +835,7 @@ export default function DocsPage() {
                     "flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all flex-shrink-0 border duration-200 shadow-sm",
                     isActive
                       ? "bg-gradient-to-r from-blue-600/20 to-purple-600/10 border-blue-500/50 text-blue-200 shadow-blue-500/15"
-                      : "bg-white/5 border-white/10 text-white/50 hover:text-white/80 hover:bg-white/10"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
                   )}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />

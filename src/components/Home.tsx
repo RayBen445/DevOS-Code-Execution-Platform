@@ -161,7 +161,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#06070a] text-white selection:bg-blue-600/30 overflow-x-hidden font-sans">
       {/* ── 1. GLOBAL KONTYRA HEADER ── */}
-      <header className="w-full bg-[#050608] border-b border-white/[0.06] text-xs text-white/70 relative z-50">
+      <header className="w-full bg-[#050608] border-b border-white/[0.06] text-xs text-slate-300 relative z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
           <div className="flex items-center gap-6 sm:gap-8">
             <Link to="/" className="flex items-center gap-2 text-white font-bold text-sm tracking-tight hover:opacity-90 transition-opacity">
@@ -169,7 +169,7 @@ export default function Home() {
               <span className="font-extrabold tracking-tight text-white text-base">Kontyra</span>
             </Link>
 
-            <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-white/60">
+            <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-300">
               <a href="#products" className="hover:text-white transition-colors">Products</a>
               <a href="#developers" className="hover:text-white transition-colors">Developers</a>
               <a href="#blog" className="hover:text-white transition-colors">Blog</a>
@@ -180,17 +180,17 @@ export default function Home() {
           <div className="flex items-center gap-4">
             <button 
               onClick={openLogin}
-              className="p-1.5 text-white/50 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              className="p-1.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
               title="Search"
             >
               <Search className="w-4 h-4" />
             </button>
             <button 
               onClick={openSignup}
-              className="hidden sm:flex items-center gap-1.5 text-white/80 hover:text-white text-xs font-semibold group transition-colors"
+              className="hidden sm:flex items-center gap-1.5 text-slate-200 hover:text-white text-xs font-semibold group transition-colors"
             >
               Explore Kontyra
-              <ArrowRight className="w-3.5 h-3.5 text-white/50 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
         </div>
@@ -209,13 +209,13 @@ export default function Home() {
               <a href="#overview" className="text-white relative py-1 after:absolute after:bottom-[-18px] after:left-0 after:right-0 after:h-[2px] after:bg-blue-500 after:rounded-full">
                 Overview
               </a>
-              <a href="#features" className="text-white/60 hover:text-white transition-colors">
+              <a href="#features" className="text-slate-300 hover:text-white transition-colors">
                 Features
               </a>
-              <a href="#integrations" className="text-white/60 hover:text-white transition-colors">
+              <a href="#integrations" className="text-slate-300 hover:text-white transition-colors">
                 Integrations
               </a>
-              <Link to="/docs" className="text-white/60 hover:text-white transition-colors">
+              <Link to="/docs" className="text-slate-300 hover:text-white transition-colors">
                 Documentation
               </Link>
             </div>
@@ -261,7 +261,7 @@ export default function Home() {
                 </span>
               </h1>
 
-              <p className="text-base sm:text-lg text-white/60 leading-relaxed mb-8 max-w-xl">
+              <p className="text-base sm:text-lg text-slate-300 leading-relaxed mb-8 max-w-xl">
                 DevOS gives you the tools, infrastructure and workflow to turn your ideas into real products — all in one place.
               </p>
 
@@ -290,7 +290,7 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-white">All-in-one</h3>
-                    <p className="text-[11px] text-white/40 mt-0.5">Build, deploy and manage.</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Build, deploy and manage.</p>
                   </div>
                 </div>
 
@@ -300,7 +300,7 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-white">Built for teams</h3>
-                    <p className="text-[11px] text-white/40 mt-0.5">Collaborate seamlessly.</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Collaborate seamlessly.</p>
                   </div>
                 </div>
 
@@ -310,7 +310,7 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-white">Modern infrastructure</h3>
-                    <p className="text-[11px] text-white/40 mt-0.5">Fast, reliable and scalable.</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Fast, reliable and scalable.</p>
                   </div>
                 </div>
               </div>
@@ -352,7 +352,7 @@ export default function Home() {
                             { name: "Storage", icon: HardDrive },
                             { name: "Settings", icon: Settings },
                           ].map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 text-xs transition-colors cursor-pointer">
+                            <div key={idx} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 text-xs transition-colors cursor-pointer">
                               <item.icon className="w-3.5 h-3.5" />
                               <span>{item.name}</span>
                             </div>
@@ -367,7 +367,7 @@ export default function Home() {
                       {/* Top Header inside Mockup */}
                       <div>
                         <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/5">
-                          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1 w-44 sm:w-56 text-[11px] text-white/30">
+                          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1 w-44 sm:w-56 text-[11px] text-slate-400">
                             <Search className="w-3 h-3" />
                             <span>Search projects...</span>
                           </div>
@@ -387,7 +387,7 @@ export default function Home() {
                           <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5">
                             Good morning, Builder ☀️
                           </h2>
-                          <p className="text-[11px] text-white/40">Let's build something amazing today.</p>
+                          <p className="text-[11px] text-slate-400">Let's build something amazing today.</p>
                         </div>
 
                         {/* 4 Action Cards */}
@@ -397,7 +397,7 @@ export default function Home() {
                               <Folder className="w-3.5 h-3.5" />
                             </div>
                             <p className="text-[10px] font-bold text-white truncate">New Project</p>
-                            <p className="text-[8px] text-white/40 truncate">Start building</p>
+                            <p className="text-[8px] text-slate-400 truncate">Start building</p>
                           </div>
 
                           <div onClick={openSignup} className="cursor-pointer p-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all text-center">
@@ -405,7 +405,7 @@ export default function Home() {
                               <Rocket className="w-3.5 h-3.5" />
                             </div>
                             <p className="text-[10px] font-bold text-white truncate">Deploy</p>
-                            <p className="text-[8px] text-white/40 truncate">Push to prod</p>
+                            <p className="text-[8px] text-slate-400 truncate">Push to prod</p>
                           </div>
 
                           <div onClick={openSignup} className="cursor-pointer p-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all text-center">
@@ -413,7 +413,7 @@ export default function Home() {
                               <Database className="w-3.5 h-3.5" />
                             </div>
                             <p className="text-[10px] font-bold text-white truncate">Database</p>
-                            <p className="text-[8px] text-white/40 truncate">Manage data</p>
+                            <p className="text-[8px] text-slate-400 truncate">Manage data</p>
                           </div>
 
                           <div onClick={openSignup} className="cursor-pointer p-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all text-center">
@@ -421,14 +421,14 @@ export default function Home() {
                               <Globe className="w-3.5 h-3.5" />
                             </div>
                             <p className="text-[10px] font-bold text-white truncate">Domain</p>
-                            <p className="text-[8px] text-white/40 truncate">Connect domain</p>
+                            <p className="text-[8px] text-slate-400 truncate">Connect domain</p>
                           </div>
                         </div>
 
                         {/* Recent Projects Section */}
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-[11px] font-bold text-white/80">Recent Projects</span>
+                            <span className="text-[11px] font-bold text-slate-200">Recent Projects</span>
                             <span onClick={openSignup} className="text-[10px] text-blue-400 hover:underline cursor-pointer flex items-center gap-0.5">
                               View all <ArrowRight className="w-2.5 h-2.5" />
                             </span>
@@ -442,10 +442,10 @@ export default function Home() {
                                 </div>
                                 <div>
                                   <p className="text-[11px] font-bold text-white">kontyra-web</p>
-                                  <p className="text-[9px] text-white/40">Production · Deployed 2h ago</p>
+                                  <p className="text-[9px] text-slate-400">Production · Deployed 2h ago</p>
                                 </div>
                               </div>
-                              <MoreHorizontal className="w-3.5 h-3.5 text-white/30" />
+                              <MoreHorizontal className="w-3.5 h-3.5 text-slate-400" />
                             </div>
 
                             <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors">
@@ -455,10 +455,10 @@ export default function Home() {
                                 </div>
                                 <div>
                                   <p className="text-[11px] font-bold text-white">hearth-api</p>
-                                  <p className="text-[9px] text-white/40">Development · Updated 1d ago</p>
+                                  <p className="text-[9px] text-slate-400">Development · Updated 1d ago</p>
                                 </div>
                               </div>
-                              <MoreHorizontal className="w-3.5 h-3.5 text-white/30" />
+                              <MoreHorizontal className="w-3.5 h-3.5 text-slate-400" />
                             </div>
 
                             <div className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors">
@@ -471,7 +471,7 @@ export default function Home() {
                                   <p className="text-[9px] text-blue-400 animate-pulse">Staging · Deploying...</p>
                                 </div>
                               </div>
-                              <MoreHorizontal className="w-3.5 h-3.5 text-white/30" />
+                              <MoreHorizontal className="w-3.5 h-3.5 text-slate-400" />
                             </div>
                           </div>
                         </div>
@@ -503,7 +503,7 @@ export default function Home() {
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.1] mb-5">
                 A complete environment for modern builders.
               </h2>
-              <p className="text-sm sm:text-base text-white/60 leading-relaxed mb-8">
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed mb-8">
                 From code to cloud, DevOS brings everything you need to develop, test, deploy and scale — without the complexity.
               </p>
               <button 
@@ -552,7 +552,7 @@ export default function Home() {
                 {/* Editor Body */}
                 <div className="flex h-72 sm:h-80 font-mono text-xs">
                   {/* File tree sidebar */}
-                  <div className="w-36 sm:w-44 border-r border-white/5 bg-[#090a10] p-3 overflow-y-auto hidden sm:block shrink-0 select-none text-white/50 text-[11px] space-y-1">
+                  <div className="w-36 sm:w-44 border-r border-white/5 bg-[#090a10] p-3 overflow-y-auto hidden sm:block shrink-0 select-none text-slate-400 text-[11px] space-y-1">
                     <div className="flex items-center gap-1.5 text-white/80 font-bold">
                       <ChevronDown className="w-3 h-3" />
                       <span>web-app</span>
@@ -655,7 +655,7 @@ export default function Home() {
                     <feat.icon className="w-6 h-6" />
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2">{feat.title}</h3>
-                  <p className="text-xs sm:text-sm text-white/50 leading-relaxed mb-4">{feat.desc}</p>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-4">{feat.desc}</p>
                 </div>
                 <div className="flex items-center justify-end">
                   <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 group-hover:text-white group-hover:bg-white/10 transition-colors">
@@ -682,7 +682,7 @@ export default function Home() {
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.1] mb-5">
                 From local to global.
               </h2>
-              <p className="text-sm sm:text-base text-white/60 leading-relaxed mb-8">
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed mb-8">
                 Push your code, deploy to production and make your ideas live in minutes. DevOS handles the infrastructure, so you can focus on building.
               </p>
               <button 
@@ -709,7 +709,7 @@ export default function Home() {
                       <item.icon className="w-5 h-5" />
                     </div>
                     <p className="text-xs sm:text-sm font-bold text-white mb-0.5">{item.title}</p>
-                    <p className="text-[10px] sm:text-xs text-white/40 leading-tight hidden sm:block">{item.desc}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-400 leading-tight hidden sm:block">{item.desc}</p>
                   </div>
                 ))}
               </div>
@@ -721,11 +721,11 @@ export default function Home() {
                     <div key={idx} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span className={cn(log.highlight ? "text-emerald-300 font-bold" : "text-white/80")}>
+                        <span className={cn(log.highlight ? "text-emerald-300 font-bold" : "text-slate-200")}>
                           {log.text}
                         </span>
                       </div>
-                      <span className="text-[11px] text-white/30 shrink-0">{log.time}</span>
+                      <span className="text-[11px] text-slate-400 shrink-0">{log.time}</span>
                     </div>
                   ))}
                 </div>
@@ -836,7 +836,7 @@ export default function Home() {
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.1] mb-5">
                 Global and reliable.
               </h2>
-              <p className="text-sm sm:text-base text-white/60 leading-relaxed mb-8">
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed mb-8">
                 Your projects run on a global infrastructure with high availability, automatic scaling and edge performance.
               </p>
 
@@ -881,7 +881,7 @@ export default function Home() {
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.1] mb-5">
                 Works seamlessly with Kontyra.
               </h2>
-              <p className="text-sm sm:text-base text-white/60 leading-relaxed mb-8">
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed mb-8">
                 DevOS integrates with other Kontyra products giving you a unified experience for development, productivity, events and more.
               </p>
               <button 
@@ -921,7 +921,7 @@ export default function Home() {
                   <KontyraLogo className="w-8 h-8" />
                 </div>
                 <div className="h-6 w-[2px] bg-gradient-to-b from-purple-500/40 to-transparent" />
-                <span className="text-xs font-extrabold uppercase tracking-widest text-white/50 mt-1">KONTYRA CORE</span>
+                <span className="text-xs font-extrabold uppercase tracking-widest text-slate-300 font-extrabold mt-1">KONTYRA CORE</span>
               </div>
 
             </div>
@@ -945,7 +945,7 @@ export default function Home() {
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-3">
                 Start building with DevOS.
               </h2>
-              <p className="text-white/80 text-sm sm:text-base leading-relaxed">
+              <p className="text-blue-100 text-sm sm:text-base leading-relaxed">
                 Join builders, teams and creators using DevOS to turn ideas into real products.
               </p>
             </div>
@@ -974,7 +974,7 @@ export default function Home() {
                 <KontyraLogo className="w-6 h-6" />
                 <span className="font-black text-white text-base tracking-tight">Kontyra</span>
               </div>
-              <p className="text-white/40 text-xs leading-relaxed max-w-xs">
+              <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
                 Building products for how people work, create, connect and build.
               </p>
             </div>
@@ -982,49 +982,49 @@ export default function Home() {
             {/* Products */}
             <div className="flex flex-col gap-2.5">
               <p className="font-bold text-white mb-1">Products</p>
-              <Link to="/" className="text-white/50 hover:text-white transition-colors">DevOS</Link>
-              <a href="#hearth" className="text-white/50 hover:text-white transition-colors">Hearth</a>
-              <a href="#vux" className="text-white/50 hover:text-white transition-colors">VUX</a>
-              <a href="#docs" className="text-white/50 hover:text-white transition-colors">Docs</a>
-              <a href="#tasks" className="text-white/50 hover:text-white transition-colors">Tasks</a>
-              <a href="#calendar" className="text-white/50 hover:text-white transition-colors">Calendar</a>
-              <a href="#forms" className="text-white/50 hover:text-white transition-colors">Forms</a>
-              <a href="#kora" className="text-white/50 hover:text-white transition-colors">KORA</a>
+              <Link to="/" className="text-slate-400 hover:text-white transition-colors">DevOS</Link>
+              <a href="#hearth" className="text-slate-400 hover:text-white transition-colors">Hearth</a>
+              <a href="#vux" className="text-slate-400 hover:text-white transition-colors">VUX</a>
+              <a href="#docs" className="text-slate-400 hover:text-white transition-colors">Docs</a>
+              <a href="#tasks" className="text-slate-400 hover:text-white transition-colors">Tasks</a>
+              <a href="#calendar" className="text-slate-400 hover:text-white transition-colors">Calendar</a>
+              <a href="#forms" className="text-slate-400 hover:text-white transition-colors">Forms</a>
+              <a href="#kora" className="text-slate-400 hover:text-white transition-colors">KORA</a>
             </div>
 
             {/* Company */}
             <div className="flex flex-col gap-2.5">
               <p className="font-bold text-white mb-1">Company</p>
-              <Link to="/about" className="text-white/50 hover:text-white transition-colors">About</Link>
-              <a href="#careers" className="text-white/50 hover:text-white transition-colors">Careers</a>
-              <a href="#blog" className="text-white/50 hover:text-white transition-colors">Blog</a>
-              <a href="#press" className="text-white/50 hover:text-white transition-colors">Press</a>
-              <Link to="/contact" className="text-white/50 hover:text-white transition-colors">Contact</Link>
+              <Link to="/about" className="text-slate-400 hover:text-white transition-colors">About</Link>
+              <a href="#careers" className="text-slate-400 hover:text-white transition-colors">Careers</a>
+              <a href="#blog" className="text-slate-400 hover:text-white transition-colors">Blog</a>
+              <a href="#press" className="text-slate-400 hover:text-white transition-colors">Press</a>
+              <Link to="/contact" className="text-slate-400 hover:text-white transition-colors">Contact</Link>
             </div>
 
             {/* Developers */}
             <div className="flex flex-col gap-2.5">
               <p className="font-bold text-white mb-1">Developers</p>
-              <Link to="/docs" className="text-white/50 hover:text-white transition-colors">Documentation</Link>
-              <a href="#api" className="text-white/50 hover:text-white transition-colors">API</a>
-              <Link to="/status" className="text-white/50 hover:text-white transition-colors">Status</Link>
-              <Link to="/communities" className="text-white/50 hover:text-white transition-colors">Community</Link>
+              <Link to="/docs" className="text-slate-400 hover:text-white transition-colors">Documentation</Link>
+              <a href="#api" className="text-slate-400 hover:text-white transition-colors">API</a>
+              <Link to="/status" className="text-slate-400 hover:text-white transition-colors">Status</Link>
+              <Link to="/communities" className="text-slate-400 hover:text-white transition-colors">Community</Link>
             </div>
 
             {/* Resources */}
             <div className="flex flex-col gap-2.5">
               <p className="font-bold text-white mb-1">Resources</p>
-              <a href="#help" className="text-white/50 hover:text-white transition-colors">Help Center</a>
-              <Link to="/privacy" className="text-white/50 hover:text-white transition-colors">Privacy</Link>
-              <Link to="/terms" className="text-white/50 hover:text-white transition-colors">Terms</Link>
-              <a href="#brand" className="text-white/50 hover:text-white transition-colors">Brand</a>
-              <Link to="/acceptable-use" className="text-white/50 hover:text-white transition-colors">Security</Link>
+              <a href="#help" className="text-slate-400 hover:text-white transition-colors">Help Center</a>
+              <Link to="/privacy" className="text-slate-400 hover:text-white transition-colors">Privacy</Link>
+              <Link to="/terms" className="text-slate-400 hover:text-white transition-colors">Terms</Link>
+              <a href="#brand" className="text-slate-400 hover:text-white transition-colors">Brand</a>
+              <Link to="/acceptable-use" className="text-slate-400 hover:text-white transition-colors">Security</Link>
             </div>
           </div>
 
           {/* Socials & Language */}
           <div className="pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4 text-white/50">
+            <div className="flex items-center gap-4 text-slate-400">
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
                 <Twitter className="w-4 h-4" />
               </a>
@@ -1039,7 +1039,7 @@ export default function Home() {
               </a>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-white/50 bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg cursor-pointer hover:text-white transition-colors">
+            <div className="flex items-center gap-2 text-xs text-slate-300 bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg cursor-pointer hover:text-white transition-colors">
               <Globe className="w-3.5 h-3.5" />
               <span>English (US)</span>
               <ChevronDown className="w-3 h-3 text-white/40" />
@@ -1047,7 +1047,7 @@ export default function Home() {
           </div>
 
           {/* Bottom Copyright */}
-          <div className="pt-6 mt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-2 text-white/30 text-[11px]">
+          <div className="pt-6 mt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-400 text-[11px]">
             <p>© 2026 Kontyra. All rights reserved.</p>
             <p>Building a brighter digital tomorrow.</p>
           </div>
