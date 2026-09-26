@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "./lib/firebase";
 import { initializeUser, updateStreak } from "./lib/userService";
+import { ensureKontyraOfficialOrg } from "./lib/orgService";
 import { getMaintenanceConfig, MaintenanceConfig } from "./lib/creditsService";
 import { useUITheme } from "./hooks/useUITheme";
 import Navbar from "./components/Navbar";
@@ -337,6 +338,8 @@ export default function App() {
   // Bootstrap user on login, clean up on logout
   useEffect(() => {
     if (user) {
+      // Guarantee the Kontyra Core org exists on every login (no-op if already there)
+      ensureKontyraOfficialOrg().catch(() => {});
       initializeUser(user);
       updateStreak(user.uid).catch(() => {});
     } else {

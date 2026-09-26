@@ -366,3 +366,54 @@ export async function ensureDevTeamOrg(): Promise<void> {
     });
   }
 }
+
+// ---------------------------------------------------------------------------
+// Kontyra Core official org — mirrors org_kontyra_core in Kontyra Identity
+// ---------------------------------------------------------------------------
+
+/**
+ * Ensures the canonical Kontyra Core organization exists in DevOS's
+ * `organizations` collection under the fixed document ID "kontyra".
+ *
+ * This org mirrors `org_kontyra_core` in Kontyra Identity, making DevOS
+ * seamlessly part of the Kontyra ecosystem. Every new user is auto-joined
+ * to this org via `joinOfficialOrgs()` because `isOfficial: true`.
+ *
+ * Safe to call on every app startup — it is a no-op if the doc exists.
+ */
+export async function ensureKontyraOfficialOrg(): Promise<void> {
+  const orgRef = doc(db, "organizations", "kontyra");
+  const snap = await getDoc(orgRef);
+  if (!snap.exists()) {
+    await setDoc(orgRef, {
+      id: "kontyra",
+      name: "Kontyra Core",
+      slug: "kontyra",
+      description:
+        "The official governing organization and engineering collective behind Kontyra Identity, DevOS, and VUX Events. All Kontyra engineers, contributors, and builders are members.",
+      avatar: "https://accounts.kontyra.name.ng/logo.png",
+      isPublic: true,
+      isOfficial: true,
+      chatEnabled: true,
+      voiceCallsEnabled: true,
+      createdBy: "oladoyeheritage445@gmail.com",
+      createdByUsername: "heritage",
+      memberCount: 0,
+      identityOrgId: "org_kontyra_core",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    // Patch missing fields on existing doc without overwriting user data
+    await setDoc(
+      orgRef,
+      {
+        isOfficial: true,
+        isPublic: true,
+        identityOrgId: "org_kontyra_core",
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+}

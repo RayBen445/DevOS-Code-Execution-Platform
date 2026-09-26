@@ -14,11 +14,11 @@ import {
   limit,
 } from "firebase/firestore";
 import { Project, UsernameChangeRequest } from "../types";
-import { initializeCredits } from "./creditsService";
+import { initializeCredits, syncKontyraCredits } from "./creditsService";
 import { DEFAULT_USER_AVATAR } from "./avatars";
 import { getOrCreateReferralCode, processReferral } from "./referralService";
 import { joinOfficialCommunities } from "./communityService";
-import { joinOfficialOrgs } from "./orgService";
+import { joinOfficialOrgs, ensureKontyraOfficialOrg } from "./orgService";
 import { buildPortfolioUrl, RESERVED_SUBDOMAINS } from "./brand";
 
 const ADMIN_EMAIL = (import.meta as any).env?.VITE_ADMIN_EMAIL || "oladoyeheritage445@gmail.com";
@@ -68,11 +68,14 @@ export const registerUserProfile = async (
   });
 
   await initializeCredits(user.uid);
+  await syncKontyraCredits(user.uid, user.email || "").catch(() => {});
   await createPortfolioProject(user.uid, profile.username, isAdmin).catch((err) => {
     console.error("createPortfolioProject failed (non-fatal):", err);
   });
 
   // Auto-join all official communities and orgs
+  // Ensure the canonical Kontyra Core org exists first, then join all official orgs
+  await ensureKontyraOfficialOrg().catch(() => {});
   await joinOfficialCommunities(user.uid).catch(() => {});
   await joinOfficialOrgs(user.uid, profile.username).catch(() => {});
 
@@ -138,13 +141,16 @@ export const initializeUser = async (user: any) => {
       updatedAt: serverTimestamp(),
     });
 
-    // Initialize credits
+    // Initialize credits and sync with Kontyra Universal Cloud Pass
     await initializeCredits(user.uid);
+    await syncKontyraCredits(user.uid, user.email || "").catch(() => {});
 
     // Create initial portfolio project
     await createPortfolioProject(user.uid, username, isAdmin);
 
     // Auto-join all official communities and orgs
+    // Ensure the canonical Kontyra Core org exists first, then join all official orgs
+    await ensureKontyraOfficialOrg().catch(() => {});
     await joinOfficialCommunities(user.uid).catch(() => {});
     await joinOfficialOrgs(user.uid, username).catch(() => {});
 

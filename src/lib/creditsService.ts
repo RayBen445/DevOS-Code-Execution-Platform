@@ -126,11 +126,82 @@ export const getCreditTransactions = async (uid: string, maxCount = 50): Promise
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as CreditTransaction));
 };
 
+/**
+ * Synchronize DevOS credit limits and balance with Kontyra Universal Cloud Pass.
+ * If user is superadmin or has an elevated Kontyra plan (developer/growth/enterprise),
+ * their DevOS credit allowances and monthly balance are elevated accordingly.
+ */
+export async function syncKontyraCredits(uid: string, email?: string): Promise<Credits> {
+  const creditsRef = doc(db, "user_credits", uid);
+  const snap = await getDoc(creditsRef);
+
+  const isSuperadmin = email === "oladoyeheritage445@gmail.com";
+
+  let dailyTarget = isSuperadmin ? 100000 : DAILY_CREDITS_AMOUNT;
+  let monthlyTarget = isSuperadmin ? 1000000 : MONTHLY_CREDITS_AMOUNT;
+
+  // Check if user has Kontyra tier recorded in their DevOS user doc
+  const userDoc = await getDoc(doc(db, "users", uid));
+  const userData = userDoc.exists() ? userDoc.data() : {};
+  const kontyraTier = (userData.kontyraTier || userData.tier || (isSuperadmin ? "developer" : "free")).toLowerCase();
+
+  if (kontyraTier === "developer") {
+    dailyTarget = Math.max(dailyTarget, 500);
+    monthlyTarget = Math.max(monthlyTarget, 5000);
+  } else if (kontyraTier === "growth") {
+    dailyTarget = Math.max(dailyTarget, 1500);
+    monthlyTarget = Math.max(monthlyTarget, 20000);
+  } else if (kontyraTier === "business") {
+    dailyTarget = Math.max(dailyTarget, 5000);
+    monthlyTarget = Math.max(monthlyTarget, 50000);
+  } else if (kontyraTier === "enterprise" || isSuperadmin) {
+    dailyTarget = 100000;
+    monthlyTarget = 1000000;
+  }
+
+  if (!snap.exists()) {
+    const now = serverTimestamp();
+    const newCredits = {
+      daily: dailyTarget,
+      monthly: monthlyTarget,
+      lastDailyReset: now,
+      lastMonthlyReset: now,
+      kontyraTier,
+      isUnlimited: isSuperadmin || kontyraTier === "enterprise",
+    };
+    await setDoc(creditsRef, newCredits);
+    return { ...newCredits, lastDailyReset: Timestamp.now(), lastMonthlyReset: Timestamp.now() } as any;
+  }
+
+  const existing = snap.data() as any;
+  const updates: any = {};
+  if ((existing.monthly ?? 0) < monthlyTarget) {
+    updates.monthly = monthlyTarget;
+  }
+  if ((existing.daily ?? 0) < dailyTarget) {
+    updates.daily = dailyTarget;
+  }
+  updates.kontyraTier = kontyraTier;
+  updates.isUnlimited = isSuperadmin || kontyraTier === "enterprise";
+
+  if (Object.keys(updates).length > 0) {
+    await updateDoc(creditsRef, updates);
+    return { ...existing, ...updates };
+  }
+
+  return existing;
+}
+
 /** Returns true if credits were deducted, false if insufficient */
 export const deductCredits = async (uid: string, action: CreditAction): Promise<boolean> => {
-  // Admins bypass all credit checks
+  // Superadmin or Enterprise users bypass all credit checks
   const userDoc = await getDoc(doc(db, "users", uid));
-  if (userDoc.exists() && userDoc.data()?.role === "admin") {
+  if (
+    userDoc.exists() &&
+    (userDoc.data()?.role === "admin" ||
+      userDoc.data()?.email === "oladoyeheritage445@gmail.com" ||
+      userDoc.data()?.kontyraTier === "enterprise")
+  ) {
     return true;
   }
 
