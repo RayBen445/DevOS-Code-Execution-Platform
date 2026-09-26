@@ -668,9 +668,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
             >
               <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 flex-shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
-                    <Code2 className="w-4 h-4 text-white" />
-                  </div>
+                  <DevosLogo className="w-8 h-8" interactive={true} />
                   <span className="font-bold text-lg tracking-tight">DevOS</span>
                 </div>
                 <button

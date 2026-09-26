@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Code2, Home, ArrowLeft, Search } from "lucide-react";
 import Navbar from "../components/Navbar";
+import DevosLogo from "../components/DevosLogo";
 import Footer from "../components/Footer";
 import { useSEO } from "../hooks/useSEO";
 
@@ -25,7 +26,7 @@ export default function NotFoundPage() {
             <div className="relative flex items-center justify-center w-32 h-32 mx-auto">
               <span className="text-[80px] font-black text-white/5 select-none absolute">404</span>
               <div className="w-20 h-20 bg-card border border-border-base rounded-3xl flex items-center justify-center shadow-2xl">
-                <Code2 className="w-9 h-9 text-blue-400" />
+                <DevosLogo className="w-12 h-12" interactive={true} />
               </div>
             </div>
           </motion.div>

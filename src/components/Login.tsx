@@ -16,6 +16,7 @@ import { registerCurrentDevicePasskey, signInUsingPasskey } from "../lib/passkey
 import { signInWithCustomToken } from "firebase/auth";
 import { browserSupportsWebAuthn, browserSupportsWebAuthnAutofill } from "@simplewebauthn/browser";
 import { verifyTwoFactorChallenge } from "../lib/twoFactorService";
+import DevosLogo from "./DevosLogo";
 
 interface LoginProps {
   onClose: () => void;
@@ -377,8 +378,8 @@ export default function Login({ onClose, initialMode = "login" }: LoginProps) {
         </button>
 
         <div className="flex flex-col items-center mb-8 relative">
-          <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-600/30 pulse-glow">
-            {step === "mfa" ? <ShieldCheck className="w-8 h-8 text-white" /> : step === "verify-sent" ? <CheckCircle2 className="w-8 h-8 text-white" /> : <Zap className="w-8 h-8 text-white" />}
+          <div className="w-16 h-16 rounded-2xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center mb-4 shadow-lg shadow-blue-600/20">
+            {step === "mfa" ? <ShieldCheck className="w-8 h-8 text-white" /> : step === "verify-sent" ? <CheckCircle2 className="w-8 h-8 text-white" /> : <DevosLogo className="w-10 h-10" interactive={true} />}
           </div>
           <h1 className="text-2xl font-black text-white mb-1 tracking-tight">{heading}</h1>
           <p className="text-white/40 text-center text-sm">{subheading}</p>

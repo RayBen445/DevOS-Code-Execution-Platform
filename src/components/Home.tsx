@@ -12,50 +12,13 @@ import {
 import { useSEO } from "../hooks/useSEO";
 import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
+import DevosLogo from "./DevosLogo";
 
 interface HomeProps {
   setShowLogin: (show: boolean) => void;
   setShowSignup?: (show: boolean) => void;
 }
 
-// Kontyra Infinity Loop SVG
-function KontyraLogo({ className = "w-7 h-7" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="kontyra-grad-left" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ec4899" />
-          <stop offset="100%" stopColor="#8b5cf6" />
-        </linearGradient>
-        <linearGradient id="kontyra-grad-right" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#06b6d4" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M12 11C8.134 11 5 14.134 5 18C5 21.866 8.134 25 12 25C15.866 25 18 20.8 18 18C18 15.2 20.134 11 24 11C27.866 11 31 14.134 31 18C31 21.866 27.866 25 24 25"
-        stroke="url(#kontyra-grad-right)"
-        strokeWidth="3.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M24 25C27.866 25 31 21.866 31 18C31 14.134 27.866 11 24 11C20.134 11 18 15.2 18 18C18 20.8 15.866 25 12 25C8.134 25 5 21.866 5 18C5 14.134 8.134 11 12 11"
-        stroke="url(#kontyra-grad-left)"
-        strokeWidth="3.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-// DevOS Badge Icon
-function DevosLogoBadge({ className = "w-7 h-7" }: { className?: string }) {
-  return (
-    <div className={cn("rounded-xl bg-blue-600 flex items-center justify-center font-mono font-bold text-white text-xs sm:text-sm shadow-md shadow-blue-600/30", className)}>
-      &lt;/&gt;
-    </div>
-  );
-}
 
 export default function Home({ setShowLogin, setShowSignup }: HomeProps) {
   useSEO({
@@ -160,49 +123,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#06070a] text-white selection:bg-blue-600/30 overflow-x-hidden font-sans">
-      {/* ── 1. GLOBAL KONTYRA HEADER ── */}
-      <header className="w-full bg-[#050608] border-b border-white/[0.06] text-xs text-slate-300 relative z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
-          <div className="flex items-center gap-6 sm:gap-8">
-            <Link to="/" className="flex items-center gap-2 text-white font-bold text-sm tracking-tight hover:opacity-90 transition-opacity">
-              <KontyraLogo className="w-5 h-5" />
-              <span className="font-extrabold tracking-tight text-white text-base">Kontyra</span>
-            </Link>
+      
 
-            <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-300">
-              <a href="#products" className="hover:text-white transition-colors">Products</a>
-              <a href="#developers" className="hover:text-white transition-colors">Developers</a>
-              <a href="#blog" className="hover:text-white transition-colors">Blog</a>
-              <a href="#company" className="hover:text-white transition-colors">Company</a>
-            </nav>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={openLogin}
-              className="p-1.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-              title="Search"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={openSignup}
-              className="hidden sm:flex items-center gap-1.5 text-slate-200 hover:text-white text-xs font-semibold group transition-colors"
-            >
-              Explore Kontyra
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── 2. DEVOS SUB-NAV (STICKY) ── */}
+      {/* ── DEVOS MAIN NAV (STICKY) ── */}
       <nav className="sticky top-0 z-40 bg-[#06070a]/90 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center gap-2.5 group">
-              <DevosLogoBadge className="w-7 h-7 group-hover:scale-105 transition-transform" />
-              <span className="font-extrabold text-white text-lg tracking-tight">DevOS</span>
+              <div className="flex items-center justify-center transition-transform group-hover:scale-105">
+                <DevosLogo className="w-8 h-8" interactive={true} />
+              </div>
+              <span className="font-extrabold text-white text-xl tracking-tight">DevOS</span>
             </Link>
 
             <div className="hidden sm:flex items-center gap-6 text-sm font-medium">
@@ -213,7 +144,7 @@ export default function Home() {
                 Features
               </a>
               <a href="#integrations" className="text-slate-300 hover:text-white transition-colors">
-                Integrations
+                Ecosystem
               </a>
               <Link to="/docs" className="text-slate-300 hover:text-white transition-colors">
                 Documentation
@@ -223,10 +154,16 @@ export default function Home() {
 
           <div className="flex items-center gap-3">
             <button
+              onClick={openLogin}
+              className="px-4 py-2 text-slate-300 hover:text-white text-xs sm:text-sm font-medium transition-colors"
+            >
+              Sign In
+            </button>
+            <button
               onClick={openSignup}
               className="px-5 py-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
             >
-              Explore DevOS
+              Get Started
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -333,7 +270,7 @@ export default function Home() {
                       <div>
                         {/* DevOS Brand in Dashboard */}
                         <div className="flex items-center gap-2 mb-6 px-1">
-                          <DevosLogoBadge className="w-5 h-5 rounded-md text-[10px]" />
+                          <DevosLogo className="w-5 h-5" />
                           <span className="font-bold text-white text-xs">DevOS</span>
                         </div>
 
@@ -915,13 +852,13 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* Glowing Kontyra Infinity Core Anchor */}
+              {/* Glowing DevOS Core Anchor */}
               <div className="relative flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-blue-500/20 border border-white/20 flex items-center justify-center shadow-[0_0_40px_rgba(168,85,247,0.4)] backdrop-blur-xl">
-                  <KontyraLogo className="w-8 h-8" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-purple-500/20 border border-white/20 flex items-center justify-center shadow-[0_0_40px_rgba(59,130,246,0.4)] backdrop-blur-xl">
+                  <DevosLogo className="w-9 h-9" interactive={true} />
                 </div>
-                <div className="h-6 w-[2px] bg-gradient-to-b from-purple-500/40 to-transparent" />
-                <span className="text-xs font-extrabold uppercase tracking-widest text-slate-300 font-extrabold mt-1">KONTYRA CORE</span>
+                <div className="h-6 w-[2px] bg-gradient-to-b from-blue-500/40 to-transparent" />
+                <span className="text-xs font-extrabold uppercase tracking-widest text-slate-300 mt-1">DEVOS CORE</span>
               </div>
 
             </div>
@@ -971,11 +908,11 @@ export default function Home() {
             {/* Brand column */}
             <div className="col-span-2 flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <KontyraLogo className="w-6 h-6" />
-                <span className="font-black text-white text-base tracking-tight">Kontyra</span>
+                <DevosLogo className="w-6 h-6" />
+                <span className="font-black text-white text-base tracking-tight">DevOS</span>
               </div>
               <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
-                Building products for how people work, create, connect and build.
+                The modern cloud development environment and execution platform.
               </p>
             </div>
 
@@ -1048,7 +985,7 @@ export default function Home() {
 
           {/* Bottom Copyright */}
           <div className="pt-6 mt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-400 text-[11px]">
-            <p>© 2026 Kontyra. All rights reserved.</p>
+            <p>© 2026 DevOS. All rights reserved.</p>
             <p>Building a brighter digital tomorrow.</p>
           </div>
 
